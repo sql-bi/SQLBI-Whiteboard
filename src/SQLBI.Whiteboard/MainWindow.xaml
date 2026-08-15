@@ -13,61 +13,6 @@
         Deactivated="Window_Deactivated"
         PreviewKeyDown="Window_PreviewKeyDown"
         PreviewKeyUp="Window_PreviewKeyUp">
-    <Window.Resources>
-        <Style x:Key="PenFriendlySliderStyle"
-               TargetType="{x:Type Slider}">
-            <Setter Property="Height" Value="40" />
-            <Setter Property="Template">
-                <Setter.Value>
-                    <ControlTemplate TargetType="{x:Type Slider}">
-                        <Grid Background="Transparent">
-                            <Track x:Name="PART_Track"
-                                   VerticalAlignment="Center">
-                                <Track.DecreaseRepeatButton>
-                                    <RepeatButton Command="{x:Static Slider.DecreaseLarge}"
-                                                  IsTabStop="False">
-                                        <RepeatButton.Template>
-                                            <ControlTemplate TargetType="{x:Type RepeatButton}">
-                                                <Border Height="6"
-                                                        Background="#FF9CA3AF"
-                                                        CornerRadius="3" />
-                                            </ControlTemplate>
-                                        </RepeatButton.Template>
-                                    </RepeatButton>
-                                </Track.DecreaseRepeatButton>
-                                <Track.Thumb>
-                                    <Thumb Width="44"
-                                           Height="28">
-                                        <Thumb.Template>
-                                            <ControlTemplate TargetType="{x:Type Thumb}">
-                                                <Border Background="#FFF9F9F9"
-                                                        BorderBrush="#FF4B5563"
-                                                        BorderThickness="2"
-                                                        CornerRadius="4" />
-                                            </ControlTemplate>
-                                        </Thumb.Template>
-                                    </Thumb>
-                                </Track.Thumb>
-                                <Track.IncreaseRepeatButton>
-                                    <RepeatButton Command="{x:Static Slider.IncreaseLarge}"
-                                                  IsTabStop="False">
-                                        <RepeatButton.Template>
-                                            <ControlTemplate TargetType="{x:Type RepeatButton}">
-                                                <Border Height="6"
-                                                        Background="#FFD1D5DB"
-                                                        CornerRadius="3" />
-                                            </ControlTemplate>
-                                        </RepeatButton.Template>
-                                    </RepeatButton>
-                                </Track.IncreaseRepeatButton>
-                            </Track>
-                        </Grid>
-                    </ControlTemplate>
-                </Setter.Value>
-            </Setter>
-        </Style>
-    </Window.Resources>
-
     <Grid x:Name="RootGrid">
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto" />
@@ -126,8 +71,35 @@
                           IsCheckable="True"
                           Click="CalligraphyToolButton_Click" />
                 <Separator />
-                <MenuItem Header="_Preferences"
-                          IsEnabled="False" />
+                <MenuItem Header="Toolbar _position">
+                    <MenuItem x:Name="ToolbarTopRightMenuItem"
+                              Header="Top _right"
+                              IsCheckable="True"
+                              Tag="TopRight"
+                              Click="ToolbarPlacementMenuItem_Click" />
+                    <MenuItem x:Name="ToolbarTopLeftMenuItem"
+                              Header="Top _left"
+                              IsCheckable="True"
+                              Tag="TopLeft"
+                              Click="ToolbarPlacementMenuItem_Click" />
+                    <MenuItem x:Name="ToolbarBottomRightMenuItem"
+                              Header="Bottom _right"
+                              IsCheckable="True"
+                              Tag="BottomRight"
+                              Click="ToolbarPlacementMenuItem_Click" />
+                    <MenuItem x:Name="ToolbarBottomLeftMenuItem"
+                              Header="Bottom _left"
+                              IsCheckable="True"
+                              Tag="BottomLeft"
+                              Click="ToolbarPlacementMenuItem_Click" />
+                    <MenuItem x:Name="ToolbarBottomCenterMenuItem"
+                              Header="Bottom _center"
+                              IsCheckable="True"
+                              Tag="BottomCenter"
+                              Click="ToolbarPlacementMenuItem_Click" />
+                </MenuItem>
+                <MenuItem Header="_Preferences..."
+                          Click="PreferencesMenuItem_Click" />
             </MenuItem>
         </Menu>
 
@@ -166,129 +138,230 @@
 
         <Border x:Name="ToolPalette"
                 Grid.Row="1"
-                Width="400"
                 HorizontalAlignment="Right"
                 VerticalAlignment="Top"
                 Margin="16"
-                Padding="8"
-                CornerRadius="3"
-                BorderBrush="#24000000"
+                Padding="6"
+                CornerRadius="12"
+                BorderBrush="{StaticResource ToolbarBorderBrush}"
                 BorderThickness="1"
-                Background="#FFF9F9F9"
+                Background="{StaticResource ToolbarBackgroundBrush}"
                 PreviewMouseRightButtonDown="ToolPalette_PreviewMouseRightButtonDown"
                 Panel.ZIndex="10">
+            <Border.Effect>
+                <DropShadowEffect BlurRadius="18"
+                                  ShadowDepth="1"
+                                  Direction="270"
+                                  Opacity="0.16"
+                                  Color="Black" />
+            </Border.Effect>
             <StackPanel x:Name="ToolPaletteContents">
-                <UniformGrid Columns="4"
-                             Margin="0,0,0,6">
-                    <ToggleButton x:Name="RedColorButton"
-                                  MinHeight="30"
-                                  Margin="0,0,4,0"
-                                  Background="#FFDC2626"
-                                  Foreground="White"
-                                  Content="Red"
-                                  IsChecked="True"
-                                  Tag="FFDC2626"
-                                  Click="ColorButton_Click" />
-                    <ToggleButton x:Name="GreenColorButton"
-                                  MinHeight="30"
-                                  Margin="0,0,4,0"
-                                  Background="#FF15803D"
-                                  Foreground="White"
-                                  Content="Green"
-                                  Tag="FF15803D"
-                                  Click="ColorButton_Click" />
-                    <ToggleButton x:Name="BlueColorButton"
-                                  MinHeight="30"
-                                  Margin="0,0,4,0"
-                                  Background="#FF2563EB"
-                                  Foreground="White"
-                                  Content="Blue"
-                                  Tag="FF2563EB"
-                                  Click="ColorButton_Click" />
-                    <ToggleButton x:Name="BlackColorButton"
-                                  MinHeight="30"
-                                  Background="Black"
-                                  Foreground="White"
-                                  Content="Black"
-                                  Tag="FF000000"
-                                  Click="ColorButton_Click" />
-                </UniformGrid>
+                <Border x:Name="DualPalettePanel"
+                        Visibility="Collapsed">
+                    <Grid Grid.IsSharedSizeScope="True">
+                    <StackPanel>
+                        <Border x:Name="DualPenGroup"
+                                Padding="4"
+                                CornerRadius="8">
+                            <StackPanel>
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition SharedSizeGroup="DualColors"
+                                                          Width="Auto" />
+                                        <ColumnDefinition Width="Auto" />
+                                    </Grid.ColumnDefinitions>
+                                    <StackPanel x:Name="DualPenColors"
+                                                Orientation="Horizontal" />
+                                    <StackPanel Grid.Column="1"
+                                                Orientation="Horizontal">
+                                        <ToggleButton x:Name="DualPenButton"
+                                                      Style="{StaticResource ToolbarIconButton}"
+                                                      ToolTip="Pen"
+                                                      Click="DualPenButton_Click">
+                                            <Path Width="20"
+                                                  Height="20"
+                                                  Stretch="Uniform"
+                                                  Fill="{Binding Foreground, RelativeSource={RelativeSource AncestorType=ToggleButton}}"
+                                                  Data="{StaticResource InkingToolGeometry}" />
+                                        </ToggleButton>
+                                        <ToggleButton x:Name="DualCalligraphyButton"
+                                                      Style="{StaticResource ToolbarIconButton}"
+                                                      ToolTip="Calligraphy"
+                                                      Click="DualCalligraphyButton_Click">
+                                            <Path Width="20"
+                                                  Height="20"
+                                                  Stretch="Uniform"
+                                                  Fill="{Binding Foreground, RelativeSource={RelativeSource AncestorType=ToggleButton}}"
+                                                  Data="{StaticResource CalligraphyPenGeometry}" />
+                                        </ToggleButton>
+                                    </StackPanel>
+                                </Grid>
+                                <StackPanel x:Name="DualPenSizes"
+                                            Margin="0,2,0,0"
+                                            Orientation="Horizontal" />
+                            </StackPanel>
+                        </Border>
+                        <Border x:Name="DualHighlighterGroup"
+                                Margin="0,4,0,0"
+                                Padding="4"
+                                CornerRadius="8">
+                            <StackPanel>
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition SharedSizeGroup="DualColors"
+                                                          Width="Auto" />
+                                        <ColumnDefinition Width="Auto" />
+                                    </Grid.ColumnDefinitions>
+                                    <StackPanel x:Name="DualHighlighterColors"
+                                                Orientation="Horizontal" />
+                                    <StackPanel Grid.Column="1"
+                                                Orientation="Horizontal">
+                                        <ToggleButton x:Name="DualHighlighterButton"
+                                                      Style="{StaticResource ToolbarIconButton}"
+                                                      ToolTip="Highlighter"
+                                                      Click="DualHighlighterButton_Click">
+                                            <Path Width="20"
+                                                  Height="20"
+                                                  Stretch="Uniform"
+                                                  Fill="{Binding Foreground, RelativeSource={RelativeSource AncestorType=ToggleButton}}"
+                                                  Data="{StaticResource HighlightGeometry}" />
+                                        </ToggleButton>
+                                        <ToggleButton x:Name="DualSelectButton"
+                                                      Style="{StaticResource ToolbarIconButton}"
+                                                      ToolTip="Select image"
+                                                      Click="SelectToolButton_Click">
+                                            <Path Width="20"
+                                                  Height="20"
+                                                  Stretch="Uniform"
+                                                  Fill="{Binding Foreground, RelativeSource={RelativeSource AncestorType=ToggleButton}}"
+                                                  Data="{StaticResource ImageSelectGeometry}" />
+                                        </ToggleButton>
+                                    </StackPanel>
+                                </Grid>
+                                <StackPanel x:Name="DualHighlighterSizes"
+                                            Margin="0,2,0,0"
+                                            Orientation="Horizontal" />
+                            </StackPanel>
+                        </Border>
+                    </StackPanel>
+                    </Grid>
+                </Border>
+                <DockPanel x:Name="CompactToolbarHost">
+                    <StackPanel x:Name="ToolChrome"
+                                DockPanel.Dock="Top">
+                    <StackPanel x:Name="ToolButtonsRow"
+                                Orientation="Horizontal">
+                        <StackPanel x:Name="PenFamilyCluster"
+                                    Orientation="Horizontal">
+                            <ToggleButton x:Name="PenToolButton"
+                                          Style="{StaticResource ToolbarIconButton}"
+                                          ToolTip="Pen"
+                                          Click="PenToolButton_Click">
+                                <Grid Width="24"
+                                      Height="24">
+                                    <Path x:Name="PenToolIcon"
+                                          Width="20"
+                                          Height="18"
+                                          VerticalAlignment="Top"
+                                          Stretch="Uniform"
+                                          Fill="{Binding Foreground, RelativeSource={RelativeSource AncestorType=ToggleButton}}"
+                                          Data="{StaticResource InkingToolGeometry}" />
+                                    <Ellipse x:Name="PenColorPip"
+                                             Width="14"
+                                             Height="3"
+                                             VerticalAlignment="Bottom"
+                                             Stroke="#33000000"
+                                             StrokeThickness="0.5"
+                                             Fill="#FFE64B3D" />
+                                </Grid>
+                            </ToggleButton>
+                            <ToggleButton x:Name="PenChevronButton"
+                                          Style="{StaticResource ToolbarChevronButton}"
+                                          Click="PenChevronButton_Click">
+                                <Path Width="10"
+                                      Height="10"
+                                      Stretch="Uniform"
+                                      Fill="{Binding Foreground, RelativeSource={RelativeSource AncestorType=ToggleButton}}"
+                                      Data="{StaticResource ChevronDownGeometry}" />
+                            </ToggleButton>
+                        </StackPanel>
+                        <ToggleButton x:Name="HighlighterToolButton"
+                                      Style="{StaticResource ToolbarIconButton}"
+                                      ToolTip="Highlighter"
+                                      Click="HighlighterToolButton_Click">
+                            <Grid Width="24"
+                                  Height="24">
+                                <Path Width="20"
+                                      Height="18"
+                                      VerticalAlignment="Top"
+                                      Stretch="Uniform"
+                                      Fill="{Binding Foreground, RelativeSource={RelativeSource AncestorType=ToggleButton}}"
+                                      Data="{StaticResource HighlightGeometry}" />
+                                <Ellipse x:Name="HighlighterColorPip"
+                                         Width="14"
+                                         Height="3"
+                                         VerticalAlignment="Bottom"
+                                         Stroke="#33000000"
+                                         StrokeThickness="0.5"
+                                         Fill="#FFFACC15" />
+                            </Grid>
+                        </ToggleButton>
+                        <ToggleButton x:Name="SelectToolButton"
+                                      Style="{StaticResource ToolbarIconButton}"
+                                      ToolTip="Select image"
+                                      AutomationProperties.Name="Select image"
+                                      Click="SelectToolButton_Click">
+                            <Path Width="20"
+                                  Height="20"
+                                  Stretch="Uniform"
+                                  Fill="{Binding Foreground, RelativeSource={RelativeSource AncestorType=ToggleButton}}"
+                                  Data="{StaticResource ImageSelectGeometry}" />
+                        </ToggleButton>
+                    </StackPanel>
 
-                <UniformGrid Columns="4"
-                             Margin="0,0,0,6">
-                    <ToggleButton x:Name="YellowColorButton"
-                                  MinHeight="30"
-                                  Margin="0,0,4,0"
-                                  Background="#FFFACC15"
-                                  Foreground="Black"
-                                  Content="Yellow"
-                                  Tag="FFFACC15"
-                                  Click="ColorButton_Click" />
-                    <ToggleButton x:Name="OrangeColorButton"
-                                  MinHeight="30"
-                                  Margin="0,0,4,0"
-                                  Background="#FFF97316"
-                                  Foreground="Black"
-                                  Content="Orange"
-                                  Tag="FFF97316"
-                                  Click="ColorButton_Click" />
-                    <ToggleButton x:Name="PurpleColorButton"
-                                  MinHeight="30"
-                                  Margin="0,0,4,0"
-                                  Background="#FF9333EA"
-                                  Foreground="White"
-                                  Content="Purple"
-                                  Tag="FF9333EA"
-                                  Click="ColorButton_Click" />
-                    <ToggleButton x:Name="BrownColorButton"
-                                  MinHeight="30"
-                                  Background="#FF92400E"
-                                  Foreground="White"
-                                  Content="Brown"
-                                  Tag="FF92400E"
-                                  Click="ColorButton_Click" />
-                </UniformGrid>
+                    <Border x:Name="NibPickerPanel"
+                            Margin="0,6,0,0"
+                            HorizontalAlignment="Left"
+                            Visibility="Collapsed">
+                        <StackPanel Orientation="Horizontal">
+                            <ToggleButton x:Name="PickerPenButton"
+                                          Style="{StaticResource ToolbarIconButton}"
+                                          ToolTip="Pen"
+                                          Click="PenNibButton_Click">
+                                <Path Width="20"
+                                      Height="20"
+                                      Stretch="Uniform"
+                                      Fill="{Binding Foreground, RelativeSource={RelativeSource AncestorType=ToggleButton}}"
+                                      Data="{StaticResource InkingToolGeometry}" />
+                            </ToggleButton>
+                            <ToggleButton x:Name="PickerCalligraphyButton"
+                                          Style="{StaticResource ToolbarIconButton}"
+                                          ToolTip="Calligraphy"
+                                          Click="CalligraphyNibButton_Click">
+                                <Path Width="20"
+                                      Height="20"
+                                      Stretch="Uniform"
+                                      Fill="{Binding Foreground, RelativeSource={RelativeSource AncestorType=ToggleButton}}"
+                                      Data="{StaticResource CalligraphyPenGeometry}" />
+                            </ToggleButton>
+                        </StackPanel>
+                    </Border>
+                    </StackPanel>
 
-                <UniformGrid Columns="4"
-                             Margin="0,0,0,6">
-                    <ToggleButton x:Name="PenToolButton"
-                                  MinHeight="30"
-                                  Margin="0,0,4,0"
-                                  Content="Pen"
-                                  Click="PenToolButton_Click" />
-                    <ToggleButton x:Name="HighlighterToolButton"
-                                  MinHeight="30"
-                                  Margin="0,0,4,0"
-                                  Content="Highlighter"
-                                  Click="HighlighterToolButton_Click" />
-                    <ToggleButton x:Name="CalligraphyToolButton"
-                                  MinHeight="30"
-                                  Margin="0,0,4,0"
-                                  Content="Calligraphy"
-                                  Click="CalligraphyToolButton_Click" />
-                    <ToggleButton x:Name="SelectToolButton"
-                                  MinHeight="30"
-                                  Content="Select"
-                                  Click="SelectToolButton_Click" />
-                </UniformGrid>
-
-                <Grid MinHeight="40">
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="Auto" />
-                        <ColumnDefinition Width="*" />
-                    </Grid.ColumnDefinitions>
-                    <TextBlock Margin="4,0,10,0"
-                               VerticalAlignment="Center"
-                               Text="Size" />
-                    <Slider x:Name="ThicknessSlider"
-                            Grid.Column="1"
-                            Style="{StaticResource PenFriendlySliderStyle}"
-                            VerticalAlignment="Center"
-                            Minimum="1"
-                            Maximum="20"
-                            Value="4"
-                            ValueChanged="ThicknessSlider_ValueChanged" />
-                </Grid>
+                    <Border x:Name="InkOptionsPanel"
+                            Margin="2,8,2,2"
+                            Visibility="Collapsed">
+                        <StackPanel>
+                            <StackPanel x:Name="ColorSwatchHost"
+                                        HorizontalAlignment="Center"
+                                        Orientation="Horizontal" />
+                            <StackPanel x:Name="SizeChipHost"
+                                        Margin="0,6,0,0"
+                                        HorizontalAlignment="Center"
+                                        Orientation="Horizontal" />
+                        </StackPanel>
+                    </Border>
+                </DockPanel>
             </StackPanel>
         </Border>
 

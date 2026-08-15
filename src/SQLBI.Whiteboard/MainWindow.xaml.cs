@@ -1,5 +1,4 @@
 using System.Diagnostics;
-using System.Globalization;
 using System.IO;
 using System.Windows;
 using System.Windows.Controls;
@@ -7,11 +6,13 @@ using System.Windows.Controls.Primitives;
 using System.Windows.Ink;
 using System.Windows.Input;
 using System.Windows.Media;
+using System.Windows.Media.Effects;
 using Microsoft.Win32;
 using SQLBI.Whiteboard.Core.Commands;
 using SQLBI.Whiteboard.Core.Geometry;
 using SQLBI.Whiteboard.Core.Model;
 using SQLBI.Whiteboard.Core.Persistence;
+using SQLBI.Whiteboard.Core.Settings;
 using SQLBI.Whiteboard.Core.Viewport;
 
 namespace SQLBI.Whiteboard;
@@ -51,11 +52,11 @@ public partial class MainWindow : Window
     private readonly Dictionary<int, Point> _touchPoints = [];
     private readonly Dictionary<int, StylusDevice> _touchDevices = [];
     private readonly List<BoardObject> _erasedObjects = [];
-    private readonly Dictionary<PenKind, double> _thicknessByPenKind = new()
+    private readonly Dictionary<PenKind, PenStyle> _styleByKind = new()
     {
-        [PenKind.Pen] = 4,
-        [PenKind.Highlighter] = 4,
-        [PenKind.Calligraphy] = 4,
+        [PenKind.Pen] = InkPalettes.DefaultPen,
+        [PenKind.Highlighter] = InkPalettes.DefaultHighlighter,
+        [PenKind.Calligraphy] = InkPalettes.DefaultCalligraphy,
     };
 
     private BoardDocument _document = new();
@@ -63,7 +64,7 @@ public partial class MainWindow : Window
     private BoardTool _activeTool = BoardTool.Pen;
     private BoardTool _lastDrawingTool = BoardTool.Pen;
     private BoardTool _toolBeforeSpace = BoardTool.Pen;
-    private PenStyle _penStyle = new(0xFFDC2626, 4);
+    private PenStyle _penStyle = InkPalettes.DefaultPen;
     private PointerAction _stylusAction;
     private PointerAction _mouseAction;
     private PointD _lastPanPoint;
@@ -78,11 +79,15 @@ public partial class MainWindow : Window
     private bool _imageGestureIsResize;
     private bool _isFullScreen;
     private bool _isToolPaletteHidden;
+    private bool _isInkOptionsOpen;
+    private bool _isNibPickerOpen;
+    private AppSettings _settings = new();
+
+    private const double ChevronInkOptionsWidth = 240;
     private WindowState _windowStateBeforeFullScreen;
     private WindowStyle _windowStyleBeforeFullScreen;
     private ResizeMode _resizeModeBeforeFullScreen;
     private Rect _windowBoundsBeforeFullScreen;
-    private bool _isUpdatingThicknessSlider;
 
     public MainWindow()
     {
@@ -92,6 +97,10 @@ public partial class MainWindow : Window
         _history.Changed += History_Changed;
         SceneSurface.Configure(_document, _camera);
         InkSurface.Cursor = Cursors.Arrow;
+        _settings = AppSettingsStore.Load();
+        LoadInkFromSettings();
+        ApplyToolbarPlacement();
+        ApplyCalligraphyAccess();
         ApplyDrawingAttributes();
         SetActiveTool(BoardTool.Pen);
         InkSurface.Focus();
@@ -213,7 +222,6 @@ public partial class MainWindow : Window
             return;
         }
 
-        UsePenCursor();
         var position = e.GetPosition(InkSurface);
         var screen = ToPointD(position);
 
@@ -233,12 +241,23 @@ public partial class MainWindow : Window
                 break;
         }
 
-        if (_penInContact)
+        if (EffectiveTool == BoardTool.Select)
         {
+            HidePointerDot();
+            if (!_penInContact)
+            {
+                UpdateSelectHover(screen);
+                InkSurface.Cursor = SelectCursorAt(screen);
+            }
+        }
+        else if (_penInContact)
+        {
+            UsePenCursor();
             HidePointerDot();
         }
         else
         {
+            UsePenCursor();
             ShowPointerDot(e.GetPosition(RootGrid));
         }
 
@@ -279,8 +298,18 @@ public partial class MainWindow : Window
 
         _stylusAction = PointerAction.None;
         _penInContact = false;
-        UsePenCursor();
-        ShowPointerDot(e.GetPosition(RootGrid));
+        if (EffectiveTool == BoardTool.Select)
+        {
+            var hoverScreen = ToPointD(e.GetPosition(InkSurface));
+            UpdateSelectHover(hoverScreen);
+            InkSurface.Cursor = SelectCursorAt(hoverScreen);
+            HidePointerDot();
+        }
+        else
+        {
+            UsePenCursor();
+            ShowPointerDot(e.GetPosition(RootGrid));
+        }
         Debug.WriteLine("[WpfInk] stylus-up reached WPF");
     }
 
@@ -288,6 +317,15 @@ public partial class MainWindow : Window
     {
         if (IsTouchStylus(e))
         {
+            return;
+        }
+
+        if (EffectiveTool == BoardTool.Select)
+        {
+            HidePointerDot();
+            var screen = ToPointD(e.GetPosition(InkSurface));
+            UpdateSelectHover(screen);
+            InkSurface.Cursor = SelectCursorAt(screen);
             return;
         }
 
@@ -352,15 +390,7 @@ public partial class MainWindow : Window
         }
 
         _isToolPaletteHidden = !_isToolPaletteHidden;
-        ToolPaletteContents.Visibility = _isToolPaletteHidden
-            ? Visibility.Hidden
-            : Visibility.Visible;
-        ToolPalette.Background = _isToolPaletteHidden
-            ? Brushes.Transparent
-            : new SolidColorBrush(Color.FromRgb(249, 249, 249));
-        ToolPalette.BorderBrush = _isToolPaletteHidden
-            ? Brushes.Transparent
-            : new SolidColorBrush(Color.FromArgb(0x24, 0, 0, 0));
+        ApplyToolPaletteChrome();
         e.Handled = true;
     }
 
@@ -379,10 +409,18 @@ public partial class MainWindow : Window
             return;
         }
 
-        InkSurface.Cursor = Cursors.Arrow;
         HidePointerDot();
-
         var screen = ToPointD(e.GetPosition(InkSurface));
+        if (EffectiveTool == BoardTool.Select && _mouseAction == PointerAction.None)
+        {
+            UpdateSelectHover(screen);
+            InkSurface.Cursor = SelectCursorAt(screen);
+        }
+        else
+        {
+            InkSurface.Cursor = Cursors.Arrow;
+        }
+
         switch (_mouseAction)
         {
             case PointerAction.Erase:
@@ -564,18 +602,30 @@ public partial class MainWindow : Window
     private void CameraChanged()
     {
         ApplyDrawingAttributes();
+        if (IsDualLayout)
+        {
+            UpdateDualSizeChipZooms();
+        }
+        else if (_isInkOptionsOpen)
+        {
+            UpdateSizeChipZooms();
+        }
+
         SceneSurface.InvalidateVisual();
     }
 
     private void ClearSelection()
     {
-        if (_selectedObjectId is null && SceneSurface.SelectedObjectId is null)
+        if (_selectedObjectId is null &&
+            SceneSurface.SelectedObjectId is null &&
+            SceneSurface.HoveredObjectId is null)
         {
             return;
         }
 
         _selectedObjectId = null;
         SceneSurface.SelectedObjectId = null;
+        SceneSurface.HoveredObjectId = null;
         SceneSurface.InvalidateVisual();
     }
 
@@ -744,20 +794,70 @@ public partial class MainWindow : Window
         _imageGestureIsResize = false;
     }
 
-    private void PenToolButton_Click(object sender, RoutedEventArgs e) =>
-        SetActiveTool(BoardTool.Pen);
+    private void PenToolButton_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is MenuItem)
+        {
+            SetActiveTool(BoardTool.Pen);
+            return;
+        }
 
-    private void HighlighterToolButton_Click(object sender, RoutedEventArgs e) =>
+        if (_activeTool is BoardTool.Pen or BoardTool.Calligraphy)
+        {
+            ToggleInkOptions();
+            SetActiveTool(_activeTool);
+            return;
+        }
+
+        SetActiveTool(
+            _lastDrawingTool == BoardTool.Calligraphy
+                ? BoardTool.Calligraphy
+                : BoardTool.Pen);
+    }
+
+    private void HighlighterToolButton_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is MenuItem)
+        {
+            SetActiveTool(BoardTool.Highlighter);
+            return;
+        }
+
+        if (_activeTool == BoardTool.Highlighter)
+        {
+            ToggleInkOptions();
+            SetActiveTool(BoardTool.Highlighter);
+            return;
+        }
+
         SetActiveTool(BoardTool.Highlighter);
+    }
 
     private void CalligraphyToolButton_Click(object sender, RoutedEventArgs e) =>
         SetActiveTool(BoardTool.Calligraphy);
 
+    private void PenNibButton_Click(object sender, RoutedEventArgs e)
+    {
+        SetNibPickerOpen(false);
+        SetActiveTool(BoardTool.Pen);
+    }
+
+    private void CalligraphyNibButton_Click(object sender, RoutedEventArgs e)
+    {
+        SetNibPickerOpen(false);
+        SetActiveTool(BoardTool.Calligraphy);
+    }
+
+    private void PenChevronButton_Click(object sender, RoutedEventArgs e) =>
+        SetNibPickerOpen(!_isNibPickerOpen);
+
     private void EraserToolButton_Click(object sender, RoutedEventArgs e) =>
         SetActiveTool(BoardTool.Eraser);
 
-    private void SelectToolButton_Click(object sender, RoutedEventArgs e) =>
+    private void SelectToolButton_Click(object sender, RoutedEventArgs e)
+    {
         SetActiveTool(BoardTool.Select);
+    }
 
     private void PanToolButton_Click(object sender, RoutedEventArgs e) =>
         SetActiveTool(BoardTool.Pan);
@@ -765,30 +865,47 @@ public partial class MainWindow : Window
     private BoardTool EffectiveTool =>
         _spaceTemporaryPan ? BoardTool.Pan : _activeTool;
 
+    private bool IsDualLayout =>
+        _settings.CalligraphyAccess == CalligraphyAccess.DualPalette;
+
+    private void DualPenButton_Click(object sender, RoutedEventArgs e) =>
+        SetActiveTool(BoardTool.Pen);
+
+    private void DualCalligraphyButton_Click(object sender, RoutedEventArgs e) =>
+        SetActiveTool(BoardTool.Calligraphy);
+
+    private void DualHighlighterButton_Click(object sender, RoutedEventArgs e) =>
+        SetActiveTool(BoardTool.Highlighter);
+
     private void SetActiveTool(BoardTool tool)
     {
         _activeTool = tool;
         if (tool is BoardTool.Pen or BoardTool.Highlighter or BoardTool.Calligraphy)
         {
             _lastDrawingTool = tool;
-            var penKind = tool switch
-            {
-                BoardTool.Highlighter => PenKind.Highlighter,
-                BoardTool.Calligraphy => PenKind.Calligraphy,
-                _ => PenKind.Pen,
-            };
-            _penStyle = _penStyle with
-            {
-                Kind = penKind,
-                Thickness = _thicknessByPenKind[penKind],
-            };
-            UpdateThicknessSlider(_penStyle.Thickness);
+            _penStyle = _styleByKind[ToPenKind(tool)];
+        }
+        else
+        {
+            SceneSurface.HoveredObjectId = null;
         }
 
-        PenToolButton.IsChecked = tool == BoardTool.Pen;
+        if (tool is not (BoardTool.Pen or BoardTool.Calligraphy))
+        {
+            SetNibPickerOpen(false);
+        }
+
+        if (tool == BoardTool.Select)
+        {
+            HidePointerDot();
+            InkSurface.Cursor = Cursors.Arrow;
+        }
+
+        var penFamilyActive = tool is BoardTool.Pen or BoardTool.Calligraphy;
+        PenToolButton.IsChecked = penFamilyActive;
         HighlighterToolButton.IsChecked = tool == BoardTool.Highlighter;
-        CalligraphyToolButton.IsChecked = tool == BoardTool.Calligraphy;
         SelectToolButton.IsChecked = tool == BoardTool.Select;
+        UpdateDualToolChecks();
         PenToolMenuItem.IsChecked = tool == BoardTool.Pen;
         HighlighterToolMenuItem.IsChecked = tool == BoardTool.Highlighter;
         CalligraphyToolMenuItem.IsChecked = tool == BoardTool.Calligraphy;
@@ -797,64 +914,18 @@ public partial class MainWindow : Window
             ? InkCanvasEditingMode.Ink
             : InkCanvasEditingMode.None;
         InkSurface.EditingModeInverted = InkCanvasEditingMode.None;
+        UpdatePenButtonGlyph();
         ApplyDrawingAttributes();
+        if (IsDualLayout)
+        {
+            RebuildDualPalette();
+        }
+        else if (_isInkOptionsOpen)
+        {
+            RebuildInkOptions();
+        }
+
         InkSurface.Focus();
-    }
-
-    private void ColorButton_Click(object sender, RoutedEventArgs e)
-    {
-        if (sender is ToggleButton button &&
-            button.Tag is string argbText &&
-            uint.TryParse(
-                argbText,
-                NumberStyles.HexNumber,
-                CultureInfo.InvariantCulture,
-                out var argb))
-        {
-            _penStyle = _penStyle with { Argb = argb };
-            RedColorButton.IsChecked = button == RedColorButton;
-            GreenColorButton.IsChecked = button == GreenColorButton;
-            BlueColorButton.IsChecked = button == BlueColorButton;
-            BlackColorButton.IsChecked = button == BlackColorButton;
-            YellowColorButton.IsChecked = button == YellowColorButton;
-            OrangeColorButton.IsChecked = button == OrangeColorButton;
-            PurpleColorButton.IsChecked = button == PurpleColorButton;
-            BrownColorButton.IsChecked = button == BrownColorButton;
-            ApplyDrawingAttributes();
-            InkSurface.Focus();
-        }
-    }
-
-    private void ThicknessSlider_ValueChanged(
-        object sender,
-        RoutedPropertyChangedEventArgs<double> e)
-    {
-        if (_isUpdatingThicknessSlider)
-        {
-            return;
-        }
-
-        _thicknessByPenKind[_penStyle.Kind] = e.NewValue;
-        _penStyle = _penStyle with { Thickness = e.NewValue };
-        ApplyDrawingAttributes();
-    }
-
-    private void UpdateThicknessSlider(double thickness)
-    {
-        if (ThicknessSlider is null || ThicknessSlider.Value == thickness)
-        {
-            return;
-        }
-
-        _isUpdatingThicknessSlider = true;
-        try
-        {
-            ThicknessSlider.Value = thickness;
-        }
-        finally
-        {
-            _isUpdatingThicknessSlider = false;
-        }
     }
 
     private void ApplyDrawingAttributes()
@@ -867,6 +938,634 @@ public partial class MainWindow : Window
         InkSurface.DefaultDrawingAttributes =
             InkDrawingAttributes.Create(_penStyle, _camera.Zoom);
         InkSurface.SetPenKind(_penStyle.Kind);
+        UpdateColorPips();
+    }
+
+    private void ToggleInkOptions() => SetInkOptionsOpen(!_isInkOptionsOpen);
+
+    private void SetInkOptionsOpen(bool open)
+    {
+        _isInkOptionsOpen = open;
+        if (InkOptionsPanel is not null)
+        {
+            InkOptionsPanel.Visibility = open ? Visibility.Visible : Visibility.Collapsed;
+        }
+
+        if (open)
+        {
+            RebuildInkOptions();
+        }
+    }
+
+    private void LoadInkFromSettings()
+    {
+        _styleByKind[PenKind.Pen] = _settings.Pen.ToStyle(PenKind.Pen);
+        _styleByKind[PenKind.Highlighter] = _settings.Highlighter.ToStyle(PenKind.Highlighter);
+        _styleByKind[PenKind.Calligraphy] = _settings.Calligraphy.ToStyle(PenKind.Calligraphy);
+        _penStyle = _styleByKind[PenKind.Pen];
+        UpdateColorPips();
+    }
+
+    private void CommitInkStyle(PenStyle style)
+    {
+        _penStyle = style;
+        _styleByKind[style.Kind] = style;
+        _settings.Pen = InkToolSettings.From(_styleByKind[PenKind.Pen]);
+        _settings.Highlighter = InkToolSettings.From(_styleByKind[PenKind.Highlighter]);
+        _settings.Calligraphy = InkToolSettings.From(_styleByKind[PenKind.Calligraphy]);
+        PersistSettings();
+        ApplyDrawingAttributes();
+        if (IsDualLayout)
+        {
+            RebuildDualPalette();
+        }
+        else if (_isInkOptionsOpen)
+        {
+            RebuildInkOptions();
+        }
+    }
+
+    private void RebuildInkOptions()
+    {
+        if (ColorSwatchHost is null || SizeChipHost is null)
+        {
+            return;
+        }
+
+        ColorSwatchHost.Children.Clear();
+        foreach (var swatch in InkPalettes.ColorsFor(_penStyle.Kind))
+        {
+            var button = new ToggleButton
+            {
+                Style = (Style)FindResource("ColorSwatchButton"),
+                Background = ToFrozenBrush(swatch.Argb),
+                ToolTip = swatch.Name,
+                Tag = swatch.Argb,
+                IsChecked = swatch.Argb == _penStyle.Argb,
+            };
+            button.Click += ColorSwatch_Click;
+            ColorSwatchHost.Children.Add(button);
+        }
+
+        SizeChipHost.Children.Clear();
+        foreach (var thickness in InkPalettes.ThicknessesFor(_penStyle.Kind))
+        {
+            var preview = new StrokePreview
+            {
+                Width = 48,
+                Height = 32,
+                PenStyle = _penStyle with { Thickness = thickness },
+                Zoom = PreviewZoom(),
+            };
+            var button = new ToggleButton
+            {
+                Style = (Style)FindResource("SizeChipButton"),
+                Content = preview,
+                Tag = thickness,
+                IsChecked = thickness == _penStyle.Thickness,
+                ToolTip = $"Size {thickness:0}",
+            };
+            button.Click += SizeChip_Click;
+            SizeChipHost.Children.Add(button);
+        }
+
+        if (_settings.CalligraphyAccess == CalligraphyAccess.SizeRow &&
+            _penStyle.Kind is PenKind.Pen or PenKind.Calligraphy)
+        {
+            SizeChipHost.Children.Add(new System.Windows.Shapes.Rectangle
+            {
+                Width = 1,
+                Height = 20,
+                Margin = new Thickness(6, 0, 4, 0),
+                Fill = (Brush)FindResource("ToolbarSeparatorBrush"),
+                VerticalAlignment = VerticalAlignment.Center,
+            });
+            SizeChipHost.Children.Add(CreateNibButton(
+                PenKind.Pen,
+                (Geometry)FindResource("InkingToolGeometry"),
+                "Pen"));
+            SizeChipHost.Children.Add(CreateNibButton(
+                PenKind.Calligraphy,
+                (Geometry)FindResource("CalligraphyPenGeometry"),
+                "Calligraphy"));
+        }
+
+        ApplyInkOptionsWidth();
+        UpdateNibPickerChecks();
+        UpdatePenButtonGlyph();
+        UpdateColorPips();
+    }
+
+    private void SetNibPickerOpen(bool open)
+    {
+        _isNibPickerOpen = open && _settings.CalligraphyAccess == CalligraphyAccess.Chevron;
+        if (NibPickerPanel is not null)
+        {
+            NibPickerPanel.Visibility = _isNibPickerOpen
+                ? Visibility.Visible
+                : Visibility.Collapsed;
+        }
+
+        if (PenChevronButton is not null)
+        {
+            PenChevronButton.IsChecked = _isNibPickerOpen;
+        }
+
+        UpdateNibPickerChecks();
+    }
+
+    private void UpdateNibPickerChecks()
+    {
+        if (PickerPenButton is null || PickerCalligraphyButton is null)
+        {
+            return;
+        }
+
+        PickerPenButton.IsChecked = _activeTool == BoardTool.Pen;
+        PickerCalligraphyButton.IsChecked = _activeTool == BoardTool.Calligraphy;
+    }
+
+    private void SetCalligraphyAccess(CalligraphyAccess access)
+    {
+        _settings.CalligraphyAccess = access;
+        ApplyCalligraphyAccess();
+        PersistSettings();
+    }
+
+    private void ApplyCalligraphyAccess()
+    {
+        var dual = IsDualLayout;
+        var useChevron = _settings.CalligraphyAccess == CalligraphyAccess.Chevron;
+        if (DualPalettePanel is not null)
+        {
+            DualPalettePanel.Visibility = dual ? Visibility.Visible : Visibility.Collapsed;
+        }
+
+        if (CompactToolbarHost is not null)
+        {
+            CompactToolbarHost.Visibility = dual ? Visibility.Collapsed : Visibility.Visible;
+        }
+
+        if (PenChevronButton is not null)
+        {
+            PenChevronButton.Visibility = useChevron ? Visibility.Visible : Visibility.Collapsed;
+        }
+
+        if (!useChevron)
+        {
+            SetNibPickerOpen(false);
+        }
+
+        if (dual)
+        {
+            SetInkOptionsOpen(false);
+            RebuildDualPalette();
+            return;
+        }
+
+        ApplyInkOptionsWidth();
+        if (_isInkOptionsOpen)
+        {
+            RebuildInkOptions();
+        }
+    }
+
+    private void ApplyInkOptionsWidth()
+    {
+        if (InkOptionsPanel is null)
+        {
+            return;
+        }
+
+        if (_settings.CalligraphyAccess == CalligraphyAccess.Chevron)
+        {
+            InkOptionsPanel.MinWidth = ChevronInkOptionsWidth;
+            InkOptionsPanel.Width = ChevronInkOptionsWidth;
+        }
+        else
+        {
+            InkOptionsPanel.MinWidth = 0;
+            InkOptionsPanel.Width = double.NaN;
+        }
+    }
+
+    private ToggleButton CreateNibButton(PenKind kind, Geometry geometry, string tooltip)
+    {
+        var icon = new System.Windows.Shapes.Path
+        {
+            Width = 20,
+            Height = 20,
+            Stretch = Stretch.Uniform,
+            Fill = (Brush)FindResource("ToolbarIconBrush"),
+            Data = geometry,
+        };
+        var button = new ToggleButton
+        {
+            Style = (Style)FindResource("ToolbarIconButton"),
+            Content = icon,
+            ToolTip = tooltip,
+            IsChecked = _penStyle.Kind == kind,
+        };
+        button.Click += kind == PenKind.Calligraphy
+            ? CalligraphyNibButton_Click
+            : PenNibButton_Click;
+        return button;
+    }
+
+    private void RebuildDualPalette()
+    {
+        if (DualPenColors is null || DualHighlighterColors is null)
+        {
+            return;
+        }
+
+        var penFamily = CurrentPenFamilyStyle();
+        FillSwatches(DualPenColors, penFamily, argb => ApplyPenGroupChoice(argb, thickness: null));
+        FillSizes(DualPenSizes, penFamily, thickness => ApplyPenGroupChoice(argb: null, thickness));
+
+        var highlighter = _styleByKind[PenKind.Highlighter];
+        FillSwatches(
+            DualHighlighterColors,
+            highlighter,
+            argb => ApplyHighlighterGroupChoice(argb, thickness: null));
+        FillSizes(
+            DualHighlighterSizes,
+            highlighter,
+            thickness => ApplyHighlighterGroupChoice(argb: null, thickness));
+
+        UpdateDualToolChecks();
+    }
+
+    private void FillSwatches(
+        Panel host,
+        PenStyle style,
+        Action<uint> onColor)
+    {
+        host.Children.Clear();
+        foreach (var swatch in InkPalettes.ColorsFor(style.Kind))
+        {
+            var button = new ToggleButton
+            {
+                Style = (Style)FindResource("ColorSwatchButton"),
+                Background = ToFrozenBrush(swatch.Argb),
+                ToolTip = swatch.Name,
+                Tag = swatch.Argb,
+                IsChecked = swatch.Argb == style.Argb,
+            };
+            button.Click += (_, _) => onColor(swatch.Argb);
+            host.Children.Add(button);
+        }
+    }
+
+    private void FillSizes(
+        Panel host,
+        PenStyle style,
+        Action<double> onThickness)
+    {
+        host.Children.Clear();
+        foreach (var thickness in InkPalettes.ThicknessesFor(style.Kind))
+        {
+            var preview = new StrokePreview
+            {
+                Width = 48,
+                Height = 32,
+                PenStyle = style with { Thickness = thickness },
+                Zoom = PreviewZoom(style),
+            };
+            var button = new ToggleButton
+            {
+                Style = (Style)FindResource("SizeChipButton"),
+                Content = preview,
+                Tag = thickness,
+                IsChecked = thickness == style.Thickness,
+                ToolTip = $"Size {thickness:0}",
+            };
+            button.Click += (_, _) => onThickness(thickness);
+            host.Children.Add(button);
+        }
+    }
+
+    private void ApplyPenGroupChoice(uint? argb, double? thickness)
+    {
+        var tool = _activeTool is BoardTool.Pen or BoardTool.Calligraphy
+            ? _activeTool
+            : _lastDrawingTool == BoardTool.Calligraphy
+                ? BoardTool.Calligraphy
+                : BoardTool.Pen;
+        var style = _styleByKind[ToPenKind(tool)];
+        if (argb is uint color)
+        {
+            style = style with { Argb = color };
+        }
+
+        if (thickness is double value)
+        {
+            style = style with { Thickness = value };
+        }
+
+        CommitInkStyle(style);
+        SetActiveTool(tool);
+        InkSurface.Focus();
+    }
+
+    private void ApplyHighlighterGroupChoice(uint? argb, double? thickness)
+    {
+        var style = _styleByKind[PenKind.Highlighter];
+        if (argb is uint color)
+        {
+            style = style with { Argb = color };
+        }
+
+        if (thickness is double value)
+        {
+            style = style with { Thickness = value };
+        }
+
+        CommitInkStyle(style);
+        SetActiveTool(BoardTool.Highlighter);
+        InkSurface.Focus();
+    }
+
+    private PenStyle CurrentPenFamilyStyle()
+    {
+        var tool = _activeTool is BoardTool.Pen or BoardTool.Calligraphy
+            ? _activeTool
+            : _lastDrawingTool == BoardTool.Calligraphy
+                ? BoardTool.Calligraphy
+                : BoardTool.Pen;
+        return _styleByKind[ToPenKind(tool)];
+    }
+
+    private void UpdateDualToolChecks()
+    {
+        if (DualPenButton is null)
+        {
+            return;
+        }
+
+        DualPenButton.IsChecked = _activeTool == BoardTool.Pen;
+        DualCalligraphyButton.IsChecked = _activeTool == BoardTool.Calligraphy;
+        DualHighlighterButton.IsChecked = _activeTool == BoardTool.Highlighter;
+        DualSelectButton.IsChecked = _activeTool == BoardTool.Select;
+
+        var penWash = _activeTool is BoardTool.Pen or BoardTool.Calligraphy
+            ? (Brush)FindResource("ToolbarSelectedBrush")
+            : Brushes.Transparent;
+        var highlighterWash = _activeTool == BoardTool.Highlighter
+            ? (Brush)FindResource("ToolbarSelectedBrush")
+            : Brushes.Transparent;
+        DualPenGroup.Background = penWash;
+        DualHighlighterGroup.Background = highlighterWash;
+    }
+
+    private void UpdateDualSizeChipZooms()
+    {
+        UpdateHostSizeZooms(DualPenSizes, CurrentPenFamilyStyle());
+        UpdateHostSizeZooms(DualHighlighterSizes, _styleByKind[PenKind.Highlighter]);
+    }
+
+    private void UpdateHostSizeZooms(Panel? host, PenStyle style)
+    {
+        if (host is null)
+        {
+            return;
+        }
+
+        var zoom = PreviewZoom(style);
+        foreach (var button in host.Children.OfType<ToggleButton>())
+        {
+            if (button.Content is StrokePreview preview)
+            {
+                preview.Zoom = zoom;
+            }
+        }
+    }
+
+    private void ColorSwatch_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is ToggleButton { Tag: uint argb })
+        {
+            CommitInkStyle(_penStyle with { Argb = argb });
+            InkSurface.Focus();
+        }
+    }
+
+    private void SizeChip_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is ToggleButton { Tag: double thickness })
+        {
+            CommitInkStyle(_penStyle with { Thickness = thickness });
+            InkSurface.Focus();
+        }
+    }
+
+    private double PreviewZoom() => PreviewZoom(_penStyle);
+
+    private double PreviewZoom(PenStyle style)
+    {
+        var thickest = InkPalettes.ThicknessesFor(style.Kind).Max();
+        var attributes = InkDrawingAttributes.Create(
+            style with { Thickness = thickest },
+            1d);
+        var extent = Math.Max(attributes.Width, attributes.Height);
+        var maxZoom = extent <= 0 ? 1d : 26d / extent;
+        return Math.Clamp(_camera.Zoom, 0.35, maxZoom);
+    }
+
+    private void UpdateSizeChipZooms()
+    {
+        UpdateHostSizeZooms(SizeChipHost, _penStyle);
+    }
+
+    private void UpdateColorPips()
+    {
+        var penColor = ToColor(_styleByKind[PenKind.Pen].Argb);
+        var highlighterColor = ToColor(_styleByKind[PenKind.Highlighter].Argb);
+        var calligraphyColor = ToColor(_styleByKind[PenKind.Calligraphy].Argb);
+        if (PenColorPip is not null)
+        {
+            var activeFamilyColor = _activeTool == BoardTool.Calligraphy
+                ? calligraphyColor
+                : penColor;
+            PenColorPip.Fill = new SolidColorBrush(activeFamilyColor);
+        }
+
+        if (HighlighterColorPip is not null)
+        {
+            HighlighterColorPip.Fill = new SolidColorBrush(highlighterColor);
+        }
+    }
+
+    private void UpdatePenButtonGlyph()
+    {
+        if (PenToolIcon is null)
+        {
+            return;
+        }
+
+        var calligraphy = _activeTool == BoardTool.Calligraphy;
+        PenToolIcon.Data = (Geometry)FindResource(
+            calligraphy ? "CalligraphyPenGeometry" : "InkingToolGeometry");
+        PenToolButton.ToolTip = calligraphy ? "Calligraphy" : "Pen";
+    }
+
+    private void UpdateSelectHover(PointD screen)
+    {
+        if (_imageGestureBefore is not null)
+        {
+            return;
+        }
+
+        var image = _document.HitTestTopImage(_camera.ScreenToWorld(screen));
+        var hoveredId = image?.Id;
+        if (SceneSurface.HoveredObjectId == hoveredId)
+        {
+            return;
+        }
+
+        SceneSurface.HoveredObjectId = hoveredId;
+        SceneSurface.InvalidateVisual();
+    }
+
+    private Cursor SelectCursorAt(PointD screen)
+    {
+        if (IsOverResizeHandle(screen))
+        {
+            return Cursors.SizeNWSE;
+        }
+
+        return _document.HitTestTopImage(_camera.ScreenToWorld(screen)) is null
+            ? Cursors.Arrow
+            : Cursors.SizeAll;
+    }
+
+    private bool IsOverResizeHandle(PointD screen)
+    {
+        if (_selectedObjectId is not Guid existingId ||
+            _document.Objects.FirstOrDefault(item => item.Id == existingId) is not ImageBoardObject existing)
+        {
+            return false;
+        }
+
+        var handle = _camera.WorldToScreen(
+            new PointD(existing.Bounds.Right, existing.Bounds.Bottom));
+        return Distance(ToPoint(handle), ToPoint(screen)) <= 16;
+    }
+
+    private static PenKind ToPenKind(BoardTool tool) => tool switch
+    {
+        BoardTool.Highlighter => PenKind.Highlighter,
+        BoardTool.Calligraphy => PenKind.Calligraphy,
+        _ => PenKind.Pen,
+    };
+
+    private static Color ToColor(uint argb) => Color.FromArgb(
+        (byte)(argb >> 24),
+        (byte)(argb >> 16),
+        (byte)(argb >> 8),
+        (byte)argb);
+
+    private static SolidColorBrush ToFrozenBrush(uint argb)
+    {
+        var brush = new SolidColorBrush(ToColor(argb));
+        brush.Freeze();
+        return brush;
+    }
+
+    private void ToolbarPlacementMenuItem_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is MenuItem { Tag: string name } &&
+            Enum.TryParse<ToolbarPlacement>(name, out var placement))
+        {
+            SetToolbarPlacement(placement);
+        }
+    }
+
+    private void PreferencesMenuItem_Click(object sender, RoutedEventArgs e)
+    {
+        var dialog = new PreferencesWindow(
+            _settings.ToolbarPlacement,
+            _settings.CalligraphyAccess,
+            SetToolbarPlacement,
+            SetCalligraphyAccess)
+        {
+            Owner = this,
+        };
+        dialog.ShowDialog();
+        InkSurface.Focus();
+    }
+
+    private void SetToolbarPlacement(ToolbarPlacement placement)
+    {
+        _settings.ToolbarPlacement = placement;
+        ApplyToolbarPlacement();
+        PersistSettings();
+    }
+
+    private void ApplyToolbarPlacement()
+    {
+        var placement = _settings.ToolbarPlacement;
+        ToolPalette.HorizontalAlignment = placement switch
+        {
+            ToolbarPlacement.TopLeft or ToolbarPlacement.BottomLeft => HorizontalAlignment.Left,
+            ToolbarPlacement.BottomCenter => HorizontalAlignment.Center,
+            _ => HorizontalAlignment.Right,
+        };
+        ToolPalette.VerticalAlignment = placement switch
+        {
+            ToolbarPlacement.BottomLeft or ToolbarPlacement.BottomRight or ToolbarPlacement.BottomCenter
+                => VerticalAlignment.Bottom,
+            _ => VerticalAlignment.Top,
+        };
+
+        var isBottom = placement is ToolbarPlacement.BottomLeft
+            or ToolbarPlacement.BottomRight
+            or ToolbarPlacement.BottomCenter;
+        DockPanel.SetDock(ToolChrome, isBottom ? Dock.Bottom : Dock.Top);
+
+        ToolbarTopRightMenuItem.IsChecked = placement == ToolbarPlacement.TopRight;
+        ToolbarTopLeftMenuItem.IsChecked = placement == ToolbarPlacement.TopLeft;
+        ToolbarBottomRightMenuItem.IsChecked = placement == ToolbarPlacement.BottomRight;
+        ToolbarBottomLeftMenuItem.IsChecked = placement == ToolbarPlacement.BottomLeft;
+        ToolbarBottomCenterMenuItem.IsChecked = placement == ToolbarPlacement.BottomCenter;
+    }
+
+    private void ApplyToolPaletteChrome()
+    {
+        if (_isToolPaletteHidden)
+        {
+            SetInkOptionsOpen(false);
+            SetNibPickerOpen(false);
+            ToolPaletteContents.Visibility = Visibility.Hidden;
+            ToolPalette.Background = Brushes.Transparent;
+            ToolPalette.BorderBrush = Brushes.Transparent;
+            ToolPalette.Effect = null;
+            return;
+        }
+
+        ToolPaletteContents.Visibility = Visibility.Visible;
+        ToolPalette.Background = (Brush)FindResource("ToolbarBackgroundBrush");
+        ToolPalette.BorderBrush = (Brush)FindResource("ToolbarBorderBrush");
+        ToolPalette.Effect = new DropShadowEffect
+        {
+            BlurRadius = 18,
+            ShadowDepth = 1,
+            Direction = 270,
+            Opacity = 0.16,
+            Color = Colors.Black,
+        };
+    }
+
+    private void PersistSettings()
+    {
+        try
+        {
+            AppSettingsStore.Save(_settings);
+        }
+        catch (Exception exception)
+        {
+            Debug.WriteLine($"[Settings] Could not save preferences: {exception.Message}");
+        }
     }
 
     private async void ImportButton_Click(object sender, RoutedEventArgs e) =>
@@ -1321,11 +2020,19 @@ public partial class MainWindow : Window
 
     private void UsePenCursor()
     {
-        InkSurface.Cursor = Cursors.None;
+        InkSurface.Cursor = EffectiveTool == BoardTool.Select
+            ? Cursors.Arrow
+            : Cursors.None;
     }
 
     private void ShowPointerDot(Point position)
     {
+        if (EffectiveTool == BoardTool.Select)
+        {
+            HidePointerDot();
+            return;
+        }
+
         PointerDotTransform.X = position.X - (PointerDot.Width / 2);
         PointerDotTransform.Y = position.Y - (PointerDot.Height / 2);
         PointerDot.Visibility = Visibility.Visible;

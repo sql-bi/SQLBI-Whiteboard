@@ -1,7 +1,10 @@
 # Application icon
 
 `SQLBI.Whiteboard.svg` is derived from Microsoft Fluent UI System Icons'
-`whiteboard_24_filled` glyph, obtained from
+`whiteboard_24_filled` glyph. The toolbar uses `inking_tool`, `highlight`,
+`calligraphy_pen`, `resize_image` (24 regular), and `chevron_down`
+(16 regular) from the same set,
+obtained from
 `@fluentui/svg-icons` version 1.1.308:
 
 https://unpkg.com/@fluentui/svg-icons@1.1.308/icons/whiteboard_24_filled.svg

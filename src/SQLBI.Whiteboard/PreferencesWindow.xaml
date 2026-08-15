@@ -1,0 +1,77 @@
+<Window x:Class="SQLBI.Whiteboard.PreferencesWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Preferences"
+        Width="420"
+        Height="340"
+        MinWidth="360"
+        MinHeight="300"
+        WindowStartupLocation="CenterOwner"
+        ResizeMode="NoResize"
+        ShowInTaskbar="False"
+        Background="#FFF9F9F9">
+    <Grid Margin="20">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+            <RowDefinition Height="Auto" />
+        </Grid.RowDefinitions>
+
+        <TextBlock Grid.Row="0"
+                   Margin="0,0,0,8"
+                   FontSize="13"
+                   Text="Toolbar position" />
+        <ComboBox x:Name="PlacementCombo"
+                  Grid.Row="1"
+                  MinHeight="32"
+                  SelectionChanged="PlacementCombo_SelectionChanged">
+            <ComboBoxItem Tag="TopRight"
+                          Content="Top right" />
+            <ComboBoxItem Tag="TopLeft"
+                          Content="Top left" />
+            <ComboBoxItem Tag="BottomRight"
+                          Content="Bottom right" />
+            <ComboBoxItem Tag="BottomLeft"
+                          Content="Bottom left" />
+            <ComboBoxItem Tag="BottomCenter"
+                          Content="Bottom center" />
+        </ComboBox>
+        <TextBlock Grid.Row="2"
+                   Margin="0,8,0,16"
+                   TextWrapping="Wrap"
+                   Foreground="#FF4B5563"
+                   Text="Top right keeps the toolbar under a typical presenter picture-in-picture during recording." />
+
+        <TextBlock Grid.Row="3"
+                   Margin="0,0,0,8"
+                   FontSize="13"
+                   Text="Toolbar layout" />
+        <ComboBox x:Name="CalligraphyCombo"
+                  Grid.Row="4"
+                  MinHeight="32"
+                  SelectionChanged="CalligraphyCombo_SelectionChanged">
+            <ComboBoxItem Tag="DualPalette"
+                          Content="Dual palette (pen and highlighter together)" />
+            <ComboBoxItem Tag="Chevron"
+                          Content="Chevron on the Pen button" />
+            <ComboBoxItem Tag="SizeRow"
+                          Content="Icons beside the size chips" />
+        </ComboBox>
+        <TextBlock Grid.Row="5"
+                   Margin="0,8,0,0"
+                   TextWrapping="Wrap"
+                   Foreground="#FF4B5563"
+                   Text="Dual palette keeps both tools’ colors and sizes visible. The other layouts use a compact bar and a single-tool panel." />
+        <Button Grid.Row="6"
+                HorizontalAlignment="Right"
+                MinWidth="88"
+                MinHeight="30"
+                IsDefault="True"
+                Content="Close"
+                Click="CloseButton_Click" />
+    </Grid>
+</Window>

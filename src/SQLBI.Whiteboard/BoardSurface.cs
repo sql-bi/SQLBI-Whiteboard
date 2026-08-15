@@ -23,6 +23,8 @@ internal sealed class BoardSurface : FrameworkElement
 
     public Guid? SelectedObjectId { get; set; }
 
+    public Guid? HoveredObjectId { get; set; }
+
     public void Configure(BoardDocument document, Camera2D camera)
     {
         _document = document;
@@ -60,10 +62,17 @@ internal sealed class BoardSurface : FrameworkElement
             }
         }
 
+        if (HoveredObjectId is Guid hoveredId &&
+            hoveredId != SelectedObjectId &&
+            _document.Objects.FirstOrDefault(item => item.Id == hoveredId) is { } hovered)
+        {
+            DrawSelection(drawingContext, hovered.Bounds, _camera, includeHandle: false);
+        }
+
         if (SelectedObjectId is Guid selectedId &&
             _document.Objects.FirstOrDefault(item => item.Id == selectedId) is { } selected)
         {
-            DrawSelection(drawingContext, selected.Bounds, _camera);
+            DrawSelection(drawingContext, selected.Bounds, _camera, includeHandle: true);
         }
     }
 
@@ -142,7 +151,8 @@ internal sealed class BoardSurface : FrameworkElement
     private static void DrawSelection(
         DrawingContext drawingContext,
         RectD bounds,
-        Camera2D camera)
+        Camera2D camera,
+        bool includeHandle)
     {
         var topLeft = camera.WorldToScreen(new PointD(bounds.Left, bounds.Top));
         var bottomRight = camera.WorldToScreen(new PointD(bounds.Right, bounds.Bottom));
@@ -152,12 +162,15 @@ internal sealed class BoardSurface : FrameworkElement
             Math.Max(1, bottomRight.X - topLeft.X),
             Math.Max(1, bottomRight.Y - topLeft.Y));
         drawingContext.DrawRectangle(null, SelectionPen, rectangle);
-        drawingContext.DrawEllipse(
-            SelectionHandleBrush,
-            SelectionPen,
-            new Point(bottomRight.X, bottomRight.Y),
-            7,
-            7);
+        if (includeHandle)
+        {
+            drawingContext.DrawEllipse(
+                SelectionHandleBrush,
+                SelectionPen,
+                new Point(bottomRight.X, bottomRight.Y),
+                7,
+                7);
+        }
     }
 
     private static Color ToColor(uint argb) => Color.FromArgb(

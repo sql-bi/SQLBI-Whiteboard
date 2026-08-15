@@ -2,6 +2,7 @@ using SQLBI.Whiteboard.Core.Commands;
 using SQLBI.Whiteboard.Core.Geometry;
 using SQLBI.Whiteboard.Core.Model;
 using SQLBI.Whiteboard.Core.Persistence;
+using SQLBI.Whiteboard.Core.Settings;
 using SQLBI.Whiteboard.Core.Viewport;
 
 var camera = new Camera2D();
@@ -203,6 +204,79 @@ Assert(
 Assert(
     fastStroke < heavyPressure,
     "Calligraphy width should decrease as drawing speed increases.");
+
+Assert(InkPalettes.Pen.Count == 6, "Pen palette should publish six teaching colors.");
+Assert(InkPalettes.Highlighter.Count == 4, "Highlighter palette should publish four light colors.");
+Assert(
+    InkPalettes.Pen.Select(swatch => swatch.Argb).ToHashSet().SetEquals(
+        new uint[] { 0xFF1F2937, 0xFFE64B3D, 0xFFE69F00, 0xFF56B4E9, 0xFF009E73, 0xFFCC79A7 }),
+    "Pen palette should use the published color-blind-aware hex values.");
+Assert(
+    InkPalettes.Highlighter.Select(swatch => swatch.Argb).ToHashSet().SetEquals(
+        new uint[] { 0xFFFACC15, 0xFFF472B6, 0xFF38BDF8, 0xFF2DD4BF }),
+    "Highlighter palette should use the published light hex values.");
+Assert(
+    InkPalettes.DefaultPen is { Argb: 0xFFE64B3D, Thickness: 4, Kind: PenKind.Pen },
+    "Pen should default to vermillion at size 4.");
+Assert(
+    InkPalettes.DefaultHighlighter is { Argb: 0xFFFACC15, Thickness: 6, Kind: PenKind.Highlighter },
+    "Highlighter should default to yellow at size 6.");
+Assert(
+    InkPalettes.Normalize(new InkToolSettings { Argb = 0xFFDC2626, Thickness = 5 }, PenKind.Pen)
+        is { Argb: 0xFFE64B3D, Thickness: 4 },
+    "Unknown pen colors and sizes should snap to the pen default.");
+
+var defaultSettings = AppSettingsSerializer.Parse(string.Empty);
+Assert(
+    defaultSettings.ToolbarPlacement == ToolbarPlacement.TopRight,
+    "Missing settings should default the toolbar to top-right.");
+Assert(
+    defaultSettings.CalligraphyAccess == CalligraphyAccess.DualPalette,
+    "Missing settings should default the toolbar to the dual palette.");
+Assert(
+    defaultSettings.Pen.Argb == InkPalettes.DefaultPen.Argb &&
+    defaultSettings.Highlighter.Thickness == 6,
+    "Missing settings should default per-tool ink.");
+var formattedSettings = AppSettingsSerializer.Format(new AppSettings
+{
+    ToolbarPlacement = ToolbarPlacement.BottomCenter,
+    CalligraphyAccess = CalligraphyAccess.SizeRow,
+    Highlighter = new InkToolSettings { Argb = 0xFFF472B6, Thickness = 10 },
+});
+Assert(
+    formattedSettings.Contains("BottomCenter", StringComparison.Ordinal),
+    "Settings JSON should persist the toolbar placement name.");
+var roundTripped = AppSettingsSerializer.Parse(formattedSettings);
+Assert(
+    roundTripped.ToolbarPlacement == ToolbarPlacement.BottomCenter &&
+    roundTripped.CalligraphyAccess == CalligraphyAccess.SizeRow &&
+    roundTripped.Highlighter.Argb == 0xFFF472B6 &&
+    roundTripped.Highlighter.Thickness == 10,
+    "Settings JSON should round-trip toolbar placement, calligraphy access, and per-tool ink.");
+Assert(
+    AppSettingsSerializer.Parse("{ \"calligraphyAccess\": \"Sideways\" }").CalligraphyAccess ==
+    CalligraphyAccess.DualPalette,
+    "Unknown toolbar layouts should fall back to the dual palette.");
+Assert(
+    AppSettingsSerializer.Parse("{ \"calligraphyAccess\": \"Chevron\" }").CalligraphyAccess ==
+    CalligraphyAccess.Chevron,
+    "Previously saved chevron layout should still load.");
+Assert(
+    AppSettingsSerializer.Parse("{ }").ToolbarPlacement == ToolbarPlacement.TopRight,
+    "Partial settings should keep the top-right default.");
+Assert(
+    AppSettingsSerializer.Parse("{ \"toolbarPlacement\": \"Sideways\" }").ToolbarPlacement ==
+    ToolbarPlacement.TopRight,
+    "Unknown toolbar placements should fall back to top-right.");
+Assert(
+    AppSettingsSerializer.Parse("{ \"toolbarPlacement\": 99 }").ToolbarPlacement ==
+    ToolbarPlacement.TopRight,
+    "Out-of-range toolbar placements should fall back to top-right.");
+Assert(
+    AppSettingsSerializer.Parse(
+        "{ \"pen\": { \"argb\": 1, \"thickness\": 99 } }").Pen.Argb ==
+    InkPalettes.DefaultPen.Argb,
+    "Saved ink that is no longer in the palette should fall back to the tool default.");
 
 Console.WriteLine("SQLBI.Whiteboard.Core smoke tests passed.");
 
