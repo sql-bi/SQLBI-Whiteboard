@@ -7,7 +7,7 @@ namespace SQLBI.Whiteboard.Core.Persistence;
 
 public static class BoardArchive
 {
-    public const int CurrentVersion = 2;
+    public const int CurrentVersion = 3;
     private const string SceneEntryName = "scene.json";
 
     private static readonly JsonSerializerOptions JsonOptions = new()
@@ -121,7 +121,24 @@ public static class BoardArchive
             null,
             null,
             image.AssetId,
+            null,
+            null,
+            null,
+            null,
             null),
+        LiveViewBoardObject liveView => new ObjectDto(
+            "liveView",
+            liveView.Id,
+            liveView.ZIndex,
+            liveView.Bounds,
+            null,
+            null,
+            liveView.SnapshotAssetId,
+            null,
+            liveView.Source,
+            liveView.DesiredFrameRate,
+            liveView.CaptureCursor,
+            liveView.IsFrozen),
         _ => throw new NotSupportedException($"Unsupported board object type {item.GetType().Name}."),
     };
 
@@ -139,8 +156,22 @@ public static class BoardArchive
                 dto.ContainerId),
         "image" when !string.IsNullOrWhiteSpace(dto.AssetId) =>
             new ImageBoardObject(dto.Id, dto.ZIndex, dto.Bounds, dto.AssetId),
+        "liveView" when dto.LiveViewSource is not null =>
+            new LiveViewBoardObject(
+                dto.Id,
+                dto.ZIndex,
+                dto.Bounds,
+                dto.LiveViewSource,
+                dto.AssetId,
+                NormalizeFrameRate(dto.DesiredFrameRate),
+                dto.CaptureCursor ?? false,
+                dto.IsFrozen ?? true),
         _ => throw new InvalidDataException($"Invalid board object type '{dto.Type}'."),
     };
+
+    private static int NormalizeFrameRate(int? frameRate) => frameRate is 15 or 30 or 60
+        ? frameRate.Value
+        : 15;
 
     private sealed record SceneDto(int Version, ObjectDto[] Objects, AssetDto[] Assets);
 
@@ -152,7 +183,11 @@ public static class BoardArchive
         InkPointDto[]? Points,
         PenStyle? Style,
         string? AssetId,
-        Guid? ContainerId);
+        Guid? ContainerId,
+        LiveViewSourceConfiguration? LiveViewSource = null,
+        int? DesiredFrameRate = null,
+        bool? CaptureCursor = null,
+        bool? IsFrozen = null);
 
     private sealed record InkPointDto(double X, double Y, float Pressure, long Timestamp);
 

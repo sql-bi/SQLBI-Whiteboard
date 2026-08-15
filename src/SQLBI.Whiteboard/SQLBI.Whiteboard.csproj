@@ -1,7 +1,8 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
     <OutputType>WinExe</OutputType>
-    <TargetFramework>net8.0-windows</TargetFramework>
+    <TargetFramework>net8.0-windows10.0.26100.0</TargetFramework>
+    <TargetPlatformMinVersion>10.0.19041.0</TargetPlatformMinVersion>
     <UseWPF>true</UseWPF>
     <AssemblyName>SQLBI.Whiteboard</AssemblyName>
     <RootNamespace>SQLBI.Whiteboard</RootNamespace>
@@ -14,5 +15,8 @@
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\SQLBI.Whiteboard.Core\SQLBI.Whiteboard.Core.csproj" />
+  </ItemGroup>
+  <ItemGroup>
+    <PackageReference Include="Vortice.Wpf" Version="3.8.3" />
   </ItemGroup>
 </Project>

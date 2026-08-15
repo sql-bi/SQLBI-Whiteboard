@@ -24,6 +24,25 @@ var framedTopLeft = camera.WorldToScreen(
 Assert(framedTopLeft.X >= 49.999999, "Framing must preserve the horizontal margin.");
 Assert(framedTopLeft.Y >= 49.999999, "Framing must preserve the vertical margin.");
 
+var originalLiveViewBounds = new RectD(100, 50, 400, 200);
+var reconnectedLiveViewBounds = originalLiveViewBounds.WithCenteredAspectRatio(9d / 16d);
+AssertNear(
+    originalLiveViewBounds.Center.X,
+    reconnectedLiveViewBounds.Center.X,
+    "Changing a LiveView aspect ratio must preserve its center on X.");
+AssertNear(
+    originalLiveViewBounds.Center.Y,
+    reconnectedLiveViewBounds.Center.Y,
+    "Changing a LiveView aspect ratio must preserve its center on Y.");
+AssertNear(
+    9d / 16d,
+    reconnectedLiveViewBounds.Width / reconnectedLiveViewBounds.Height,
+    "Reconnected LiveView bounds must match the new source aspect ratio.");
+AssertNear(
+    originalLiveViewBounds.Width * originalLiveViewBounds.Height,
+    reconnectedLiveViewBounds.Width * reconnectedLiveViewBounds.Height,
+    "Changing a LiveView aspect ratio must preserve its visual area.");
+
 var document = new BoardDocument();
 Assert(document.ContentBounds is null, "An empty document should not have content bounds.");
 var history = new CommandHistory();
@@ -93,6 +112,23 @@ var ambiguousStroke = InkStrokeObject.Create(
 Assert(
     containerDocument.FindSingleTouchedContainer(ambiguousStroke) is null,
     "A stroke touching multiple containers must remain unlinked.");
+
+var liveViewContainer = new LiveViewBoardObject(
+    Guid.NewGuid(),
+    containerDocument.NextZIndex,
+    new RectD(500, 100, 320, 180),
+    new LiveViewSourceConfiguration(LiveViewSourceKind.Display, "Wacom display", "DISPLAY4"));
+containerDocument.AddObject(liveViewContainer);
+Assert(
+    containerDocument.HitTestTopContainer(new PointD(600, 150))?.Id == liveViewContainer.Id,
+    "LiveView should participate in generic container hit testing.");
+var liveViewStroke = InkStrokeObject.Create(
+    [new InkPoint(new PointD(520, 120), 0.5f, 1)],
+    PenStyle.Default,
+    containerDocument.NextZIndex);
+Assert(
+    containerDocument.FindSingleTouchedContainer(liveViewStroke)?.Id == liveViewContainer.Id,
+    "A stroke touching one LiveView should link to it like any other container.");
 
 var linkedStroke = singleContainerStroke with { ContainerId = firstContainer.Id };
 containerDocument.AddObject(linkedStroke);
@@ -177,12 +213,24 @@ var archivedLinkedStroke = InkStrokeObject.Create(
     document.NextZIndex,
     containerId: archivedContainer.Id);
 document.AddObject(archivedLinkedStroke);
+var liveSnapshot = new BoardAsset("live-snapshot", "wacom.png", "image/png", [5, 6, 7, 8]);
+document.AddAsset(liveSnapshot);
+var archivedLiveView = new LiveViewBoardObject(
+    Guid.NewGuid(),
+    document.NextZIndex,
+    new RectD(-500, -200, 800, 450),
+    new LiveViewSourceConfiguration(LiveViewSourceKind.Display, "Wacom Cintiq", "DISPLAY4"),
+    liveSnapshot.Id,
+    DesiredFrameRate: 30,
+    CaptureCursor: true,
+    IsFrozen: true);
+document.AddObject(archivedLiveView);
 
 await using var archive = new MemoryStream();
 await BoardArchive.SaveAsync(document, archive);
 archive.Position = 0;
 var loaded = await BoardArchive.LoadAsync(archive);
-Assert(loaded.Objects.Count == 3, "Archive should round-trip scene objects.");
+Assert(loaded.Objects.Count == 4, "Archive should round-trip scene objects.");
 Assert(loaded.Assets[asset.Id].Data.SequenceEqual(asset.Data), "Archive should round-trip asset bytes.");
 Assert(
     loaded.Objects.OfType<InkStrokeObject>()
@@ -190,6 +238,17 @@ Assert(
         { ContainerId: var loadedContainerId, Style.Kind: PenKind.Calligraphy } &&
     loadedContainerId == archivedContainer.Id,
     "Archive should preserve stroke-container links.");
+Assert(
+    loaded.Objects.OfType<LiveViewBoardObject>().Single() is
+    {
+        SnapshotAssetId: "live-snapshot",
+        DesiredFrameRate: 30,
+        CaptureCursor: true,
+        IsFrozen: true,
+        Source.Kind: LiveViewSourceKind.Display,
+        Source.StableId: "DISPLAY4",
+    },
+    "Archive should preserve LiveView configuration and its last bitmap asset reference.");
 
 AssertNear(
     20,

@@ -25,6 +25,25 @@ public readonly record struct RectD(double X, double Y, double Width, double Hei
     public RectD WithSize(double width, double height) =>
         new(X, Y, Math.Max(1, width), Math.Max(1, height));
 
+    public RectD WithCenteredAspectRatio(double widthToHeightRatio)
+    {
+        if (!double.IsFinite(widthToHeightRatio) || widthToHeightRatio <= 0)
+        {
+            throw new ArgumentOutOfRangeException(
+                nameof(widthToHeightRatio),
+                "Aspect ratio must be a finite positive number.");
+        }
+
+        var area = Math.Max(1, Width) * Math.Max(1, Height);
+        var width = Math.Sqrt(area * widthToHeightRatio);
+        var height = Math.Sqrt(area / widthToHeightRatio);
+        return new RectD(
+            Center.X - (width / 2),
+            Center.Y - (height / 2),
+            width,
+            height);
+    }
+
     public static RectD FromPoints(IEnumerable<PointD> points, double padding = 0)
     {
         using var enumerator = points.GetEnumerator();

@@ -13,6 +13,7 @@ A native Windows 11 whiteboard built with C# and WPF. WPF's dedicated dynamic in
 - PNG, JPEG, BMP, and GIF import, clipboard bitmap paste, and Explorer drag-and-drop
 - Image selection, movement, resizing, and deletion
 - Image containers automatically carry strokes that touch only that image when moved or resized
+- LiveView containers for GPU-backed capture of an application window or display, with freeze/resume and saved last-frame previews
 - Double-click an image to center it and fit it to the canvas
 - Undo and redo for strokes, erasing, images, and image transformations
 - Versioned ZIP-based `.wboard` documents with embedded image assets
@@ -54,6 +55,14 @@ After building the solution, start the application with:
 powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\run.ps1
 ```
 
+## LiveView
+
+Choose **Tools > Add LiveView...** and select an application window or display in the Windows capture picker. A LiveView behaves like an imported-image container: it can be selected, moved, resized while preserving its aspect ratio, framed by double-clicking, deleted with its linked strokes, and manipulated through undo/redo.
+
+Use **Tools > Freeze selected LiveView** to stop capture while retaining the last frame. The same command resumes a target that is still available. **Reconnect selected LiveView...** selects a new target while preserving the container, snapshot, and linked strokes.
+
+Saving a board captures the latest LiveView bitmap and stores it with the source label, frame-rate setting, cursor setting, frozen state, and container geometry. Loading a board displays that bitmap immediately. Windows capture permission objects cannot be serialized, so use **Reconnect** to restore the live feed after loading.
+
 ## Controls
 
 | Input | Behavior |
@@ -63,7 +72,7 @@ powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\run.ps1
 | Pen contact | Hide both the pointer dot and arrow |
 | Physical mouse movement | Show the normal arrow |
 | Left mouse | Temporarily select/move/resize an image; return to Pen on release |
-| Double-click image | Center and fit the image to the canvas |
+| Double-click container | Center and fit the image or LiveView to the canvas |
 | Double-click empty canvas | Center and fit all board content, or reset an empty board |
 | Pen eraser | Erase complete strokes |
 | One finger | Pan |
@@ -75,7 +84,10 @@ powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\run.ps1
 | Ctrl+Z / Ctrl+Y | Undo / redo |
 | Ctrl+V | Paste an image |
 | Ctrl+S / Ctrl+O | Save / open a board |
-| Delete | Delete the selected image |
+| Delete | Delete the selected container and its linked strokes |
+| Tools > Add LiveView | Capture an application window or display as a container |
+| Tools > Freeze selected LiveView | Freeze or resume the selected live feed |
+| Tools > Reconnect selected LiveView | Select a new capture target for the existing container |
 
 With the mouse, selection is automatic: click an image to move it, or drag the circular bottom-right handle to resize it while preserving its aspect ratio. Double-click an image to center it and fit it to the canvas. Releasing the mouse returns to Pen mode.
 
@@ -87,6 +99,7 @@ Image files can be dropped directly from File Explorer. Their initial center is 
 
 - `SQLBI.Whiteboard.Core` contains world geometry, camera math, retained board objects, commands, hit testing, and archive persistence. It has no UI-framework dependency.
 - `SQLBI.Whiteboard` is the WPF shell. `InkCanvas` supplies system-managed wet ink, while `BoardSurface` renders completed ink, images, and selection on a white canvas in camera space.
+- `SQLBI.Whiteboard/LiveView` owns Windows Graphics Capture and the Direct3D-to-WPF bridge. Capture retains one GPU frame per active LiveView; CPU bitmap conversion occurs only when copying or saving a snapshot.
 - `SQLBI.Whiteboard.Core.SmokeTests` is a package-free executable test harness for camera anchoring, commands, hit testing, and archive round trips.
 
 The current document query is deliberately linear. A spatial index can be introduced behind `BoardDocument.Query` when profiling demonstrates a need, without changing input, tools, persistence, or rendering call sites.

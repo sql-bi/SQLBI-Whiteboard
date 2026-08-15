@@ -240,6 +240,28 @@ public sealed record ImageBoardObject(
     RectD Bounds,
     string AssetId) : BoardObject(Id, ZIndex, Bounds), IBoardContainer;
 
+public enum LiveViewSourceKind
+{
+    Unknown,
+    Window,
+    Display,
+}
+
+public sealed record LiveViewSourceConfiguration(
+    LiveViewSourceKind Kind,
+    string DisplayName,
+    string? StableId = null);
+
+public sealed record LiveViewBoardObject(
+    Guid Id,
+    int ZIndex,
+    RectD Bounds,
+    LiveViewSourceConfiguration Source,
+    string? SnapshotAssetId = null,
+    int DesiredFrameRate = 15,
+    bool CaptureCursor = false,
+    bool IsFrozen = false) : BoardObject(Id, ZIndex, Bounds), IBoardContainer;
+
 public sealed record BoardAsset(
     string Id,
     string OriginalFileName,

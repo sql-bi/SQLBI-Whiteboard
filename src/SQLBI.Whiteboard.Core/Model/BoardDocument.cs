@@ -111,6 +111,11 @@ public sealed class BoardDocument
             .OrderByDescending(image => image.ZIndex)
             .FirstOrDefault();
 
+    public BoardObject? HitTestTopContainer(PointD worldPoint) =>
+        _objects.Where(item => item is IBoardContainer && item.Bounds.Contains(worldPoint))
+            .OrderByDescending(item => item.ZIndex)
+            .FirstOrDefault();
+
     public BoardObject? FindSingleTouchedContainer(InkStrokeObject stroke)
     {
         BoardObject? match = null;

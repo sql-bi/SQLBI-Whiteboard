@@ -1,3 +1,4 @@
+using System.ComponentModel;
 using System.Diagnostics;
 using System.IO;
 using System.Windows;
@@ -5,6 +6,7 @@ using System.Windows.Controls;
 using System.Windows.Controls.Primitives;
 using System.Windows.Ink;
 using System.Windows.Input;
+using System.Windows.Interop;
 using System.Windows.Media;
 using System.Windows.Media.Effects;
 using Microsoft.Win32;
@@ -14,6 +16,8 @@ using SQLBI.Whiteboard.Core.Model;
 using SQLBI.Whiteboard.Core.Persistence;
 using SQLBI.Whiteboard.Core.Settings;
 using SQLBI.Whiteboard.Core.Viewport;
+using SQLBI.Whiteboard.LiveView;
+using Windows.Graphics.Capture;
 
 namespace SQLBI.Whiteboard;
 
@@ -44,7 +48,7 @@ public partial class MainWindow : Window
         None,
         Erase,
         Pan,
-        Image,
+        Container,
     }
 
     private readonly Camera2D _camera = new();
@@ -58,6 +62,7 @@ public partial class MainWindow : Window
         [PenKind.Highlighter] = InkPalettes.DefaultHighlighter,
         [PenKind.Calligraphy] = InkPalettes.DefaultCalligraphy,
     };
+    private readonly Dictionary<Guid, LiveViewPresenter> _liveViewPresenters = [];
 
     private BoardDocument _document = new();
     private string? _currentBoardPath;
@@ -71,12 +76,12 @@ public partial class MainWindow : Window
     private bool _penInContact;
     private bool _spaceTemporaryPan;
     private Guid? _selectedObjectId;
-    private ImageBoardObject? _imageGestureBefore;
-    private ImageBoardObject? _imageGestureCurrent;
-    private InkStrokeObject[] _imageGestureLinkedBefore = [];
-    private InkStrokeObject[] _imageGestureLinkedCurrent = [];
-    private PointD _imageGestureStartWorld;
-    private bool _imageGestureIsResize;
+    private BoardObject? _containerGestureBefore;
+    private BoardObject? _containerGestureCurrent;
+    private InkStrokeObject[] _containerGestureLinkedBefore = [];
+    private InkStrokeObject[] _containerGestureLinkedCurrent = [];
+    private PointD _containerGestureStartWorld;
+    private bool _containerGestureIsResize;
     private bool _isFullScreen;
     private bool _isToolPaletteHidden;
     private bool _isInkOptionsOpen;
@@ -96,6 +101,7 @@ public partial class MainWindow : Window
         _document.Changed += Document_Changed;
         _history.Changed += History_Changed;
         SceneSurface.Configure(_document, _camera);
+        SceneSurface.LiveViewImageSourceProvider = GetLiveViewImageSource;
         InkSurface.Cursor = Cursors.Arrow;
         _settings = AppSettingsStore.Load();
         LoadInkFromSettings();
@@ -115,12 +121,30 @@ public partial class MainWindow : Window
     {
         _camera.Resize(e.NewSize.Width, e.NewSize.Height);
         SceneSurface.InvalidateVisual();
+        UpdateLiveViewActionOverlay();
     }
 
     private void Document_Changed(object? sender, EventArgs e)
     {
+        var liveViewIds = _document.Objects.OfType<LiveViewBoardObject>()
+            .Select(item => item.Id)
+            .ToHashSet();
+        foreach (var removedId in _liveViewPresenters.Keys
+                     .Where(id => !liveViewIds.Contains(id))
+                     .ToArray())
+        {
+            DisposeLiveViewPresenter(removedId);
+        }
+
+        if (_selectedObjectId is Guid selectedId &&
+            _document.Objects.All(item => item.Id != selectedId))
+        {
+            _selectedObjectId = null;
+        }
+
         SceneSurface.SelectedObjectId = _selectedObjectId;
         SceneSurface.InvalidateVisual();
+        UpdateLiveViewActionOverlay();
     }
 
     private void History_Changed(object? sender, EventArgs e)
@@ -200,8 +224,8 @@ public partial class MainWindow : Window
         }
         else if (EffectiveTool == BoardTool.Select)
         {
-            BeginImageGesture(screen);
-            _stylusAction = PointerAction.Image;
+            BeginContainerGesture(screen);
+            _stylusAction = PointerAction.Container;
             InkSurface.CaptureStylus();
             e.Handled = true;
         }
@@ -235,8 +259,8 @@ public partial class MainWindow : Window
                 PanTo(screen);
                 e.Handled = true;
                 break;
-            case PointerAction.Image:
-                UpdateImageGesture(_camera.ScreenToWorld(screen));
+            case PointerAction.Container:
+                UpdateContainerGesture(_camera.ScreenToWorld(screen));
                 e.Handled = true;
                 break;
         }
@@ -284,9 +308,9 @@ public partial class MainWindow : Window
                 PanTo(screen);
                 e.Handled = true;
                 break;
-            case PointerAction.Image:
-                UpdateImageGesture(_camera.ScreenToWorld(screen));
-                CompleteImageGesture();
+            case PointerAction.Container:
+                UpdateContainerGesture(_camera.ScreenToWorld(screen));
+                CompleteContainerGesture();
                 e.Handled = true;
                 break;
         }
@@ -368,8 +392,8 @@ public partial class MainWindow : Window
         else if (e.ChangedButton == MouseButton.Left)
         {
             SetActiveTool(BoardTool.Select);
-            BeginImageGesture(screen);
-            _mouseAction = PointerAction.Image;
+            BeginContainerGesture(screen);
+            _mouseAction = PointerAction.Container;
             Mouse.Capture(InkSurface);
             e.Handled = true;
         }
@@ -429,8 +453,8 @@ public partial class MainWindow : Window
             case PointerAction.Pan:
                 PanTo(screen);
                 break;
-            case PointerAction.Image:
-                UpdateImageGesture(_camera.ScreenToWorld(screen));
+            case PointerAction.Container:
+                UpdateContainerGesture(_camera.ScreenToWorld(screen));
                 break;
         }
     }
@@ -454,9 +478,9 @@ public partial class MainWindow : Window
         {
             CompleteErase();
         }
-        else if (_mouseAction == PointerAction.Image)
+        else if (_mouseAction == PointerAction.Container)
         {
-            CompleteImageGesture();
+            CompleteContainerGesture();
         }
 
         _mouseAction = PointerAction.None;
@@ -477,9 +501,9 @@ public partial class MainWindow : Window
             case PointerAction.Pan:
                 PanTo(screen);
                 break;
-            case PointerAction.Image:
-                UpdateImageGesture(_camera.ScreenToWorld(screen));
-                CompleteImageGesture();
+            case PointerAction.Container:
+                UpdateContainerGesture(_camera.ScreenToWorld(screen));
+                CompleteContainerGesture();
                 break;
         }
 
@@ -612,6 +636,7 @@ public partial class MainWindow : Window
         }
 
         SceneSurface.InvalidateVisual();
+        UpdateLiveViewActionOverlay();
     }
 
     private void ClearSelection()
@@ -627,16 +652,17 @@ public partial class MainWindow : Window
         SceneSurface.SelectedObjectId = null;
         SceneSurface.HoveredObjectId = null;
         SceneSurface.InvalidateVisual();
+        UpdateLiveViewActionOverlay();
     }
 
     private void FrameContentAt(PointD screenPoint)
     {
-        var image = _document.HitTestTopImage(_camera.ScreenToWorld(screenPoint));
-        if (image is not null)
+        var container = _document.HitTestTopContainer(_camera.ScreenToWorld(screenPoint));
+        if (container is not null)
         {
-            _selectedObjectId = image.Id;
-            SceneSurface.SelectedObjectId = image.Id;
-            _camera.Frame(image.Bounds);
+            _selectedObjectId = container.Id;
+            SceneSurface.SelectedObjectId = container.Id;
+            _camera.Frame(container.Bounds);
         }
         else
         {
@@ -692,21 +718,22 @@ public partial class MainWindow : Window
         _erasedObjects.Clear();
     }
 
-    private void BeginImageGesture(PointD screenPoint)
+    private void BeginContainerGesture(PointD screenPoint)
     {
         var worldPoint = _camera.ScreenToWorld(screenPoint);
-        var selected = _document.HitTestTopImage(worldPoint);
-        _imageGestureIsResize = false;
+        var selected = _document.HitTestTopContainer(worldPoint);
+        _containerGestureIsResize = false;
 
         if (_selectedObjectId is Guid existingId &&
-            _document.Objects.FirstOrDefault(item => item.Id == existingId) is ImageBoardObject existing)
+            _document.Objects.FirstOrDefault(item => item.Id == existingId) is { } existing &&
+            existing is IBoardContainer)
         {
             var handle = _camera.WorldToScreen(
                 new PointD(existing.Bounds.Right, existing.Bounds.Bottom));
             if (Distance(ToPoint(handle), ToPoint(screenPoint)) <= 16)
             {
                 selected = existing;
-                _imageGestureIsResize = true;
+                _containerGestureIsResize = true;
             }
         }
 
@@ -714,28 +741,30 @@ public partial class MainWindow : Window
         SceneSurface.SelectedObjectId = _selectedObjectId;
         if (selected is null)
         {
-            ResetImageGesture();
+            ResetContainerGesture();
             SceneSurface.InvalidateVisual();
+            UpdateLiveViewActionOverlay();
             return;
         }
 
-        _imageGestureBefore = selected;
-        _imageGestureCurrent = selected;
-        _imageGestureLinkedBefore = _document.LinkedStrokes(selected.Id).ToArray();
-        _imageGestureLinkedCurrent = _imageGestureLinkedBefore;
-        _imageGestureStartWorld = worldPoint;
+        _containerGestureBefore = selected;
+        _containerGestureCurrent = selected;
+        _containerGestureLinkedBefore = _document.LinkedStrokes(selected.Id).ToArray();
+        _containerGestureLinkedCurrent = _containerGestureLinkedBefore;
+        _containerGestureStartWorld = worldPoint;
         SceneSurface.InvalidateVisual();
+        UpdateLiveViewActionOverlay();
     }
 
-    private void UpdateImageGesture(PointD worldPoint)
+    private void UpdateContainerGesture(PointD worldPoint)
     {
-        if (_imageGestureBefore is null)
+        if (_containerGestureBefore is null)
         {
             return;
         }
 
-        var bounds = _imageGestureBefore.Bounds;
-        if (_imageGestureIsResize)
+        var bounds = _containerGestureBefore.Bounds;
+        if (_containerGestureIsResize)
         {
             var minimumWorldSize = 32 / _camera.Zoom;
             var requestedWidth = worldPoint.X - bounds.Left;
@@ -757,42 +786,49 @@ public partial class MainWindow : Window
         }
         else
         {
-            bounds = bounds.Translate(worldPoint - _imageGestureStartWorld);
+            bounds = bounds.Translate(worldPoint - _containerGestureStartWorld);
         }
 
-        _imageGestureCurrent = _imageGestureBefore with { Bounds = bounds };
-        _imageGestureLinkedCurrent = _imageGestureLinkedBefore
-            .Select(stroke => stroke.TransformWithContainer(_imageGestureBefore.Bounds, bounds))
+        _containerGestureCurrent = WithBounds(_containerGestureBefore, bounds);
+        _containerGestureLinkedCurrent = _containerGestureLinkedBefore
+            .Select(stroke => stroke.TransformWithContainer(_containerGestureBefore.Bounds, bounds))
             .ToArray();
         BoardObject[] replacements =
-            [_imageGestureCurrent, .. _imageGestureLinkedCurrent];
+            [_containerGestureCurrent, .. _containerGestureLinkedCurrent];
         _document.ReplaceObjects(replacements);
     }
 
-    private void CompleteImageGesture()
+    private void CompleteContainerGesture()
     {
-        if (_imageGestureBefore is not null &&
-            _imageGestureCurrent is not null &&
-            _imageGestureBefore.Bounds != _imageGestureCurrent.Bounds)
+        if (_containerGestureBefore is not null &&
+            _containerGestureCurrent is not null &&
+            _containerGestureBefore.Bounds != _containerGestureCurrent.Bounds)
         {
             BoardObject[] before =
-                [_imageGestureBefore, .. _imageGestureLinkedBefore];
+                [_containerGestureBefore, .. _containerGestureLinkedBefore];
             BoardObject[] after =
-                [_imageGestureCurrent, .. _imageGestureLinkedCurrent];
+                [_containerGestureCurrent, .. _containerGestureLinkedCurrent];
             _history.RecordExecuted(new ReplaceObjectsCommand(before, after));
         }
 
-        ResetImageGesture();
+        ResetContainerGesture();
     }
 
-    private void ResetImageGesture()
+    private void ResetContainerGesture()
     {
-        _imageGestureBefore = null;
-        _imageGestureCurrent = null;
-        _imageGestureLinkedBefore = [];
-        _imageGestureLinkedCurrent = [];
-        _imageGestureIsResize = false;
+        _containerGestureBefore = null;
+        _containerGestureCurrent = null;
+        _containerGestureLinkedBefore = [];
+        _containerGestureLinkedCurrent = [];
+        _containerGestureIsResize = false;
     }
+
+    private static BoardObject WithBounds(BoardObject item, RectD bounds) => item switch
+    {
+        ImageBoardObject image => image with { Bounds = bounds },
+        LiveViewBoardObject liveView => liveView with { Bounds = bounds },
+        _ => throw new NotSupportedException($"Unsupported container type {item.GetType().Name}."),
+    };
 
     private void PenToolButton_Click(object sender, RoutedEventArgs e)
     {
@@ -1411,13 +1447,13 @@ public partial class MainWindow : Window
 
     private void UpdateSelectHover(PointD screen)
     {
-        if (_imageGestureBefore is not null)
+        if (_containerGestureBefore is not null)
         {
             return;
         }
 
-        var image = _document.HitTestTopImage(_camera.ScreenToWorld(screen));
-        var hoveredId = image?.Id;
+        var container = _document.HitTestTopContainer(_camera.ScreenToWorld(screen));
+        var hoveredId = container?.Id;
         if (SceneSurface.HoveredObjectId == hoveredId)
         {
             return;
@@ -1434,7 +1470,7 @@ public partial class MainWindow : Window
             return Cursors.SizeNWSE;
         }
 
-        return _document.HitTestTopImage(_camera.ScreenToWorld(screen)) is null
+        return _document.HitTestTopContainer(_camera.ScreenToWorld(screen)) is null
             ? Cursors.Arrow
             : Cursors.SizeAll;
     }
@@ -1442,7 +1478,8 @@ public partial class MainWindow : Window
     private bool IsOverResizeHandle(PointD screen)
     {
         if (_selectedObjectId is not Guid existingId ||
-            _document.Objects.FirstOrDefault(item => item.Id == existingId) is not ImageBoardObject existing)
+            _document.Objects.FirstOrDefault(item => item.Id == existingId) is not { } existing ||
+            existing is not IBoardContainer)
         {
             return false;
         }
@@ -1580,6 +1617,116 @@ public partial class MainWindow : Window
     private async void SaveButton_Click(object sender, RoutedEventArgs e) =>
         await SaveBoardAsync();
 
+    private async void AddLiveViewMenuItem_Click(object sender, RoutedEventArgs e) =>
+        await AddLiveViewAsync();
+
+    private async void ReconnectLiveViewMenuItem_Click(object sender, RoutedEventArgs e)
+    {
+        if (GetSelectedLiveView() is { } liveView)
+        {
+            await ReconnectLiveViewAsync(liveView);
+        }
+    }
+
+    private async void FreezeLiveViewMenuItem_Click(object sender, RoutedEventArgs e)
+    {
+        LiveViewBoardObject? liveView = GetSelectedLiveView();
+        if (liveView is null)
+        {
+            return;
+        }
+
+        if (IsLiveViewRunning(liveView.Id))
+        {
+            PauseLiveView(liveView);
+            return;
+        }
+
+        await ResumeLiveViewAsync(liveView);
+    }
+
+    private void ToolsMenu_SubmenuOpened(object sender, RoutedEventArgs e) =>
+        UpdateLiveViewMenuItems();
+
+    private void PauseLiveViewButton_Click(object sender, RoutedEventArgs e)
+    {
+        if (GetSelectedLiveView() is { } liveView)
+        {
+            PauseLiveView(liveView);
+        }
+
+        InkSurface.Focus();
+    }
+
+    private async void PlayLiveViewButton_Click(object sender, RoutedEventArgs e)
+    {
+        if (GetSelectedLiveView() is { } liveView)
+        {
+            await ResumeLiveViewAsync(liveView);
+        }
+
+        InkSurface.Focus();
+    }
+
+    private void PauseLiveView(LiveViewBoardObject liveView)
+    {
+        if (!_liveViewPresenters.TryGetValue(liveView.Id, out LiveViewPresenter? presenter) ||
+            !presenter.HasTarget ||
+            presenter.IsFrozen)
+        {
+            return;
+        }
+
+        try
+        {
+            presenter.Freeze();
+            LiveViewBoardObject updated = SaveLiveViewSnapshot(
+                liveView with { IsFrozen = true },
+                presenter);
+            _document.ReplaceObject(updated);
+            DetachLiveViewSurface(presenter);
+            UpdateLiveViewMenuItems();
+            UpdateLiveViewActionOverlay();
+        }
+        catch (Exception exception)
+        {
+            ShowError("Could not freeze LiveView", exception);
+        }
+    }
+
+    private async Task ResumeLiveViewAsync(LiveViewBoardObject liveView)
+    {
+        if (!_liveViewPresenters.TryGetValue(liveView.Id, out LiveViewPresenter? presenter) ||
+            !presenter.HasTarget)
+        {
+            await ReconnectLiveViewAsync(liveView);
+            return;
+        }
+
+        if (!presenter.IsFrozen)
+        {
+            return;
+        }
+
+        try
+        {
+            AttachLiveViewSurface(presenter);
+            presenter.Resume();
+            _document.ReplaceObject(liveView with { IsFrozen = false });
+            UpdateLiveViewMenuItems();
+            UpdateLiveViewActionOverlay();
+        }
+        catch (Exception exception)
+        {
+            ShowError("Could not resume LiveView", exception);
+        }
+    }
+
+    private bool IsLiveViewRunning(Guid objectId) =>
+        _liveViewPresenters.TryGetValue(objectId, out LiveViewPresenter? presenter) &&
+        presenter.HasTarget &&
+        !presenter.IsFrozen;
+
     private void NewMenuItem_Click(object sender, RoutedEventArgs e)
     {
         if ((_document.Objects.Count > 0 || _document.Assets.Count > 0) &&
@@ -1695,6 +1842,310 @@ public partial class MainWindow : Window
         _selectedObjectId = image.Id;
         SceneSurface.SelectedObjectId = image.Id;
         SetActiveTool(BoardTool.Select);
+        UpdateLiveViewActionOverlay();
+    }
+
+    private async Task AddLiveViewAsync()
+    {
+        if (!GraphicsCaptureSession.IsSupported())
+        {
+            MessageBox.Show(
+                this,
+                "Windows Graphics Capture is not supported on this computer.",
+                "LiveView",
+                MessageBoxButton.OK,
+                MessageBoxImage.Information);
+            return;
+        }
+
+        GraphicsCaptureItem? item = await PickLiveViewTargetAsync();
+        if (item is null)
+        {
+            return;
+        }
+
+        try
+        {
+            double naturalWidth = Math.Max(1, item.Size.Width);
+            double naturalHeight = Math.Max(1, item.Size.Height);
+            double scale = Math.Min(1, Math.Min(1000d / naturalWidth, 700d / naturalHeight));
+            double width = naturalWidth * scale;
+            double height = naturalHeight * scale;
+            var liveView = new LiveViewBoardObject(
+                Guid.NewGuid(),
+                _document.NextZIndex,
+                new RectD(
+                    _camera.Center.X - (width / 2),
+                    _camera.Center.Y - (height / 2),
+                    width,
+                    height),
+                new LiveViewSourceConfiguration(
+                    LiveViewSourceKind.Unknown,
+                    DisplayNameOrFallback(item.DisplayName)),
+                IsFrozen: false);
+
+            _history.Execute(new AddObjectCommand(liveView), _document);
+            AttachLiveViewPresenter(liveView, item);
+            _selectedObjectId = liveView.Id;
+            SceneSurface.SelectedObjectId = liveView.Id;
+            SceneSurface.InvalidateVisual();
+            SetActiveTool(BoardTool.Select);
+            UpdateLiveViewActionOverlay();
+        }
+        catch (Exception exception)
+        {
+            ShowError("Could not add LiveView", exception);
+        }
+    }
+
+    private async Task ReconnectLiveViewAsync(LiveViewBoardObject liveView)
+    {
+        GraphicsCaptureItem? item = await PickLiveViewTargetAsync();
+        if (item is null)
+        {
+            return;
+        }
+
+        try
+        {
+            double sourceWidth = Math.Max(1, item.Size.Width);
+            double sourceHeight = Math.Max(1, item.Size.Height);
+            RectD updatedBounds = liveView.Bounds.WithCenteredAspectRatio(
+                sourceWidth / sourceHeight);
+            var updated = liveView with
+            {
+                Bounds = updatedBounds,
+                Source = liveView.Source with
+                {
+                    DisplayName = DisplayNameOrFallback(item.DisplayName),
+                },
+                IsFrozen = false,
+            };
+            InkStrokeObject[] linkedStrokes = _document.LinkedStrokes(liveView.Id)
+                .Select(stroke => stroke.TransformWithContainer(liveView.Bounds, updatedBounds))
+                .ToArray();
+            _document.ReplaceObjects([updated, .. linkedStrokes]);
+            AttachLiveViewPresenter(updated, item);
+            SceneSurface.InvalidateVisual();
+            UpdateLiveViewMenuItems();
+            UpdateLiveViewActionOverlay();
+        }
+        catch (Exception exception)
+        {
+            ShowError("Could not reconnect LiveView", exception);
+        }
+    }
+
+    private async Task<GraphicsCaptureItem?> PickLiveViewTargetAsync()
+    {
+        GraphicsCapturePicker picker = new();
+        nint windowHandle = new WindowInteropHelper(this).Handle;
+        WinRT.Interop.InitializeWithWindow.Initialize(picker, windowHandle);
+        return await picker.PickSingleItemAsync();
+    }
+
+    private void AttachLiveViewPresenter(
+        LiveViewBoardObject liveView,
+        GraphicsCaptureItem item)
+    {
+        if (_liveViewPresenters.TryGetValue(liveView.Id, out LiveViewPresenter? existing))
+        {
+            existing.DesiredFrameRate = liveView.DesiredFrameRate;
+            existing.CaptureCursor = liveView.CaptureCursor;
+            AttachLiveViewSurface(existing);
+            existing.SetTarget(item);
+            return;
+        }
+
+        LiveViewPresenter presenter = new(liveView.Id, Dispatcher)
+        {
+            DesiredFrameRate = liveView.DesiredFrameRate,
+            CaptureCursor = liveView.CaptureCursor,
+        };
+        presenter.FramePresented += LiveViewPresenter_FramePresented;
+        presenter.TargetClosed += LiveViewPresenter_TargetClosed;
+        presenter.CaptureFailed += LiveViewPresenter_CaptureFailed;
+        _liveViewPresenters.Add(liveView.Id, presenter);
+        AttachLiveViewSurface(presenter);
+        presenter.SetTarget(item);
+    }
+
+    private void LiveViewPresenter_FramePresented(Guid objectId)
+    {
+        SceneSurface.InvalidateVisual();
+    }
+
+    private void LiveViewPresenter_TargetClosed(Guid objectId)
+    {
+        if (_document.Objects.FirstOrDefault(item => item.Id == objectId) is not LiveViewBoardObject liveView ||
+            !_liveViewPresenters.TryGetValue(objectId, out LiveViewPresenter? presenter))
+        {
+            return;
+        }
+
+        try
+        {
+            LiveViewBoardObject updated = SaveLiveViewSnapshot(
+                liveView with { IsFrozen = true },
+                presenter);
+            _document.ReplaceObject(updated);
+            DetachLiveViewSurface(presenter);
+            UpdateLiveViewMenuItems();
+        }
+        catch (Exception exception)
+        {
+            Debug.WriteLine($"[LiveView] Could not retain closed target: {exception}");
+        }
+    }
+
+    private void LiveViewPresenter_CaptureFailed(Guid objectId, Exception exception)
+    {
+        Debug.WriteLine($"[LiveView] Capture failed for {objectId}: {exception}");
+        ShowError("LiveView capture failed", exception);
+    }
+
+    private LiveViewBoardObject SaveLiveViewSnapshot(
+        LiveViewBoardObject liveView,
+        LiveViewPresenter presenter)
+    {
+        byte[]? bytes = presenter.CaptureSnapshotPng();
+        if (bytes is null)
+        {
+            return liveView;
+        }
+
+        string assetId = liveView.SnapshotAssetId ?? $"liveview-{liveView.Id:N}";
+        _document.AddAsset(new BoardAsset(
+            assetId,
+            $"{SanitizeAssetName(liveView.Source.DisplayName)}.png",
+            "image/png",
+            bytes));
+        SceneSurface.InvalidateAssets();
+        return liveView with { SnapshotAssetId = assetId };
+    }
+
+    private void RefreshLiveViewSnapshots()
+    {
+        foreach (LiveViewBoardObject liveView in _document.Objects.OfType<LiveViewBoardObject>().ToArray())
+        {
+            if (!_liveViewPresenters.TryGetValue(liveView.Id, out LiveViewPresenter? presenter) ||
+                !presenter.HasPresentedFrame)
+            {
+                continue;
+            }
+
+            LiveViewBoardObject updated = SaveLiveViewSnapshot(
+                liveView with { IsFrozen = presenter.IsFrozen },
+                presenter);
+            if (updated != liveView)
+            {
+                _document.ReplaceObject(updated);
+            }
+        }
+    }
+
+    private ImageSource? GetLiveViewImageSource(Guid objectId) =>
+        _liveViewPresenters.TryGetValue(objectId, out LiveViewPresenter? presenter)
+            ? presenter.ImageSource
+            : null;
+
+    private LiveViewBoardObject? GetSelectedLiveView() =>
+        _selectedObjectId is Guid selectedId
+            ? _document.Objects.FirstOrDefault(item => item.Id == selectedId) as LiveViewBoardObject
+            : null;
+
+    private void UpdateLiveViewMenuItems()
+    {
+        LiveViewBoardObject? liveView = GetSelectedLiveView();
+        bool selected = liveView is not null;
+        FreezeLiveViewMenuItem.IsEnabled = selected;
+        ReconnectLiveViewMenuItem.IsEnabled = selected;
+
+        bool canResume = liveView is not null &&
+            (!_liveViewPresenters.TryGetValue(liveView.Id, out LiveViewPresenter? presenter) ||
+             presenter.IsFrozen ||
+             !presenter.HasTarget);
+        FreezeLiveViewMenuItem.Header = canResume
+            ? "_Resume selected LiveView..."
+            : "_Freeze selected LiveView";
+    }
+
+    private void UpdateLiveViewActionOverlay()
+    {
+        LiveViewBoardObject? liveView = GetSelectedLiveView();
+        if (liveView is null)
+        {
+            LiveViewActionsBorder.Visibility = Visibility.Collapsed;
+            return;
+        }
+
+        PointD topLeft = _camera.WorldToScreen(
+            new PointD(liveView.Bounds.Left, liveView.Bounds.Top));
+        PointD bottomRight = _camera.WorldToScreen(
+            new PointD(liveView.Bounds.Right, liveView.Bounds.Bottom));
+
+        const double overlayWidth = 132;
+        const double overlayHeight = 56;
+        const double inset = 8;
+        Canvas.SetLeft(
+            LiveViewActionsBorder,
+            Math.Max(topLeft.X + inset, bottomRight.X - overlayWidth - inset));
+        Canvas.SetTop(
+            LiveViewActionsBorder,
+            Math.Max(topLeft.Y + inset, bottomRight.Y - overlayHeight - inset));
+
+        bool isRunning = IsLiveViewRunning(liveView.Id);
+        PauseLiveViewButton.IsEnabled = isRunning;
+        PlayLiveViewButton.IsEnabled = !isRunning;
+        LiveViewActionsBorder.Visibility = Visibility.Visible;
+    }
+
+    private void DisposeLiveViewPresenter(Guid objectId)
+    {
+        if (!_liveViewPresenters.Remove(objectId, out LiveViewPresenter? presenter))
+        {
+            return;
+        }
+
+        presenter.FramePresented -= LiveViewPresenter_FramePresented;
+        presenter.TargetClosed -= LiveViewPresenter_TargetClosed;
+        presenter.CaptureFailed -= LiveViewPresenter_CaptureFailed;
+        DetachLiveViewSurface(presenter);
+        presenter.Dispose();
+    }
+
+    private void AttachLiveViewSurface(LiveViewPresenter presenter)
+    {
+        if (!LiveViewSurfaceHost.Children.Contains(presenter.Surface))
+        {
+            LiveViewSurfaceHost.Children.Add(presenter.Surface);
+        }
+    }
+
+    private void DetachLiveViewSurface(LiveViewPresenter presenter)
+    {
+        presenter.Surface.PrepareForRemoval();
+        LiveViewSurfaceHost.Children.Remove(presenter.Surface);
+        SceneSurface.InvalidateVisual();
+    }
+
+    private void DisposeAllLiveViewPresenters()
+    {
+        foreach (Guid id in _liveViewPresenters.Keys.ToArray())
+        {
+            DisposeLiveViewPresenter(id);
+        }
+    }
+
+    private static string DisplayNameOrFallback(string? displayName) =>
+        string.IsNullOrWhiteSpace(displayName) ? "LiveView target" : displayName;
+
+    private static string SanitizeAssetName(string displayName)
+    {
+        char[] invalid = Path.GetInvalidFileNameChars();
+        string sanitized = string.Concat(displayName.Select(character =>
+            invalid.Contains(character) ? '_' : character));
+        return string.IsNullOrWhiteSpace(sanitized) ? "liveview" : sanitized;
     }
 
     private async Task SaveBoardAsync(bool saveAs = false)
@@ -1722,6 +2173,7 @@ public partial class MainWindow : Window
 
         try
         {
+            RefreshLiveViewSnapshots();
             await using var stream = new FileStream(
                 filePath,
                 FileMode.Create,
@@ -1773,6 +2225,7 @@ public partial class MainWindow : Window
 
     private void ReplaceDocument(BoardDocument replacement)
     {
+        DisposeAllLiveViewPresenters();
         _document.Changed -= Document_Changed;
         _document = replacement;
         _document.Changed += Document_Changed;
@@ -1787,27 +2240,49 @@ public partial class MainWindow : Window
         SceneSurface.SelectedObjectId = null;
         InkSurface.Strokes.Clear();
         _history.Clear();
-        ResetImageGesture();
+        ResetContainerGesture();
         CameraChanged();
         InkSurface.Focus();
     }
 
     private void CopySelectionToClipboard()
     {
-        if (_selectedObjectId is not Guid selectedId ||
-            _document.Objects.FirstOrDefault(item => item.Id == selectedId) is not ImageBoardObject image ||
-            !_document.Assets.TryGetValue(image.AssetId, out var asset))
-        {
-            return;
-        }
-
         try
         {
+            if (_selectedObjectId is not Guid selectedId ||
+                _document.Objects.FirstOrDefault(item => item.Id == selectedId) is not { } selected)
+            {
+                return;
+            }
+
+            string? assetId = selected switch
+            {
+                ImageBoardObject image => image.AssetId,
+                LiveViewBoardObject liveView => liveView.SnapshotAssetId,
+                _ => null,
+            };
+            if (selected is LiveViewBoardObject currentLiveView &&
+                _liveViewPresenters.TryGetValue(currentLiveView.Id, out LiveViewPresenter? presenter) &&
+                presenter.HasPresentedFrame)
+            {
+                LiveViewBoardObject updated = SaveLiveViewSnapshot(currentLiveView, presenter);
+                if (updated != currentLiveView)
+                {
+                    _document.ReplaceObject(updated);
+                    assetId = updated.SnapshotAssetId;
+                }
+            }
+
+            if (assetId is null || !_document.Assets.TryGetValue(assetId, out BoardAsset? asset))
+            {
+                return;
+            }
+
             Clipboard.SetImage(WpfImageCodec.Decode(asset.Data));
         }
         catch (Exception exception)
         {
-            ShowError("Could not copy image", exception);
+            ShowError("Could not copy selection", exception);
         }
     }
 
@@ -2005,9 +2480,9 @@ public partial class MainWindow : Window
         {
             CompleteErase();
         }
-        else if (_stylusAction == PointerAction.Image || _mouseAction == PointerAction.Image)
+        else if (_stylusAction == PointerAction.Container || _mouseAction == PointerAction.Container)
         {
-            CompleteImageGesture();
+            CompleteContainerGesture();
         }
 
         _stylusAction = PointerAction.None;
@@ -2016,6 +2491,14 @@ public partial class MainWindow : Window
         ClearTouchNavigation();
         InkSurface.Cursor = Cursors.Arrow;
         HidePointerDot();
+    }
+
+    private void Window_Closing(object? sender, CancelEventArgs e)
+    {
+        // Unregister Vortice's retained Window.Closed callbacks and unload the
+        // D3D surfaces before the Closed event begins. This guarantees one
+        // native teardown path for both live and already-paused presenters.
+        DisposeAllLiveViewPresenters();
     }
 
     private void UsePenCursor()

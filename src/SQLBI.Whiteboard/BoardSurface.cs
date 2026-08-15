@@ -25,6 +25,8 @@ internal sealed class BoardSurface : FrameworkElement
 
     public Guid? HoveredObjectId { get; set; }
 
+    public Func<Guid, ImageSource?>? LiveViewImageSourceProvider { get; set; }
+
     public void Configure(BoardDocument document, Camera2D camera)
     {
         _document = document;
@@ -58,6 +60,9 @@ internal sealed class BoardSurface : FrameworkElement
                     break;
                 case ImageBoardObject image:
                     DrawImage(drawingContext, image, _document, _camera);
+                    break;
+                case LiveViewBoardObject liveView:
+                    DrawLiveView(drawingContext, liveView, _document, _camera);
                     break;
             }
         }
@@ -117,6 +122,42 @@ internal sealed class BoardSurface : FrameworkElement
         {
             drawingContext.DrawRectangle(MissingImageBrush, MissingImagePen, destination);
         }
+    }
+
+    private void DrawLiveView(
+        DrawingContext drawingContext,
+        LiveViewBoardObject liveView,
+        BoardDocument document,
+        Camera2D camera)
+    {
+        Rect destination = ToScreenRectangle(liveView.Bounds, camera);
+        ImageSource? source = LiveViewImageSourceProvider?.Invoke(liveView.Id);
+        if (source is null &&
+            liveView.SnapshotAssetId is { } assetId &&
+            TryGetBitmap(assetId, document, out BitmapSource? snapshot))
+        {
+            source = snapshot;
+        }
+
+        if (source is not null)
+        {
+            drawingContext.DrawImage(source, destination);
+        }
+        else
+        {
+            drawingContext.DrawRectangle(MissingImageBrush, MissingImagePen, destination);
+        }
+    }
+
+    private static Rect ToScreenRectangle(RectD bounds, Camera2D camera)
+    {
+        PointD topLeft = camera.WorldToScreen(new PointD(bounds.Left, bounds.Top));
+        PointD bottomRight = camera.WorldToScreen(new PointD(bounds.Right, bounds.Bottom));
+        return new Rect(
+            topLeft.X,
+            topLeft.Y,
+            Math.Max(1, bottomRight.X - topLeft.X),
+            Math.Max(1, bottomRight.Y - topLeft.Y));
     }
 
     private bool TryGetBitmap(

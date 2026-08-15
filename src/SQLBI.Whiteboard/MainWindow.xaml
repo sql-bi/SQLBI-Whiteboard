@@ -11,6 +11,7 @@
         WindowStartupLocation="Manual"
         Background="White"
         Deactivated="Window_Deactivated"
+        Closing="Window_Closing"
         PreviewKeyDown="Window_PreviewKeyDown"
         PreviewKeyUp="Window_PreviewKeyUp">
     <Grid x:Name="RootGrid">
@@ -57,7 +58,9 @@
                           IsEnabled="False"
                           Click="RedoButton_Click" />
             </MenuItem>
-            <MenuItem Header="_Tools">
+            <MenuItem x:Name="ToolsMenu"
+                      Header="_Tools"
+                      SubmenuOpened="ToolsMenu_SubmenuOpened">
                 <MenuItem x:Name="PenToolMenuItem"
                           Header="_Pen"
                           IsCheckable="True"
@@ -70,6 +73,17 @@
                           Header="_Calligraphy"
                           IsCheckable="True"
                           Click="CalligraphyToolButton_Click" />
+                <Separator />
+                <MenuItem Header="Add _LiveView..."
+                          Click="AddLiveViewMenuItem_Click" />
+                <MenuItem x:Name="FreezeLiveViewMenuItem"
+                          Header="_Freeze selected LiveView"
+                          IsEnabled="False"
+                          Click="FreezeLiveViewMenuItem_Click" />
+                <MenuItem x:Name="ReconnectLiveViewMenuItem"
+                          Header="_Reconnect selected LiveView..."
+                          IsEnabled="False"
+                          Click="ReconnectLiveViewMenuItem_Click" />
                 <Separator />
                 <MenuItem Header="Toolbar _position">
                     <MenuItem x:Name="ToolbarTopRightMenuItem"
@@ -106,6 +120,11 @@
         <Grid x:Name="BoardViewport"
               Grid.Row="1"
               SizeChanged="BoardViewport_SizeChanged">
+            <Canvas x:Name="LiveViewSurfaceHost"
+                    Width="0"
+                    Height="0"
+                    ClipToBounds="True"
+                    IsHitTestVisible="False" />
             <local:BoardSurface x:Name="SceneSurface"
                                 IsHitTestVisible="False" />
 
@@ -134,6 +153,47 @@
                        StrokeCollected="InkSurface_StrokeCollected"
                        DragOver="InkSurface_DragOver"
                        Drop="InkSurface_Drop" />
+
+            <Canvas x:Name="LiveViewActionLayer"
+                    Panel.ZIndex="5"
+                    ClipToBounds="True"
+                    IsHitTestVisible="True">
+                <Border x:Name="LiveViewActionsBorder"
+                        Width="132"
+                        Height="56"
+                        Padding="6"
+                        Visibility="Collapsed"
+                        Background="#D9F9FAFB"
+                        BorderBrush="#809CA3AF"
+                        BorderThickness="1"
+                        CornerRadius="9">
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="6" />
+                            <ColumnDefinition Width="*" />
+                        </Grid.ColumnDefinitions>
+                        <Button x:Name="PauseLiveViewButton"
+                                Grid.Column="0"
+                                Focusable="False"
+                                FontFamily="Segoe UI Symbol"
+                                FontSize="21"
+                                Content="⏸"
+                                ToolTip="Freeze LiveView"
+                                Stylus.IsPressAndHoldEnabled="False"
+                                Click="PauseLiveViewButton_Click" />
+                        <Button x:Name="PlayLiveViewButton"
+                                Grid.Column="2"
+                                Focusable="False"
+                                FontFamily="Segoe UI Symbol"
+                                FontSize="21"
+                                Content="▶"
+                                ToolTip="Resume LiveView"
+                                Stylus.IsPressAndHoldEnabled="False"
+                                Click="PlayLiveViewButton_Click" />
+                    </Grid>
+                </Border>
+            </Canvas>
         </Grid>
 
         <Border x:Name="ToolPalette"
