@@ -1,0 +1,13 @@
+.vs/
+.codex/
+.dotnet/
+.appdata/
+.packages/
+.verify/
+bin/
+obj/
+*_wpftmp.csproj
+TestResults/
+*.user
+*.suo
+*.wboard

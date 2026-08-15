@@ -1,0 +1,310 @@
+<Window x:Class="SQLBI.Whiteboard.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:local="clr-namespace:SQLBI.Whiteboard"
+        Title="SQLBI Whiteboard"
+        Icon="Assets/SQLBI.Whiteboard.ico"
+        Width="1400"
+        Height="900"
+        MinWidth="800"
+        MinHeight="520"
+        WindowStartupLocation="Manual"
+        Background="White"
+        Deactivated="Window_Deactivated"
+        PreviewKeyDown="Window_PreviewKeyDown"
+        PreviewKeyUp="Window_PreviewKeyUp">
+    <Window.Resources>
+        <Style x:Key="PenFriendlySliderStyle"
+               TargetType="{x:Type Slider}">
+            <Setter Property="Height" Value="40" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="{x:Type Slider}">
+                        <Grid Background="Transparent">
+                            <Track x:Name="PART_Track"
+                                   VerticalAlignment="Center">
+                                <Track.DecreaseRepeatButton>
+                                    <RepeatButton Command="{x:Static Slider.DecreaseLarge}"
+                                                  IsTabStop="False">
+                                        <RepeatButton.Template>
+                                            <ControlTemplate TargetType="{x:Type RepeatButton}">
+                                                <Border Height="6"
+                                                        Background="#FF9CA3AF"
+                                                        CornerRadius="3" />
+                                            </ControlTemplate>
+                                        </RepeatButton.Template>
+                                    </RepeatButton>
+                                </Track.DecreaseRepeatButton>
+                                <Track.Thumb>
+                                    <Thumb Width="44"
+                                           Height="28">
+                                        <Thumb.Template>
+                                            <ControlTemplate TargetType="{x:Type Thumb}">
+                                                <Border Background="#FFF9F9F9"
+                                                        BorderBrush="#FF4B5563"
+                                                        BorderThickness="2"
+                                                        CornerRadius="4" />
+                                            </ControlTemplate>
+                                        </Thumb.Template>
+                                    </Thumb>
+                                </Track.Thumb>
+                                <Track.IncreaseRepeatButton>
+                                    <RepeatButton Command="{x:Static Slider.IncreaseLarge}"
+                                                  IsTabStop="False">
+                                        <RepeatButton.Template>
+                                            <ControlTemplate TargetType="{x:Type RepeatButton}">
+                                                <Border Height="6"
+                                                        Background="#FFD1D5DB"
+                                                        CornerRadius="3" />
+                                            </ControlTemplate>
+                                        </RepeatButton.Template>
+                                    </RepeatButton>
+                                </Track.IncreaseRepeatButton>
+                            </Track>
+                        </Grid>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+    </Window.Resources>
+
+    <Grid x:Name="RootGrid">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+        </Grid.RowDefinitions>
+
+        <Menu x:Name="MainMenu"
+              Grid.Row="0"
+              Panel.ZIndex="30">
+            <MenuItem Header="_File">
+                <MenuItem Header="_New"
+                          Click="NewMenuItem_Click" />
+                <MenuItem Header="_Open..."
+                          Click="OpenButton_Click" />
+                <Separator />
+                <MenuItem Header="_Save"
+                          InputGestureText="Ctrl+S"
+                          Click="SaveButton_Click" />
+                <MenuItem Header="Save _As..."
+                          InputGestureText="Shift+F12"
+                          Click="SaveAsMenuItem_Click" />
+                <Separator />
+                <MenuItem Header="_Close"
+                          Click="CloseMenuItem_Click" />
+            </MenuItem>
+            <MenuItem Header="_Edit">
+                <MenuItem Header="_Copy"
+                          InputGestureText="Ctrl+C"
+                          Click="CopyMenuItem_Click" />
+                <MenuItem Header="_Paste"
+                          InputGestureText="Ctrl+V"
+                          Click="PasteButton_Click" />
+                <Separator />
+                <MenuItem x:Name="UndoMenuItem"
+                          Header="_Undo"
+                          InputGestureText="Ctrl+Z"
+                          IsEnabled="False"
+                          Click="UndoButton_Click" />
+                <MenuItem x:Name="RedoMenuItem"
+                          Header="_Redo"
+                          InputGestureText="Ctrl+Y"
+                          IsEnabled="False"
+                          Click="RedoButton_Click" />
+            </MenuItem>
+            <MenuItem Header="_Tools">
+                <MenuItem x:Name="PenToolMenuItem"
+                          Header="_Pen"
+                          IsCheckable="True"
+                          Click="PenToolButton_Click" />
+                <MenuItem x:Name="HighlighterToolMenuItem"
+                          Header="_Highlighter"
+                          IsCheckable="True"
+                          Click="HighlighterToolButton_Click" />
+                <MenuItem x:Name="CalligraphyToolMenuItem"
+                          Header="_Calligraphy"
+                          IsCheckable="True"
+                          Click="CalligraphyToolButton_Click" />
+                <Separator />
+                <MenuItem Header="_Preferences"
+                          IsEnabled="False" />
+            </MenuItem>
+        </Menu>
+
+        <Grid x:Name="BoardViewport"
+              Grid.Row="1"
+              SizeChanged="BoardViewport_SizeChanged">
+            <local:BoardSurface x:Name="SceneSurface"
+                                IsHitTestVisible="False" />
+
+            <local:PenOnlyInkCanvas x:Name="InkSurface"
+                       Background="Transparent"
+                       EditingMode="Ink"
+                       EditingModeInverted="None"
+                       UseCustomCursor="True"
+                       AllowDrop="True"
+                       Focusable="True"
+                       IsManipulationEnabled="False"
+                       Stylus.IsPressAndHoldEnabled="False"
+                       Stylus.IsFlicksEnabled="False"
+                       Stylus.IsTapFeedbackEnabled="False"
+                       Stylus.IsTouchFeedbackEnabled="False"
+                       PreviewStylusDown="InkSurface_PreviewStylusDown"
+                       PreviewStylusMove="InkSurface_PreviewStylusMove"
+                       PreviewStylusUp="InkSurface_PreviewStylusUp"
+                       StylusEnter="InkSurface_StylusEnter"
+                       StylusLeave="InkSurface_StylusLeave"
+                       PreviewMouseDown="InkSurface_PreviewMouseDown"
+                       PreviewMouseMove="InkSurface_PreviewMouseMove"
+                       PreviewMouseUp="InkSurface_PreviewMouseUp"
+                       PreviewMouseWheel="InkSurface_PreviewMouseWheel"
+                       LostMouseCapture="InkSurface_LostMouseCapture"
+                       StrokeCollected="InkSurface_StrokeCollected"
+                       DragOver="InkSurface_DragOver"
+                       Drop="InkSurface_Drop" />
+        </Grid>
+
+        <Border x:Name="ToolPalette"
+                Grid.Row="1"
+                Width="400"
+                HorizontalAlignment="Right"
+                VerticalAlignment="Top"
+                Margin="16"
+                Padding="8"
+                CornerRadius="3"
+                BorderBrush="#24000000"
+                BorderThickness="1"
+                Background="#FFF9F9F9"
+                PreviewMouseRightButtonDown="ToolPalette_PreviewMouseRightButtonDown"
+                Panel.ZIndex="10">
+            <StackPanel x:Name="ToolPaletteContents">
+                <UniformGrid Columns="4"
+                             Margin="0,0,0,6">
+                    <ToggleButton x:Name="RedColorButton"
+                                  MinHeight="30"
+                                  Margin="0,0,4,0"
+                                  Background="#FFDC2626"
+                                  Foreground="White"
+                                  Content="Red"
+                                  IsChecked="True"
+                                  Tag="FFDC2626"
+                                  Click="ColorButton_Click" />
+                    <ToggleButton x:Name="GreenColorButton"
+                                  MinHeight="30"
+                                  Margin="0,0,4,0"
+                                  Background="#FF15803D"
+                                  Foreground="White"
+                                  Content="Green"
+                                  Tag="FF15803D"
+                                  Click="ColorButton_Click" />
+                    <ToggleButton x:Name="BlueColorButton"
+                                  MinHeight="30"
+                                  Margin="0,0,4,0"
+                                  Background="#FF2563EB"
+                                  Foreground="White"
+                                  Content="Blue"
+                                  Tag="FF2563EB"
+                                  Click="ColorButton_Click" />
+                    <ToggleButton x:Name="BlackColorButton"
+                                  MinHeight="30"
+                                  Background="Black"
+                                  Foreground="White"
+                                  Content="Black"
+                                  Tag="FF000000"
+                                  Click="ColorButton_Click" />
+                </UniformGrid>
+
+                <UniformGrid Columns="4"
+                             Margin="0,0,0,6">
+                    <ToggleButton x:Name="YellowColorButton"
+                                  MinHeight="30"
+                                  Margin="0,0,4,0"
+                                  Background="#FFFACC15"
+                                  Foreground="Black"
+                                  Content="Yellow"
+                                  Tag="FFFACC15"
+                                  Click="ColorButton_Click" />
+                    <ToggleButton x:Name="OrangeColorButton"
+                                  MinHeight="30"
+                                  Margin="0,0,4,0"
+                                  Background="#FFF97316"
+                                  Foreground="Black"
+                                  Content="Orange"
+                                  Tag="FFF97316"
+                                  Click="ColorButton_Click" />
+                    <ToggleButton x:Name="PurpleColorButton"
+                                  MinHeight="30"
+                                  Margin="0,0,4,0"
+                                  Background="#FF9333EA"
+                                  Foreground="White"
+                                  Content="Purple"
+                                  Tag="FF9333EA"
+                                  Click="ColorButton_Click" />
+                    <ToggleButton x:Name="BrownColorButton"
+                                  MinHeight="30"
+                                  Background="#FF92400E"
+                                  Foreground="White"
+                                  Content="Brown"
+                                  Tag="FF92400E"
+                                  Click="ColorButton_Click" />
+                </UniformGrid>
+
+                <UniformGrid Columns="4"
+                             Margin="0,0,0,6">
+                    <ToggleButton x:Name="PenToolButton"
+                                  MinHeight="30"
+                                  Margin="0,0,4,0"
+                                  Content="Pen"
+                                  Click="PenToolButton_Click" />
+                    <ToggleButton x:Name="HighlighterToolButton"
+                                  MinHeight="30"
+                                  Margin="0,0,4,0"
+                                  Content="Highlighter"
+                                  Click="HighlighterToolButton_Click" />
+                    <ToggleButton x:Name="CalligraphyToolButton"
+                                  MinHeight="30"
+                                  Margin="0,0,4,0"
+                                  Content="Calligraphy"
+                                  Click="CalligraphyToolButton_Click" />
+                    <ToggleButton x:Name="SelectToolButton"
+                                  MinHeight="30"
+                                  Content="Select"
+                                  Click="SelectToolButton_Click" />
+                </UniformGrid>
+
+                <Grid MinHeight="40">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="*" />
+                    </Grid.ColumnDefinitions>
+                    <TextBlock Margin="4,0,10,0"
+                               VerticalAlignment="Center"
+                               Text="Size" />
+                    <Slider x:Name="ThicknessSlider"
+                            Grid.Column="1"
+                            Style="{StaticResource PenFriendlySliderStyle}"
+                            VerticalAlignment="Center"
+                            Minimum="1"
+                            Maximum="20"
+                            Value="4"
+                            ValueChanged="ThicknessSlider_ValueChanged" />
+                </Grid>
+            </StackPanel>
+        </Border>
+
+        <Ellipse x:Name="PointerDot"
+                 Grid.RowSpan="2"
+                 Width="8"
+                 Height="8"
+                 HorizontalAlignment="Left"
+                 VerticalAlignment="Top"
+                 Fill="#E11D48"
+                 IsHitTestVisible="False"
+                 Visibility="Collapsed"
+                 Panel.ZIndex="20">
+            <Ellipse.RenderTransform>
+                <TranslateTransform x:Name="PointerDotTransform" />
+            </Ellipse.RenderTransform>
+        </Ellipse>
+    </Grid>
+</Window>
