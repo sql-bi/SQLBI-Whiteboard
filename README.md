@@ -61,13 +61,8 @@ Both installers register the `.wboard` file type. Build them locally with:
 powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\build-installer.ps1 -Version 1.0.0
 ```
 
-The WiX toolset is pinned in `.config/dotnet-tools.json` and restored by the script.
-The UI and Util extensions must be present once per machine:
-
-```powershell
-dotnet wix extension add -g WixToolset.UI.wixext/5.0.2
-dotnet wix extension add -g WixToolset.Util.wixext/5.0.2
-```
+The WiX toolset is pinned in `.config/dotnet-tools.json`. The script restores it and adds
+the UI and Util extensions, so no manual setup is required.
 
 `.azure/pipelines/build-whiteboard.yaml` performs the same build in Azure Pipelines and
 signs the binaries and both MSI packages with the SQLBI certificate held in Azure Key Vault.

@@ -57,6 +57,16 @@ try {
     dotnet tool restore
     if ($LASTEXITCODE -ne 0) { throw "dotnet tool restore failed with exit code $LASTEXITCODE" }
 
+    # Extensions are per-machine state rather than part of the tool manifest, so they are
+    # added on every run. Adding one that is already present is a no-op.
+    $manifest = Get-Content (Join-Path $repoRoot '.config/dotnet-tools.json') -Raw | ConvertFrom-Json
+    $wixVersion = $manifest.tools.wix.version
+    Write-Host "==> Adding the WiX $wixVersion extensions" -ForegroundColor Cyan
+    foreach ($extension in @('WixToolset.UI.wixext', 'WixToolset.Util.wixext')) {
+        dotnet wix extension add -g "$extension/$wixVersion"
+        if ($LASTEXITCODE -ne 0) { throw "Adding $extension failed with exit code $LASTEXITCODE" }
+    }
+
     # Note: '-d Name=(expression)' would be split into two arguments by PowerShell,
     # so every value is expanded into a quoted string first.
     $sourceFile = Join-Path $installerRoot 'SQLBI.Whiteboard.wxs'
