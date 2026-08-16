@@ -4,6 +4,10 @@ VisualStudioVersion = 17.0.31903.59
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SQLBI.Whiteboard.Core", "src\SQLBI.Whiteboard.Core\SQLBI.Whiteboard.Core.csproj", "{2FBD8067-C77F-4F5B-87C5-314423EE9C9D}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SQLBI.Whiteboard.Dax", "src\SQLBI.Whiteboard.Dax\SQLBI.Whiteboard.Dax.csproj", "{48A8D0B7-3C3F-4B16-92CD-3A8B7352F7E1}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SQLBI.Whiteboard.SqlServer", "src\SQLBI.Whiteboard.SqlServer\SQLBI.Whiteboard.SqlServer.csproj", "{B2B15228-5085-4652-B7C7-F82F3781A486}"
+EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SQLBI.Whiteboard.Core.SmokeTests", "tests\SQLBI.Whiteboard.Core.SmokeTests\SQLBI.Whiteboard.Core.SmokeTests.csproj", "{53EF7855-88C7-4D6A-A194-4AF36CF10615}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SQLBI.Whiteboard", "src\SQLBI.Whiteboard\SQLBI.Whiteboard.csproj", "{C9300257-0FA9-47E5-B719-F8C957FE5427}"
@@ -20,6 +24,14 @@ Global
 		{2FBD8067-C77F-4F5B-87C5-314423EE9C9D}.Debug|x64.Build.0 = Debug|Any CPU
 		{2FBD8067-C77F-4F5B-87C5-314423EE9C9D}.Release|x64.ActiveCfg = Release|Any CPU
 		{2FBD8067-C77F-4F5B-87C5-314423EE9C9D}.Release|x64.Build.0 = Release|Any CPU
+		{48A8D0B7-3C3F-4B16-92CD-3A8B7352F7E1}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{48A8D0B7-3C3F-4B16-92CD-3A8B7352F7E1}.Debug|x64.Build.0 = Debug|Any CPU
+		{48A8D0B7-3C3F-4B16-92CD-3A8B7352F7E1}.Release|x64.ActiveCfg = Release|Any CPU
+		{48A8D0B7-3C3F-4B16-92CD-3A8B7352F7E1}.Release|x64.Build.0 = Release|Any CPU
+		{B2B15228-5085-4652-B7C7-F82F3781A486}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{B2B15228-5085-4652-B7C7-F82F3781A486}.Debug|x64.Build.0 = Debug|Any CPU
+		{B2B15228-5085-4652-B7C7-F82F3781A486}.Release|x64.ActiveCfg = Release|Any CPU
+		{B2B15228-5085-4652-B7C7-F82F3781A486}.Release|x64.Build.0 = Release|Any CPU
 		{53EF7855-88C7-4D6A-A194-4AF36CF10615}.Debug|x64.ActiveCfg = Debug|Any CPU
 		{53EF7855-88C7-4D6A-A194-4AF36CF10615}.Debug|x64.Build.0 = Debug|Any CPU
 		{53EF7855-88C7-4D6A-A194-4AF36CF10615}.Release|x64.ActiveCfg = Release|Any CPU

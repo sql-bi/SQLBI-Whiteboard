@@ -7,7 +7,7 @@ namespace SQLBI.Whiteboard.Core.Persistence;
 
 public static class BoardArchive
 {
-    public const int CurrentVersion = 3;
+    public const int CurrentVersion = 5;
     private const string SceneEntryName = "scene.json";
 
     private static readonly JsonSerializerOptions JsonOptions = new()
@@ -126,6 +126,19 @@ public static class BoardArchive
             null,
             null,
             null),
+        TextBoardObject text => new ObjectDto(
+            "text",
+            text.Id,
+            text.ZIndex,
+            text.Bounds,
+            null,
+            null,
+            null,
+            null,
+            TextTitle: text.Title,
+            TextContent: text.Text,
+            TextVisualScale: text.VisualScale,
+            TextLanguageId: TextLanguageIds.Normalize(text.LanguageId)),
         LiveViewBoardObject liveView => new ObjectDto(
             "liveView",
             liveView.Id,
@@ -156,6 +169,15 @@ public static class BoardArchive
                 dto.ContainerId),
         "image" when !string.IsNullOrWhiteSpace(dto.AssetId) =>
             new ImageBoardObject(dto.Id, dto.ZIndex, dto.Bounds, dto.AssetId),
+        "text" when dto.TextContent is not null =>
+            new TextBoardObject(
+                dto.Id,
+                dto.ZIndex,
+                dto.Bounds,
+                string.IsNullOrWhiteSpace(dto.TextTitle) ? "Text" : dto.TextTitle,
+                dto.TextContent,
+                NormalizeTextVisualScale(dto.TextVisualScale),
+                TextLanguageIds.Normalize(dto.TextLanguageId)),
         "liveView" when dto.LiveViewSource is not null =>
             new LiveViewBoardObject(
                 dto.Id,
@@ -173,6 +195,9 @@ public static class BoardArchive
         ? frameRate.Value
         : 15;
 
+    private static double NormalizeTextVisualScale(double? scale) =>
+        scale is > 0 and < 100 ? scale.Value : 1;
+
     private sealed record SceneDto(int Version, ObjectDto[] Objects, AssetDto[] Assets);
 
     private sealed record ObjectDto(
@@ -187,7 +212,11 @@ public static class BoardArchive
         LiveViewSourceConfiguration? LiveViewSource = null,
         int? DesiredFrameRate = null,
         bool? CaptureCursor = null,
-        bool? IsFrozen = null);
+        bool? IsFrozen = null,
+        string? TextTitle = null,
+        string? TextContent = null,
+        double? TextVisualScale = null,
+        string? TextLanguageId = null);
 
     private sealed record InkPointDto(double X, double Y, float Pressure, long Timestamp);
 

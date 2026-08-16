@@ -12,10 +12,12 @@ A native Windows 11 whiteboard built with C# and WPF. WPF's dedicated dynamic in
 - Whole-stroke erasing
 - PNG, JPEG, BMP, and GIF import, clipboard bitmap paste, and Explorer drag-and-drop
 - Image selection, movement, resizing, and deletion
-- Image containers automatically carry strokes that touch only that image when moved or resized
+- Text containers created by pasting plain text, with display and in-place edit modes
+- Plain-text, DAX, and SQL Server language modes, with live syntax highlighting and local F6 formatting
+- Containers automatically carry strokes that touch only that container when moved or resized
 - LiveView containers for GPU-backed capture of an application window or display, with freeze/resume and saved last-frame previews
-- Double-click an image to center it and fit it to the canvas
-- Undo and redo for strokes, erasing, images, and image transformations
+- Double-click a container to center it and fit it to the canvas
+- Undo and redo for strokes, erasing, containers, text edits, and transformations
 - Versioned ZIP-based `.wboard` documents with embedded image assets
 - An intentionally small floating toolbar
 
@@ -81,7 +83,7 @@ Use **Copy settings** after finding a useful combination so the exact values can
 | Pen hover | Show the small red pointer dot and hide the arrow |
 | Pen contact | Hide both the pointer dot and arrow |
 | Physical mouse movement | Show the normal arrow |
-| Left mouse | Temporarily select/move/resize an image; return to Pen on release |
+| Left mouse | Temporarily select/move/resize a container; return to the previous drawing tool on release |
 | Double-click container | Center and fit the image or LiveView to the canvas |
 | Double-click empty canvas | Center and fit all board content, or reset an empty board |
 | Pen eraser | Erase complete strokes |
@@ -92,23 +94,32 @@ Use **Copy settings** after finding a useful combination so the exact values can
 | Right mouse | Pan while held; return to Pen on release |
 | Space | Temporarily switch to Pan |
 | Ctrl+Z / Ctrl+Y | Undo / redo |
-| Ctrl+V | Paste an image |
+| Ctrl+V | Paste an image, or create a text container from plain text |
+| F2 | Edit the selected text container |
+| Language selector | Choose Plain text, DAX, or SQL Server while a text container is in edit mode |
+| F6 | Format DAX or SQL Server code while its text container is in edit mode |
+| Ctrl+Enter | Commit the active text edit and return to display mode |
+| Escape | Cancel the active text edit |
 | Ctrl+S / Ctrl+O | Save / open a board |
 | Delete | Delete the selected container and its linked strokes |
 | Tools > Add LiveView | Capture an application window or display as a container |
 | Tools > Freeze selected LiveView | Freeze or resume the selected live feed |
 | Tools > Reconnect selected LiveView | Select a new capture target for the existing container |
 
-With the mouse, selection is automatic: click an image to move it, or drag the circular bottom-right handle to resize it while preserving its aspect ratio. Double-click an image to center it and fit it to the canvas. Releasing the mouse returns to Pen mode.
+With the mouse, selection is automatic: click a container to move it, or drag the circular bottom-right handle to resize it while preserving its aspect ratio. Double-click a container to center it and fit it to the canvas. Releasing the mouse returns to the previously selected drawing tool.
 
-Every imported image currently acts as a container. A completed stroke is linked when it touches exactly one image, including crossing its edge; a stroke touching multiple images remains independent. Moving or resizing an image transforms its linked strokes with it. Deleting a container also deletes all of its linked strokes. Undo/redo treats each complete container operation as one action.
+Imported images, LiveViews, and text objects act as containers. A completed stroke is linked when it touches exactly one container, including crossing its edge; a stroke touching multiple containers remains independent. Moving or resizing a container transforms its linked strokes with it. Deleting a container also deletes all of its linked strokes. Undo/redo treats each complete container operation as one action.
+
+Paste plain text to create a text container and enter edit mode immediately. Text reflows while its edit-mode resize grip changes the width, and the height grows automatically when necessary. Choose **DAX** or **SQL Server** in the title-bar language selector for syntax highlighting in both edit and display modes. A language-aware title identifies a defined DAX or SQL object when possible. Press **F6** to apply the corresponding local formatter. SQL Server mode targets SQL Server 2025 T-SQL, preserves `GO` batch separators, and leaves invalid scripts unchanged. Press **Ctrl+Enter** to commit or **Escape** to restore the previous text, language, and dimensions. In display mode, resizing preserves the aspect ratio and scales the complete text visual without reflowing it.
 
 Image files can be dropped directly from File Explorer. Their initial center is the board position at which they were dropped.
 
 ## Architecture
 
 - `SQLBI.Whiteboard.Core` contains world geometry, camera math, retained board objects, commands, hit testing, and archive persistence. It has no UI-framework dependency.
-- `SQLBI.Whiteboard` is the WPF shell. `InkCanvas` supplies system-managed wet ink, while `BoardSurface` renders completed ink, images, and selection on a white canvas in camera space.
+- `SQLBI.Whiteboard.Dax` contains the framework-neutral DAX lexer, parser, classifier, and deterministic formatter adapted from Prompt Assistant.
+- `SQLBI.Whiteboard.SqlServer` contains the framework-neutral SQL Server 2025 adapter over Microsoft's ScriptDOM parser and script generator.
+- `SQLBI.Whiteboard` is the WPF shell. `InkCanvas` supplies system-managed wet ink, while `BoardSurface` renders completed ink, images, text, and selection on a white canvas in camera space. A transient AvalonEdit surface is overlaid only while a text container is being edited; language services translate parser classifications into WPF text styles.
 - `SQLBI.Whiteboard/LiveView` owns Windows Graphics Capture and the Direct3D-to-WPF bridge. Capture retains one GPU frame per active LiveView; CPU bitmap conversion occurs only when copying or saving a snapshot.
 - `SQLBI.Whiteboard.Core.SmokeTests` is a package-free executable test harness for camera anchoring, commands, hit testing, and archive round trips.
 

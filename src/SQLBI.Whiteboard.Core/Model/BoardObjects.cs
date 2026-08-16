@@ -240,6 +240,30 @@ public sealed record ImageBoardObject(
     RectD Bounds,
     string AssetId) : BoardObject(Id, ZIndex, Bounds), IBoardContainer;
 
+public static class TextLanguageIds
+{
+    public const string Plain = "plain";
+    public const string Dax = "dax";
+    public const string SqlServer = "sqlserver";
+
+    public static string Normalize(string? languageId) =>
+        languageId?.Trim().ToLowerInvariant() switch
+        {
+            Dax => Dax,
+            SqlServer => SqlServer,
+            _ => Plain,
+        };
+}
+
+public record TextBoardObject(
+    Guid Id,
+    int ZIndex,
+    RectD Bounds,
+    string Title,
+    string Text,
+    double VisualScale = 1,
+    string LanguageId = TextLanguageIds.Plain) : BoardObject(Id, ZIndex, Bounds), IBoardContainer;
+
 public enum LiveViewSourceKind
 {
     Unknown,

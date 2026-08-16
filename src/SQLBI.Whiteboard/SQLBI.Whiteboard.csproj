@@ -15,8 +15,11 @@
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\SQLBI.Whiteboard.Core\SQLBI.Whiteboard.Core.csproj" />
+    <ProjectReference Include="..\SQLBI.Whiteboard.Dax\SQLBI.Whiteboard.Dax.csproj" />
+    <ProjectReference Include="..\SQLBI.Whiteboard.SqlServer\SQLBI.Whiteboard.SqlServer.csproj" />
   </ItemGroup>
   <ItemGroup>
+    <PackageReference Include="AvalonEdit" Version="6.3.1.120" />
     <PackageReference Include="Vortice.Wpf" Version="3.8.3" />
   </ItemGroup>
 </Project>

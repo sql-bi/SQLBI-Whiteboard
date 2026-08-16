@@ -25,6 +25,8 @@ internal sealed class BoardSurface : FrameworkElement
 
     public Guid? HoveredObjectId { get; set; }
 
+    public Guid? HiddenObjectId { get; set; }
+
     public Func<Guid, ImageSource?>? LiveViewImageSourceProvider { get; set; }
 
     public void Configure(BoardDocument document, Camera2D camera)
@@ -53,6 +55,11 @@ internal sealed class BoardSurface : FrameworkElement
 
         foreach (var item in _document.Query(_camera.VisibleWorldBounds))
         {
+            if (item.Id == HiddenObjectId)
+            {
+                continue;
+            }
+
             switch (item)
             {
                 case InkStrokeObject stroke:
@@ -63,6 +70,13 @@ internal sealed class BoardSurface : FrameworkElement
                     break;
                 case LiveViewBoardObject liveView:
                     DrawLiveView(drawingContext, liveView, _document, _camera);
+                    break;
+                case TextBoardObject text:
+                    TextContainerVisual.Draw(
+                        drawingContext,
+                        text,
+                        _camera,
+                        VisualTreeHelper.GetDpi(this).PixelsPerDip);
                     break;
             }
         }

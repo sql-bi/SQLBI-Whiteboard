@@ -9,6 +9,8 @@ using System.Windows.Input;
 using System.Windows.Interop;
 using System.Windows.Media;
 using System.Windows.Media.Effects;
+using System.Windows.Threading;
+using ICSharpCode.AvalonEdit.Document;
 using Microsoft.Win32;
 using SQLBI.Whiteboard.Core.Commands;
 using SQLBI.Whiteboard.Core.Geometry;
@@ -88,6 +90,14 @@ public partial class MainWindow : Window
     private InkStrokeObject[] _containerGestureLinkedCurrent = [];
     private PointD _containerGestureStartWorld;
     private bool _containerGestureIsResize;
+    private TextBoardObject? _textEditBefore;
+    private InkStrokeObject[] _textEditLinkedBefore = [];
+    private RectD _textEditBounds;
+    private bool _updatingTextEditor;
+    private string _textEditLanguageId = TextLanguageIds.Plain;
+    private readonly TextClassificationColorizer _textColorizer = new();
+    private readonly DispatcherTimer _textHighlightTimer;
+    private CancellationTokenSource? _textAnalysisCancellation;
     private bool _isFullScreen;
     private bool _isToolPaletteHidden;
     private bool _isInkOptionsOpen;
@@ -103,6 +113,15 @@ public partial class MainWindow : Window
     public MainWindow()
     {
         InitializeComponent();
+        TextEditorLanguageCombo.ItemsSource = TextLanguageRegistry.All;
+        TextEditor.TextArea.TextView.LineTransformers.Add(_textColorizer);
+        TextEditor.Options.ConvertTabsToSpaces = true;
+        TextEditor.Options.IndentationSize = 4;
+        _textHighlightTimer = new DispatcherTimer(DispatcherPriority.Background)
+        {
+            Interval = TimeSpan.FromMilliseconds(75),
+        };
+        _textHighlightTimer.Tick += TextHighlightTimer_Tick;
         SourceInitialized += MainWindow_SourceInitialized;
         _document.Changed += Document_Changed;
         _history.Changed += History_Changed;
@@ -129,6 +148,7 @@ public partial class MainWindow : Window
         _camera.Resize(e.NewSize.Width, e.NewSize.Height);
         SceneSurface.InvalidateVisual();
         UpdateLiveViewActionOverlay();
+        UpdateTextEditorOverlay();
     }
 
     private void Document_Changed(object? sender, EventArgs e)
@@ -152,6 +172,7 @@ public partial class MainWindow : Window
         SceneSurface.SelectedObjectId = _selectedObjectId;
         SceneSurface.InvalidateVisual();
         UpdateLiveViewActionOverlay();
+        UpdateTextEditorOverlay();
     }
 
     private void History_Changed(object? sender, EventArgs e)
@@ -206,6 +227,8 @@ public partial class MainWindow : Window
 
     private void InkSurface_PreviewStylusDown(object sender, StylusDownEventArgs e)
     {
+        CommitTextEdit();
+
         if (IsTouchStylus(e))
         {
             InkSurface.RegisterTouchTablet(e.StylusDevice.TabletDevice.Id);
@@ -703,6 +726,7 @@ public partial class MainWindow : Window
             return;
         }
 
+        CommitTextEdit();
         InkSurface.Focus();
         var screen = ToPointD(e.GetPosition(InkSurface));
         if (e.ChangedButton is MouseButton.Middle or MouseButton.Right)
@@ -881,6 +905,22 @@ public partial class MainWindow : Window
             return;
         }
 
+        ZoomAtMouseWheel(e);
+    }
+
+    private void TextEditorBorder_PreviewMouseWheel(object sender, MouseWheelEventArgs e)
+    {
+        if (e.StylusDevice is not null ||
+            !Keyboard.Modifiers.HasFlag(ModifierKeys.Control))
+        {
+            return;
+        }
+
+        ZoomAtMouseWheel(e);
+    }
+
+    private void ZoomAtMouseWheel(MouseWheelEventArgs e)
+    {
         var screen = ToPointD(e.GetPosition(InkSurface));
         var factor = Math.Pow(1.0015, e.Delta);
         _camera.ZoomAt(screen, _camera.Zoom * factor);
@@ -995,6 +1035,7 @@ public partial class MainWindow : Window
 
         SceneSurface.InvalidateVisual();
         UpdateLiveViewActionOverlay();
+        UpdateTextEditorOverlay();
     }
 
     private void ClearSelection()
@@ -1184,9 +1225,354 @@ public partial class MainWindow : Window
     private static BoardObject WithBounds(BoardObject item, RectD bounds) => item switch
     {
         ImageBoardObject image => image with { Bounds = bounds },
+        TextBoardObject text => text with
+        {
+            Bounds = bounds,
+            VisualScale = text.VisualScale * (bounds.Width / Math.Max(0.000001, text.Bounds.Width)),
+        },
         LiveViewBoardObject liveView => liveView with { Bounds = bounds },
         _ => throw new NotSupportedException($"Unsupported container type {item.GetType().Name}."),
     };
+
+    private void BeginTextEdit(TextBoardObject textObject)
+    {
+        if (_textEditBefore?.Id == textObject.Id)
+        {
+            TextEditor.Focus();
+            return;
+        }
+
+        CommitTextEdit();
+        ResetContainerGesture();
+        _textEditBefore = textObject;
+        _textEditLinkedBefore = _document.LinkedStrokes(textObject.Id).ToArray();
+        _textEditBounds = textObject.Bounds;
+        _selectedObjectId = textObject.Id;
+        SceneSurface.SelectedObjectId = null;
+        SceneSurface.HoveredObjectId = null;
+        SceneSurface.HiddenObjectId = textObject.Id;
+
+        _updatingTextEditor = true;
+        _textEditLanguageId = TextLanguageIds.Normalize(textObject.LanguageId);
+        ITextLanguageService language = TextLanguageRegistry.Resolve(_textEditLanguageId);
+        TextEditor.Document = new TextDocument(textObject.Text);
+        TextEditor.CaretOffset = TextEditor.Text.Length;
+        ApplyTextEditorLanguage(language, updateCombo: true);
+        RequestTextEditorAnalysis();
+        _updatingTextEditor = false;
+        EnsureTextEditFits();
+
+        UpdateLiveViewActionOverlay();
+        UpdateTextEditorOverlay();
+        UpdateTextEditHistoryMenuState();
+        SceneSurface.InvalidateVisual();
+        _ = Dispatcher.InvokeAsync(
+            () =>
+            {
+                TextEditor.Focus();
+                Keyboard.Focus(TextEditor);
+                TextEditor.CaretOffset = TextEditor.Text.Length;
+            },
+            DispatcherPriority.Input);
+    }
+
+    private void CommitTextEdit()
+    {
+        if (_textEditBefore is not { } before)
+        {
+            return;
+        }
+
+        InkStrokeObject[] linkedBefore = _textEditLinkedBefore;
+        RectD afterBounds = _textEditBounds;
+        var after = before with
+        {
+            Bounds = afterBounds,
+            Text = TextEditor.Text,
+            LanguageId = _textEditLanguageId,
+        };
+        InkStrokeObject[] linkedAfter = before.Bounds == afterBounds
+            ? linkedBefore
+            : linkedBefore
+                .Select(stroke => stroke.TransformWithContainer(before.Bounds, afterBounds))
+                .ToArray();
+
+        EndTextEditVisual(before.Id);
+        if (before == after)
+        {
+            return;
+        }
+
+        BoardObject[] beforeItems = [before, .. linkedBefore];
+        BoardObject[] afterItems = [after, .. linkedAfter];
+        _history.Execute(new ReplaceObjectsCommand(beforeItems, afterItems), _document);
+    }
+
+    private void CancelTextEdit()
+    {
+        if (_textEditBefore is not { } before)
+        {
+            return;
+        }
+
+        EndTextEditVisual(before.Id);
+    }
+
+    private void EndTextEditVisual(Guid? selectedObjectId)
+    {
+        _textEditBefore = null;
+        _textEditLinkedBefore = [];
+        _textEditBounds = default;
+        _updatingTextEditor = false;
+        _textHighlightTimer.Stop();
+        CancelTextEditorAnalysis();
+        _textEditLanguageId = TextLanguageIds.Plain;
+        _textColorizer.Update([], new FontFamily("Segoe UI"));
+        TextEditorBorder.Visibility = Visibility.Collapsed;
+        SceneSurface.HiddenObjectId = null;
+        _selectedObjectId = selectedObjectId;
+        SceneSurface.SelectedObjectId = selectedObjectId;
+        SceneSurface.InvalidateVisual();
+        UpdateLiveViewActionOverlay();
+        History_Changed(this, EventArgs.Empty);
+        InkSurface.Focus();
+    }
+
+    private void TextEditor_TextChanged(object? sender, EventArgs e)
+    {
+        if (_updatingTextEditor || _textEditBefore is null)
+        {
+            return;
+        }
+
+        EnsureTextEditFits();
+        UpdateTextEditorOverlay();
+        UpdateTextEditHistoryMenuState();
+        _textHighlightTimer.Stop();
+        _textHighlightTimer.Start();
+    }
+
+    private void TextEditorLanguageCombo_SelectionChanged(
+        object sender,
+        SelectionChangedEventArgs e)
+    {
+        if (_updatingTextEditor ||
+            _textEditBefore is null ||
+            TextEditorLanguageCombo.SelectedItem is not ITextLanguageService language)
+        {
+            return;
+        }
+
+        _textEditLanguageId = language.Id;
+        ApplyTextEditorLanguage(language, updateCombo: false);
+        EnsureTextEditFits();
+        UpdateTextEditorOverlay();
+        RequestTextEditorAnalysis();
+        TextEditor.Focus();
+    }
+
+    private void TextHighlightTimer_Tick(object? sender, EventArgs e)
+    {
+        _textHighlightTimer.Stop();
+        RequestTextEditorAnalysis();
+    }
+
+    private void ApplyTextEditorLanguage(
+        ITextLanguageService language,
+        bool updateCombo)
+    {
+        TextEditor.FontFamily = new FontFamily(language.FontFamilyName);
+        TextEditor.WordWrap = language.WordWrap;
+        TextEditor.ShowLineNumbers = language.ShowLineNumbers;
+        TextEditor.HorizontalScrollBarVisibility = language.WordWrap
+            ? ScrollBarVisibility.Disabled
+            : ScrollBarVisibility.Auto;
+        if (updateCombo)
+        {
+            TextEditorLanguageCombo.SelectedItem = language;
+        }
+    }
+
+    private async void RequestTextEditorAnalysis()
+    {
+        if (_textEditBefore is not { } textObject)
+        {
+            return;
+        }
+
+        CancelTextEditorAnalysis();
+        var cancellation = new CancellationTokenSource();
+        _textAnalysisCancellation = cancellation;
+        ITextLanguageService language = TextLanguageRegistry.Resolve(_textEditLanguageId);
+        string source = TextEditor.Text;
+        string languageId = _textEditLanguageId;
+        try
+        {
+            TextLanguageAnalysis analysis = language.UseBackgroundAnalysis
+                ? await Task.Run(
+                    () => language.Analyze(source, textObject.Title),
+                    cancellation.Token)
+                : language.Analyze(source, textObject.Title);
+            if (cancellation.IsCancellationRequested ||
+                _textEditBefore?.Id != textObject.Id ||
+                _textEditLanguageId != languageId ||
+                !string.Equals(TextEditor.Text, source, StringComparison.Ordinal))
+            {
+                return;
+            }
+
+            TextEditorTitle.Text = analysis.Title;
+            _textColorizer.Update(
+                analysis.Spans,
+                new FontFamily(language.FontFamilyName));
+            TextEditor.TextArea.TextView.Redraw();
+        }
+        catch (OperationCanceledException)
+        {
+        }
+        catch (Exception exception)
+        {
+            Debug.WriteLine($"[TextEditor] Language analysis failed: {exception.Message}");
+        }
+        finally
+        {
+            if (ReferenceEquals(_textAnalysisCancellation, cancellation))
+            {
+                _textAnalysisCancellation = null;
+                cancellation.Dispose();
+            }
+        }
+    }
+
+    private void CancelTextEditorAnalysis()
+    {
+        CancellationTokenSource? cancellation = _textAnalysisCancellation;
+        _textAnalysisCancellation = null;
+        if (cancellation is null)
+        {
+            return;
+        }
+
+        cancellation.Cancel();
+        cancellation.Dispose();
+    }
+
+    private void FormatTextEdit()
+    {
+        if (_textEditBefore is null)
+        {
+            return;
+        }
+
+        ITextLanguageService language = TextLanguageRegistry.Resolve(_textEditLanguageId);
+        if (!language.CanFormat ||
+            !language.TryFormat(TextEditor.Text, out string formatted) ||
+            string.Equals(TextEditor.Text, formatted, StringComparison.Ordinal))
+        {
+            return;
+        }
+
+        int caretOffset = TextEditor.CaretOffset;
+        using (TextEditor.Document.RunUpdate())
+        {
+            TextEditor.Document.Replace(0, TextEditor.Document.TextLength, formatted);
+        }
+
+        TextEditor.CaretOffset = Math.Min(caretOffset, formatted.Length);
+        EnsureTextEditFits();
+        UpdateTextEditorOverlay();
+        UpdateTextEditHistoryMenuState();
+        _textHighlightTimer.Stop();
+        RequestTextEditorAnalysis();
+    }
+
+    private void TextEditorResizeThumb_DragDelta(object sender, DragDeltaEventArgs e)
+    {
+        if (_textEditBefore is not { } textObject)
+        {
+            return;
+        }
+
+        double minimumWidth = TextContainerVisual.MinimumWidth * textObject.VisualScale;
+        double requestedWidth = Math.Max(
+            minimumWidth,
+            _textEditBounds.Width + (e.HorizontalChange / _camera.Zoom));
+        double requestedHeight = Math.Max(
+            TextContainerVisual.MeasureDesiredHeight(
+                string.Empty,
+                requestedWidth,
+                textObject.VisualScale,
+                VisualTreeHelper.GetDpi(SceneSurface).PixelsPerDip,
+                _textEditLanguageId),
+            _textEditBounds.Height + (e.VerticalChange / _camera.Zoom));
+        _textEditBounds = _textEditBounds.WithSize(requestedWidth, requestedHeight);
+        EnsureTextEditFits();
+        UpdateTextEditorOverlay();
+    }
+
+    private void EnsureTextEditFits()
+    {
+        if (_textEditBefore is not { } textObject)
+        {
+            return;
+        }
+
+        double desiredHeight = TextContainerVisual.MeasureDesiredHeight(
+            TextEditor.Text,
+            _textEditBounds.Width,
+            textObject.VisualScale,
+            VisualTreeHelper.GetDpi(SceneSurface).PixelsPerDip,
+            _textEditLanguageId);
+        if (desiredHeight > _textEditBounds.Height)
+        {
+            _textEditBounds = _textEditBounds.WithSize(_textEditBounds.Width, desiredHeight);
+        }
+    }
+
+    private void UpdateTextEditorOverlay()
+    {
+        if (_textEditBefore is not { } textObject)
+        {
+            TextEditorBorder.Visibility = Visibility.Collapsed;
+            return;
+        }
+
+        PointD topLeft = _camera.WorldToScreen(
+            new PointD(_textEditBounds.Left, _textEditBounds.Top));
+        PointD bottomRight = _camera.WorldToScreen(
+            new PointD(_textEditBounds.Right, _textEditBounds.Bottom));
+        double width = Math.Max(1, bottomRight.X - topLeft.X);
+        double height = Math.Max(1, bottomRight.Y - topLeft.Y);
+        double scale = Math.Max(0.01, textObject.VisualScale * _camera.Zoom);
+
+        Canvas.SetLeft(TextEditorBorder, topLeft.X);
+        Canvas.SetTop(TextEditorBorder, topLeft.Y);
+        TextEditorBorder.Width = width;
+        TextEditorBorder.Height = height;
+        TextEditorBorder.BorderThickness = new Thickness(
+            Math.Max(0.5, TextContainerVisual.BorderThickness * scale));
+        TextEditorTitleRow.Height = new GridLength(TextContainerVisual.TitleBarHeight * scale);
+        TextEditorTitle.Margin = new Thickness(TextContainerVisual.ContentPadding * scale, 0, 0, 0);
+        TextEditorTitle.FontSize = Math.Max(1, TextContainerVisual.TitleFontSize * scale);
+        TextEditorLanguageCombo.Width = Math.Max(72, 110 * scale);
+        TextEditorLanguageCombo.Height = Math.Max(18, 22 * scale);
+        TextEditorLanguageCombo.Margin = new Thickness(0, 0, 6 * scale, 0);
+        TextEditorLanguageCombo.FontSize = Math.Max(1, 12 * scale);
+        TextEditorBodyBorder.Padding = new Thickness(TextContainerVisual.ContentPadding * scale);
+        TextEditor.FontSize = Math.Max(1, TextContainerVisual.BodyFontSize * scale);
+        TextEditorBorder.Visibility = Visibility.Visible;
+    }
+
+    private void UpdateTextEditHistoryMenuState()
+    {
+        if (_textEditBefore is null)
+        {
+            return;
+        }
+
+        UndoMenuItem.IsEnabled = TextEditor.CanUndo;
+        RedoMenuItem.IsEnabled = TextEditor.CanRedo;
+    }
 
     private void PenToolButton_Click(object sender, RoutedEventArgs e)
     {
@@ -1290,6 +1676,7 @@ public partial class MainWindow : Window
 
     private void SetActiveTool(BoardTool tool)
     {
+        CommitTextEdit();
         _activeTool = tool;
         if (tool is BoardTool.Pen or BoardTool.Highlighter or BoardTool.Calligraphy)
         {
@@ -2085,8 +2472,17 @@ public partial class MainWindow : Window
     private async void ImportButton_Click(object sender, RoutedEventArgs e) =>
         await ImportImageAsync();
 
-    private async void PasteButton_Click(object sender, RoutedEventArgs e) =>
+    private async void PasteButton_Click(object sender, RoutedEventArgs e)
+    {
+        if (_textEditBefore is not null)
+        {
+            TextEditor.Paste();
+            TextEditor.Focus();
+            return;
+        }
+
         await PasteFromClipboardAsync();
+    }
 
     private async void OpenButton_Click(object sender, RoutedEventArgs e) =>
         await OpenBoardAsync();
@@ -2206,6 +2602,7 @@ public partial class MainWindow : Window
 
     private void NewMenuItem_Click(object sender, RoutedEventArgs e)
     {
+        CommitTextEdit();
         if ((_document.Objects.Count > 0 || _document.Assets.Count > 0) &&
             MessageBox.Show(
                 this,
@@ -2230,11 +2627,37 @@ public partial class MainWindow : Window
     private void CopyMenuItem_Click(object sender, RoutedEventArgs e) =>
         CopySelectionToClipboard();
 
-    private void UndoButton_Click(object sender, RoutedEventArgs e) =>
-        _history.Undo(_document);
+    private void UndoButton_Click(object sender, RoutedEventArgs e)
+    {
+        if (_textEditBefore is not null)
+        {
+            if (TextEditor.CanUndo)
+            {
+                TextEditor.Undo();
+            }
 
-    private void RedoButton_Click(object sender, RoutedEventArgs e) =>
+            TextEditor.Focus();
+            return;
+        }
+
+        _history.Undo(_document);
+    }
+
+    private void RedoButton_Click(object sender, RoutedEventArgs e)
+    {
+        if (_textEditBefore is not null)
+        {
+            if (TextEditor.CanRedo)
+            {
+                TextEditor.Redo();
+            }
+
+            TextEditor.Focus();
+            return;
+        }
+
         _history.Redo(_document);
+    }
 
     private async Task ImportImageAsync()
     {
@@ -2264,25 +2687,29 @@ public partial class MainWindow : Window
     {
         try
         {
-            if (!Clipboard.ContainsImage())
+            if (Clipboard.ContainsImage())
             {
+                var bitmap = Clipboard.GetImage();
+                if (bitmap is null)
+                {
+                    return Task.CompletedTask;
+                }
+
+                AddImage(
+                    WpfImageCodec.EncodePng(bitmap),
+                    "clipboard-image.png",
+                    "image/png");
                 return Task.CompletedTask;
             }
 
-            var bitmap = Clipboard.GetImage();
-            if (bitmap is null)
+            if (Clipboard.ContainsText(TextDataFormat.UnicodeText))
             {
-                return Task.CompletedTask;
+                AddText(Clipboard.GetText(TextDataFormat.UnicodeText));
             }
-
-            AddImage(
-                WpfImageCodec.EncodePng(bitmap),
-                "clipboard-image.png",
-                "image/png");
         }
         catch (Exception exception)
         {
-            ShowError("Could not paste image", exception);
+            ShowError("Could not paste clipboard content", exception);
         }
 
         return Task.CompletedTask;
@@ -2320,6 +2747,41 @@ public partial class MainWindow : Window
         SceneSurface.SelectedObjectId = image.Id;
         SetActiveTool(BoardTool.Select);
         UpdateLiveViewActionOverlay();
+    }
+
+    private void AddText(string text, PointD? worldCenter = null)
+    {
+        if (string.IsNullOrEmpty(text))
+        {
+            return;
+        }
+
+        double visibleWidth = _camera.VisibleWorldBounds.Width;
+        double width = Math.Min(
+            TextContainerVisual.DefaultWidth,
+            Math.Max(320, visibleWidth * 0.7));
+        double height = TextContainerVisual.MeasureDesiredHeight(
+            text,
+            width,
+            1,
+            VisualTreeHelper.GetDpi(SceneSurface).PixelsPerDip);
+        PointD center = worldCenter ?? _camera.Center;
+        var textObject = new TextBoardObject(
+            Guid.NewGuid(),
+            _document.NextZIndex,
+            new RectD(
+                center.X - (width / 2),
+                center.Y - (height / 2),
+                width,
+                height),
+            "Text",
+            text);
+
+        _history.Execute(new AddObjectCommand(textObject), _document);
+        _selectedObjectId = textObject.Id;
+        SceneSurface.SelectedObjectId = textObject.Id;
+        SetActiveTool(BoardTool.Select);
+        BeginTextEdit(textObject);
     }
 
     private async Task AddLiveViewAsync()
@@ -2627,6 +3089,7 @@ public partial class MainWindow : Window
 
     private async Task SaveBoardAsync(bool saveAs = false)
     {
+        CommitTextEdit();
         var filePath = _currentBoardPath;
         if (saveAs || string.IsNullOrWhiteSpace(filePath))
         {
@@ -2669,6 +3132,7 @@ public partial class MainWindow : Window
 
     private async Task OpenBoardAsync()
     {
+        CommitTextEdit();
         var dialog = new OpenFileDialog
         {
             Title = "Open board",
@@ -2702,6 +3166,11 @@ public partial class MainWindow : Window
 
     private void ReplaceDocument(BoardDocument replacement)
     {
+        if (_textEditBefore is not null)
+        {
+            EndTextEditVisual(null);
+        }
+
         DisposeAllLiveViewPresenters();
         _document.Changed -= Document_Changed;
         _document = replacement;
@@ -2712,6 +3181,11 @@ public partial class MainWindow : Window
 
     private void ResetBoardView()
     {
+        if (_textEditBefore is not null)
+        {
+            EndTextEditVisual(null);
+        }
+
         _camera.Reset();
         _selectedObjectId = null;
         SceneSurface.SelectedObjectId = null;
@@ -2726,9 +3200,21 @@ public partial class MainWindow : Window
     {
         try
         {
+            if (_textEditBefore is not null)
+            {
+                TextEditor.Copy();
+                return;
+            }
+
             if (_selectedObjectId is not Guid selectedId ||
                 _document.Objects.FirstOrDefault(item => item.Id == selectedId) is not { } selected)
             {
+                return;
+            }
+
+            if (selected is TextBoardObject text)
+            {
+                Clipboard.SetText(text.Text, TextDataFormat.UnicodeText);
                 return;
             }
 
@@ -2823,6 +3309,48 @@ public partial class MainWindow : Window
             return;
         }
 
+        var modifiers = Keyboard.Modifiers;
+        var controlDown = modifiers.HasFlag(ModifierKeys.Control);
+        var shiftDown = modifiers.HasFlag(ModifierKeys.Shift);
+        if (_textEditBefore is not null)
+        {
+            if (e.Key == Key.F6 && !e.IsRepeat)
+            {
+                FormatTextEdit();
+                e.Handled = true;
+            }
+            else if (shiftDown && e.Key == Key.F12)
+            {
+                CommitTextEdit();
+                _ = SaveBoardAsync(saveAs: true);
+                e.Handled = true;
+            }
+            else if (controlDown && e.Key == Key.S)
+            {
+                CommitTextEdit();
+                _ = SaveBoardAsync();
+                e.Handled = true;
+            }
+            else if (controlDown && e.Key == Key.O)
+            {
+                CommitTextEdit();
+                _ = OpenBoardAsync();
+                e.Handled = true;
+            }
+            else if (controlDown && e.Key == Key.Enter)
+            {
+                CommitTextEdit();
+                e.Handled = true;
+            }
+            else if (e.Key == Key.Escape)
+            {
+                CancelTextEdit();
+                e.Handled = true;
+            }
+
+            return;
+        }
+
         if (_isFullScreen && e.Key == Key.Escape)
         {
             ExitFullScreen();
@@ -2830,10 +3358,14 @@ public partial class MainWindow : Window
             return;
         }
 
-        var modifiers = Keyboard.Modifiers;
-        var controlDown = modifiers.HasFlag(ModifierKeys.Control);
-        var shiftDown = modifiers.HasFlag(ModifierKeys.Shift);
-        if (shiftDown && e.Key == Key.F12)
+        if (e.Key == Key.F2 &&
+            _selectedObjectId is Guid textObjectId &&
+            _document.Objects.FirstOrDefault(item => item.Id == textObjectId) is TextBoardObject textObject)
+        {
+            BeginTextEdit(textObject);
+            e.Handled = true;
+        }
+        else if (shiftDown && e.Key == Key.F12)
         {
             _ = SaveBoardAsync(saveAs: true);
             e.Handled = true;
@@ -2988,6 +3520,7 @@ public partial class MainWindow : Window
 
     private void Window_Closing(object? sender, CancelEventArgs e)
     {
+        CommitTextEdit();
         // Unregister Vortice's retained Window.Closed callbacks and unload the
         // D3D surfaces before the Closed event begins. This guarantees one
         // native teardown path for both live and already-paused presenters.

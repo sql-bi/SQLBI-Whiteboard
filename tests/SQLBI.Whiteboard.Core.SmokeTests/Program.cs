@@ -1,9 +1,13 @@
+using System.IO.Compression;
+using System.Text;
 using SQLBI.Whiteboard.Core.Commands;
 using SQLBI.Whiteboard.Core.Geometry;
 using SQLBI.Whiteboard.Core.Model;
 using SQLBI.Whiteboard.Core.Persistence;
 using SQLBI.Whiteboard.Core.Settings;
 using SQLBI.Whiteboard.Core.Viewport;
+using SQLBI.Whiteboard.Dax;
+using SQLBI.Whiteboard.SqlServer;
 
 var camera = new Camera2D();
 camera.Resize(1000, 800);
@@ -129,6 +133,17 @@ var liveViewStroke = InkStrokeObject.Create(
 Assert(
     containerDocument.FindSingleTouchedContainer(liveViewStroke)?.Id == liveViewContainer.Id,
     "A stroke touching one LiveView should link to it like any other container.");
+var textContainer = new TextBoardObject(
+    Guid.NewGuid(),
+    containerDocument.NextZIndex,
+    new RectD(900, 100, 420, 220),
+    "Text",
+    "A plain text container",
+    1.5);
+containerDocument.AddObject(textContainer);
+Assert(
+    containerDocument.HitTestTopContainer(new PointD(1000, 150))?.Id == textContainer.Id,
+    "Text should participate in generic container hit testing.");
 
 var linkedStroke = singleContainerStroke with { ContainerId = firstContainer.Id };
 containerDocument.AddObject(linkedStroke);
@@ -166,6 +181,18 @@ AssertNear(
     resizedStroke.Points[1].Position.X,
     "Resizing must scale linked stroke positions from the container origin.");
 AssertNear(8, resizedStroke.Style.Thickness, "Resizing must scale linked stroke thickness.");
+var textLinkedStroke = InkStrokeObject.Create(
+    [new InkPoint(new PointD(980, 160), 0.5f, 1)],
+    PenStyle.Default,
+    containerDocument.NextZIndex,
+    containerId: textContainer.Id);
+containerDocument.AddObject(textLinkedStroke);
+Assert(
+    containerDocument.GetDeletionGroup(textContainer.Id)
+        .Select(item => item.Id)
+        .ToHashSet()
+        .SetEquals(new[] { textContainer.Id, textLinkedStroke.Id }),
+    "Deleting text should include its linked strokes like every other container.");
 
 var secondLinkedStroke = InkStrokeObject.Create(
     [new InkPoint(new PointD(160, 160), 0.6f, 3)],
@@ -225,12 +252,21 @@ var archivedLiveView = new LiveViewBoardObject(
     CaptureCursor: true,
     IsFrozen: true);
 document.AddObject(archivedLiveView);
+var archivedText = new TextBoardObject(
+    Guid.NewGuid(),
+    document.NextZIndex,
+    new RectD(400, 300, 500, 240),
+    "Notes",
+    "First line\nSecond line",
+    1.75,
+    TextLanguageIds.Dax);
+document.AddObject(archivedText);
 
 await using var archive = new MemoryStream();
 await BoardArchive.SaveAsync(document, archive);
 archive.Position = 0;
 var loaded = await BoardArchive.LoadAsync(archive);
-Assert(loaded.Objects.Count == 4, "Archive should round-trip scene objects.");
+Assert(loaded.Objects.Count == 5, "Archive should round-trip scene objects.");
 Assert(loaded.Assets[asset.Id].Data.SequenceEqual(asset.Data), "Archive should round-trip asset bytes.");
 Assert(
     loaded.Objects.OfType<InkStrokeObject>()
@@ -249,6 +285,70 @@ Assert(
         Source.StableId: "DISPLAY4",
     },
     "Archive should preserve LiveView configuration and its last bitmap asset reference.");
+Assert(
+    loaded.Objects.OfType<TextBoardObject>().Single() is
+    {
+        Title: "Notes",
+        Text: "First line\nSecond line",
+        VisualScale: 1.75,
+        LanguageId: TextLanguageIds.Dax,
+    },
+    "Archive should preserve text content, title, visual scale, and language.");
+
+Guid legacyTextId = Guid.NewGuid();
+string legacyScene = $$"""
+{
+  "version": 4,
+  "objects": [
+    {
+      "type": "text",
+      "id": "{{legacyTextId}}",
+      "zIndex": 0,
+      "bounds": { "x": 10, "y": 20, "width": 300, "height": 120 },
+      "textTitle": "Legacy note",
+      "textContent": "Saved before language support",
+      "textVisualScale": 1
+    }
+  ],
+  "assets": []
+}
+""";
+await using var legacyArchiveStream = new MemoryStream();
+using (var legacyArchive = new ZipArchive(
+           legacyArchiveStream,
+           ZipArchiveMode.Create,
+           leaveOpen: true))
+{
+    ZipArchiveEntry sceneEntry = legacyArchive.CreateEntry("scene.json");
+    await using Stream sceneStream = sceneEntry.Open();
+    await sceneStream.WriteAsync(Encoding.UTF8.GetBytes(legacyScene));
+}
+
+legacyArchiveStream.Position = 0;
+BoardDocument legacyDocument = await BoardArchive.LoadAsync(legacyArchiveStream);
+Assert(
+    legacyDocument.Objects.OfType<TextBoardObject>().Single().LanguageId ==
+    TextLanguageIds.Plain,
+    "Text containers from version 4 archives should load as plain text.");
+
+var sqlArchiveDocument = new BoardDocument();
+var archivedSqlText = new TextBoardObject(
+    Guid.NewGuid(),
+    sqlArchiveDocument.NextZIndex,
+    new RectD(40, 60, 640, 320),
+    "Text",
+    "SELECT CustomerKey FROM dbo.Customer;",
+    1,
+    TextLanguageIds.SqlServer);
+sqlArchiveDocument.AddObject(archivedSqlText);
+await using var sqlArchive = new MemoryStream();
+await BoardArchive.SaveAsync(sqlArchiveDocument, sqlArchive);
+sqlArchive.Position = 0;
+BoardDocument loadedSqlArchive = await BoardArchive.LoadAsync(sqlArchive);
+Assert(
+    loadedSqlArchive.Objects.OfType<TextBoardObject>().Single().LanguageId ==
+    TextLanguageIds.SqlServer,
+    "Archive round trips should preserve the SQL Server text language.");
 
 AssertNear(
     20,
@@ -365,6 +465,194 @@ Assert(
         "{ \"pen\": { \"argb\": 1, \"thickness\": 99 } }").Pen.Argb ==
     InkPalettes.DefaultPen.Argb,
     "Saved ink that is no longer in the palette should fall back to the tool default.");
+
+var daxSource = """
+Tricky :=
+-- a real comment
+VAR Year = 2024
+VAR Note = "-- not a comment"
+RETURN Year & Note & Sales[Amount]
+""";
+Assert(
+    DaxLanguageEngine.DefaultMaximumLineLength == 65,
+    "DAX formatting should use the configured 65-character default line length.");
+Assert(
+    DaxLanguageEngine.TryFormat(
+        daxSource,
+        DaxLanguageEngine.DefaultMaximumLineLength,
+        out string formattedDax),
+    "Valid DAX should be formatted successfully.");
+Assert(
+    formattedDax.Contains("VAR Year =", StringComparison.Ordinal) &&
+    formattedDax.Contains("RETURN", StringComparison.Ordinal),
+    "DAX formatting should retain declarations and RETURN expressions.");
+Assert(
+    DaxLanguageEngine.Format(formattedDax) == formattedDax,
+    "DAX formatting should be idempotent.");
+
+IReadOnlyList<DaxClassifiedSpan> daxSpans = DaxLanguageEngine.Classify(formattedDax);
+string DaxText(DaxClassifiedSpan span) =>
+    formattedDax.Substring(span.Start, span.Length);
+Assert(
+    daxSpans.Count(span =>
+        span.Classification == DaxTextClassification.Variable &&
+        DaxText(span) == "Year") == 2,
+    "A DAX variable should be classified at its declaration and use.");
+Assert(
+    daxSpans.Any(span =>
+        span.Classification == DaxTextClassification.Keyword &&
+        DaxText(span) == "VAR"),
+    "DAX keywords should be classified for bold syntax highlighting.");
+Assert(
+    daxSpans.Any(span =>
+        span.Classification == DaxTextClassification.StringLiteral &&
+        DaxText(span) == "\"-- not a comment\""),
+    "Comment markers inside DAX strings must remain string literals.");
+Assert(
+    daxSpans.Count(span => span.Classification == DaxTextClassification.Comment) == 1,
+    "Only the real DAX comment should receive comment highlighting.");
+Assert(
+    daxSpans.Any(span =>
+        span.Classification == DaxTextClassification.TableName &&
+        DaxText(span) == "Sales") &&
+    daxSpans.Any(span =>
+        span.Classification == DaxTextClassification.ColumnReference &&
+        DaxText(span) == "[Amount]"),
+    "DAX table qualifiers and column references should receive distinct classifications.");
+Assert(
+    DaxLanguageEngine.DefinedObjectName(formattedDax) == "Tricky",
+    "The DAX engine should identify a defined measure name.");
+Assert(
+    DaxLanguageEngine.DefinedObjectName(
+        "[Sales Amount] = SUMX ( Sales, Sales[Quantity] * Sales[Net Price] )") ==
+    "Sales Amount",
+    "The DAX engine should extract a bracketed measure name for the container title.");
+Assert(
+    DaxLanguageEngine.DefinedObjectName(
+        "Sales Amount = SUMX ( Sales, Sales[Quantity] * Sales[Net Price] )") ==
+    "Sales Amount",
+    "The DAX engine should extract a multi-word measure name for the container title.");
+Assert(
+    DaxLanguageEngine.IsQuery("EVALUATE Sales"),
+    "The DAX engine should identify query text.");
+Assert(
+    !DaxLanguageEngine.TryFormat(
+        string.Empty,
+        DaxLanguageEngine.DefaultMaximumLineLength,
+        out string emptyFormattedDax) &&
+    emptyFormattedDax.Length == 0,
+    "Formatting an empty DAX editor should be a safe no-op.");
+Assert(
+    TextLanguageIds.Normalize("unsupported-language") == TextLanguageIds.Plain,
+    "Unknown saved text languages should fall back to plain text.");
+
+var sqlSource = """
+CREATE OR ALTER PROCEDURE [sales].[GetCustomers]
+    @MinimumSales money
+AS
+BEGIN
+    -- Keep only customers above the requested amount
+    SELECT c.CustomerKey AS CustomerId,
+           SUM(s.Amount) AS TotalSales
+    FROM dbo.Customers AS c
+    INNER JOIN dbo.Sales AS s ON s.CustomerKey = c.CustomerKey
+    WHERE s.Amount >= @MinimumSales
+      AND c.Note <> N'-- this is a string'
+    GROUP BY c.CustomerKey;
+END;
+GO
+""";
+SqlServerTextAnalysis sqlAnalysis = SqlServerLanguageEngine.Analyze(sqlSource);
+Assert(sqlAnalysis.Diagnostics.Count == 0, "Valid SQL Server code should parse without diagnostics.");
+Assert(
+    sqlAnalysis.DefinedObjectName == "sales.GetCustomers",
+    "SQL Server analysis should identify the schema-qualified procedure name.");
+string SqlText(SqlServerClassifiedSpan span) =>
+    sqlSource.Substring(span.Start, span.Length);
+Assert(
+    sqlAnalysis.Spans.Any(span =>
+        span.Classification == SqlServerTextClassification.Keyword &&
+        SqlText(span).Equals("SELECT", StringComparison.OrdinalIgnoreCase)),
+    "SQL Server keywords should be classified.");
+Assert(
+    sqlAnalysis.Spans.Any(span =>
+        span.Classification == SqlServerTextClassification.Function &&
+        SqlText(span).Equals("SUM", StringComparison.OrdinalIgnoreCase)),
+    "SQL Server function calls should be classified.");
+Assert(
+    sqlAnalysis.Spans.Any(span =>
+        span.Classification == SqlServerTextClassification.Comment &&
+        SqlText(span).StartsWith("-- Keep only", StringComparison.Ordinal)),
+    "SQL Server comments should be classified.");
+Assert(
+    sqlAnalysis.Spans.Any(span =>
+        span.Classification == SqlServerTextClassification.StringLiteral &&
+        SqlText(span) == "N'-- this is a string'"),
+    "Comment markers inside SQL Server strings must remain string literals.");
+Assert(
+    sqlAnalysis.Spans.Any(span =>
+        span.Classification == SqlServerTextClassification.Parameter &&
+        SqlText(span) == "@MinimumSales"),
+    "SQL Server procedure parameters should receive their own classification.");
+Assert(
+    sqlAnalysis.Spans.Any(span =>
+        span.Classification == SqlServerTextClassification.TableName &&
+        SqlText(span).Equals("Customers", StringComparison.OrdinalIgnoreCase)),
+    "SQL Server table names should be classified from the syntax tree.");
+Assert(
+    sqlAnalysis.Spans.Any(span =>
+        span.Classification == SqlServerTextClassification.ColumnName &&
+        SqlText(span).Equals("CustomerKey", StringComparison.OrdinalIgnoreCase)),
+    "SQL Server column names should be classified from the syntax tree.");
+Assert(
+    sqlAnalysis.Spans.Any(span =>
+        span.Classification == SqlServerTextClassification.DefinitionName &&
+        SqlText(span).Trim('[', ']').Equals("GetCustomers", StringComparison.OrdinalIgnoreCase)),
+    "The SQL Server object being defined should receive definition-name highlighting.");
+Assert(
+    SqlServerLanguageEngine.TryFormat(sqlSource, out string formattedSql),
+    "Valid SQL Server code should format successfully.");
+Assert(
+    formattedSql.Contains("SELECT", StringComparison.Ordinal) &&
+    formattedSql.Contains("-- Keep only customers", StringComparison.Ordinal) &&
+    formattedSql.Contains("N'-- this is a string'", StringComparison.Ordinal) &&
+    formattedSql.EndsWith("GO", StringComparison.Ordinal),
+    "SQL Server formatting should retain keywords, comments, strings, and GO separators.");
+Assert(
+    SqlServerLanguageEngine.TryFormat(formattedSql, out string formattedSqlAgain) &&
+    formattedSqlAgain == formattedSql,
+    "SQL Server formatting should be idempotent.");
+Assert(
+    SqlServerLanguageEngine.TryFormat(
+        "select sum(amount) from dbo.sales;",
+        out string formattedLowercaseSql) &&
+    formattedLowercaseSql.Contains("SELECT", StringComparison.Ordinal) &&
+    formattedLowercaseSql.Contains("sum", StringComparison.OrdinalIgnoreCase),
+    "SQL Server formatting should normalize lowercase keywords while retaining function calls.");
+const string invalidSql = "SELECT * FROM WHERE";
+Assert(
+    !SqlServerLanguageEngine.TryFormat(invalidSql, out string unchangedInvalidSql) &&
+    unchangedInvalidSql == invalidSql,
+    "Invalid SQL Server code should be left untouched by formatting.");
+Assert(
+    SqlServerLanguageEngine.Analyze(invalidSql).Diagnostics.Count > 0,
+    "Invalid SQL Server code should expose parser diagnostics without interrupting highlighting.");
+const string repeatedBatchSource = "SELECT 1;\nGO 2";
+Assert(
+    SqlServerLanguageEngine.TryFormat(repeatedBatchSource, out string repeatedBatchSql) &&
+    repeatedBatchSql.EndsWith("GO 2", StringComparison.Ordinal),
+    "SQL Server formatting should preserve GO repetition counts.");
+Assert(
+    SqlServerLanguageEngine.DefinedObjectName(
+        "CREATE VIEW reporting.CustomerSales AS SELECT 1 AS Amount;") ==
+    "reporting.CustomerSales",
+    "SQL Server analysis should identify a view name for the container title.");
+Assert(
+    SqlServerLanguageEngine.DefinedObjectName("SELECT 1;") is null,
+    "An ordinary SQL query should use the generic SQL Code title.");
+Assert(
+    TextLanguageIds.Normalize("SQLSERVER") == TextLanguageIds.SqlServer,
+    "The SQL Server text language identifier should normalize for persistence.");
 
 Console.WriteLine("SQLBI.Whiteboard.Core smoke tests passed.");
 

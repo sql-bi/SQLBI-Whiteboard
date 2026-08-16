@@ -1,0 +1,7 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <AssemblyName>SQLBI.Whiteboard.Dax</AssemblyName>
+    <RootNamespace>SQLBI.Whiteboard.Dax</RootNamespace>
+  </PropertyGroup>
+</Project>

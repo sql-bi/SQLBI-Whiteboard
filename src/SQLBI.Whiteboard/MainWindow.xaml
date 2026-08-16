@@ -2,6 +2,7 @@
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:local="clr-namespace:SQLBI.Whiteboard"
+        xmlns:avalonEdit="http://icsharpcode.net/sharpdevelop/avalonedit"
         Title="SQLBI Whiteboard"
         Icon="Assets/SQLBI.Whiteboard.ico"
         Width="1400"
@@ -203,6 +204,90 @@
                                 ToolTip="Resume LiveView"
                                 Stylus.IsPressAndHoldEnabled="False"
                                 Click="PlayLiveViewButton_Click" />
+                    </Grid>
+                </Border>
+            </Canvas>
+
+            <Canvas x:Name="TextEditorLayer"
+                    Panel.ZIndex="25"
+                    ClipToBounds="True">
+                <Border x:Name="TextEditorBorder"
+                        Visibility="Collapsed"
+                        Background="#FFFCFCFC"
+                        BorderBrush="#FFD6D9DE"
+                        BorderThickness="1"
+                        SnapsToDevicePixels="True"
+                        PreviewMouseWheel="TextEditorBorder_PreviewMouseWheel"
+                        Stylus.IsPressAndHoldEnabled="False">
+                    <Grid>
+                        <Grid.RowDefinitions>
+                            <RowDefinition x:Name="TextEditorTitleRow"
+                                           Height="28" />
+                            <RowDefinition Height="*" />
+                        </Grid.RowDefinitions>
+                        <Border Grid.Row="0"
+                                Background="#FFF7F7F7"
+                                BorderBrush="#FFE4E6EA"
+                                BorderThickness="0,0,0,1">
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="Auto" />
+                                </Grid.ColumnDefinitions>
+                                <TextBlock x:Name="TextEditorTitle"
+                                           Margin="10,0,6,0"
+                                           VerticalAlignment="Center"
+                                           FontFamily="Segoe UI"
+                                           FontSize="13"
+                                           FontWeight="SemiBold"
+                                           Foreground="#FF1F2937"
+                                           TextTrimming="CharacterEllipsis" />
+                                <ComboBox x:Name="TextEditorLanguageCombo"
+                                          Grid.Column="1"
+                                          Width="110"
+                                          Height="22"
+                                          Margin="0,0,6,0"
+                                          VerticalAlignment="Center"
+                                          FontFamily="Segoe UI"
+                                          FontSize="12"
+                                          SelectionChanged="TextEditorLanguageCombo_SelectionChanged" />
+                            </Grid>
+                        </Border>
+                        <Border x:Name="TextEditorBodyBorder"
+                                Grid.Row="1"
+                                Padding="10"
+                                Background="#FFFCFCFC">
+                            <avalonEdit:TextEditor x:Name="TextEditor"
+                                                   Background="Transparent"
+                                                   Foreground="#FF1F2937"
+                                                   FontFamily="Segoe UI"
+                                                   FontSize="18"
+                                                   WordWrap="True"
+                                                   ShowLineNumbers="False"
+                                                   HorizontalScrollBarVisibility="Disabled"
+                                                   VerticalScrollBarVisibility="Disabled"
+                                                   TextChanged="TextEditor_TextChanged" />
+                        </Border>
+                        <Thumb x:Name="TextEditorResizeThumb"
+                               Grid.RowSpan="2"
+                               Width="20"
+                               Height="20"
+                               HorizontalAlignment="Right"
+                               VerticalAlignment="Bottom"
+                               Cursor="SizeNWSE"
+                               DragDelta="TextEditorResizeThumb_DragDelta">
+                            <Thumb.Template>
+                                <ControlTemplate TargetType="Thumb">
+                                    <Grid Background="Transparent">
+                                        <Path Data="M 4,17 L 17,4 M 10,17 L 17,10"
+                                              Stroke="#809CA3AF"
+                                              StrokeThickness="1.5"
+                                              StrokeStartLineCap="Round"
+                                              StrokeEndLineCap="Round" />
+                                    </Grid>
+                                </ControlTemplate>
+                            </Thumb.Template>
+                        </Thumb>
                     </Grid>
                 </Border>
             </Canvas>
