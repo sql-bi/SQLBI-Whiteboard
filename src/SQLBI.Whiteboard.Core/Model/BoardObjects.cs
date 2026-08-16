@@ -30,7 +30,7 @@ public static class PenStyleMetrics
     public static double MaximumThickness(PenStyle style) => style.Kind switch
     {
         PenKind.Highlighter => style.Thickness * 4,
-        PenKind.Calligraphy => style.Thickness * 2.4,
+        PenKind.Calligraphy => style.Thickness * 3,
         _ => style.Thickness,
     };
 }
@@ -46,7 +46,7 @@ public static class CalligraphyDynamics
             : Math.Clamp(rawPressure, 0.02f, 1f);
         var pressureResponse = Math.Pow(pressure, 0.65);
         var speed = Math.Clamp(speedInDeviceIndependentPixelsPerMillisecond, 0, 12);
-        var speedResponse = 0.35 + (0.65 / (1 + (0.8 * speed)));
+        var speedResponse = 1 / (1 + (0.8 * speed));
         return (float)Math.Clamp(
             0.04 + (0.96 * pressureResponse * speedResponse),
             0.04,

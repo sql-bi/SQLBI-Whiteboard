@@ -1,0 +1,10 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net8.0-windows</TargetFramework>
+    <UseWPF>true</UseWPF>
+    <AssemblyName>SQLBI.Whiteboard.CalligraphyPrototype</AssemblyName>
+    <RootNamespace>SQLBI.Whiteboard.CalligraphyPrototype</RootNamespace>
+    <AssemblyTitle>SQLBI Whiteboard Calligraphy Lab</AssemblyTitle>
+  </PropertyGroup>
+</Project>

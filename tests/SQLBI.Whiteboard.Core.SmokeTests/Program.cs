@@ -254,6 +254,10 @@ AssertNear(
     20,
     PenStyleMetrics.MaximumThickness(new PenStyle(0xFF000000, 5, PenKind.Highlighter)),
     "Highlighter bounds should account for its broad nib.");
+AssertNear(
+    15,
+    PenStyleMetrics.MaximumThickness(new PenStyle(0xFF000000, 5, PenKind.Calligraphy)),
+    "Calligraphy bounds should account for the selected 3x nib width.");
 var lightPressure = CalligraphyDynamics.AdjustPressure(0.2f, 0.5);
 var heavyPressure = CalligraphyDynamics.AdjustPressure(0.9f, 0.5);
 var fastStroke = CalligraphyDynamics.AdjustPressure(0.9f, 4);
@@ -263,6 +267,10 @@ Assert(
 Assert(
     fastStroke < heavyPressure,
     "Calligraphy width should decrease as drawing speed increases.");
+AssertNear(
+    0.04 + (0.96 / 4.2),
+    CalligraphyDynamics.AdjustPressure(1, 4),
+    "Calligraphy speed should use the selected full-strength response.");
 
 Assert(InkPalettes.Pen.Count == 6, "Pen palette should publish six teaching colors.");
 Assert(InkPalettes.Highlighter.Count == 4, "Highlighter palette should publish four light colors.");

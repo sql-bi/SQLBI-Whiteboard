@@ -26,10 +26,10 @@ internal static class InkDrawingAttributes
                 isHighlighter = true;
                 break;
             case PenKind.Calligraphy:
-                width *= 2.4;
+                width *= 3;
                 height *= 0.65;
                 stylusTip = StylusTip.Rectangle;
-                stylusTipTransform.Rotate(35);
+                stylusTipTransform.Rotate(90);
                 break;
         }
 

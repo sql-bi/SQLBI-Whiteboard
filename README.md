@@ -63,6 +63,16 @@ Use **Tools > Freeze selected LiveView** to stop capture while retaining the las
 
 Saving a board captures the latest LiveView bitmap and stores it with the source label, frame-rate setting, cursor setting, frozen state, and container geometry. Loading a board displays that bitmap immediately. Windows capture permission objects cannot be serialized, so use **Reconnect** to restore the live feed after loading.
 
+## Calligraphy Lab
+
+An isolated calligraphy-tuning prototype is available under `prototypes/SQLBI.Whiteboard.CalligraphyPrototype`. It exposes the nib geometry, pressure curve, speed response, and smoothing parameters directly on the canvas without changing the main whiteboard. Run it with:
+
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\run-calligraphy-prototype.ps1
+```
+
+Use **Copy settings** after finding a useful combination so the exact values can be transferred into the main application.
+
 ## Controls
 
 | Input | Behavior |
