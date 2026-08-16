@@ -927,8 +927,10 @@ public partial class MainWindow : Window
 
     private void TextEditorBorder_PreviewMouseWheel(object sender, MouseWheelEventArgs e)
     {
+        var modifiers = Keyboard.Modifiers;
         if (e.StylusDevice is not null ||
-            !Keyboard.Modifiers.HasFlag(ModifierKeys.Control))
+            (!modifiers.HasFlag(ModifierKeys.Control) &&
+             !modifiers.HasFlag(ModifierKeys.Shift)))
         {
             return;
         }
@@ -939,7 +941,10 @@ public partial class MainWindow : Window
     private void ZoomAtMouseWheel(MouseWheelEventArgs e)
     {
         var screen = ToPointD(e.GetPosition(InkSurface));
-        var factor = Math.Pow(1.0015, e.Delta);
+        var sensitivity = Keyboard.Modifiers.HasFlag(ModifierKeys.Shift)
+            ? 0.0005
+            : 0.0015;
+        var factor = Math.Pow(1 + sensitivity, e.Delta);
         _camera.ZoomAt(screen, _camera.Zoom * factor);
         CameraChanged();
         e.Handled = true;
