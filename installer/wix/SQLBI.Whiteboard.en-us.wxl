@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<WixLocalization Culture="en-us" xmlns="http://wixtoolset.org/schemas/v4/wxl">
+
+  <String Id="ProductLanguage" Overridable="yes" Value="1033" />
+  <String Id="PackageDescription" Value="A native Windows 11 whiteboard for pen, touch, and live application capture." />
+  <String Id="DowngradeErrorMessage" Value="A newer version of SQLBI Whiteboard is already installed. Setup will now exit." />
+  <String Id="SupportedWindowsVersionMessage" Value="SQLBI Whiteboard requires Windows 10 version 2004 (build 19041) or later." />
+  <String Id="LaunchApplication" Value="Launch SQLBI Whiteboard" />
+  <String Id="BoardFileTypeDescription" Value="SQLBI Whiteboard board" />
+  <String Id="BoardOpenVerb" Value="Open" />
+
+</WixLocalization>

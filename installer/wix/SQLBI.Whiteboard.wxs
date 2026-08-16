@@ -1,0 +1,201 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Builds both the per-machine and the per-user MSI from a single source.
+  Select the variant with the Scope preprocessor variable:
+
+    wix build SQLBI.Whiteboard.wxs -d Scope=perMachine ...
+    wix build SQLBI.Whiteboard.wxs -d Scope=perUser    ...
+
+  The two variants intentionally use different UpgradeCodes: they are separate
+  products, so a per-user install never tries to upgrade a per-machine one.
+-->
+<Wix xmlns="http://wixtoolset.org/schemas/v4/wxs"
+     xmlns:ui="http://wixtoolset.org/schemas/v4/wxs/ui">
+
+  <?define AppName = "SQLBI Whiteboard" ?>
+  <?define AppExecutableName = "SQLBI.Whiteboard.exe" ?>
+  <?define AppManufacturer = "SQLBI" ?>
+  <?define AppInstallFolder = "SQLBI" ?>
+  <?define AppInstallSubfolder = "Whiteboard" ?>
+  <?define AppUrlInfoAbout = "https://whiteboard.sqlbi.com" ?>
+  <?define BoardExtension = "wboard" ?>
+  <?define BoardProgId = "SQLBI.Whiteboard.Board" ?>
+
+  <?if $(var.Scope) = perUser ?>
+    <?define UpgradeCodeGuid = "{F11E7279-D134-4201-AD35-AD49B33B5F6D}" ?>
+    <?define ProductNameSuffix = " (current user)" ?>
+  <?elseif $(var.Scope) = perMachine ?>
+    <?define UpgradeCodeGuid = "{E753CDD2-A0A3-45E8-ABFC-5EE1E6B15AAD}" ?>
+    <?define ProductNameSuffix = "" ?>
+  <?else?>
+    <?error Scope must be defined as either perMachine or perUser ?>
+  <?endif?>
+
+  <Package
+      Name="$(var.AppName)$(var.ProductNameSuffix)"
+      Manufacturer="$(var.AppManufacturer)"
+      Version="!(bind.fileVersion.MainExecutable)"
+      UpgradeCode="$(var.UpgradeCodeGuid)"
+      Scope="$(var.Scope)"
+      Language="!(loc.ProductLanguage)"
+      Compressed="yes">
+
+    <SummaryInformation Description="!(loc.PackageDescription)" />
+    <MediaTemplate EmbedCab="yes" CompressionLevel="high" />
+    <MajorUpgrade
+        AllowSameVersionUpgrades="yes"
+        AllowDowngrades="no"
+        DowngradeErrorMessage="!(loc.DowngradeErrorMessage)"
+        Schedule="afterInstallValidate" />
+
+    <!--
+      Windows Graphics Capture (LiveView) requires Windows 10 2004 / build 19041,
+      matching TargetPlatformMinVersion in SQLBI.Whiteboard.csproj.
+    -->
+    <Launch
+        Condition="Installed OR (VersionNT &gt;= 603 AND WINDOWSBUILDNUMBER &gt;= 19041)"
+        Message="!(loc.SupportedWindowsVersionMessage)" />
+    <Property Id="WINDOWSBUILDNUMBER" Secure="yes">
+      <RegistrySearch
+          Id="WindowsBuildNumberSearch"
+          Root="HKLM"
+          Key="SOFTWARE\Microsoft\Windows NT\CurrentVersion"
+          Name="CurrentBuildNumber"
+          Type="raw" />
+    </Property>
+
+    <Icon Id="AppIcon" SourceFile="$(var.PublishFolder)\$(var.AppExecutableName)" />
+    <Property Id="ARPPRODUCTICON" Value="AppIcon" />
+    <Property Id="ARPURLINFOABOUT" Value="$(var.AppUrlInfoAbout)" />
+    <Property Id="ARPNOREPAIR" Value="yes" />
+
+    <!-- Set DESKTOPSHORTCUT=0 on the command line to skip the desktop shortcut. -->
+    <Property Id="DESKTOPSHORTCUT" Value="1" Secure="yes" />
+
+    <Feature Id="Main" Title="$(var.AppName)" Level="1">
+      <ComponentGroupRef Id="ApplicationComponents" />
+      <ComponentRef Id="ProgramMenuShortcut" />
+      <ComponentRef Id="DesktopShortcut" />
+    </Feature>
+
+    <WixVariable Id="WixUILicenseRtf" Value="$(var.AssetsFolder)\license.rtf" />
+    <Property Id="WIXUI_EXITDIALOGOPTIONALCHECKBOXTEXT" Value="!(loc.LaunchApplication)" />
+    <Property Id="WIXUI_EXITDIALOGOPTIONALCHECKBOX" Value="1" />
+    <Property Id="WixShellExecTarget" Value="[#MainExecutable]" />
+    <CustomAction
+        Id="LaunchApplication"
+        BinaryRef="Wix4UtilCA_$(sys.BUILDARCHSHORT)"
+        DllEntry="WixShellExec"
+        Impersonate="yes" />
+    <UI>
+      <ui:WixUI Id="WixUI_InstallDir" InstallDirectory="INSTALLFOLDER" />
+      <Publish
+          Dialog="ExitDialog"
+          Control="Finish"
+          Event="DoAction"
+          Value="LaunchApplication"
+          Condition="WIXUI_EXITDIALOGOPTIONALCHECKBOX = 1 AND NOT Installed" />
+    </UI>
+  </Package>
+
+  <Fragment>
+    <?if $(var.Scope) = perUser ?>
+      <StandardDirectory Id="LocalAppDataFolder">
+        <Directory Id="ProgramsFolder" Name="Programs">
+          <Directory Id="AppManufacturerFolder" Name="$(var.AppInstallFolder)">
+            <Directory Id="INSTALLFOLDER" Name="$(var.AppInstallSubfolder)" />
+          </Directory>
+        </Directory>
+      </StandardDirectory>
+    <?else?>
+      <StandardDirectory Id="ProgramFiles6432Folder">
+        <Directory Id="AppManufacturerFolder" Name="$(var.AppInstallFolder)">
+          <Directory Id="INSTALLFOLDER" Name="$(var.AppInstallSubfolder)" />
+        </Directory>
+      </StandardDirectory>
+    <?endif?>
+
+    <ComponentGroup Id="ApplicationComponents" Directory="INSTALLFOLDER">
+      <Component Id="MainExecutable">
+        <File
+            Id="MainExecutable"
+            Name="$(var.AppExecutableName)"
+            Source="$(var.PublishFolder)\$(var.AppExecutableName)"
+            Checksum="yes"
+            KeyPath="yes" />
+        <!--
+          Registers .wboard. MSI resolves the class root according to the package
+          scope, so the same authoring serves both installers.
+        -->
+        <ProgId
+            Id="$(var.BoardProgId)"
+            Description="!(loc.BoardFileTypeDescription)"
+            Icon="MainExecutable">
+          <Extension Id="$(var.BoardExtension)" ContentType="application/vnd.sqlbi.whiteboard">
+            <Verb
+                Id="open"
+                Command="!(loc.BoardOpenVerb)"
+                TargetFile="MainExecutable"
+                Argument="&quot;%1&quot;" />
+          </Extension>
+        </ProgId>
+        <RegistryValue
+            Root="HKMU"
+            Key="Software\$(var.AppManufacturer)\$(var.AppInstallSubfolder)"
+            Name="installFolder"
+            Value="[INSTALLFOLDER]"
+            Type="string" />
+      </Component>
+
+      <!--
+        Harvests the rest of the publish output. Replaces the heat.exe pass and the
+        XSLT filter used by the Bravo installer.
+      -->
+      <Files Include="$(var.PublishFolder)\**">
+        <Exclude Files="$(var.PublishFolder)\$(var.AppExecutableName)" />
+        <Exclude Files="$(var.PublishFolder)\**\*.pdb" />
+        <Exclude Files="$(var.PublishFolder)\**\*.xml" />
+      </Files>
+    </ComponentGroup>
+  </Fragment>
+
+  <Fragment>
+    <StandardDirectory Id="ProgramMenuFolder">
+      <Component Id="ProgramMenuShortcut" Guid="{6A1E9F0B-1C4D-4C7B-9D2E-3F5A8C0B7E41}">
+        <Shortcut
+            Id="ProgramMenuShortcut"
+            Name="$(var.AppName)"
+            Description="!(loc.PackageDescription)"
+            Target="[#MainExecutable]"
+            WorkingDirectory="INSTALLFOLDER" />
+        <RemoveFolder Id="RemoveProgramMenuShortcut" On="uninstall" />
+        <RegistryValue
+            Root="HKMU"
+            Key="Software\$(var.AppManufacturer)\$(var.AppInstallSubfolder)"
+            Name="programMenuShortcut"
+            Value="1"
+            Type="integer"
+            KeyPath="yes" />
+      </Component>
+    </StandardDirectory>
+
+    <StandardDirectory Id="DesktopFolder">
+      <Component Id="DesktopShortcut" Guid="{2D4B6C8E-5A71-4E93-8B0F-C6D1A2E4F903}" Condition="DESKTOPSHORTCUT = 1">
+        <Shortcut
+            Id="DesktopShortcut"
+            Name="$(var.AppName)"
+            Description="!(loc.PackageDescription)"
+            Target="[#MainExecutable]"
+            WorkingDirectory="INSTALLFOLDER" />
+        <RegistryValue
+            Root="HKMU"
+            Key="Software\$(var.AppManufacturer)\$(var.AppInstallSubfolder)"
+            Name="desktopShortcut"
+            Value="1"
+            Type="integer"
+            KeyPath="yes" />
+      </Component>
+    </StandardDirectory>
+  </Fragment>
+
+</Wix>

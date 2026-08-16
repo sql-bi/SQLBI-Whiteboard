@@ -109,10 +109,17 @@ public partial class MainWindow : Window
     private WindowStyle _windowStyleBeforeFullScreen;
     private ResizeMode _resizeModeBeforeFullScreen;
     private Rect _windowBoundsBeforeFullScreen;
+    private readonly string? _initialBoardPath;
 
     public MainWindow()
+        : this(null)
+    {
+    }
+
+    public MainWindow(string? initialBoardPath)
     {
         InitializeComponent();
+        _initialBoardPath = initialBoardPath;
         TextEditorLanguageCombo.ItemsSource = TextLanguageRegistry.All;
         TextEditor.TextArea.TextView.LineTransformers.Add(_textColorizer);
         TextEditor.Options.ConvertTabsToSpaces = true;
@@ -123,6 +130,7 @@ public partial class MainWindow : Window
         };
         _textHighlightTimer.Tick += TextHighlightTimer_Tick;
         SourceInitialized += MainWindow_SourceInitialized;
+        Loaded += MainWindow_Loaded;
         _document.Changed += Document_Changed;
         _history.Changed += History_Changed;
         SceneSurface.Configure(_document, _camera);
@@ -141,6 +149,15 @@ public partial class MainWindow : Window
     private void MainWindow_SourceInitialized(object? sender, EventArgs e)
     {
         MonitorStartupPlacement.PlaceMaximizedOnWacom(this);
+    }
+
+    private async void MainWindow_Loaded(object sender, RoutedEventArgs e)
+    {
+        Loaded -= MainWindow_Loaded;
+        if (_initialBoardPath is not null)
+        {
+            await LoadBoardAsync(_initialBoardPath);
+        }
     }
 
     private void BoardViewport_SizeChanged(object sender, SizeChangedEventArgs e)
@@ -3144,10 +3161,15 @@ public partial class MainWindow : Window
             return;
         }
 
+        await LoadBoardAsync(dialog.FileName);
+    }
+
+    private async Task LoadBoardAsync(string filePath)
+    {
         try
         {
             await using var stream = new FileStream(
-                dialog.FileName,
+                filePath,
                 FileMode.Open,
                 FileAccess.Read,
                 FileShare.Read,
@@ -3155,7 +3177,7 @@ public partial class MainWindow : Window
                 useAsync: true);
             var loaded = await BoardArchive.LoadAsync(stream);
             ReplaceDocument(loaded);
-            _currentBoardPath = dialog.FileName;
+            _currentBoardPath = filePath;
             ResetBoardView();
         }
         catch (Exception exception)

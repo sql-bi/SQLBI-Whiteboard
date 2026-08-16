@@ -6,6 +6,7 @@
 .verify/
 bin/
 obj/
+artifacts/
 *_wpftmp.csproj
 TestResults/
 *.user

@@ -45,6 +45,33 @@ $env:NUGET_PACKAGES = "$PWD\.packages"
 dotnet run --project .\tests\SQLBI.Whiteboard.Core.SmokeTests\SQLBI.Whiteboard.Core.SmokeTests.csproj
 ```
 
+## Installers
+
+`installer/wix` contains a single WiX v5 source that produces both installer variants,
+selected with the `Scope` preprocessor variable:
+
+- `SQLBI.Whiteboard.<version>.x64.msi` installs per machine under `Program Files\SQLBI\Whiteboard`
+- `SQLBI.Whiteboard.<version>.x64-userinstaller.msi` installs per user under
+  `%LOCALAPPDATA%\Programs\SQLBI\Whiteboard` and needs no elevation
+- `SQLBI.Whiteboard.<version>.x64-portable.zip` runs without installing
+
+Both installers register the `.wboard` file type. Build them locally with:
+
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\build-installer.ps1 -Version 1.0.0
+```
+
+The WiX toolset is pinned in `.config/dotnet-tools.json` and restored by the script.
+The UI and Util extensions must be present once per machine:
+
+```powershell
+dotnet wix extension add -g WixToolset.UI.wixext/5.0.2
+dotnet wix extension add -g WixToolset.Util.wixext/5.0.2
+```
+
+`.azure/pipelines/build-whiteboard.yaml` performs the same build in Azure Pipelines and
+signs the binaries and both MSI packages with the SQLBI certificate held in Azure Key Vault.
+
 ## Application
 
 `SQLBI.Whiteboard` is the WPF application project. It uses `InkCanvas` only for live wet ink; completed
