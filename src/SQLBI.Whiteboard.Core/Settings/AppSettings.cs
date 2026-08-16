@@ -51,11 +51,13 @@ public sealed class AppSettings
 
     public InkToolSettings Calligraphy { get; set; } =
         InkToolSettings.From(InkPalettes.DefaultCalligraphy);
+
+    public LaserSettings Laser { get; set; } = new();
 }
 
 public static class AppSettingsSerializer
 {
-    public const int CurrentVersion = 4;
+    public const int CurrentVersion = 6;
 
     private static readonly JsonSerializerOptions JsonOptions = new()
     {
@@ -126,6 +128,7 @@ public static class AppSettingsSerializer
         settings.Pen = InkPalettes.Normalize(settings.Pen, PenKind.Pen);
         settings.Highlighter = InkPalettes.Normalize(settings.Highlighter, PenKind.Highlighter);
         settings.Calligraphy = InkPalettes.Normalize(settings.Calligraphy, PenKind.Calligraphy);
+        settings.Laser = LaserSettings.Normalize(settings.Laser);
         settings.Version = CurrentVersion;
         return settings;
     }

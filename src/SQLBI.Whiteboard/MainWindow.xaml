@@ -13,7 +13,8 @@
         Deactivated="Window_Deactivated"
         Closing="Window_Closing"
         PreviewKeyDown="Window_PreviewKeyDown"
-        PreviewKeyUp="Window_PreviewKeyUp">
+        PreviewKeyUp="Window_PreviewKeyUp"
+        PreviewStylusDown="Window_PreviewStylusDown">
     <Grid x:Name="RootGrid">
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto" />
@@ -73,6 +74,11 @@
                           Header="_Calligraphy"
                           IsCheckable="True"
                           Click="CalligraphyToolButton_Click" />
+                <MenuItem x:Name="LaserToolMenuItem"
+                          Header="_Laser pointer"
+                          InputGestureText="Alt+L"
+                          IsCheckable="True"
+                          Click="LaserToolButton_Click" />
                 <Separator />
                 <MenuItem Header="Add _LiveView..."
                           Click="AddLiveViewMenuItem_Click" />
@@ -128,6 +134,10 @@
             <local:BoardSurface x:Name="SceneSurface"
                                 IsHitTestVisible="False" />
 
+            <local:LaserTrailSurface x:Name="LaserTrail"
+                                     IsHitTestVisible="False"
+                                     Panel.ZIndex="15" />
+
             <local:PenOnlyInkCanvas x:Name="InkSurface"
                        Background="Transparent"
                        EditingMode="Ink"
@@ -143,6 +153,8 @@
                        PreviewStylusDown="InkSurface_PreviewStylusDown"
                        PreviewStylusMove="InkSurface_PreviewStylusMove"
                        PreviewStylusUp="InkSurface_PreviewStylusUp"
+                       PreviewStylusButtonDown="InkSurface_PreviewStylusButtonDown"
+                       PreviewStylusButtonUp="InkSurface_PreviewStylusButtonUp"
                        StylusEnter="InkSurface_StylusEnter"
                        StylusLeave="InkSurface_StylusLeave"
                        PreviewMouseDown="InkSurface_PreviewMouseDown"
@@ -155,7 +167,7 @@
                        Drop="InkSurface_Drop" />
 
             <Canvas x:Name="LiveViewActionLayer"
-                    Panel.ZIndex="5"
+                    Panel.ZIndex="20"
                     ClipToBounds="True"
                     IsHitTestVisible="True">
                 <Border x:Name="LiveViewActionsBorder"
@@ -207,6 +219,7 @@
                 BorderThickness="1"
                 Background="{StaticResource ToolbarBackgroundBrush}"
                 PreviewMouseRightButtonDown="ToolPalette_PreviewMouseRightButtonDown"
+                PreviewStylusDown="ToolPalette_PreviewStylusDown"
                 Panel.ZIndex="10">
             <Border.Effect>
                 <DropShadowEffect BlurRadius="18"
@@ -217,7 +230,8 @@
             </Border.Effect>
             <StackPanel x:Name="ToolPaletteContents">
                 <Border x:Name="DualPalettePanel"
-                        Visibility="Collapsed">
+                        Visibility="Collapsed"
+                        Stylus.IsPressAndHoldEnabled="False">
                     <Grid Grid.IsSharedSizeScope="True">
                     <StackPanel>
                         <Border x:Name="DualPenGroup"
@@ -295,6 +309,16 @@
                                                   Stretch="Uniform"
                                                   Fill="{Binding Foreground, RelativeSource={RelativeSource AncestorType=ToggleButton}}"
                                                   Data="{StaticResource ImageSelectGeometry}" />
+                                        </ToggleButton>
+                                        <ToggleButton x:Name="DualLaserButton"
+                                                      Style="{StaticResource ToolbarIconButton}"
+                                                      ToolTip="Laser pointer"
+                                                      Click="LaserToolButton_Click">
+                                            <Path Width="20"
+                                                  Height="20"
+                                                  Stretch="Uniform"
+                                                  Fill="{Binding Foreground, RelativeSource={RelativeSource AncestorType=ToggleButton}}"
+                                                  Data="{StaticResource LaserPointerGeometry}" />
                                         </ToggleButton>
                                     </StackPanel>
                                 </Grid>

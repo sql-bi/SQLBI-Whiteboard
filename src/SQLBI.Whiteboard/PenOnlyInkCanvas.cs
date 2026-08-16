@@ -1,7 +1,9 @@
 using System.Collections.Concurrent;
+using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Input.StylusPlugIns;
+using System.Windows.Media;
 using SQLBI.Whiteboard.Core.Model;
 
 namespace SQLBI.Whiteboard;
@@ -9,6 +11,8 @@ namespace SQLBI.Whiteboard;
 public sealed class PenOnlyInkCanvas : InkCanvas
 {
     private readonly PenOnlyDynamicRenderer _penOnlyRenderer;
+
+    public LaserSamplePlugIn LaserSamples { get; } = new();
 
     public PenOnlyInkCanvas()
     {
@@ -18,6 +22,7 @@ public sealed class PenOnlyInkCanvas : InkCanvas
             .Select(device => device.Id);
         _penOnlyRenderer = new PenOnlyDynamicRenderer(touchTabletIds);
         DynamicRenderer = _penOnlyRenderer;
+        StylusPlugIns.Add(LaserSamples);
     }
 
     public void RegisterTouchTablet(int tabletDeviceId) =>
@@ -25,12 +30,76 @@ public sealed class PenOnlyInkCanvas : InkCanvas
 
     public void SetPenKind(PenKind kind) =>
         _penOnlyRenderer.SetPenKind(kind);
+
+    public void SetLaserMode(bool laser) =>
+        _penOnlyRenderer.SetLaserMode(laser);
+
+    public void AbortWetInk()
+    {
+        _penOnlyRenderer.AbortWetInk();
+        Strokes.Clear();
+    }
+
+    public void DrainLaserSamples(Action<Point, float> consume)
+    {
+        LaserSamples.Drain(consume);
+    }
+}
+
+public sealed class LaserSamplePlugIn : StylusPlugIn
+{
+    private readonly ConcurrentQueue<(double X, double Y, float Pressure)> _samples = new();
+
+    public volatile bool Collect;
+    public volatile bool Armed;
+
+    public void Drain(Action<Point, float> consume)
+    {
+        while (_samples.TryDequeue(out var sample))
+        {
+            consume(new Point(sample.X, sample.Y), sample.Pressure);
+        }
+    }
+
+    public void Clear()
+    {
+        while (_samples.TryDequeue(out _))
+        {
+        }
+    }
+
+    protected override void OnStylusDown(RawStylusInput rawStylusInput)
+    {
+        if (Armed || Collect)
+        {
+            Enqueue(rawStylusInput);
+        }
+    }
+
+    protected override void OnStylusMove(RawStylusInput rawStylusInput)
+    {
+        if (Collect)
+        {
+            Enqueue(rawStylusInput);
+        }
+    }
+
+    private void Enqueue(RawStylusInput rawStylusInput)
+    {
+        var points = rawStylusInput.GetStylusPoints();
+        for (var index = 0; index < points.Count; index++)
+        {
+            var point = points[index];
+            _samples.Enqueue((point.X, point.Y, Math.Clamp(point.PressureFactor, 0.02f, 1f)));
+        }
+    }
 }
 
 internal sealed class PenOnlyDynamicRenderer : DynamicRenderer
 {
     private readonly ConcurrentDictionary<int, byte> _touchTabletIds = new();
     private volatile PenKind _penKind;
+    private volatile bool _laserMode;
     private PenKind _strokeKind;
     private StylusPoint? _lastCalligraphyPoint;
     private int _lastPacketTimestamp;
@@ -49,34 +118,69 @@ internal sealed class PenOnlyDynamicRenderer : DynamicRenderer
 
     public void SetPenKind(PenKind kind) => _penKind = kind;
 
+    public void SetLaserMode(bool laser)
+    {
+        _laserMode = laser;
+        if (laser)
+        {
+            AbortWetInk();
+        }
+    }
+
+    public void AbortWetInk()
+    {
+        Enabled = false;
+        Enabled = true;
+    }
+
     protected override void OnStylusDown(RawStylusInput rawStylusInput)
     {
-        if (!IsTouch(rawStylusInput))
+        if (IsTouch(rawStylusInput) || _laserMode)
         {
-            _strokeKind = _penKind;
-            ResetCalligraphyDynamics();
-            ApplyCalligraphyDynamics(rawStylusInput);
-            base.OnStylusDown(rawStylusInput);
+            return;
         }
+
+        _strokeKind = _penKind;
+        ResetCalligraphyDynamics();
+        ApplyCalligraphyDynamics(rawStylusInput);
+        base.OnStylusDown(rawStylusInput);
     }
 
     protected override void OnStylusMove(RawStylusInput rawStylusInput)
     {
-        if (!IsTouch(rawStylusInput))
+        if (IsTouch(rawStylusInput) || _laserMode)
         {
-            ApplyCalligraphyDynamics(rawStylusInput);
-            base.OnStylusMove(rawStylusInput);
+            return;
         }
+
+        ApplyCalligraphyDynamics(rawStylusInput);
+        base.OnStylusMove(rawStylusInput);
     }
 
     protected override void OnStylusUp(RawStylusInput rawStylusInput)
     {
-        if (!IsTouch(rawStylusInput))
+        if (IsTouch(rawStylusInput) || _laserMode)
         {
-            ApplyCalligraphyDynamics(rawStylusInput);
-            base.OnStylusUp(rawStylusInput);
-            ResetCalligraphyDynamics();
+            return;
         }
+
+        ApplyCalligraphyDynamics(rawStylusInput);
+        base.OnStylusUp(rawStylusInput);
+        ResetCalligraphyDynamics();
+    }
+
+    protected override void OnDraw(
+        DrawingContext drawingContext,
+        StylusPointCollection stylusPoints,
+        Geometry geometry,
+        Brush fillBrush)
+    {
+        if (_laserMode)
+        {
+            return;
+        }
+
+        base.OnDraw(drawingContext, stylusPoints, geometry, fillBrush);
     }
 
     private void ApplyCalligraphyDynamics(RawStylusInput rawStylusInput)

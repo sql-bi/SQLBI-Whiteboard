@@ -41,6 +41,7 @@ public partial class MainWindow : Window
         Eraser,
         Select,
         Pan,
+        Laser,
     }
 
     private enum PointerAction
@@ -49,6 +50,7 @@ public partial class MainWindow : Window
         Erase,
         Pan,
         Container,
+        Laser,
     }
 
     private readonly Camera2D _camera = new();
@@ -69,6 +71,10 @@ public partial class MainWindow : Window
     private BoardTool _activeTool = BoardTool.Pen;
     private BoardTool _lastDrawingTool = BoardTool.Pen;
     private BoardTool _toolBeforeSpace = BoardTool.Pen;
+    private BoardTool _toolBeforeLaser = BoardTool.Pen;
+    private bool _laserTemporary;
+    private bool _discardInkStroke;
+    private StylusButton? _laserBarrelButton;
     private PenStyle _penStyle = InkPalettes.DefaultPen;
     private PointerAction _stylusAction;
     private PointerAction _mouseAction;
@@ -105,6 +111,7 @@ public partial class MainWindow : Window
         InkSurface.Cursor = Cursors.Arrow;
         _settings = AppSettingsStore.Load();
         LoadInkFromSettings();
+        ApplyLaserSettings();
         ApplyToolbarPlacement();
         ApplyCalligraphyAccess();
         ApplyDrawingAttributes();
@@ -155,6 +162,15 @@ public partial class MainWindow : Window
 
     private void InkSurface_StrokeCollected(object sender, InkCanvasStrokeCollectedEventArgs e)
     {
+        if (EffectiveTool == BoardTool.Laser ||
+            _stylusAction == PointerAction.Laser ||
+            _discardInkStroke)
+        {
+            _discardInkStroke = false;
+            InkSurface.Strokes.Remove(e.Stroke);
+            return;
+        }
+
         if (e.Stroke.StylusPoints.Count == 0)
         {
             InkSurface.Strokes.Remove(e.Stroke);
@@ -197,6 +213,11 @@ public partial class MainWindow : Window
             return;
         }
 
+        if (TryForwardCapturedStylusToPalette(e))
+        {
+            return;
+        }
+
         _penInContact = true;
         ClearTouchNavigation();
         UsePenCursor();
@@ -226,6 +247,13 @@ public partial class MainWindow : Window
         {
             BeginContainerGesture(screen);
             _stylusAction = PointerAction.Container;
+            InkSurface.CaptureStylus();
+            e.Handled = true;
+        }
+        else if (EffectiveTool == BoardTool.Laser && !e.StylusDevice.Inverted)
+        {
+            BeginLaserContact(e);
+            _stylusAction = PointerAction.Laser;
             InkSurface.CaptureStylus();
             e.Handled = true;
         }
@@ -263,9 +291,26 @@ public partial class MainWindow : Window
                 UpdateContainerGesture(_camera.ScreenToWorld(screen));
                 e.Handled = true;
                 break;
+            case PointerAction.Laser:
+                AddLaserSamples(e, leaveTrail: true);
+                e.Handled = true;
+                break;
         }
 
-        if (EffectiveTool == BoardTool.Select)
+        if (e.StylusDevice.Inverted)
+        {
+            LaserTrail.HideHead();
+        }
+        else if (EffectiveTool == BoardTool.Laser)
+        {
+            HidePointerDot();
+            InkSurface.Cursor = Cursors.None;
+            if (_stylusAction != PointerAction.Laser)
+            {
+                LaserTrail.HideHead();
+            }
+        }
+        else if (EffectiveTool == BoardTool.Select)
         {
             HidePointerDot();
             if (!_penInContact)
@@ -313,16 +358,30 @@ public partial class MainWindow : Window
                 CompleteContainerGesture();
                 e.Handled = true;
                 break;
+            case PointerAction.Laser:
+                ReleaseBoardPointerCapture(e.StylusDevice);
+                LaserTrail.Lift();
+                e.Handled = true;
+                break;
         }
 
         if (_stylusAction != PointerAction.None)
         {
             InkSurface.ReleaseStylusCapture();
+            Stylus.Capture(null);
+            e.StylusDevice.Capture(null);
         }
 
         _stylusAction = PointerAction.None;
         _penInContact = false;
-        if (EffectiveTool == BoardTool.Select)
+        if (EffectiveTool == BoardTool.Laser)
+        {
+            HidePointerDot();
+            StopLaserSampling();
+            LaserTrail.Lift();
+            InkSurface.Cursor = Cursors.None;
+        }
+        else if (EffectiveTool == BoardTool.Select)
         {
             var hoverScreen = ToPointD(e.GetPosition(InkSurface));
             UpdateSelectHover(hoverScreen);
@@ -344,6 +403,14 @@ public partial class MainWindow : Window
             return;
         }
 
+        if (EffectiveTool == BoardTool.Laser)
+        {
+            HidePointerDot();
+            LaserTrail.HideHead();
+            InkSurface.Cursor = Cursors.None;
+            return;
+        }
+
         if (EffectiveTool == BoardTool.Select)
         {
             HidePointerDot();
@@ -362,11 +429,272 @@ public partial class MainWindow : Window
 
     private void InkSurface_StylusLeave(object sender, StylusEventArgs e)
     {
-        if (!IsTouchStylus(e) && !_penInContact)
+        if (IsTouchStylus(e))
         {
-            HidePointerDot();
+            return;
+        }
+
+        HidePointerDot();
+        if (EffectiveTool == BoardTool.Laser || _stylusAction == PointerAction.Laser)
+        {
+            ReleaseBoardPointerCapture(e.StylusDevice);
+            LaserTrail.Lift();
         }
     }
+
+    private void Window_PreviewStylusDown(object sender, StylusDownEventArgs e)
+    {
+        if (IsTouchStylus(e) || !ShouldRouteStylusToPalette())
+        {
+            return;
+        }
+
+        if (TryActivatePaletteAt(e.GetPosition(ToolPalette), e.StylusDevice))
+        {
+            e.Handled = true;
+        }
+    }
+
+    private void ToolPalette_PreviewStylusDown(object sender, StylusDownEventArgs e)
+    {
+        ReleaseBoardPointerCapture(e.StylusDevice);
+        LaserTrail.Lift();
+    }
+
+    private bool ShouldRouteStylusToPalette() =>
+        EffectiveTool == BoardTool.Laser ||
+        _stylusAction == PointerAction.Laser ||
+        InkSurface.IsStylusCaptured ||
+        Stylus.Captured is not null;
+
+    private bool TryForwardCapturedStylusToPalette(StylusDownEventArgs e)
+    {
+        if (!ShouldRouteStylusToPalette())
+        {
+            return false;
+        }
+
+        return TryActivatePaletteAt(e.GetPosition(ToolPalette), e.StylusDevice);
+    }
+
+    private bool TryActivatePaletteAt(Point palettePoint, StylusDevice? device)
+    {
+        if (ToolPalette.InputHitTest(palettePoint) is not { } hit)
+        {
+            return false;
+        }
+
+        ReleaseBoardPointerCapture(device);
+        LaserTrail.Lift();
+        if (FindToggleButton(hit) is { } button)
+        {
+            button.RaiseEvent(new RoutedEventArgs(ButtonBase.ClickEvent));
+        }
+
+        return true;
+    }
+
+    private static ToggleButton? FindToggleButton(IInputElement? hit)
+    {
+        var node = hit as DependencyObject;
+        while (node is not null)
+        {
+            if (node is ToggleButton button)
+            {
+                return button;
+            }
+
+            node = node is Visual visual ? VisualTreeHelper.GetParent(visual) : null;
+        }
+
+        return null;
+    }
+
+    private void ReleaseBoardPointerCapture(StylusDevice? device = null)
+    {
+        _penInContact = false;
+        if (_stylusAction == PointerAction.Laser)
+        {
+            _stylusAction = PointerAction.None;
+        }
+
+        StopLaserSampling();
+        if (InkSurface.IsStylusCaptured)
+        {
+            InkSurface.ReleaseStylusCapture();
+        }
+
+        Stylus.Capture(null);
+        device?.Capture(null);
+
+        if (Mouse.Captured == InkSurface)
+        {
+            Mouse.Capture(null);
+        }
+    }
+
+    private void InkSurface_PreviewStylusButtonDown(object sender, StylusButtonEventArgs e)
+    {
+        if (IsTouchStylus(e) || e.StylusDevice.Inverted)
+        {
+            return;
+        }
+
+        Debug.WriteLine(
+            $"[Laser] stylus button down '{e.StylusButton.Name}' guid={e.StylusButton.Guid} " +
+            $"inAir={e.StylusDevice.InAir} contact={_penInContact}");
+
+        if (!IsLowerBarrelButton(e.StylusDevice, e.StylusButton))
+        {
+            return;
+        }
+
+        BeginTemporaryLaser(e.StylusButton);
+        if (_penInContact)
+        {
+            InkSurface.AbortWetInk();
+            BeginLaserContact(e);
+            _stylusAction = PointerAction.Laser;
+        }
+
+        e.Handled = true;
+    }
+
+    private void InkSurface_PreviewStylusButtonUp(object sender, StylusButtonEventArgs e)
+    {
+        if (_laserBarrelButton is null || !ReferenceEquals(e.StylusButton, _laserBarrelButton))
+        {
+            return;
+        }
+
+        EndTemporaryLaser();
+        e.Handled = true;
+    }
+
+    private void BeginTemporaryLaser(StylusButton button)
+    {
+        if (_laserTemporary)
+        {
+            return;
+        }
+
+        _laserBarrelButton = button;
+        _toolBeforeLaser = _activeTool == BoardTool.Laser
+            ? _lastDrawingTool
+            : _activeTool;
+        _laserTemporary = true;
+        _discardInkStroke = _penInContact;
+        SetActiveTool(BoardTool.Laser);
+        InkSurface.AbortWetInk();
+    }
+
+    private void BeginLaserContact(Point position, float pressure)
+    {
+        HidePointerDot();
+        InkSurface.Cursor = Cursors.None;
+        StartLaserSampling();
+        LaserTrail.BeginOrResumeStroke();
+        LaserTrail.AddSample(position, pressure, leaveTrail: true);
+    }
+
+    private void BeginLaserContact(StylusEventArgs e)
+    {
+        HidePointerDot();
+        InkSurface.Cursor = Cursors.None;
+        StartLaserSampling();
+        LaserTrail.BeginOrResumeStroke();
+        AddLaserSamples(e, leaveTrail: true);
+    }
+
+    private void StartLaserSampling()
+    {
+        InkSurface.SetLaserMode(true);
+        InkSurface.AbortWetInk();
+        InkSurface.LaserSamples.Collect = false;
+        InkSurface.LaserSamples.Clear();
+    }
+
+    private void StopLaserSampling()
+    {
+        InkSurface.LaserSamples.Collect = false;
+        InkSurface.LaserSamples.Clear();
+        InkSurface.SetLaserMode(EffectiveTool == BoardTool.Laser);
+    }
+
+    private void AddLaserSamples(StylusEventArgs e, bool leaveTrail)
+    {
+        if (e.StylusDevice.Inverted)
+        {
+            StopLaserSampling();
+            LaserTrail.HideHead();
+            return;
+        }
+
+        var points = e.GetStylusPoints(LaserTrail);
+        if (points.Count == 0)
+        {
+            LaserTrail.AddSample(e.GetPosition(LaserTrail), 0.5f, leaveTrail);
+            return;
+        }
+
+        for (var index = 0; index < points.Count; index++)
+        {
+            var point = points[index];
+            LaserTrail.AddSample(
+                new Point(point.X, point.Y),
+                Math.Clamp(point.PressureFactor, 0.02f, 1f),
+                leaveTrail);
+        }
+    }
+
+    private void UpdateLaser(Point position, bool leaveTrail, float pressure)
+    {
+        LaserTrail.AddSample(position, pressure, leaveTrail);
+    }
+
+    private static bool IsLowerBarrelButton(StylusDevice device, StylusButton button)
+    {
+        var name = button.Name ?? string.Empty;
+        if (name.Contains("Tip", StringComparison.OrdinalIgnoreCase) ||
+            name.Contains("Eraser", StringComparison.OrdinalIgnoreCase))
+        {
+            return false;
+        }
+
+        if (name.Contains('2', StringComparison.Ordinal) ||
+            name.Contains("Upper", StringComparison.OrdinalIgnoreCase) ||
+            name.Contains("Secondary", StringComparison.OrdinalIgnoreCase))
+        {
+            return false;
+        }
+
+        var extras = device.StylusButtons
+            .Cast<StylusButton>()
+            .Where(item =>
+            {
+                var itemName = item.Name ?? string.Empty;
+                return !itemName.Contains("Tip", StringComparison.OrdinalIgnoreCase) &&
+                       !itemName.Contains("Eraser", StringComparison.OrdinalIgnoreCase);
+            })
+            .ToArray();
+
+        return extras.Length == 0 || ReferenceEquals(extras[0], button);
+    }
+
+    private void EndTemporaryLaser()
+    {
+        if (!_laserTemporary)
+        {
+            return;
+        }
+
+        _laserTemporary = false;
+        _laserBarrelButton = null;
+        LaserTrail.HideHead();
+        SetActiveTool(_toolBeforeLaser);
+    }
+
+    private const float MouseLaserPressure = 0.5f;
 
     private void InkSurface_PreviewMouseDown(object sender, MouseButtonEventArgs e)
     {
@@ -387,6 +715,13 @@ public partial class MainWindow : Window
         else if (e.ChangedButton == MouseButton.Left && e.ClickCount >= 2)
         {
             FrameContentAt(screen);
+            e.Handled = true;
+        }
+        else if (e.ChangedButton == MouseButton.Left && EffectiveTool == BoardTool.Laser)
+        {
+            BeginLaserContact(e.GetPosition(LaserTrail), MouseLaserPressure);
+            _mouseAction = PointerAction.Laser;
+            Mouse.Capture(InkSurface);
             e.Handled = true;
         }
         else if (e.ChangedButton == MouseButton.Left)
@@ -435,7 +770,20 @@ public partial class MainWindow : Window
 
         HidePointerDot();
         var screen = ToPointD(e.GetPosition(InkSurface));
-        if (EffectiveTool == BoardTool.Select && _mouseAction == PointerAction.None)
+        if (EffectiveTool == BoardTool.Laser)
+        {
+            HidePointerDot();
+            InkSurface.Cursor = Cursors.None;
+            if (_mouseAction == PointerAction.Laser)
+            {
+                UpdateLaser(e.GetPosition(LaserTrail), leaveTrail: true, MouseLaserPressure);
+            }
+            else
+            {
+                LaserTrail.HideHead();
+            }
+        }
+        else if (EffectiveTool == BoardTool.Select && _mouseAction == PointerAction.None)
         {
             UpdateSelectHover(screen);
             InkSurface.Cursor = SelectCursorAt(screen);
@@ -455,6 +803,9 @@ public partial class MainWindow : Window
                 break;
             case PointerAction.Container:
                 UpdateContainerGesture(_camera.ScreenToWorld(screen));
+                break;
+            case PointerAction.Laser:
+                UpdateLaser(e.GetPosition(LaserTrail), leaveTrail: true, MouseLaserPressure);
                 break;
         }
     }
@@ -484,7 +835,7 @@ public partial class MainWindow : Window
         }
 
         _mouseAction = PointerAction.None;
-        if (hadMouseAction)
+        if (hadMouseAction && EffectiveTool != BoardTool.Laser)
         {
             SetActiveTool(_lastDrawingTool);
         }
@@ -505,6 +856,10 @@ public partial class MainWindow : Window
                 UpdateContainerGesture(_camera.ScreenToWorld(screen));
                 CompleteContainerGesture();
                 break;
+            case PointerAction.Laser:
+                StopLaserSampling();
+                LaserTrail.Lift();
+                break;
         }
 
         _mouseAction = PointerAction.None;
@@ -513,7 +868,10 @@ public partial class MainWindow : Window
             Mouse.Capture(null);
         }
 
-        SetActiveTool(_lastDrawingTool);
+        if (EffectiveTool != BoardTool.Laser)
+        {
+            SetActiveTool(_lastDrawingTool);
+        }
     }
 
     private void InkSurface_PreviewMouseWheel(object sender, MouseWheelEventArgs e)
@@ -892,6 +1250,7 @@ public partial class MainWindow : Window
 
     private void SelectToolButton_Click(object sender, RoutedEventArgs e)
     {
+        LeaveLaserIfActive();
         SetActiveTool(BoardTool.Select);
     }
 
@@ -899,19 +1258,35 @@ public partial class MainWindow : Window
         SetActiveTool(BoardTool.Pan);
 
     private BoardTool EffectiveTool =>
-        _spaceTemporaryPan ? BoardTool.Pan : _activeTool;
+        _spaceTemporaryPan
+            ? BoardTool.Pan
+            : _laserTemporary
+                ? BoardTool.Laser
+                : _activeTool;
+
+    private void LaserToolButton_Click(object sender, RoutedEventArgs e) =>
+        SetActiveTool(BoardTool.Laser);
 
     private bool IsDualLayout =>
         _settings.CalligraphyAccess == CalligraphyAccess.DualPalette;
 
-    private void DualPenButton_Click(object sender, RoutedEventArgs e) =>
+    private void DualPenButton_Click(object sender, RoutedEventArgs e)
+    {
+        LeaveLaserIfActive();
         SetActiveTool(BoardTool.Pen);
+    }
 
-    private void DualCalligraphyButton_Click(object sender, RoutedEventArgs e) =>
+    private void DualCalligraphyButton_Click(object sender, RoutedEventArgs e)
+    {
+        LeaveLaserIfActive();
         SetActiveTool(BoardTool.Calligraphy);
+    }
 
-    private void DualHighlighterButton_Click(object sender, RoutedEventArgs e) =>
+    private void DualHighlighterButton_Click(object sender, RoutedEventArgs e)
+    {
+        LeaveLaserIfActive();
         SetActiveTool(BoardTool.Highlighter);
+    }
 
     private void SetActiveTool(BoardTool tool)
     {
@@ -937,6 +1312,19 @@ public partial class MainWindow : Window
             InkSurface.Cursor = Cursors.Arrow;
         }
 
+        if (tool != BoardTool.Laser)
+        {
+            InkSurface.SetLaserMode(false);
+            StopLaserSampling();
+            LaserTrail.HideHead();
+        }
+        else
+        {
+            InkSurface.SetLaserMode(true);
+            HidePointerDot();
+            InkSurface.Cursor = Cursors.None;
+        }
+
         var penFamilyActive = tool is BoardTool.Pen or BoardTool.Calligraphy;
         PenToolButton.IsChecked = penFamilyActive;
         HighlighterToolButton.IsChecked = tool == BoardTool.Highlighter;
@@ -945,8 +1333,9 @@ public partial class MainWindow : Window
         PenToolMenuItem.IsChecked = tool == BoardTool.Pen;
         HighlighterToolMenuItem.IsChecked = tool == BoardTool.Highlighter;
         CalligraphyToolMenuItem.IsChecked = tool == BoardTool.Calligraphy;
+        LaserToolMenuItem.IsChecked = tool == BoardTool.Laser;
         InkSurface.EditingMode =
-            tool is BoardTool.Pen or BoardTool.Highlighter or BoardTool.Calligraphy
+            tool is BoardTool.Pen or BoardTool.Highlighter or BoardTool.Calligraphy or BoardTool.Laser
             ? InkCanvasEditingMode.Ink
             : InkCanvasEditingMode.None;
         InkSurface.EditingModeInverted = InkCanvasEditingMode.None;
@@ -954,7 +1343,7 @@ public partial class MainWindow : Window
         ApplyDrawingAttributes();
         if (IsDualLayout)
         {
-            RebuildDualPalette();
+            SyncDualPaletteSelection();
         }
         else if (_isInkOptionsOpen)
         {
@@ -971,8 +1360,14 @@ public partial class MainWindow : Window
             return;
         }
 
-        InkSurface.DefaultDrawingAttributes =
-            InkDrawingAttributes.Create(_penStyle, _camera.Zoom);
+        var attributes = InkDrawingAttributes.Create(_penStyle, _camera.Zoom);
+        if (EffectiveTool == BoardTool.Laser)
+        {
+            attributes.Color = Colors.Transparent;
+            InkSurface.SetLaserMode(true);
+        }
+
+        InkSurface.DefaultDrawingAttributes = attributes;
         InkSurface.SetPenKind(_penStyle.Kind);
         UpdateColorPips();
     }
@@ -1002,6 +1397,15 @@ public partial class MainWindow : Window
         UpdateColorPips();
     }
 
+    private void ApplyLaserSettings()
+    {
+        var laser = LaserSettings.Normalize(_settings.Laser);
+        _settings.Laser = laser;
+        LaserTrail.HoldSeconds = laser.HoldSeconds;
+        LaserTrail.FadeSeconds = laser.FadeSeconds;
+        LaserTrail.HoldMode = laser.HoldMode;
+    }
+
     private void CommitInkStyle(PenStyle style)
     {
         _penStyle = style;
@@ -1013,7 +1417,7 @@ public partial class MainWindow : Window
         ApplyDrawingAttributes();
         if (IsDualLayout)
         {
-            RebuildDualPalette();
+            SyncDualPaletteSelection();
         }
         else if (_isInkOptionsOpen)
         {
@@ -1232,6 +1636,54 @@ public partial class MainWindow : Window
         UpdateDualToolChecks();
     }
 
+    private void SyncDualPaletteSelection()
+    {
+        if (DualPenColors is null || DualHighlighterColors is null)
+        {
+            return;
+        }
+
+        var penFamily = CurrentPenFamilyStyle();
+        SyncSwatchChecks(DualPenColors, penFamily.Argb);
+        SyncSizeChecks(DualPenSizes, penFamily);
+        var highlighter = _styleByKind[PenKind.Highlighter];
+        SyncSwatchChecks(DualHighlighterColors, highlighter.Argb);
+        SyncSizeChecks(DualHighlighterSizes, highlighter);
+        UpdateDualToolChecks();
+        UpdateDualSizeChipZooms();
+    }
+
+    private static void SyncSwatchChecks(Panel? host, uint argb)
+    {
+        if (host is null)
+        {
+            return;
+        }
+
+        foreach (var button in host.Children.OfType<ToggleButton>())
+        {
+            button.IsChecked = button.Tag is uint value && value == argb;
+        }
+    }
+
+    private static void SyncSizeChecks(Panel? host, PenStyle style)
+    {
+        if (host is null)
+        {
+            return;
+        }
+
+        foreach (var button in host.Children.OfType<ToggleButton>())
+        {
+            var selected = button.Tag is double thickness && thickness == style.Thickness;
+            button.IsChecked = selected;
+            if (button.Content is StrokePreview preview && button.Tag is double size)
+            {
+                preview.PenStyle = style with { Thickness = size };
+            }
+        }
+    }
+
     private void FillSwatches(
         Panel host,
         PenStyle style,
@@ -1299,8 +1751,9 @@ public partial class MainWindow : Window
             style = style with { Thickness = value };
         }
 
-        CommitInkStyle(style);
+        LeaveLaserIfActive();
         SetActiveTool(tool);
+        CommitInkStyle(style);
         InkSurface.Focus();
     }
 
@@ -1317,9 +1770,25 @@ public partial class MainWindow : Window
             style = style with { Thickness = value };
         }
 
-        CommitInkStyle(style);
+        LeaveLaserIfActive();
         SetActiveTool(BoardTool.Highlighter);
+        CommitInkStyle(style);
         InkSurface.Focus();
+    }
+
+    private void LeaveLaserIfActive()
+    {
+        if (_laserTemporary)
+        {
+            _laserTemporary = false;
+            _laserBarrelButton = null;
+        }
+
+        if (_activeTool == BoardTool.Laser)
+        {
+            StopLaserSampling();
+            LaserTrail.HideHead();
+        }
     }
 
     private PenStyle CurrentPenFamilyStyle()
@@ -1343,6 +1812,10 @@ public partial class MainWindow : Window
         DualCalligraphyButton.IsChecked = _activeTool == BoardTool.Calligraphy;
         DualHighlighterButton.IsChecked = _activeTool == BoardTool.Highlighter;
         DualSelectButton.IsChecked = _activeTool == BoardTool.Select;
+        if (DualLaserButton is not null)
+        {
+            DualLaserButton.IsChecked = _activeTool == BoardTool.Laser;
+        }
 
         var penWash = _activeTool is BoardTool.Pen or BoardTool.Calligraphy
             ? (Brush)FindResource("ToolbarSelectedBrush")
@@ -1381,6 +1854,8 @@ public partial class MainWindow : Window
     {
         if (sender is ToggleButton { Tag: uint argb })
         {
+            LeaveLaserIfActive();
+            SetActiveTool(_lastDrawingTool);
             CommitInkStyle(_penStyle with { Argb = argb });
             InkSurface.Focus();
         }
@@ -1390,6 +1865,8 @@ public partial class MainWindow : Window
     {
         if (sender is ToggleButton { Tag: double thickness })
         {
+            LeaveLaserIfActive();
+            SetActiveTool(_lastDrawingTool);
             CommitInkStyle(_penStyle with { Thickness = thickness });
             InkSurface.Focus();
         }
@@ -2404,6 +2881,16 @@ public partial class MainWindow : Window
 
             e.Handled = true;
         }
+        else if (modifiers.HasFlag(ModifierKeys.Alt) &&
+                 !e.IsRepeat &&
+                 (e.Key == Key.L || e.SystemKey == Key.L))
+        {
+            SetActiveTool(
+                _activeTool == BoardTool.Laser
+                    ? _lastDrawingTool
+                    : BoardTool.Laser);
+            e.Handled = true;
+        }
         else if (e.Key == Key.Space &&
                  !_spaceTemporaryPan &&
                  !IsControlFocused())
@@ -2491,6 +2978,12 @@ public partial class MainWindow : Window
         ClearTouchNavigation();
         InkSurface.Cursor = Cursors.Arrow;
         HidePointerDot();
+        StopLaserSampling();
+        LaserTrail.HideHead();
+        if (_laserTemporary)
+        {
+            EndTemporaryLaser();
+        }
     }
 
     private void Window_Closing(object? sender, CancelEventArgs e)
@@ -2503,14 +2996,14 @@ public partial class MainWindow : Window
 
     private void UsePenCursor()
     {
-        InkSurface.Cursor = EffectiveTool == BoardTool.Select
+        InkSurface.Cursor = EffectiveTool is BoardTool.Select
             ? Cursors.Arrow
             : Cursors.None;
     }
 
     private void ShowPointerDot(Point position)
     {
-        if (EffectiveTool == BoardTool.Select)
+        if (EffectiveTool is BoardTool.Select or BoardTool.Laser)
         {
             HidePointerDot();
             return;

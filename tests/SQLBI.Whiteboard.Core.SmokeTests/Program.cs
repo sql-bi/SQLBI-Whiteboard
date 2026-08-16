@@ -304,6 +304,27 @@ Assert(
     defaultSettings.Pen.Argb == InkPalettes.DefaultPen.Argb &&
     defaultSettings.Highlighter.Thickness == 6,
     "Missing settings should default per-tool ink.");
+Assert(
+    defaultSettings.Laser.HoldSeconds == LaserSettings.DefaultHoldSeconds &&
+    defaultSettings.Laser.FadeSeconds == LaserSettings.DefaultFadeSeconds &&
+    defaultSettings.Laser.HoldMode == LaserHoldMode.Shared,
+    "Missing settings should default laser hold to 2s shared, then fade.");
+Assert(
+    AppSettingsSerializer.Parse("{ \"laser\": { \"holdMode\": \"Sideways\" } }")
+        .Laser.HoldMode == LaserHoldMode.Shared,
+    "Unknown laser hold modes should fall back to shared.");
+Assert(
+    AppSettingsSerializer.Parse("{ \"laser\": { \"holdMode\": \"PerStroke\" } }")
+        .Laser.HoldMode == LaserHoldMode.PerStroke,
+    "Saved per-stroke laser hold should still load.");
+Assert(
+    AppSettingsSerializer.Parse(
+        "{ \"laser\": { \"holdSeconds\": -1, \"fadeSeconds\": 99 } }") is
+    {
+        Laser.HoldSeconds: LaserSettings.MinimumHoldSeconds,
+        Laser.FadeSeconds: LaserSettings.MaximumFadeSeconds,
+    },
+    "Laser timing should clamp to the supported range.");
 var formattedSettings = AppSettingsSerializer.Format(new AppSettings
 {
     ToolbarPlacement = ToolbarPlacement.BottomCenter,
