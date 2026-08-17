@@ -28,20 +28,34 @@ typing the code themselves or directing a coding agent. It is deliberately tool-
 4. Open the pull request against `main`:
 
    ```powershell
-   gh pr create --fill
+   gh pr create --title "Add the calligraphy pressure curve" --body "..."
    ```
 
+   `gh pr create --fill` takes the title and body from your commits instead, which is fine
+   when the branch holds one well-written commit and misleading when it does not.
 5. Merge once checks pass. Approval from the other maintainer is welcome but not required —
-   neither of us should be blocked by the other's travel. Delete the branch after merging.
+   neither of us should be blocked by the other's travel. The branch is deleted
+   automatically on merge.
 
 Do not push to `main` directly. Once the release pipeline is wired up, every merge to `main`
 publishes a pre-release build, so `main` is a published artefact rather than a scratch area.
 
-### Commit messages
+### The pull request is the permanent record
 
-Write a subject line in the imperative describing the change, then a body explaining why it
-was needed and what it affects. Explain the reasoning, not the diff — the diff is already in
-the commit.
+`main` accepts squash merges only, and takes the commit subject from the pull request title
+and the commit body from its description. The individual commits on your branch are
+discarded at merge, so the pull request — not the branch history — is what remains.
+
+Write the title in the imperative, describing the change. Use the description to explain why
+the change was needed and what it affects. Explain the reasoning, not the diff; the diff is
+already there.
+
+This also means one pull request becomes one commit on `main`. Since every merge will
+publish a pre-release build, that keeps a build traceable to a single revertable change —
+another reason to keep a branch to one logical unit.
+
+Commits on the branch itself are working notes. Keep them tidy enough to review, but they
+need not be publication quality.
 
 ## Things that are easy to get wrong
 
