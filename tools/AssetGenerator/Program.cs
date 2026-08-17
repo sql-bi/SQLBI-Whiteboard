@@ -57,7 +57,8 @@ internal static class Program
         var root = Path.GetFullPath(args[0]);
         var appAssets = Path.Combine(root, "src", "SQLBI.Whiteboard", "Assets");
         var installerAssets = Path.Combine(root, "installer", "wix", "assets");
-        var webAssets = Path.Combine(root, "assets", "web");
+        // Generated beside the landing page so site/ is one deployable folder.
+        var webAssets = Path.Combine(root, "site");
         Directory.CreateDirectory(installerAssets);
         Directory.CreateDirectory(webAssets);
 
@@ -70,7 +71,7 @@ internal static class Program
         Write(Path.Combine(installerAssets, "banner.png"), EncodePng(RenderBanner()));
         Write(Path.Combine(installerAssets, "background.png"), EncodePng(RenderBackground()));
 
-        Console.WriteLine("Web");
+        Console.WriteLine("Site");
         Write(Path.Combine(webAssets, "favicon.ico"), BuildIcon(FaviconSizes, RenderTile));
         Write(Path.Combine(webAssets, "favicon-16.png"), EncodePng(RenderTile(16)));
         Write(Path.Combine(webAssets, "favicon-32.png"), EncodePng(RenderTile(32)));

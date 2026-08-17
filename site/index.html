@@ -1,0 +1,279 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SQLBI Whiteboard</title>
+<meta name="description" content="A native Windows 11 whiteboard for pen, touch, and live application capture.">
+
+<link rel="icon" href="favicon.ico" sizes="any">
+<link rel="icon" href="favicon-32.png" type="image/png" sizes="32x32">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+
+<meta property="og:type" content="website">
+<meta property="og:title" content="SQLBI Whiteboard">
+<meta property="og:description" content="A native Windows 11 whiteboard for pen, touch, and live application capture.">
+<meta property="og:url" content="https://whiteboard.sqlbi.com/">
+<meta property="og:image" content="https://whiteboard.sqlbi.com/og-image.png">
+<meta name="twitter:card" content="summary_large_image">
+
+<style>
+  :root {
+    --ground: #FAFAFB;
+    --surface: #FFFFFF;
+    --line: #E2E4E9;
+    --ink: #15171C;
+    --muted: #5C6371;
+    --brand: #F42727;
+    --brand-deep: #B71D1D;
+    --brand-ink: #FFFFFF;
+    --shadow: 0 1px 2px rgba(21,23,28,.06), 0 12px 32px -18px rgba(21,23,28,.30);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --ground: #0F1115;
+      --surface: #171A20;
+      --line: #272B33;
+      --ink: #E9EBEF;
+      --muted: #949CAA;
+      --brand: #FF3B3B;
+      --brand-deep: #C92020;
+      --shadow: 0 1px 2px rgba(0,0,0,.5), 0 12px 32px -18px rgba(0,0,0,.9);
+    }
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    padding: 0 24px 64px;
+    background: var(--ground);
+    color: var(--ink);
+    font-family: "Segoe UI Variable Text", "Segoe UI", system-ui, -apple-system, sans-serif;
+    line-height: 1.6;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .wrap { max-width: 640px; margin: 0 auto; }
+
+  header { padding: 88px 0 0; text-align: center; }
+
+  .mark { width: 104px; height: 104px; filter: drop-shadow(0 8px 24px rgba(183,29,29,.28)); }
+
+  h1 {
+    font-size: clamp(34px, 6vw, 46px);
+    line-height: 1.1;
+    letter-spacing: -.025em;
+    font-weight: 650;
+    margin: 22px 0 12px;
+  }
+
+  .tagline { font-size: 18px; color: var(--muted); margin: 0 auto; max-width: 30ch; }
+
+  .actions {
+    margin: 40px 0 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 14px;
+  }
+
+  .download {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    background: linear-gradient(140deg, var(--brand), var(--brand-deep));
+    color: var(--brand-ink);
+    text-decoration: none;
+    font-size: 17px;
+    font-weight: 600;
+    padding: 15px 30px;
+    border-radius: 10px;
+    box-shadow: var(--shadow);
+    transition: transform .12s ease, box-shadow .12s ease;
+  }
+  .download:hover { transform: translateY(-1px); }
+  .download:focus-visible { outline: 3px solid var(--brand); outline-offset: 3px; }
+
+  .meta { font-size: 13.5px; color: var(--muted); min-height: 1.2em; }
+  .meta strong { color: var(--ink); font-weight: 600; }
+
+  .alternates { font-size: 14px; color: var(--muted); }
+  .alternates a { color: var(--muted); text-decoration: underline; text-underline-offset: 3px; }
+  .alternates a:hover { color: var(--ink); }
+  .sep { opacity: .45; padding: 0 8px; }
+
+  .notice {
+    margin: 44px auto 0;
+    max-width: 520px;
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-left: 3px solid var(--brand);
+    border-radius: 10px;
+    padding: 16px 20px;
+    font-size: 14.5px;
+    color: var(--muted);
+    text-align: left;
+  }
+  .notice strong { color: var(--ink); font-weight: 600; }
+
+  ul.features {
+    margin: 52px 0 0;
+    padding: 0;
+    list-style: none;
+    display: grid;
+    gap: 12px;
+    font-size: 15.5px;
+    color: var(--muted);
+  }
+  ul.features li { padding-left: 26px; position: relative; }
+  ul.features li::before {
+    content: "";
+    position: absolute;
+    left: 6px; top: .62em;
+    width: 6px; height: 6px;
+    border-radius: 50%;
+    background: var(--brand);
+  }
+
+  footer {
+    margin-top: 56px;
+    padding-top: 24px;
+    border-top: 1px solid var(--line);
+    font-size: 13.5px;
+    color: var(--muted);
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px 18px;
+    justify-content: space-between;
+  }
+  footer a { color: var(--muted); text-decoration: none; }
+  footer a:hover { color: var(--ink); text-decoration: underline; }
+
+  @media (prefers-reduced-motion: reduce) {
+    .download { transition: none; }
+    .download:hover { transform: none; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header>
+    <svg class="mark" viewBox="0 0 256 256" role="img" aria-label="SQLBI Whiteboard">
+      <defs>
+        <linearGradient id="tile" x1="32" y1="24" x2="224" y2="232" gradientUnits="userSpaceOnUse">
+          <stop stop-color="#F42727"/><stop offset="1" stop-color="#B71D1D"/>
+        </linearGradient>
+      </defs>
+      <rect x="8" y="8" width="240" height="240" rx="52" fill="url(#tile)"/>
+      <rect x="9" y="9" width="238" height="238" rx="51" fill="none" stroke="#fff" stroke-opacity=".18" stroke-width="2"/>
+      <g transform="translate(32 32) scale(8)" fill="#fff">
+        <path d="m15.99 4-3.07 3.06c-.34.34-.6.74-.78 1.18l-.08.23-.74 2.3a2.25 2.25 0 0 0 2.64 2.88l.15-.04 2.33-.7a3.5 3.5 0 0 0 1.29-.7l.18-.18L22 7.95v8.8c0 1.8-1.45 3.25-3.25 3.25H5.25A3.25 3.25 0 0 1 2 16.75v-4.2l.08-.03.07-.04 3.76-2.36.1-.05A.75.75 0 0 1 7 11l-.04.1-1.2 2.3-.08.14a2.25 2.25 0 0 0 3 2.95l.17-.09 1.76-1 .09-.05a.75.75 0 0 0-.74-1.3l-.1.05-1.75 1-.1.04a.75.75 0 0 1-.97-.96l.04-.09 1.2-2.28.09-.17a2.25 2.25 0 0 0-3.12-2.87l-.15.08L2 10.81V7.24a3.25 3.25 0 0 1 3.07-3.24L5.25 4h10.74Zm5.19-.46.13.13.12.13c.76.89.72 2.23-.13 3.07l-4.28 4.28c-.26.26-.58.45-.94.56l-2.33.7a1 1 0 0 1-1.24-1.27l.74-2.29c.11-.34.3-.65.56-.9l4.29-4.29a2.27 2.27 0 0 1 3.08-.12Z"/>
+      </g>
+    </svg>
+
+    <h1>SQLBI Whiteboard</h1>
+    <p class="tagline">A native Windows 11 whiteboard for pen, touch, and live application capture.</p>
+
+    <div class="actions">
+      <!-- Resolved at load time: the file name carries the version, so it cannot be hard-coded.
+           Without scripting this stays a link to the releases page, which always works. -->
+      <a class="download" id="download" href="https://github.com/sql-bi/SQLBI-Whiteboard/releases">
+        Download for Windows
+      </a>
+      <p class="meta" id="meta"></p>
+      <p class="alternates">
+        <a id="user-installer" href="https://github.com/sql-bi/SQLBI-Whiteboard/releases">Per-user installer</a>
+        <span class="sep">·</span>
+        <a id="portable" href="https://github.com/sql-bi/SQLBI-Whiteboard/releases">Portable ZIP</a>
+        <span class="sep">·</span>
+        <a href="https://github.com/sql-bi/SQLBI-Whiteboard/releases">All releases</a>
+      </p>
+    </div>
+
+    <p class="notice" id="notice" hidden></p>
+  </header>
+
+  <ul class="features">
+    <li>Pressure-aware ink with palm rejection, tuned for Wacom and Surface pens</li>
+    <li>An unbounded canvas with touch pan and pinch zoom</li>
+    <li>Live capture of any application window or display, embedded on the board</li>
+    <li>Text containers with DAX and SQL syntax highlighting and formatting</li>
+    <li>Boards saved as portable <code>.wboard</code> files</li>
+  </ul>
+
+  <footer>
+    <span>Requires Windows 10 version 2004 or later, 64-bit.</span>
+    <span>
+      <a href="https://github.com/sql-bi/SQLBI-Whiteboard">GitHub</a> ·
+      <a href="https://www.sqlbi.com">SQLBI</a>
+    </span>
+  </footer>
+
+</div>
+
+<script>
+  (function () {
+    var REPO = 'sql-bi/SQLBI-Whiteboard';
+
+    function pick(assets, test) {
+      for (var i = 0; i < assets.length; i++) { if (test(assets[i].name)) return assets[i]; }
+      return null;
+    }
+
+    function megabytes(bytes) { return (bytes / 1048576).toFixed(0) + ' MB'; }
+
+    fetch('https://api.github.com/repos/' + REPO + '/releases?per_page=20')
+      .then(function (response) {
+        if (!response.ok) throw new Error(response.status);
+        return response.json();
+      })
+      .then(function (releases) {
+        var published = releases.filter(function (r) { return !r.draft; });
+        var stable = published.filter(function (r) { return !r.prerelease; })[0];
+        var release = stable || published[0];
+        if (!release) return;
+
+        var assets = release.assets || [];
+        // The per-machine installer is the only .msi that is neither the per-user variant
+        // nor the framework-dependent build, in either channel.
+        var main = pick(assets, function (n) {
+          return /\.msi$/.test(n) && n.indexOf('userinstaller') === -1 && n.indexOf('frameworkdependent') === -1;
+        });
+        var perUser = pick(assets, function (n) {
+          return /userinstaller\.msi$/.test(n) && n.indexOf('frameworkdependent') === -1;
+        });
+        var portable = pick(assets, function (n) {
+          return /portable\.zip$/.test(n) && n.indexOf('frameworkdependent') === -1;
+        });
+
+        if (main) {
+          var button = document.getElementById('download');
+          button.href = main.browser_download_url;
+          document.getElementById('meta').innerHTML =
+            '<strong>' + release.tag_name.replace(/^v/, '') + '</strong> · ' +
+            megabytes(main.size) + ' · ' +
+            new Date(release.published_at).toLocaleDateString(undefined, {
+              year: 'numeric', month: 'long', day: 'numeric'
+            });
+        }
+        if (perUser) document.getElementById('user-installer').href = perUser.browser_download_url;
+        if (portable) document.getElementById('portable').href = portable.browser_download_url;
+
+        if (!stable) {
+          var notice = document.getElementById('notice');
+          notice.innerHTML = '<strong>This is a preview build.</strong> ' +
+            'SQLBI Whiteboard has not had a stable release yet, so the download above is the ' +
+            'latest pre-release. It installs as <em>SQLBI Whiteboard (Dev)</em> and will sit ' +
+            'alongside a released copy once one exists.';
+          notice.hidden = false;
+        }
+      })
+      .catch(function () {
+        // Leave every link pointing at the releases page, which needs no scripting.
+      });
+  })();
+</script>
+</body>
+</html>
