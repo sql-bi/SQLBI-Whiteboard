@@ -17,30 +17,20 @@ release.
 
 ## Before the first stable release
 
-### Upgrade to .NET 10
+### Re-check ink on real hardware after the .NET 10 upgrade
 
-Ship 1.0 on the current LTS rather than upgrading immediately after. Touches seven project
-files:
+All seven projects now target .NET 10 and both CI definitions install the 10.0.x SDK. The
+solution builds with no warnings, the core smoke tests pass, all four installer variants
+package, and the published build starts.
 
-| Project | Now |
-| --- | --- |
-| `src/SQLBI.Whiteboard` | `net8.0-windows10.0.26100.0` |
-| `src/SQLBI.Whiteboard.Core`, `.Dax`, `.SqlServer` | `net8.0` |
-| `tests/SQLBI.Whiteboard.Core.SmokeTests` | `net8.0` |
-| `tools/AssetGenerator` | `net8.0-windows` |
-| `prototypes/…CalligraphyPrototype` | `net8.0-windows` |
-
-Also update the SDK version in `.azure/pipelines/build-whiteboard.yaml` (`UseDotNet@2`) and
-`.github/workflows/pull-request.yml` (`actions/setup-dotnet`).
-
-Watch for: `TreatWarningsAsErrors` is on everywhere, so new analyzer warnings fail the build;
-the self-contained publish size changes, which shows up in the installers; and WPF behaviour
-around ink and `RenderTargetBitmap` should be re-checked on real hardware rather than assumed.
+What that does not cover is the part that matters most: WPF ink and `RenderTargetBitmap`
+behaviour on a real pen display. Run the Wacom Cintiq Pro checks at the end of
+[README.md](README.md) before shipping.
 
 ### Decide the first version number
 
-`VersionPrefix` in `Directory.Build.props` is the placeholder `0.1.0`. Changing that line is
-what starts a release (decision 8).
+`VersionPrefix` in `Directory.Build.props` reads `0.2.0`, bumped for the .NET 10 upgrade but
+still a development number. Changing that line is what starts a release (decision 8).
 
 ### Verify the installers on a real machine
 
@@ -91,12 +81,12 @@ the primary route rather than a fallback (decision 10).
 
 ### Shorten pull request validation
 
-`Build installers` takes around six minutes, almost all of it CAB-compressing a 78 MB
-self-contained payload into a 60 MB MSI, four times over. The WiX authoring work itself is
+`Build installers` takes around six minutes, almost all of it CAB-compressing a 252 MB
+self-contained payload into a 73 MB MSI, four times over. The WiX authoring work itself is
 almost free. Two changes, expected to bring it under two minutes:
 
 1. **Package the framework-dependent build.** Pass `-SelfContained false` in
-   `.github/workflows/pull-request.yml`. The payload drops to roughly 8 MB while the same
+   `.github/workflows/pull-request.yml`. The installer drops to roughly 11 MB while the same
    authoring and the same file harvesting are still exercised.
 2. **Build two diagonal variants instead of four.** `scripts/build-installer.ps1` currently
    loops every channel and scope. Give it a parameter to restrict the combinations, and have

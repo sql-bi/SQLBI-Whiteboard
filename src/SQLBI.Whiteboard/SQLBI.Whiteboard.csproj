@@ -1,9 +1,16 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
     <OutputType>WinExe</OutputType>
-    <TargetFramework>net8.0-windows10.0.26100.0</TargetFramework>
+    <TargetFramework>net10.0-windows10.0.26100.0</TargetFramework>
     <TargetPlatformMinVersion>10.0.19041.0</TargetPlatformMinVersion>
     <UseWPF>true</UseWPF>
+    <!--
+      Ahead-of-time compiles the IL that startup touches, which is what a pen application is
+      judged on. It only applies to `dotnet publish`, and only when a runtime identifier is
+      given - both publish paths pass one. It costs about 22% on disk: the self-contained
+      publish measured 207 MB without it and 252 MB with it.
+    -->
+    <PublishReadyToRun>true</PublishReadyToRun>
     <AssemblyName>SQLBI.Whiteboard</AssemblyName>
     <RootNamespace>SQLBI.Whiteboard</RootNamespace>
     <AssemblyTitle>SQLBI Whiteboard</AssemblyTitle>

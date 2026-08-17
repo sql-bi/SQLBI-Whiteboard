@@ -60,7 +60,7 @@ jobs:
       - uses: actions/setup-dotnet@v4
         if: needs.changes.outputs.code == 'true'
         with:
-          dotnet-version: '8.0.x'
+          dotnet-version: '10.0.x'
 
       - name: Restore
         if: needs.changes.outputs.code == 'true'
@@ -89,7 +89,7 @@ jobs:
       - uses: actions/setup-dotnet@v4
         if: needs.changes.outputs.code == 'true'
         with:
-          dotnet-version: '8.0.x'
+          dotnet-version: '10.0.x'
 
       # Catches WiX authoring errors here rather than after a merge, when Azure Pipelines
       # would sign and publish. Unsigned, and the output is discarded; the version is a

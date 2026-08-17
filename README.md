@@ -31,7 +31,7 @@ How the project is developed and shipped is documented separately:
 Requirements:
 
 - Windows 11
-- .NET 8 SDK
+- .NET 10 SDK
 - Visual Studio 2022 or newer with the **Windows application development** workload if using the IDE
 
 From PowerShell in the repository root:
