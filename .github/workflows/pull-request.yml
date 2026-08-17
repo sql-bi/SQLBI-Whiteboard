@@ -1,0 +1,59 @@
+# Validation for pull requests.
+#
+# Deliberately does no signing and publishes nothing: anything touching the code-signing
+# certificate runs in Azure Pipelines, because this repository is public and so are these
+# logs. See docs/decisions.md, decision 3.
+name: Pull request
+
+on:
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+# A new push to the same pull request supersedes the run already in flight.
+concurrency:
+  group: pull-request-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    name: Build and test
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+
+      - name: Restore
+        run: dotnet restore Whiteboard.sln
+
+      # TreatWarningsAsErrors is on for every project, so a warning fails here.
+      - name: Build
+        run: dotnet build Whiteboard.sln --configuration Release --no-restore
+
+      - name: Core smoke tests
+        run: >-
+          dotnet run
+          --project tests/SQLBI.Whiteboard.Core.SmokeTests/SQLBI.Whiteboard.Core.SmokeTests.csproj
+          --configuration Release
+
+  installer:
+    name: Build installers
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+
+      # Catches WiX authoring errors here rather than at release time. Unsigned, and the
+      # output is discarded; the version is a placeholder with no meaning.
+      - name: Build installers
+        shell: pwsh
+        run: ./scripts/build-installer.ps1 -Version 0.0.0
