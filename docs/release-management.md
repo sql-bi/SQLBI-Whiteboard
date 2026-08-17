@@ -68,6 +68,21 @@ powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\build-assets.ps1
 Colours live in two places that must be changed together: the SVG, and
 `tools/AssetGenerator/Program.cs`.
 
+## Pull request validation
+
+`.github/workflows/pull-request.yml` runs on every pull request against `main`, in two jobs:
+
+- **Build and test** — restores, builds the solution in Release, and runs the Core smoke
+  tests. `TreatWarningsAsErrors` means a warning fails it.
+- **Build installers** — runs `scripts/build-installer.ps1` unsigned, so WiX authoring
+  errors surface here rather than at release time. The output is discarded.
+
+It signs nothing and publishes nothing. Everything that touches the certificate stays in
+Azure Pipelines, because this repository is public and so are these logs (decision 3).
+
+Running on GitHub also means it works for pull requests from forks, which have no access to
+secrets and need none.
+
 ## The pipeline
 
 `.azure/pipelines/build-whiteboard.yaml`, in the `SQLBI Whiteboard` Azure DevOps project.
@@ -114,17 +129,14 @@ hand.
 Roughly in dependency order:
 
 1. Move the version out of the variable group and into the repository (decision 8).
-2. Add CI triggers: pull requests unsigned, `main` signed. Until a pull-request check exists
-   and has run once, branch protection can require a pull request but cannot require a
-   passing check — GitHub only offers checks it has already seen.
+2. Add a CI trigger to the Azure pipeline so `main` builds and signs on every merge.
 3. Replace the `AzureFileCopy` step with `GitHubRelease@1`, and create a GitHub service
    connection with `contents: write`.
 4. Split the pipeline into Build / Pre-release / Release stages with an approval gate.
 5. Publish `stable.json` and `dev.json` manifests alongside the binaries, for the download
    page, a future in-app update check, and winget automation to share one source.
-6. Add a GitHub Actions workflow for unsigned pull-request validation.
-7. Add winget submission triggered by a published release.
-8. MSIX packaging and Store submission (decision 13).
+6. Add winget submission triggered by a published release.
+7. MSIX packaging and Store submission (decision 13).
 
 ## Verification before a public release
 

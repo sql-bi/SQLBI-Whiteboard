@@ -155,11 +155,10 @@ merge.
 
 Configuration, in two stages because the second has a prerequisite:
 
-- **Now** — require a pull request before merging, and disallow bypassing the setting for
-  administrators. Protection that can be silently sidestepped tends to be.
-- **Once pull-request validation exists** (see `release-management.md`) — additionally
-  require that check to pass. GitHub can only require checks it has seen, so this cannot be
-  configured before the workflow runs at least once.
+- **Done** — a pull request is required before merging, and the bypass list is empty.
+  Protection that can be silently sidestepped tends to be.
+- **Remaining** — require the pull request validation checks to pass. GitHub only offers
+  checks it has already seen, so select them once the workflow has run.
 
 Approvals are deliberately **not** required. A two-person core team should not be blocked by
 one member's travel; review is welcome, waiting is not. Add required review only if
