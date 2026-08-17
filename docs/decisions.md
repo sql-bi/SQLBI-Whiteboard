@@ -97,10 +97,12 @@ Three consequences were chosen deliberately:
 - **Dev does not register `.wboard`.** If both channels claimed it the last install would
   win, and uninstalling dev would delete the association outright, breaking the released
   copy. Boards always open in the released build; dev is launched explicitly.
-- **Settings are separated** through a `channel.txt` the dev installer places beside the
-  executable. Without this the two copies silently overwrite each other's settings on every
-  save — the settings parser ignores the `Version` field, so this fails quietly rather than
-  loudly.
+- **Settings are separated** through a `channel.txt` placed beside the executable by the dev
+  installer, and carried inside the dev portable ZIP. Without this the two copies silently
+  overwrite each other's settings on every save — the settings parser ignores the `Version`
+  field, so this fails quietly rather than loudly. The portable ZIP originally shipped
+  without the marker in both channels, which reintroduced exactly this collision for anyone
+  running a portable pre-release (issue 17).
 - **The channel is detected at run time, not compiled in.** One set of binaries therefore
   serves both channels, all four installers come from a single publish, and a tested build
   can be promoted without being rebuilt (decision 9).

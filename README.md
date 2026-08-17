@@ -62,6 +62,7 @@ selected with the `Channel` and `Scope` preprocessor variables:
 | `SQLBI.Whiteboard.<version>.x64-dev.msi` | `Program Files\SQLBI\Whiteboard Dev` |
 | `SQLBI.Whiteboard.<version>.x64-dev-userinstaller.msi` | `%LOCALAPPDATA%\Programs\SQLBI\Whiteboard Dev`, no elevation |
 | `SQLBI.Whiteboard.<version>.x64-portable.zip` | runs without installing |
+| `SQLBI.Whiteboard.<version>.x64-dev-portable.zip` | runs without installing, as the pre-release channel |
 
 ### Channels
 
@@ -72,9 +73,10 @@ installed. They differ in three ways:
   and carries its own `UpgradeCode`, so it never upgrades or replaces a released install.
 - Only the released channel registers the `.wboard` file type. Uninstalling a pre-release
   build therefore cannot leave the association broken.
-- The pre-release installer places a `channel.txt` beside the executable. `AppChannel` reads
-  it at startup to append `(Dev)` to the window title and to keep settings in
-  `%APPDATA%\SQLBI\Whiteboard Dev`, so the two copies cannot overwrite each other's settings.
+- The pre-release installer places a `channel.txt` beside the executable, and the pre-release
+  portable ZIP carries the same file. `AppChannel` reads it at startup to append `(Dev)` to
+  the window title and to keep settings in `%APPDATA%\SQLBI\Whiteboard Dev`, so the two
+  copies cannot overwrite each other's settings.
 
 Because the channel is detected at run time rather than compiled in, one build of the
 application serves both, and a tested binary can be promoted without being rebuilt.
