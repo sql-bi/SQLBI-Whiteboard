@@ -78,14 +78,21 @@
                 Value="Pen or calligraphy" />
     </Style>
 
+    <!--
+        These sizes set the width of the whole tool palette. Six pen swatches drive the shared
+        colour column, and the highlighter row - that column plus three tool buttons - is the
+        widest thing in the palette. At 32 with a 3 margin the palette overflowed a presenter
+        picture-in-picture in the top-right corner, which is the placement the default toolbar
+        position exists to hide under. Enlarging these again brings that back.
+    -->
     <Style x:Key="ColorSwatchButton"
            TargetType="{x:Type ToggleButton}">
         <Setter Property="Width"
-                Value="32" />
+                Value="28" />
         <Setter Property="Height"
-                Value="32" />
+                Value="28" />
         <Setter Property="Margin"
-                Value="3" />
+                Value="1" />
         <Setter Property="Focusable"
                 Value="False" />
         <Setter Property="ClickMode"
@@ -97,7 +104,11 @@
                         <Ellipse x:Name="Ring"
                                  Stroke="Transparent"
                                  StrokeThickness="2" />
-                        <Ellipse Margin="4"
+                        <!--
+                            Inset from 4 to 3 alongside the smaller button, so the visible
+                            colour only loses 2 units rather than 4.
+                        -->
+                        <Ellipse Margin="3"
                                  Fill="{TemplateBinding Background}"
                                  Stroke="#33000000"
                                  StrokeThickness="1" />
