@@ -10,7 +10,8 @@
 #>
 [CmdletBinding()]
 param(
-    [string] $Version = '0.1.0',
+    # Defaults to VersionPrefix in Directory.Build.props, the one place the version is defined.
+    [string] $Version,
     [ValidateSet('x64')]
     [string] $Architecture = 'x64',
     [ValidateSet('true', 'false')]
@@ -26,6 +27,12 @@ $project = Join-Path $repoRoot 'src/SQLBI.Whiteboard/SQLBI.Whiteboard.csproj'
 $installerRoot = Join-Path $repoRoot 'installer/wix'
 $publishFolder = Join-Path $repoRoot 'artifacts/publish'
 $outputFolder = Join-Path $repoRoot 'artifacts/installer'
+
+if ([string]::IsNullOrWhiteSpace($Version)) {
+    $Version = (dotnet msbuild $project -getProperty:VersionPrefix --nologo).Trim()
+    if ($LASTEXITCODE -ne 0) { throw "Could not read VersionPrefix from $project" }
+    Write-Host "Version from Directory.Build.props: $Version" -ForegroundColor DarkGray
+}
 
 $suffix = if ($SelfContained -eq 'true') { '' } else { '-frameworkdependent' }
 $artifactName = "SQLBI.Whiteboard.$Version.$Architecture$suffix"
