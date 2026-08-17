@@ -99,6 +99,10 @@ Two variable groups supply its settings; both must be authorised for the pipelin
 can run. The signing group's contents are described in decision 1 and held by the
 maintainers.
 
+The version is **not** among them: it comes from `VersionPrefix` in `Directory.Build.props`
+(decision 8). `AppVersionMajor`, `AppVersionMinor` and `AppVersionPatch` are obsolete and
+can be removed from the `SQLBI.Whiteboard` group.
+
 Signing uses `AzureSignTool` against the certificate in Azure Key Vault.
 
 > **When adding a new first-party project, add its assembly to the signing step.** The
@@ -107,6 +111,19 @@ Signing uses `AzureSignTool` against the certificate in Azure Key Vault.
 
 To run it: **Run pipeline**, set parameters, **Run**. Do not use **Re-run** to pick up a
 fix — that replays the original commit.
+
+## Versioning
+
+`VersionPrefix` in `Directory.Build.props` is the only place the product version is written.
+Everything else derives from it:
+
+- assemblies are stamped `major.minor.<days since 2000-01-01>.<seconds since midnight / 2>`,
+  the algorithm MSBuild and the Bravo pipeline use, so every matrix job in a run stamps the
+  same number;
+- the informational version is the plain `major.minor.patch`;
+- artifact and installer file names use it directly.
+
+Releasing therefore starts with a pull request that changes one line.
 
 ## Releasing
 
@@ -128,15 +145,14 @@ hand.
 
 Roughly in dependency order:
 
-1. Move the version out of the variable group and into the repository (decision 8).
-2. Add a CI trigger to the Azure pipeline so `main` builds and signs on every merge.
-3. Replace the `AzureFileCopy` step with `GitHubRelease@1`, and create a GitHub service
+1. Add a CI trigger to the Azure pipeline so `main` builds and signs on every merge.
+2. Replace the `AzureFileCopy` step with `GitHubRelease@1`, and create a GitHub service
    connection with `contents: write`.
-4. Split the pipeline into Build / Pre-release / Release stages with an approval gate.
-5. Publish `stable.json` and `dev.json` manifests alongside the binaries, for the download
+3. Split the pipeline into Build / Pre-release / Release stages with an approval gate.
+4. Publish `stable.json` and `dev.json` manifests alongside the binaries, for the download
    page, a future in-app update check, and winget automation to share one source.
-6. Add winget submission triggered by a published release.
-7. MSIX packaging and Store submission (decision 13).
+5. Add winget submission triggered by a published release.
+6. MSIX packaging and Store submission (decision 13).
 
 ## Verification before a public release
 

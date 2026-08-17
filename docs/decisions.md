@@ -107,8 +107,10 @@ Three consequences were chosen deliberately:
 
 ## 8. Version belongs in the repository
 
-**Agreed, not yet built.** Today the version still comes from the Azure DevOps variable
-group, as Bravo's does.
+**Implemented.** `VersionPrefix` in `Directory.Build.props` is the single definition. The
+pipeline and `scripts/build-installer.ps1` both read it with `dotnet msbuild -getProperty`,
+so nothing restates it. `AppVersionMajor`, `AppVersionMinor` and `AppVersionPatch` are no
+longer used and can be deleted from the variable group.
 
 Moving it into the repository makes the version reviewable in a pull request, attaches it to
 the commit that carries it, and makes "1.0.0 shipped from exactly this tree" answerable from
