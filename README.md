@@ -88,10 +88,20 @@ powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\build-installer.ps
 The WiX toolset is pinned in `.config/dotnet-tools.json`. The script restores it and adds
 the UI and Util extensions, so no manual setup is required.
 
-The application and document icons, the installer artwork, and the web assets under
-`assets/web` are all generated from `src/SQLBI.Whiteboard/Assets/SQLBI.Whiteboard.svg` by
+The application and document icons, the installer artwork, and the site's favicons and
+social card are all generated from `src/SQLBI.Whiteboard/Assets/SQLBI.Whiteboard.svg` by
 `.\scripts\build-assets.ps1`. The generated files are committed, so that script only needs
 running when the artwork changes.
+
+## Landing page
+
+`site/` is the landing page for <https://whiteboard.sqlbi.com>, and is self-contained: one
+HTML file plus the generated favicons and social card. Deploy the folder as the site root.
+
+Download links are resolved in the browser from the GitHub releases API, because the
+installer file name carries the version and cannot be hard-coded. Without scripting, or if
+the API is unreachable, every link falls back to the releases page. Until a stable release
+exists the page offers the newest pre-release and says so.
 
 `.azure/pipelines/build-whiteboard.yaml` performs the same build in Azure Pipelines and
 signs the binaries and both MSI packages with the SQLBI certificate held in Azure Key Vault.
