@@ -1,0 +1,46 @@
+# Publishes site/ to GitHub Pages.
+#
+# Requires Settings -> Pages -> Build and deployment -> Source: GitHub Actions. With the
+# default "Deploy from a branch" this workflow runs and deploys nothing.
+#
+# site/CNAME carries the custom domain, so it survives every deployment rather than
+# depending on the setting alone.
+name: Publish site
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'site/**'
+      - '.github/workflows/publish-site.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# One deployment at a time, and never cancel one midway: a half-applied deployment would
+# leave the site in whatever state it reached.
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    name: Deploy to GitHub Pages
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/configure-pages@v5
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: site
+
+      - id: deployment
+        uses: actions/deploy-pages@v4

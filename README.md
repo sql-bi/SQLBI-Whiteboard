@@ -96,7 +96,11 @@ running when the artwork changes.
 ## Landing page
 
 `site/` is the landing page for <https://whiteboard.sqlbi.com>, and is self-contained: one
-HTML file plus the generated favicons and social card. Deploy the folder as the site root.
+HTML file plus the generated favicons and social card.
+
+`.github/workflows/publish-site.yml` deploys it to GitHub Pages whenever `site/` changes on
+`main`. `site/CNAME` carries the custom domain so it survives each deployment. Asset paths
+are relative, so the page also works from the project-site URL before the domain resolves.
 
 Download links are resolved in the browser from the GitHub releases API, because the
 installer file name carries the version and cannot be hard-coded. Without scripting, or if
