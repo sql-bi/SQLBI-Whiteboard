@@ -20,7 +20,12 @@ param(
     # Supply an existing publish folder to package binaries that are already built, and
     # signed. The build pipeline does this so signing happens between publish and packaging.
     [string] $PublishFolder,
-    [string] $OutputFolder
+    [string] $OutputFolder,
+    # Which channel/scope combinations to package. Anything that ships must build all four.
+    # Pull request validation restricts this to a diagonal pair, because packaging is almost
+    # entirely CAB compression and the authoring being validated is the same either way.
+    [ValidateSet('stable/perMachine', 'stable/perUser', 'dev/perMachine', 'dev/perUser')]
+    [string[]] $Variants = @('stable/perMachine', 'stable/perUser', 'dev/perMachine', 'dev/perUser')
 )
 
 $ErrorActionPreference = 'Stop'
@@ -95,29 +100,27 @@ try {
 
     # Both channels are built from one publish, so the released installers are produced by
     # the same run that produced the pre-release ones and can be promoted without rebuilding.
-    foreach ($channel in @('stable', 'dev')) {
+    foreach ($variant in $Variants) {
+        $channel, $scope = $variant.Split('/')
         $channelSuffix = if ($channel -eq 'dev') { '-dev' } else { '' }
+        $scopeSuffix = if ($scope -eq 'perUser') { '-userinstaller' } else { '' }
+        $msiPath = Join-Path $outputFolder "$artifactName$channelSuffix$scopeSuffix.msi"
 
-        foreach ($scope in @('perMachine', 'perUser')) {
-            $scopeSuffix = if ($scope -eq 'perUser') { '-userinstaller' } else { '' }
-            $msiPath = Join-Path $outputFolder "$artifactName$channelSuffix$scopeSuffix.msi"
-
-            Write-Host "==> wix build ($channel, $scope)" -ForegroundColor Cyan
-            dotnet wix build $sourceFile `
-                -arch $Architecture `
-                -d "Channel=$channel" `
-                -d "Scope=$scope" `
-                -d "PublishFolder=$publishFolder" `
-                -d "AssetsFolder=$assetsFolder" `
-                -ext WixToolset.UI.wixext `
-                -ext WixToolset.Util.wixext `
-                -culture en-us `
-                -loc $localizationFile `
-                -pdbtype none `
-                -out $msiPath
-            if ($LASTEXITCODE -ne 0) {
-                throw "wix build ($channel, $scope) failed with exit code $LASTEXITCODE"
-            }
+        Write-Host "==> wix build ($channel, $scope)" -ForegroundColor Cyan
+        dotnet wix build $sourceFile `
+            -arch $Architecture `
+            -d "Channel=$channel" `
+            -d "Scope=$scope" `
+            -d "PublishFolder=$publishFolder" `
+            -d "AssetsFolder=$assetsFolder" `
+            -ext WixToolset.UI.wixext `
+            -ext WixToolset.Util.wixext `
+            -culture en-us `
+            -loc $localizationFile `
+            -pdbtype none `
+            -out $msiPath
+        if ($LASTEXITCODE -ne 0) {
+            throw "wix build ($channel, $scope) failed with exit code $LASTEXITCODE"
         }
     }
 }

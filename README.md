@@ -85,6 +85,14 @@ Build all of them locally with:
 powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\build-installer.ps1 -Version 1.0.0
 ```
 
+Packaging is almost entirely CAB compression, so building every variant is slow. Pass
+`-Variants` to restrict it while iterating on the authoring — pull request validation builds
+the diagonal pair, which still exercises both sides of every conditional in the source:
+
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\build-installer.ps1 -Variants stable/perMachine,dev/perUser
+```
+
 The WiX toolset is pinned in `.config/dotnet-tools.json`. The script restores it and adds
 the UI and Util extensions, so no manual setup is required.
 

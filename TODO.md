@@ -81,16 +81,17 @@ the primary route rather than a fallback (decision 10).
 
 ### Shorten pull request validation
 
-`Build installers` takes around six minutes, almost all of it CAB-compressing a 252 MB
+`Build installers` took around six minutes, almost all of it CAB-compressing a 252 MB
 self-contained payload into a 73 MB MSI, four times over. The WiX authoring work itself is
-almost free. Two changes, expected to bring it under two minutes:
+almost free. Two changes were planned; the second is done:
 
 1. **Package the framework-dependent build.** Pass `-SelfContained false` in
    `.github/workflows/pull-request.yml`. The installer drops to roughly 11 MB while the same
-   authoring and the same file harvesting are still exercised.
-2. **Build two diagonal variants instead of four.** `scripts/build-installer.ps1` currently
-   loops every channel and scope. Give it a parameter to restrict the combinations, and have
-   the pull request job build `stable`/`perMachine` and `dev`/`perUser`.
+   authoring and the same file harvesting are still exercised. This is the larger of the two
+   savings and is still outstanding.
+2. ~~**Build two diagonal variants instead of four.**~~ Done. `scripts/build-installer.ps1`
+   takes a `-Variants` parameter, and the pull request job passes
+   `stable/perMachine,dev/perUser`. It defaults to all four, so Azure Pipelines is unchanged.
 
 The four variants are not repetition: they are four paths through the `<?if?>` branches in
 `installer/wix/SQLBI.Whiteboard.wxs`. Building one would miss a typo in the dev branch or a

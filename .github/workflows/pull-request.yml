@@ -94,7 +94,14 @@ jobs:
       # Catches WiX authoring errors here rather than after a merge, when Azure Pipelines
       # would sign and publish. Unsigned, and the output is discarded; the version is a
       # placeholder with no meaning.
+      #
+      # Two variants rather than all four. The four are not repetition - they are four paths
+      # through the <?if?> branches in installer/wix/SQLBI.Whiteboard.wxs - but this diagonal
+      # pair still takes both sides of each conditional, so a typo in the dev branch or a
+      # broken per-user directory is still caught. Packaging is almost entirely CAB
+      # compression, so dropping two halves the job. Azure Pipelines builds all four on every
+      # merge to main.
       - name: Build installers
         if: needs.changes.outputs.code == 'true'
         shell: pwsh
-        run: ./scripts/build-installer.ps1 -Version 0.0.0
+        run: ./scripts/build-installer.ps1 -Version 0.0.0 -Variants stable/perMachine,dev/perUser
