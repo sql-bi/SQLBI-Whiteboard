@@ -11,7 +11,7 @@ repository yet.
 `main` is protected. Work on short-lived branches and merge through a pull request — the
 workflow is in [CONTRIBUTING.md](../CONTRIBUTING.md), and the reasoning is decision 11.
 
-Everything builds with the .NET 8 SDK on Windows:
+Everything builds with the .NET 10 SDK on Windows:
 
 ```powershell
 powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\build.ps1

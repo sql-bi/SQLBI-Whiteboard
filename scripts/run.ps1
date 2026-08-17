@@ -5,10 +5,16 @@ param(
 
 $ErrorActionPreference = "Stop"
 $workspaceDirectory = Split-Path -Parent $PSScriptRoot
-$executable = Join-Path $workspaceDirectory "src\SQLBI.Whiteboard\bin\$Configuration\net8.0-windows\SQLBI.Whiteboard.exe"
+$outputRoot = Join-Path $workspaceDirectory "src\SQLBI.Whiteboard\bin\$Configuration"
 
-if (-not (Test-Path $executable)) {
+# The target framework folder is found rather than named. It carries the Windows SDK version
+# ("net10.0-windows10.0.26100.0"), so spelling it out here goes stale on every retarget.
+$executable = Get-ChildItem -Path $outputRoot -Filter 'SQLBI.Whiteboard.exe' -Recurse -ErrorAction SilentlyContinue |
+    Sort-Object LastWriteTime -Descending |
+    Select-Object -First 1
+
+if (-not $executable) {
     throw "SQLBI Whiteboard has not been built. Run scripts\build.ps1 first."
 }
 
-Start-Process -FilePath $executable
+Start-Process -FilePath $executable.FullName

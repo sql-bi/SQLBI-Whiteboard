@@ -222,9 +222,23 @@ the portable ZIP, all self-contained. Publishing both flavours meant six assets 
 like `SQLBI.Whiteboard.0.1.0.x64-frameworkdependent-dev-userinstaller.msi`, which asks a
 visitor to decode four dimensions before downloading anything.
 
-The self-contained build is roughly 60 MB against 8 MB, and needs no .NET runtime installed.
-That trade favours the visitor. The framework-dependent build is still produced and kept as
-a pipeline artifact.
+The self-contained installer is roughly 73 MB against 11 MB, and needs no .NET runtime
+installed. That trade favours the visitor. The framework-dependent build is still produced
+and kept as a pipeline artifact.
+
+## 17. Published builds are ReadyToRun-compiled
+
+**Implemented.**
+
+`PublishReadyToRun` is set in `src/SQLBI.Whiteboard/SQLBI.Whiteboard.csproj`, so publishing
+compiles IL ahead of time instead of leaving every method to the JIT on first call. Startup
+latency is what a pen application is judged on, and it is paid on every launch rather than
+once.
+
+It costs about 22% on disk — the self-contained publish folder measured 207 MB without it
+and 252 MB with it — which compresses down to a few MB in the installer. It applies only to
+`dotnet publish`, and only when a runtime identifier is given; both publish paths pass one,
+so a plain `dotnet build` is unaffected and local iteration does not slow down.
 
 ## 16. SQLBI Whiteboard is MIT-licensed open source
 
@@ -239,8 +253,9 @@ nobody had decided to grant.
 
 ## Open questions
 
-- Whether the first public release is `0.1.0` or `1.0.0`. `VersionPrefix` in
-  `Directory.Build.props` is still the placeholder `0.1.0`.
+- Whether the first public release is `0.2.0` or `1.0.0`. `VersionPrefix` in
+  `Directory.Build.props` reads `0.2.0`, bumped for the .NET 10 upgrade but still a
+  development number.
 - When the Store listing happens, and who owns the one-time listing work.
 - arm64 is not built; add it if Surface devices matter for a pen application.
 - The brand mark is placeholder-grade (decision 12).
