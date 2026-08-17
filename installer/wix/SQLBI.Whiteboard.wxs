@@ -129,10 +129,14 @@
           Registers .wboard. MSI resolves the class root according to the package
           scope, so the same authoring serves both installers.
         -->
+        <File
+            Id="DocumentIcon"
+            Name="SQLBI.Whiteboard.Document.ico"
+            Source="$(var.PublishFolder)\SQLBI.Whiteboard.Document.ico" />
         <ProgId
             Id="$(var.BoardProgId)"
             Description="!(loc.BoardFileTypeDescription)"
-            Icon="MainExecutable">
+            Icon="DocumentIcon">
           <Extension Id="$(var.BoardExtension)" ContentType="application/vnd.sqlbi.whiteboard">
             <Verb
                 Id="open"
@@ -155,6 +159,7 @@
       -->
       <Files Include="$(var.PublishFolder)\**">
         <Exclude Files="$(var.PublishFolder)\$(var.AppExecutableName)" />
+        <Exclude Files="$(var.PublishFolder)\SQLBI.Whiteboard.Document.ico" />
         <Exclude Files="$(var.PublishFolder)\**\*.pdb" />
         <Exclude Files="$(var.PublishFolder)\**\*.xml" />
       </Files>

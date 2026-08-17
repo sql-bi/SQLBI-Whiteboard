@@ -24,12 +24,26 @@ internal static class Program
         "m5.19-.46.13.13.12.13c.76.89.72 2.23-.13 3.07l-4.28 4.28c-.26.26-.58.45-.94.56l-2.33.7a1 1 0 0 1-1.24-1.27" +
         "l.74-2.29c.11-.34.3-.65.56-.9l4.29-4.29a2.27 2.27 0 0 1 3.08-.12Z";
 
+    // A sheet with the top-right corner turned back, so a board file is distinguishable
+    // from the application at a glance in Explorer.
+    private const string PagePath =
+        "F1 M 56,16 H 160 L 216,72 V 224 A 16,16 0 0 1 200,240 H 56 A 16,16 0 0 1 40,224 V 32 A 16,16 0 0 1 56,16 Z";
+
+    private const string FoldPath = "F1 M 160,16 L 216,72 H 160 Z";
+
     private static readonly Color BrandRed = Color.FromRgb(0xF4, 0x27, 0x27);
     private static readonly Color BrandRedDeep = Color.FromRgb(0xB7, 0x1D, 0x1D);
     private static readonly Color DialogGround = Color.FromRgb(0xF7, 0xF7, 0xF8);
+    private static readonly Color PageEdge = Color.FromRgb(0xD3, 0xD7, 0xDE);
+    private static readonly Color PageFold = Color.FromRgb(0xE8, 0xEA, 0xEE);
+    private static readonly Color Ink = Color.FromRgb(0x15, 0x17, 0x1C);
+    private static readonly Color InkMuted = Color.FromRgb(0x64, 0x6B, 0x78);
 
     /// <summary>Frame sizes of the application icon, matching the set already shipped.</summary>
     private static readonly int[] IconSizes = [16, 20, 24, 32, 40, 48, 64, 128, 256];
+
+    /// <summary>Favicons only need the sizes browsers actually ask for.</summary>
+    private static readonly int[] FaviconSizes = [16, 32, 48];
 
     [STAThread]
     private static int Main(string[] args)
@@ -43,25 +57,34 @@ internal static class Program
         var root = Path.GetFullPath(args[0]);
         var appAssets = Path.Combine(root, "src", "SQLBI.Whiteboard", "Assets");
         var installerAssets = Path.Combine(root, "installer", "wix", "assets");
+        var webAssets = Path.Combine(root, "assets", "web");
         Directory.CreateDirectory(installerAssets);
+        Directory.CreateDirectory(webAssets);
 
-        var icoPath = Path.Combine(appAssets, "SQLBI.Whiteboard.ico");
-        WriteIcon(icoPath, IconSizes);
-        Report(icoPath);
+        Console.WriteLine("Application");
+        Write(Path.Combine(appAssets, "SQLBI.Whiteboard.ico"), BuildIcon(IconSizes, RenderTile));
+        Write(Path.Combine(appAssets, "SQLBI.Whiteboard.png"), EncodePng(RenderTile(256)));
+        Write(Path.Combine(appAssets, "SQLBI.Whiteboard.Document.ico"), BuildIcon(IconSizes, RenderDocument));
 
-        var pngPath = Path.Combine(appAssets, "SQLBI.Whiteboard.png");
-        File.WriteAllBytes(pngPath, EncodePng(RenderTile(256)));
-        Report(pngPath);
+        Console.WriteLine("Installer");
+        Write(Path.Combine(installerAssets, "banner.png"), EncodePng(RenderBanner()));
+        Write(Path.Combine(installerAssets, "background.png"), EncodePng(RenderBackground()));
 
-        var bannerPath = Path.Combine(installerAssets, "banner.png");
-        File.WriteAllBytes(bannerPath, EncodePng(RenderBanner()));
-        Report(bannerPath);
-
-        var backgroundPath = Path.Combine(installerAssets, "background.png");
-        File.WriteAllBytes(backgroundPath, EncodePng(RenderBackground()));
-        Report(backgroundPath);
+        Console.WriteLine("Web");
+        Write(Path.Combine(webAssets, "favicon.ico"), BuildIcon(FaviconSizes, RenderTile));
+        Write(Path.Combine(webAssets, "favicon-16.png"), EncodePng(RenderTile(16)));
+        Write(Path.Combine(webAssets, "favicon-32.png"), EncodePng(RenderTile(32)));
+        // iOS rounds the corners itself and composites over black, so this one is full bleed.
+        Write(Path.Combine(webAssets, "apple-touch-icon.png"), EncodePng(RenderFullBleed(180)));
+        Write(Path.Combine(webAssets, "og-image.png"), EncodePng(RenderSocialCard()));
 
         return 0;
+    }
+
+    private static void Write(string path, byte[] content)
+    {
+        File.WriteAllBytes(path, content);
+        Report(path);
     }
 
     private static void Report(string path)
@@ -124,6 +147,101 @@ internal static class Program
 
     private static BitmapSource RenderTile(int size) =>
         Render(size, size, context => DrawTile(context, 0, 0, size));
+
+    /// <summary>The icon shown on .wboard files: a sheet carrying the mark, not the app tile.</summary>
+    private static BitmapSource RenderDocument(int size) => Render(size, size, context =>
+    {
+        var s = size / 256.0;
+        context.PushTransform(new ScaleTransform(s, s));
+
+        var page = Geometry.Parse(PagePath);
+        // Kept at least a hairline wide, otherwise a white sheet vanishes on a light background.
+        var edge = new Pen(new SolidColorBrush(PageEdge), Math.Max(2, 0.8 / s));
+        context.DrawGeometry(Brushes.White, edge, page);
+        context.DrawGeometry(new SolidColorBrush(PageFold), null, Geometry.Parse(FoldPath));
+
+        context.Pop();
+
+        const double glyph = 116;
+        DrawGlyph(
+            context,
+            (256 - glyph) / 2 * s,
+            ((256 - glyph) / 2 + 12) * s,
+            glyph * s,
+            new SolidColorBrush(BrandRed));
+    });
+
+    /// <summary>Edge-to-edge variant with no tile corners, for hosts that apply their own mask.</summary>
+    private static BitmapSource RenderFullBleed(int size) => Render(size, size, context =>
+    {
+        var s = size / 256.0;
+        context.DrawRectangle(TileBrush(size), null, new Rect(0, 0, size, size));
+        DrawGlyph(context, 32 * s, 32 * s, 192 * s, Brushes.White);
+    });
+
+    private static BitmapSource RenderSocialCard() => Render(1200, 630, context =>
+    {
+        const double width = 1200;
+        const double height = 630;
+        const double textLeft = 372;
+        const double iconSize = 224;
+
+        context.DrawRectangle(Brushes.White, null, new Rect(0, 0, width, height));
+        context.DrawRectangle(new SolidColorBrush(BrandRed), null, new Rect(0, 0, width, 10));
+
+        DrawTile(context, 100, (height - iconSize) / 2, iconSize);
+
+        var semibold = new Typeface(
+            new FontFamily("Segoe UI"),
+            FontStyles.Normal,
+            FontWeights.SemiBold,
+            FontStretches.Normal);
+        var regular = new Typeface(
+            new FontFamily("Segoe UI"),
+            FontStyles.Normal,
+            FontWeights.Normal,
+            FontStretches.Normal);
+
+        var title = Text("SQLBI Whiteboard", semibold, 68, Ink);
+        var tagline = Text(
+            "A native Windows 11 whiteboard for pen, touch, and live capture.",
+            regular,
+            27,
+            InkMuted);
+        // Wrapped rather than set on one line, which keeps a comfortable right margin
+        // and gives the block enough height to sit well in a 1200x630 frame.
+        tagline.MaxTextWidth = width - textLeft - 148;
+        var address = Text("whiteboard.sqlbi.com", regular, 22, BrandRed);
+
+        const double titleGap = 12;
+        const double taglineGap = 16;
+        var block = title.Height + titleGap + tagline.Height + taglineGap + address.Height;
+
+        // Measured rather than positioned by hand, so the block stays centred if the copy changes.
+        var y = (height - block) / 2;
+        context.DrawText(title, new Point(textLeft, y));
+        y += title.Height + titleGap;
+        context.DrawText(tagline, new Point(textLeft, y));
+        y += tagline.Height + taglineGap;
+        context.DrawText(address, new Point(textLeft, y));
+
+        var overflow = textLeft + tagline.Width;
+        if (overflow > width - 64)
+        {
+            Console.Error.WriteLine(
+                $"  warning: social card tagline reaches {overflow:F0}px of {width:F0}px");
+        }
+    });
+
+    private static FormattedText Text(string value, Typeface typeface, double size, Color color) =>
+        new(
+            value,
+            CultureInfo.InvariantCulture,
+            FlowDirection.LeftToRight,
+            typeface,
+            size,
+            new SolidColorBrush(color),
+            1.0);
 
     /// <summary>WiX draws the dialog title over the left of the banner, so the mark sits right.</summary>
     private static BitmapSource RenderBanner() => Render(986, 116, context =>
@@ -195,12 +313,12 @@ internal static class Program
         return stream.ToArray();
     }
 
-    /// <summary>Writes an .ico whose frames are PNG-compressed, matching the icon this replaces.</summary>
-    private static void WriteIcon(string path, int[] sizes)
+    /// <summary>Builds an .ico whose frames are PNG-compressed, matching the icon this replaces.</summary>
+    private static byte[] BuildIcon(int[] sizes, Func<int, BitmapSource> render)
     {
-        var frames = sizes.Select(size => EncodePng(RenderTile(size))).ToArray();
+        var frames = sizes.Select(size => EncodePng(render(size))).ToArray();
 
-        using var stream = File.Create(path);
+        using var stream = new MemoryStream();
         using var writer = new BinaryWriter(stream);
 
         writer.Write((ushort)0);            // reserved
@@ -226,5 +344,8 @@ internal static class Program
         {
             writer.Write(frame);
         }
+
+        writer.Flush();
+        return stream.ToArray();
     }
 }

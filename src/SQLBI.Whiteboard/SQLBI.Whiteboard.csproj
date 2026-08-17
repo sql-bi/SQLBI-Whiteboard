@@ -12,6 +12,10 @@
   </PropertyGroup>
   <ItemGroup>
     <Resource Include="Assets\SQLBI.Whiteboard.ico" />
+    <!-- Copied beside the executable so the installer can register it for .wboard files. -->
+    <Content Include="Assets\SQLBI.Whiteboard.Document.ico"
+             Link="SQLBI.Whiteboard.Document.ico"
+             CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\SQLBI.Whiteboard.Core\SQLBI.Whiteboard.Core.csproj" />
