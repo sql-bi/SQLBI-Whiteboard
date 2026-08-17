@@ -142,21 +142,36 @@ No storage account, service connection, or blob RBAC is therefore needed.
 Creating a release requires a GitHub service connection with `contents: write`; the
 connection used to read source may not carry it.
 
-## 11. Branch protection is deferred
+## 11. `main` is protected and every change arrives by pull request
 
-**Agreed, deliberately not enabled.**
+**Agreed; enable in the repository settings.** This supersedes an earlier decision to defer
+protection until development had settled.
 
-Development is early enough that requiring pull requests would cost more than it protects.
-Revisit before `main` begins feeding a public download channel automatically.
+The original objection was that requiring pull requests would slow early development. It
+does not: both maintainers work through coding agents, so creating a short-lived branch and
+opening a pull request is a line of instruction rather than a change of habit. The cost was
+overestimated, and `main` is about to start feeding a public download channel on every
+merge.
 
-When it is enabled: require a pull request and passing checks, but **not** approvals — a
-two-person core team should not be blocked by one member's travel. Add required review only
-if something slips through.
+Configuration, in two stages because the second has a prerequisite:
+
+- **Now** — require a pull request before merging, and disallow bypassing the setting for
+  administrators. Protection that can be silently sidestepped tends to be.
+- **Once pull-request validation exists** (see `release-management.md`) — additionally
+  require that check to pass. GitHub can only require checks it has seen, so this cannot be
+  configured before the workflow runs at least once.
+
+Approvals are deliberately **not** required. A two-person core team should not be blocked by
+one member's travel; review is welcome, waiting is not. Add required review only if
+something slips through.
 
 There is no `develop` branch and none is planned: `main` is the pre-release channel, and a
 release is a tag plus a GitHub Release, so no branch needs to represent "released". Cut a
 `release/x.y` branch only when a shipped version genuinely needs patching while `main` has
 moved on.
+
+The working agreement itself is in `CONTRIBUTING.md`, kept tool-agnostic so that it applies
+to every contributor and to whichever coding agent each of them uses.
 
 ## 12. Brand assets are generated from one source
 

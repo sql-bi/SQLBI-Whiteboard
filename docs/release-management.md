@@ -8,8 +8,8 @@ repository yet.
 
 ## Day to day
 
-Work on short-lived branches off `main` and merge when green. `main` is not protected yet
-(decision 11), so pushing directly works; prefer a pull request anyway so validation runs.
+`main` is protected. Work on short-lived branches and merge through a pull request — the
+workflow is in [CONTRIBUTING.md](../CONTRIBUTING.md), and the reasoning is decision 11.
 
 Everything builds with the .NET 8 SDK on Windows:
 
@@ -114,7 +114,9 @@ hand.
 Roughly in dependency order:
 
 1. Move the version out of the variable group and into the repository (decision 8).
-2. Add CI triggers: pull requests unsigned, `main` signed.
+2. Add CI triggers: pull requests unsigned, `main` signed. Until a pull-request check exists
+   and has run once, branch protection can require a pull request but cannot require a
+   passing check — GitHub only offers checks it has already seen.
 3. Replace the `AzureFileCopy` step with `GitHubRelease@1`, and create a GitHub service
    connection with `contents: write`.
 4. Split the pipeline into Build / Pre-release / Release stages with an approval gate.

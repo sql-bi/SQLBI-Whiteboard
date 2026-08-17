@@ -3,6 +3,7 @@
 A native Windows 11 whiteboard built with C# and WPF. WPF's dedicated dynamic ink renderer owns the live pen stroke, while a retained viewport renders an unbounded world-coordinate document beneath it.
 
 How the project is developed and shipped is documented separately:
+[CONTRIBUTING.md](CONTRIBUTING.md) for the working agreement,
 [docs/release-management.md](docs/release-management.md) for the process, and
 [docs/decisions.md](docs/decisions.md) for the choices behind it.
 
