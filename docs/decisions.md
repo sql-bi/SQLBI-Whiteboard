@@ -213,11 +213,34 @@ Bravo's installer carries a custom-action DLL and opt-in telemetry checkboxes wi
 a long sequence of remember-properties. None of it was carried over, and the installer is
 considerably simpler for it. Port it only if the data is actually wanted.
 
+## 15. Only the self-contained build is published
+
+**Implemented.**
+
+Each release carries three assets: the per-machine installer, the per-user installer, and
+the portable ZIP, all self-contained. Publishing both flavours meant six assets with names
+like `SQLBI.Whiteboard.0.1.0.x64-frameworkdependent-dev-userinstaller.msi`, which asks a
+visitor to decode four dimensions before downloading anything.
+
+The self-contained build is roughly 60 MB against 8 MB, and needs no .NET runtime installed.
+That trade favours the visitor. The framework-dependent build is still produced and kept as
+a pipeline artifact.
+
+## 16. SQLBI Whiteboard is MIT-licensed open source
+
+**Implemented.**
+
+The repository is public and carries the MIT licence, the same as Bravo, and the installer
+presents the same terms. This was confirmed deliberately rather than inherited: the licence
+text was copied from Bravo early on, and shipping it unexamined would have granted rights
+nobody had decided to grant.
+
 ---
 
 ## Open questions
 
-- Whether the first public release is `0.1.0` or `1.0.0`.
+- Whether the first public release is `0.1.0` or `1.0.0`. `VersionPrefix` in
+  `Directory.Build.props` is still the placeholder `0.1.0`.
 - When the Store listing happens, and who owns the one-time listing work.
 - arm64 is not built; add it if Surface devices matter for a pen application.
 - The brand mark is placeholder-grade (decision 12).
