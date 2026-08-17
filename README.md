@@ -64,6 +64,10 @@ powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\build-installer.ps
 The WiX toolset is pinned in `.config/dotnet-tools.json`. The script restores it and adds
 the UI and Util extensions, so no manual setup is required.
 
+The installer banner and dialog artwork, and the application icon, are generated from
+`src/SQLBI.Whiteboard/Assets/SQLBI.Whiteboard.svg` by `.\scripts\build-assets.ps1`. The
+generated files are committed, so that script only needs running when the artwork changes.
+
 `.azure/pipelines/build-whiteboard.yaml` performs the same build in Azure Pipelines and
 signs the binaries and both MSI packages with the SQLBI certificate held in Azure Key Vault.
 

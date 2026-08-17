@@ -79,6 +79,8 @@
     </Feature>
 
     <WixVariable Id="WixUILicenseRtf" Value="$(var.AssetsFolder)\license.rtf" />
+    <WixVariable Id="WixUIBannerBmp" Value="$(var.AssetsFolder)\banner.png" />
+    <WixVariable Id="WixUIDialogBmp" Value="$(var.AssetsFolder)\background.png" />
     <Property Id="WIXUI_EXITDIALOGOPTIONALCHECKBOXTEXT" Value="!(loc.LaunchApplication)" />
     <Property Id="WIXUI_EXITDIALOGOPTIONALCHECKBOX" Value="1" />
     <Property Id="WixShellExecTarget" Value="[#MainExecutable]" />
