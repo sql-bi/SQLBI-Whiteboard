@@ -34,6 +34,7 @@ Set-StrictMode -Version Latest
 $repoRoot = Split-Path -Parent $PSScriptRoot
 $project = Join-Path $repoRoot 'src/SQLBI.Whiteboard/SQLBI.Whiteboard.csproj'
 $installerRoot = Join-Path $repoRoot 'installer/wix'
+$assetsFolder = Join-Path $installerRoot 'assets'
 $skipPublish = -not [string]::IsNullOrWhiteSpace($PublishFolder)
 $publishFolder = if ($skipPublish) { $PublishFolder } else { Join-Path $repoRoot 'artifacts/publish' }
 $outputFolder = if ([string]::IsNullOrWhiteSpace($OutputFolder)) {
@@ -96,7 +97,6 @@ try {
     # so every value is expanded into a quoted string first.
     $sourceFile = Join-Path $installerRoot 'SQLBI.Whiteboard.wxs'
     $localizationFile = Join-Path $installerRoot 'SQLBI.Whiteboard.en-us.wxl'
-    $assetsFolder = Join-Path $installerRoot 'assets'
 
     # Both channels are built from one publish, so the released installers are produced by
     # the same run that produced the pre-release ones and can be promoted without rebuilding.
@@ -128,12 +128,38 @@ finally {
     Pop-Location
 }
 
-Write-Host '==> Portable ZIP' -ForegroundColor Cyan
-Compress-Archive `
-    -Path (Join-Path $publishFolder '*') `
-    -DestinationPath (Join-Path $outputFolder "$artifactName-portable.zip") `
-    -CompressionLevel Optimal `
-    -Force
+# One portable ZIP per channel, differing only by the channel marker, exactly as the
+# installers do. Without this a portable pre-release would report itself as the released
+# channel and write to the released channel's settings folder, which is the collision
+# channel.txt exists to prevent.
+foreach ($channel in ($Variants | ForEach-Object { $_.Split('/')[0] } | Sort-Object -Unique)) {
+    $channelSuffix = if ($channel -eq 'dev') { '-dev' } else { '' }
+    $zipPath = Join-Path $outputFolder "$artifactName$channelSuffix-portable.zip"
+
+    Write-Host "==> Portable ZIP ($channel)" -ForegroundColor Cyan
+    Compress-Archive `
+        -Path (Join-Path $publishFolder '*') `
+        -DestinationPath $zipPath `
+        -CompressionLevel Optimal `
+        -Force
+
+    # The same file the installer ships, so the two can never disagree about a channel name.
+    # The released channel has no marker: its absence is what identifies it.
+    $marker = Join-Path $assetsFolder "channel-$channel.txt"
+    if (Test-Path $marker) {
+        # Staged and added afterwards rather than copied into the publish folder, which is
+        # shared between channels and, in the pipeline, already signed.
+        $staging = Join-Path $outputFolder ".marker-$channel"
+        New-Item -ItemType Directory -Path $staging -Force | Out-Null
+        try {
+            Copy-Item $marker (Join-Path $staging 'channel.txt') -Force
+            Compress-Archive -Path (Join-Path $staging 'channel.txt') -DestinationPath $zipPath -Update
+        }
+        finally {
+            Remove-Item $staging -Recurse -Force
+        }
+    }
+}
 
 Write-Host ''
 Write-Host 'Artifacts:' -ForegroundColor Green
