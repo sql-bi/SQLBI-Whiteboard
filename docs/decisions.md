@@ -249,6 +249,32 @@ presents the same terms. This was confirmed deliberately rather than inherited: 
 text was copied from Bravo early on, and shipping it unexamined would have granted rights
 nobody had decided to grant.
 
+## 18. Pull request validation packages less than it ships
+
+**Implemented.**
+
+`Build installers` in `.github/workflows/pull-request.yml` packages the framework-dependent
+build and only two of the four channel-scope variants. It took 6m 17s building everything;
+the reduced job runs in well under two minutes.
+
+Almost all of that time was CAB compression, and compression is not what the job validates —
+the WiX authoring is. The framework-dependent payload is roughly 15 MB against 252 MB, and
+runs through the same authoring and the same `<Files Include>` harvesting.
+
+The two variants are the diagonal pair, `stable/perMachine` and `dev/perUser`. The four are
+not repetition: they are four paths through the `<?if?>` branches in
+`installer/wix/SQLBI.Whiteboard.wxs`, so building only one would miss a typo in the dev
+branch or a broken per-user directory. The diagonal pair still takes both sides of every
+conditional.
+
+What this stops covering is narrow: a failure specific to self-contained output, and the two
+untested channel-scope combinations. Azure Pipelines builds all four variants self-contained
+on every merge to `main`, so both are caught before anything is signed or published.
+
+`scripts/build-installer.ps1` defaults to all four variants and to self-contained. The
+reduction is expressed in the workflow that wants it, not in the script, so nothing that
+ships can inherit it by accident.
+
 ---
 
 ## Open questions

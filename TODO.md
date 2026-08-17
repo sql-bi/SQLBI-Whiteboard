@@ -77,29 +77,6 @@ Note the Store signs the package itself, so the SQLBI certificate is not involve
 availability is also uneven on managed corporate machines, which is why the MSI channel stays
 the primary route rather than a fallback (decision 10).
 
-## Housekeeping
-
-### Shorten pull request validation
-
-`Build installers` takes around six minutes, almost all of it CAB-compressing a 252 MB
-self-contained payload into a 73 MB MSI, four times over. The WiX authoring work itself is
-almost free. Two changes, expected to bring it under two minutes:
-
-1. **Package the framework-dependent build.** Pass `-SelfContained false` in
-   `.github/workflows/pull-request.yml`. The installer drops to roughly 11 MB while the same
-   authoring and the same file harvesting are still exercised.
-2. **Build two diagonal variants instead of four.** `scripts/build-installer.ps1` currently
-   loops every channel and scope. Give it a parameter to restrict the combinations, and have
-   the pull request job build `stable`/`perMachine` and `dev`/`perUser`.
-
-The four variants are not repetition: they are four paths through the `<?if?>` branches in
-`installer/wix/SQLBI.Whiteboard.wxs`. Building one would miss a typo in the dev branch or a
-broken per-user directory. The diagonal pair covers both sides of each conditional.
-
-What this stops covering, both thin and both caught before anything ships: a failure specific
-to self-contained output, and the two untested channel-scope combinations. Azure Pipelines
-builds all four variants self-contained on every merge to `main`.
-
 ## Deferred, deliberately
 
 - **arm64.** Not built. Worth adding if Surface devices matter for a pen application.

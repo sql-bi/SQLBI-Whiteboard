@@ -94,7 +94,26 @@ jobs:
       # Catches WiX authoring errors here rather than after a merge, when Azure Pipelines
       # would sign and publish. Unsigned, and the output is discarded; the version is a
       # placeholder with no meaning.
+      #
+      # Deliberately smaller than what ships, because this job is almost entirely CAB
+      # compression and none of that compression is what needs validating:
+      #
+      #   -SelfContained false  packages the framework-dependent build, a payload of roughly
+      #                         15 MB rather than 252 MB. The same authoring and the same file
+      #                         harvesting run over it.
+      #   -Variants             builds a diagonal pair. The four variants are not repetition -
+      #                         they are four paths through the <?if?> branches in
+      #                         installer/wix/SQLBI.Whiteboard.wxs - but this pair still takes
+      #                         both sides of every conditional, so a typo in the dev branch or
+      #                         a broken per-user directory is still caught.
+      #
+      # Azure Pipelines builds all four variants self-contained on every merge to main, so
+      # what is skipped here is still checked before anything is signed or published.
       - name: Build installers
         if: needs.changes.outputs.code == 'true'
         shell: pwsh
-        run: ./scripts/build-installer.ps1 -Version 0.0.0
+        run: >-
+          ./scripts/build-installer.ps1
+          -Version 0.0.0
+          -SelfContained false
+          -Variants stable/perMachine,dev/perUser
