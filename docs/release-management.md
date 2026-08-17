@@ -93,7 +93,6 @@ Parameters:
 | --- | --- | --- |
 | `verbosity` | `normal` | MSBuild verbosity |
 | `sign` | on | Code sign binaries and MSIs |
-| `publishToStorage` | off | Superseded by GitHub Releases (decision 10) |
 
 Two variable groups supply its settings; both must be authorised for the pipeline before it
 can run. The signing group's contents are described in decision 1 and held by the
@@ -145,14 +144,10 @@ hand.
 
 Roughly in dependency order:
 
-1. Add a CI trigger to the Azure pipeline so `main` builds and signs on every merge.
-2. Replace the `AzureFileCopy` step with `GitHubRelease@1`, and create a GitHub service
-   connection with `contents: write`.
-3. Split the pipeline into Build / Pre-release / Release stages with an approval gate.
-4. Publish `stable.json` and `dev.json` manifests alongside the binaries, for the download
+1. Publish `stable.json` and `dev.json` manifests alongside the binaries, for the download
    page, a future in-app update check, and winget automation to share one source.
-5. Add winget submission triggered by a published release.
-6. MSIX packaging and Store submission (decision 13).
+2. Add winget submission triggered by a published release.
+3. MSIX packaging and Store submission (decision 13).
 
 ## Verification before a public release
 

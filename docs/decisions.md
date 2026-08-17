@@ -120,7 +120,10 @@ build time.
 
 ## 9. Promote artifacts, not commits
 
-**Agreed, not yet built.**
+**Implemented.** The pipeline has three stages: Build, PreRelease, and Release. PreRelease
+publishes automatically; Release is gated by approvals on the `whiteboard-release`
+environment and uploads the released-channel installers **that the same run already
+produced**.
 
 Rebuilding from a tagged commit ships bits that were never tested. Promotion instead
 publishes the already-built, already-signed artifacts from the run that was verified.
@@ -130,9 +133,8 @@ installers already exist when promotion happens.
 
 ## 10. GitHub Releases hosts the downloads
 
-**Agreed, not yet built.** The pipeline still carries a disabled `AzureFileCopy` step and a
-`publishToStorage` parameter from the superseded plan; both should be replaced by
-`GitHubRelease@1`.
+**Implemented.** `GitHubRelease@1` publishes both channels; the `AzureFileCopy` step and the
+`publishToStorage` parameter are gone, and no storage account is needed.
 
 The repository is public, so release assets are downloadable without authentication — this
 was the deciding factor, not cost. GitHub serves them from a CDN at no bandwidth cost, the
@@ -141,8 +143,8 @@ a permanent link the download page can hard-code, and winget reads the same sour
 
 No storage account, service connection, or blob RBAC is therefore needed.
 
-Creating a release requires a GitHub service connection with `contents: write`; the
-connection used to read source may not carry it.
+Creating a release requires a GitHub service connection with `contents: write`, separate
+from the one used to read source. It is named `sql-bi write assets`.
 
 ## 11. `main` is protected and every change arrives by pull request
 

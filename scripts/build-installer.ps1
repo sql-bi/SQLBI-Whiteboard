@@ -16,7 +16,11 @@ param(
     [string] $Architecture = 'x64',
     [ValidateSet('true', 'false')]
     [string] $SelfContained = 'true',
-    [string] $Configuration = 'Release'
+    [string] $Configuration = 'Release',
+    # Supply an existing publish folder to package binaries that are already built, and
+    # signed. The build pipeline does this so signing happens between publish and packaging.
+    [string] $PublishFolder,
+    [string] $OutputFolder
 )
 
 $ErrorActionPreference = 'Stop'
@@ -25,8 +29,13 @@ Set-StrictMode -Version Latest
 $repoRoot = Split-Path -Parent $PSScriptRoot
 $project = Join-Path $repoRoot 'src/SQLBI.Whiteboard/SQLBI.Whiteboard.csproj'
 $installerRoot = Join-Path $repoRoot 'installer/wix'
-$publishFolder = Join-Path $repoRoot 'artifacts/publish'
-$outputFolder = Join-Path $repoRoot 'artifacts/installer'
+$skipPublish = -not [string]::IsNullOrWhiteSpace($PublishFolder)
+$publishFolder = if ($skipPublish) { $PublishFolder } else { Join-Path $repoRoot 'artifacts/publish' }
+$outputFolder = if ([string]::IsNullOrWhiteSpace($OutputFolder)) {
+    Join-Path $repoRoot 'artifacts/installer'
+} else {
+    $OutputFolder
+}
 
 if ([string]::IsNullOrWhiteSpace($Version)) {
     $Version = (dotnet msbuild $project -getProperty:VersionPrefix --nologo).Trim()
@@ -40,23 +49,27 @@ $artifactName = "SQLBI.Whiteboard.$Version.$Architecture$suffix"
 # WiX v4 requires a four-part numeric version; the informational version keeps the semver string.
 $fileVersion = if ($Version -match '^\d+\.\d+\.\d+$') { "$Version.0" } else { $Version }
 
+if (-not $skipPublish -and (Test-Path $publishFolder)) { Remove-Item $publishFolder -Recurse -Force }
 foreach ($folder in @($publishFolder, $outputFolder)) {
-    if (Test-Path $folder) { Remove-Item $folder -Recurse -Force }
     New-Item -ItemType Directory -Path $folder -Force | Out-Null
 }
 
-Write-Host "==> dotnet publish ($Architecture, self-contained=$SelfContained)" -ForegroundColor Cyan
-dotnet publish $project `
-    --configuration $Configuration `
-    --runtime "win-$Architecture" `
-    --self-contained $SelfContained `
-    --output $publishFolder `
-    -p:Version=$fileVersion `
-    -p:InformationalVersion=$Version `
-    -p:ContinuousIntegrationBuild=true `
-    -p:DebugType=none `
-    --nologo
-if ($LASTEXITCODE -ne 0) { throw "dotnet publish failed with exit code $LASTEXITCODE" }
+if ($skipPublish) {
+    Write-Host "==> Packaging the existing publish folder $publishFolder" -ForegroundColor Cyan
+} else {
+    Write-Host "==> dotnet publish ($Architecture, self-contained=$SelfContained)" -ForegroundColor Cyan
+    dotnet publish $project `
+        --configuration $Configuration `
+        --runtime "win-$Architecture" `
+        --self-contained $SelfContained `
+        --output $publishFolder `
+        -p:Version=$fileVersion `
+        -p:InformationalVersion=$Version `
+        -p:ContinuousIntegrationBuild=true `
+        -p:DebugType=none `
+        --nologo
+    if ($LASTEXITCODE -ne 0) { throw "dotnet publish failed with exit code $LASTEXITCODE" }
+}
 
 Write-Host '==> Restoring the WiX tool' -ForegroundColor Cyan
 Push-Location $repoRoot
