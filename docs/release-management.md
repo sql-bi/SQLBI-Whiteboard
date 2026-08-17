@@ -151,7 +151,8 @@ Roughly in dependency order:
 
 ## Verification before a public release
 
-None of this has been done for a real release yet.
+The build, signing, and publishing chain is proven (see above). What has **not** been done
+for a real release is everything that involves installing the result.
 
 - `signtool verify /pa /v` on each MSI.
 - Install, upgrade, and uninstall for each scope; confirm uninstall removes the install
