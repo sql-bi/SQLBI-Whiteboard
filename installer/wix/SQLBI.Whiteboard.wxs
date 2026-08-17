@@ -1,13 +1,14 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!--
-  Builds both the per-machine and the per-user MSI from a single source.
-  Select the variant with the Scope preprocessor variable:
+  Builds every installer variant from a single source. Two preprocessor variables
+  select the variant:
 
-    wix build SQLBI.Whiteboard.wxs -d Scope=perMachine ...
-    wix build SQLBI.Whiteboard.wxs -d Scope=perUser    ...
+    -d Channel=stable|dev      released channel, or the pre-release channel
+    -d Scope=perMachine|perUser
 
-  The two variants intentionally use different UpgradeCodes: they are separate
-  products, so a per-user install never tries to upgrade a per-machine one.
+  Each of the four combinations is a distinct product with its own UpgradeCode, so a
+  per-user install never tries to upgrade a per-machine one, and a pre-release install
+  sits alongside a released one rather than replacing it.
 -->
 <Wix xmlns="http://wixtoolset.org/schemas/v4/wxs"
      xmlns:ui="http://wixtoolset.org/schemas/v4/wxs/ui">
@@ -21,15 +22,46 @@
   <?define BoardExtension = "wboard" ?>
   <?define BoardProgId = "SQLBI.Whiteboard.Board" ?>
 
+  <!--
+    The pre-release channel is a separate product: its own UpgradeCodes, name, install
+    folder and settings, so a tester can keep a released copy installed alongside it.
+    It deliberately does not claim the .wboard file type, which stays with the released
+    channel; uninstalling a pre-release therefore cannot break that association.
+  -->
+  <?if $(var.Channel) = dev ?>
+    <?define ChannelName = "Dev" ?>
+    <?define ChannelNameSuffix = " (Dev)" ?>
+    <?define ChannelFolderSuffix = " Dev" ?>
+    <?define RegistersFileType = "no" ?>
+    <?if $(var.Scope) = perUser ?>
+      <?define UpgradeCodeGuid = "{A23653E1-91B3-4EAA-BA84-3792046F5907}" ?>
+    <?else?>
+      <?define UpgradeCodeGuid = "{B995F70F-44C0-4BC4-B2B7-3D886C979C6F}" ?>
+    <?endif?>
+  <?elseif $(var.Channel) = stable ?>
+    <?define ChannelNameSuffix = "" ?>
+    <?define ChannelFolderSuffix = "" ?>
+    <?define RegistersFileType = "yes" ?>
+    <?if $(var.Scope) = perUser ?>
+      <?define UpgradeCodeGuid = "{F11E7279-D134-4201-AD35-AD49B33B5F6D}" ?>
+    <?else?>
+      <?define UpgradeCodeGuid = "{E753CDD2-A0A3-45E8-ABFC-5EE1E6B15AAD}" ?>
+    <?endif?>
+  <?else?>
+    <?error Channel must be defined as either stable or dev ?>
+  <?endif?>
+
   <?if $(var.Scope) = perUser ?>
-    <?define UpgradeCodeGuid = "{F11E7279-D134-4201-AD35-AD49B33B5F6D}" ?>
-    <?define ProductNameSuffix = " (current user)" ?>
+    <?define ProductNameSuffix = "$(var.ChannelNameSuffix) (current user)" ?>
   <?elseif $(var.Scope) = perMachine ?>
-    <?define UpgradeCodeGuid = "{E753CDD2-A0A3-45E8-ABFC-5EE1E6B15AAD}" ?>
-    <?define ProductNameSuffix = "" ?>
+    <?define ProductNameSuffix = "$(var.ChannelNameSuffix)" ?>
   <?else?>
     <?error Scope must be defined as either perMachine or perUser ?>
   <?endif?>
+
+  <!-- Everything below is written in terms of these, so both channels stay in step. -->
+  <?define ProductDisplayName = "$(var.AppName)$(var.ChannelNameSuffix)" ?>
+  <?define InstallSubfolder = "$(var.AppInstallSubfolder)$(var.ChannelFolderSuffix)" ?>
 
   <Package
       Name="$(var.AppName)$(var.ProductNameSuffix)"
@@ -72,7 +104,7 @@
     <!-- Set DESKTOPSHORTCUT=0 on the command line to skip the desktop shortcut. -->
     <Property Id="DESKTOPSHORTCUT" Value="1" Secure="yes" />
 
-    <Feature Id="Main" Title="$(var.AppName)" Level="1">
+    <Feature Id="Main" Title="$(var.ProductDisplayName)" Level="1">
       <ComponentGroupRef Id="ApplicationComponents" />
       <ComponentRef Id="ProgramMenuShortcut" />
       <ComponentRef Id="DesktopShortcut" />
@@ -105,14 +137,14 @@
       <StandardDirectory Id="LocalAppDataFolder">
         <Directory Id="ProgramsFolder" Name="Programs">
           <Directory Id="AppManufacturerFolder" Name="$(var.AppInstallFolder)">
-            <Directory Id="INSTALLFOLDER" Name="$(var.AppInstallSubfolder)" />
+            <Directory Id="INSTALLFOLDER" Name="$(var.InstallSubfolder)" />
           </Directory>
         </Directory>
       </StandardDirectory>
     <?else?>
       <StandardDirectory Id="ProgramFiles6432Folder">
         <Directory Id="AppManufacturerFolder" Name="$(var.AppInstallFolder)">
-          <Directory Id="INSTALLFOLDER" Name="$(var.AppInstallSubfolder)" />
+          <Directory Id="INSTALLFOLDER" Name="$(var.InstallSubfolder)" />
         </Directory>
       </StandardDirectory>
     <?endif?>
@@ -125,29 +157,38 @@
             Source="$(var.PublishFolder)\$(var.AppExecutableName)"
             Checksum="yes"
             KeyPath="yes" />
-        <!--
-          Registers .wboard. MSI resolves the class root according to the package
-          scope, so the same authoring serves both installers.
-        -->
         <File
             Id="DocumentIcon"
             Name="SQLBI.Whiteboard.Document.ico"
             Source="$(var.PublishFolder)\SQLBI.Whiteboard.Document.ico" />
-        <ProgId
-            Id="$(var.BoardProgId)"
-            Description="!(loc.BoardFileTypeDescription)"
-            Icon="DocumentIcon">
-          <Extension Id="$(var.BoardExtension)" ContentType="application/vnd.sqlbi.whiteboard">
-            <Verb
-                Id="open"
-                Command="!(loc.BoardOpenVerb)"
-                TargetFile="MainExecutable"
-                Argument="&quot;%1&quot;" />
-          </Extension>
-        </ProgId>
+
+        <?if $(var.RegistersFileType) = "yes" ?>
+          <!--
+            Registers .wboard. MSI resolves the class root according to the package
+            scope, so the same authoring serves both installers.
+          -->
+          <ProgId
+              Id="$(var.BoardProgId)"
+              Description="!(loc.BoardFileTypeDescription)"
+              Icon="DocumentIcon">
+            <Extension Id="$(var.BoardExtension)" ContentType="application/vnd.sqlbi.whiteboard">
+              <Verb
+                  Id="open"
+                  Command="!(loc.BoardOpenVerb)"
+                  TargetFile="MainExecutable"
+                  Argument="&quot;%1&quot;" />
+            </Extension>
+          </ProgId>
+        <?else?>
+          <!--
+            Read by AppChannel at startup to keep this channel's settings separate.
+            Its absence is what identifies the released channel, so it ships only here.
+          -->
+          <File Id="ChannelMarker" Name="channel.txt" Source="$(var.AssetsFolder)\channel-$(var.Channel).txt" />
+        <?endif?>
         <RegistryValue
             Root="HKMU"
-            Key="Software\$(var.AppManufacturer)\$(var.AppInstallSubfolder)"
+            Key="Software\$(var.AppManufacturer)\$(var.InstallSubfolder)"
             Name="installFolder"
             Value="[INSTALLFOLDER]"
             Type="string" />
@@ -168,17 +209,17 @@
 
   <Fragment>
     <StandardDirectory Id="ProgramMenuFolder">
-      <Component Id="ProgramMenuShortcut" Guid="{6A1E9F0B-1C4D-4C7B-9D2E-3F5A8C0B7E41}">
+      <Component Id="ProgramMenuShortcut">
         <Shortcut
             Id="ProgramMenuShortcut"
-            Name="$(var.AppName)"
+            Name="$(var.ProductDisplayName)"
             Description="!(loc.PackageDescription)"
             Target="[#MainExecutable]"
             WorkingDirectory="INSTALLFOLDER" />
         <RemoveFolder Id="RemoveProgramMenuShortcut" On="uninstall" />
         <RegistryValue
             Root="HKMU"
-            Key="Software\$(var.AppManufacturer)\$(var.AppInstallSubfolder)"
+            Key="Software\$(var.AppManufacturer)\$(var.InstallSubfolder)"
             Name="programMenuShortcut"
             Value="1"
             Type="integer"
@@ -187,16 +228,16 @@
     </StandardDirectory>
 
     <StandardDirectory Id="DesktopFolder">
-      <Component Id="DesktopShortcut" Guid="{2D4B6C8E-5A71-4E93-8B0F-C6D1A2E4F903}" Condition="DESKTOPSHORTCUT = 1">
+      <Component Id="DesktopShortcut" Condition="DESKTOPSHORTCUT = 1">
         <Shortcut
             Id="DesktopShortcut"
-            Name="$(var.AppName)"
+            Name="$(var.ProductDisplayName)"
             Description="!(loc.PackageDescription)"
             Target="[#MainExecutable]"
             WorkingDirectory="INSTALLFOLDER" />
         <RegistryValue
             Root="HKMU"
-            Key="Software\$(var.AppManufacturer)\$(var.AppInstallSubfolder)"
+            Key="Software\$(var.AppManufacturer)\$(var.InstallSubfolder)"
             Name="desktopShortcut"
             Value="1"
             Type="integer"

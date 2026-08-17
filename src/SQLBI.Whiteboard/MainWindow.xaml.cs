@@ -119,6 +119,7 @@ public partial class MainWindow : Window
     public MainWindow(string? initialBoardPath)
     {
         InitializeComponent();
+        Title += AppChannel.WindowTitleSuffix;
         _initialBoardPath = initialBoardPath;
         TextEditorLanguageCombo.ItemsSource = TextLanguageRegistry.All;
         TextEditor.TextArea.TextView.LineTransformers.Add(_textColorizer);

@@ -8,7 +8,7 @@ internal static class AppSettingsStore
     public static string FilePath { get; } = Path.Combine(
         Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
         "SQLBI",
-        "Whiteboard",
+        AppChannel.SettingsFolderName,
         "settings.json");
 
     public static AppSettings Load()

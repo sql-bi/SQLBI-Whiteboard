@@ -73,23 +73,32 @@ try {
     $localizationFile = Join-Path $installerRoot 'SQLBI.Whiteboard.en-us.wxl'
     $assetsFolder = Join-Path $installerRoot 'assets'
 
-    foreach ($scope in @('perMachine', 'perUser')) {
-        $msiSuffix = if ($scope -eq 'perUser') { '-userinstaller' } else { '' }
-        $msiPath = Join-Path $outputFolder "$artifactName$msiSuffix.msi"
+    # Both channels are built from one publish, so the released installers are produced by
+    # the same run that produced the pre-release ones and can be promoted without rebuilding.
+    foreach ($channel in @('stable', 'dev')) {
+        $channelSuffix = if ($channel -eq 'dev') { '-dev' } else { '' }
 
-        Write-Host "==> wix build ($scope)" -ForegroundColor Cyan
-        dotnet wix build $sourceFile `
-            -arch $Architecture `
-            -d "Scope=$scope" `
-            -d "PublishFolder=$publishFolder" `
-            -d "AssetsFolder=$assetsFolder" `
-            -ext WixToolset.UI.wixext `
-            -ext WixToolset.Util.wixext `
-            -culture en-us `
-            -loc $localizationFile `
-            -pdbtype none `
-            -out $msiPath
-        if ($LASTEXITCODE -ne 0) { throw "wix build ($scope) failed with exit code $LASTEXITCODE" }
+        foreach ($scope in @('perMachine', 'perUser')) {
+            $scopeSuffix = if ($scope -eq 'perUser') { '-userinstaller' } else { '' }
+            $msiPath = Join-Path $outputFolder "$artifactName$channelSuffix$scopeSuffix.msi"
+
+            Write-Host "==> wix build ($channel, $scope)" -ForegroundColor Cyan
+            dotnet wix build $sourceFile `
+                -arch $Architecture `
+                -d "Channel=$channel" `
+                -d "Scope=$scope" `
+                -d "PublishFolder=$publishFolder" `
+                -d "AssetsFolder=$assetsFolder" `
+                -ext WixToolset.UI.wixext `
+                -ext WixToolset.Util.wixext `
+                -culture en-us `
+                -loc $localizationFile `
+                -pdbtype none `
+                -out $msiPath
+            if ($LASTEXITCODE -ne 0) {
+                throw "wix build ($channel, $scope) failed with exit code $LASTEXITCODE"
+            }
+        }
     }
 }
 finally {
