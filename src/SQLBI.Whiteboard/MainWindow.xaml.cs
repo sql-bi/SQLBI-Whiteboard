@@ -101,6 +101,8 @@ public partial class MainWindow : Window
     private ResizeMode _resizeModeBeforeFullScreen;
     private Rect _windowBoundsBeforeFullScreen;
     private readonly string? _initialBoardPath;
+    private readonly DispatcherTimer _hoverWatch;
+    private long _lastHoverTimestamp;
 
     public MainWindow()
         : this(null)
@@ -121,6 +123,12 @@ public partial class MainWindow : Window
             Interval = TimeSpan.FromMilliseconds(75),
         };
         _textHighlightTimer.Tick += TextHighlightTimer_Tick;
+        _hoverWatch = new DispatcherTimer(DispatcherPriority.Input)
+        {
+            Interval = TimeSpan.FromMilliseconds(50),
+        };
+        _hoverWatch.Tick += HoverWatch_Tick;
+        InkSurface.HoverTracker.Hovered += HoverTracker_Hovered;
         SourceInitialized += MainWindow_SourceInitialized;
         Loaded += MainWindow_Loaded;
         _document.Changed += Document_Changed;
@@ -365,11 +373,12 @@ public partial class MainWindow : Window
         }
         else
         {
-            UsePenCursor();
-            ShowPointerDot(e.GetPosition(RootGrid));
+            UpdateHoverPointerDot(e);
         }
-
     }
+
+    private void InkSurface_PreviewStylusInAirMove(object sender, StylusEventArgs e) =>
+        UpdateHoverPointerDot(e);
 
     private void InkSurface_PreviewStylusUp(object sender, StylusEventArgs e)
     {
@@ -427,10 +436,13 @@ public partial class MainWindow : Window
             InkSurface.Cursor = SelectCursorAt(hoverScreen);
             HidePointerDot();
         }
+        else if (e.StylusDevice.InAir)
+        {
+            UpdateHoverPointerDot(e);
+        }
         else
         {
-            UsePenCursor();
-            ShowPointerDot(e.GetPosition(RootGrid));
+            HidePointerDot();
         }
         Debug.WriteLine("[WpfInk] stylus-up reached WPF");
     }
@@ -462,7 +474,7 @@ public partial class MainWindow : Window
         UsePenCursor();
         if (!_penInContact)
         {
-            ShowPointerDot(e.GetPosition(RootGrid));
+            UpdateHoverPointerDot(e);
         }
     }
 
@@ -3592,12 +3604,93 @@ public partial class MainWindow : Window
         DisposeAllLiveViewPresenters();
     }
 
+    private void Window_PreviewStylusInRange(object sender, StylusEventArgs e)
+    {
+        if (!_penInContact)
+        {
+            UpdateHoverPointerDot(e);
+        }
+    }
+
+    private void Window_PreviewStylusOutOfRange(object sender, StylusEventArgs e)
+    {
+        if (!IsTouchStylus(e))
+        {
+            HidePointerDot();
+        }
+    }
+
+    private void Window_PreviewStylusInAirMove(object sender, StylusEventArgs e) =>
+        UpdateHoverPointerDot(e);
+
+    private void HoverTracker_Hovered(Point inkSurfacePoint)
+    {
+        if (_penInContact)
+        {
+            return;
+        }
+
+        UpdateHoverPointerDotAt(InkSurface.TranslatePoint(inkSurfacePoint, RootGrid), overBoard: true);
+    }
+
+    private void HoverWatch_Tick(object? sender, EventArgs e)
+    {
+        if (Stopwatch.GetElapsedTime(_lastHoverTimestamp).TotalMilliseconds > 120)
+        {
+            HidePointerDot();
+            _hoverWatch.Stop();
+        }
+    }
+
     private void UsePenCursor()
     {
         InkSurface.Cursor = EffectiveTool is BoardTool.Select
             ? Cursors.Arrow
             : Cursors.None;
     }
+
+    // Contact packets arrive as StylusMove; hover is StylusInAirMove. Wacom
+    // Cintiqs also fire OutOfRange when the pen leaves detection, which is
+    // not the same as leaving the InkCanvas hit-test bounds.
+    private void UpdateHoverPointerDot(StylusEventArgs e)
+    {
+        if (IsTouchStylus(e) ||
+            e.StylusDevice.Inverted ||
+            !e.StylusDevice.InAir)
+        {
+            HidePointerDot();
+            return;
+        }
+
+        var rootPosition = e.GetPosition(RootGrid);
+        var boardPosition = e.GetPosition(BoardViewport);
+        UpdateHoverPointerDotAt(rootPosition, IsWithin(boardPosition, BoardViewport));
+    }
+
+    private void UpdateHoverPointerDotAt(Point rootPosition, bool overBoard)
+    {
+        if (_penInContact ||
+            EffectiveTool is BoardTool.Select or BoardTool.Laser ||
+            !overBoard)
+        {
+            HidePointerDot();
+            return;
+        }
+
+        UsePenCursor();
+        ShowPointerDot(rootPosition);
+        _lastHoverTimestamp = Stopwatch.GetTimestamp();
+        if (!_hoverWatch.IsEnabled)
+        {
+            _hoverWatch.Start();
+        }
+    }
+
+    private static bool IsWithin(Point position, FrameworkElement element) =>
+        position.X >= 0 &&
+        position.Y >= 0 &&
+        position.X <= element.ActualWidth &&
+        position.Y <= element.ActualHeight;
 
     private void ShowPointerDot(Point position)
     {
@@ -3612,7 +3705,11 @@ public partial class MainWindow : Window
         PointerDot.Visibility = Visibility.Visible;
     }
 
-    private void HidePointerDot() => PointerDot.Visibility = Visibility.Collapsed;
+    private void HidePointerDot()
+    {
+        PointerDot.Visibility = Visibility.Collapsed;
+        _hoverWatch.Stop();
+    }
 
     private void ShowError(string context, Exception exception)
     {

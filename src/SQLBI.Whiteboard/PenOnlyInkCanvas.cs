@@ -4,6 +4,7 @@ using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Input.StylusPlugIns;
 using System.Windows.Media;
+using System.Windows.Threading;
 using SQLBI.Whiteboard.Core.Model;
 
 namespace SQLBI.Whiteboard;
@@ -14,6 +15,8 @@ public sealed class PenOnlyInkCanvas : InkCanvas
 
     public LaserSamplePlugIn LaserSamples { get; } = new();
 
+    public HoverTrackerPlugIn HoverTracker { get; } = new();
+
     public PenOnlyInkCanvas()
     {
         var touchTabletIds = Tablet.TabletDevices
@@ -23,6 +26,7 @@ public sealed class PenOnlyInkCanvas : InkCanvas
         _penOnlyRenderer = new PenOnlyDynamicRenderer(touchTabletIds);
         DynamicRenderer = _penOnlyRenderer;
         StylusPlugIns.Add(LaserSamples);
+        StylusPlugIns.Add(HoverTracker);
     }
 
     public void RegisterTouchTablet(int tabletDeviceId) =>
@@ -92,6 +96,67 @@ public sealed class LaserSamplePlugIn : StylusPlugIn
             var point = points[index];
             _samples.Enqueue((point.X, point.Y, Math.Clamp(point.PressureFactor, 0.02f, 1f)));
         }
+    }
+}
+
+public sealed class HoverTrackerPlugIn : StylusPlugIn
+{
+    private readonly object _gate = new();
+    private Point _latest;
+    private bool _queued;
+    private bool _contact;
+
+    public Action<Point>? Hovered { get; set; }
+
+    protected override void OnStylusDown(RawStylusInput rawStylusInput) => _contact = true;
+
+    protected override void OnStylusUp(RawStylusInput rawStylusInput)
+    {
+        _contact = false;
+        Enqueue(rawStylusInput);
+    }
+
+    protected override void OnStylusMove(RawStylusInput rawStylusInput)
+    {
+        if (!_contact)
+        {
+            Enqueue(rawStylusInput);
+        }
+    }
+
+    private void Enqueue(RawStylusInput rawStylusInput)
+    {
+        var points = rawStylusInput.GetStylusPoints();
+        if (points.Count == 0)
+        {
+            return;
+        }
+
+        var point = points[^1];
+        var latest = new Point(point.X, point.Y);
+        lock (_gate)
+        {
+            _latest = latest;
+            if (_queued)
+            {
+                return;
+            }
+
+            _queued = true;
+        }
+
+        var dispatcher = Element?.Dispatcher;
+        dispatcher?.BeginInvoke(() =>
+        {
+            Point consumed;
+            lock (_gate)
+            {
+                _queued = false;
+                consumed = _latest;
+            }
+
+            Hovered?.Invoke(consumed);
+        }, DispatcherPriority.Input);
     }
 }
 
