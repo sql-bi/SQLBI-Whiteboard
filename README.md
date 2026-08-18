@@ -112,8 +112,9 @@ opening section of [docs/release-management.md](docs/release-management.md).
 
 ## Landing page
 
-`site/` is the landing page for <https://whiteboard.sqlbi.com>, and is self-contained: one
-HTML file plus the generated favicons and social card.
+`site/` is <https://whiteboard.sqlbi.com>: the download landing page plus the public
+guide, shortcuts, and `.wimport` contract. Styles live in `site/styles.css`. Pages are
+hand-authored HTML, not generated from this README.
 
 `.github/workflows/publish-site.yml` deploys it to GitHub Pages whenever `site/` changes on
 `main`. `site/CNAME` carries the custom domain so it survives each deployment. Asset paths

@@ -20,7 +20,7 @@ Then **Run > Start Debugging**, or package a VSIX:
 
 ```powershell
 npx --yes @vscode/vsce package
-code --install-extension sqlbi-whiteboard-1.0.0.vsix
+code --install-extension sqlbi-whiteboard-1.0.1.vsix
 ```
 
 Shipping a new Marketplace version is a `package.json` version bump merged to `main`. See [docs/release-management.md](../../docs/release-management.md).

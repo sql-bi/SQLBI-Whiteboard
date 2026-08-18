@@ -1,0 +1,110 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Guide — SQLBI Whiteboard</title>
+<meta name="description" content="How to use SQLBI Whiteboard in a live session: ink, containers, LiveView, DAX and SQL, and board files.">
+<link rel="icon" href="favicon.ico" sizes="any">
+<link rel="icon" href="favicon-32.png" type="image/png" sizes="32x32">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<meta property="og:type" content="website">
+<meta property="og:title" content="Guide — SQLBI Whiteboard">
+<meta property="og:description" content="How to use SQLBI Whiteboard in a live session.">
+<meta property="og:url" content="https://whiteboard.sqlbi.com/guide.html">
+<meta property="og:image" content="https://whiteboard.sqlbi.com/og-image.png">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<div class="wrap wide">
+
+  <header class="doc">
+    <nav class="nav" aria-label="Documentation">
+      <a href="index.html">Download</a>
+      <a href="guide.html" aria-current="page">Guide</a>
+      <a href="shortcuts.html">Shortcuts</a>
+      <a href="wimport.html">Import format</a>
+      <a href="https://marketplace.visualstudio.com/items?itemName=sqlbi.sqlbi-whiteboard">VS Code</a>
+    </nav>
+    <h1>Using SQLBI Whiteboard</h1>
+    <p class="lede">Built for a live explanation with a pen. The stories below are the reasons the features exist. The <a href="shortcuts.html">shortcut list</a> is the desk reference.</p>
+  </header>
+
+  <article>
+    <h2>In a session</h2>
+
+    <section class="story">
+      <h3>Pin a live demo without leaving the board</h3>
+      <p>Add a LiveView of DAX Studio, SSMS, or a browser. When the query result is the thing you want to keep talking about, copy the LiveView and paste. The paste is a still bitmap of the last frame — a screenshot that stays on the board while you keep drawing.</p>
+      <p>Freeze the original LiveView if you want that same container to stay put and resume later. Reconnect after you reload a board: Windows cannot save the capture permission, so the saved frame appears immediately and Reconnect restores the live feed.</p>
+    </section>
+
+    <section class="story">
+      <h3>Keep ink on the slide you are discussing</h3>
+      <p>A finished stroke that touches only one container — an image, a text block, or a LiveView — travels with that container when you move or resize it. A stroke that crosses two containers stays on the canvas. Delete the container and its linked ink goes with it. Undo treats the whole operation as one step.</p>
+    </section>
+
+    <section class="story">
+      <h3>Explain a measure</h3>
+      <p>Paste DAX, or drop a <code>.dax</code> file. Switch the language selector to DAX, press F6 to format it locally, then draw on the container. The same path works for SQL Server scripts with <code>.sql</code> files and F6.</p>
+      <p>In edit mode the text reflows as you change the width. In display mode a resize scales the whole visual, like a picture of the code, so the room still sees the layout you just formatted.</p>
+    </section>
+
+    <section class="story">
+      <h3>Talk to the room</h3>
+      <p>The laser pointer is for the projector, not for the file. The trail length and fade live in Preferences. A pen in the air shows a small high-contrast hover dot; the dot disappears on contact so it never sits under the nib. A physical mouse keeps a normal arrow.</p>
+    </section>
+
+    <section class="story">
+      <h3>Fit what you are talking about</h3>
+      <p>Double-click a container to center it and fill the view. Double-click empty canvas to frame everything on the board, or to reset an empty board. The canvas is unbounded: one finger pans, two fingers pinch-zoom, the mouse wheel zooms at the pointer.</p>
+    </section>
+
+    <section class="story">
+      <h3>Bring a workshop in</h3>
+      <p>A <code>.wimport</code> file is Markdown that builds image and text containers. Drop it on an open board to add them under the pointer. The toolbar Import button does the same at the top-left of the view. File → Open, or a double-click in the released install, starts a new untitled board from the recipe. Save always writes a <code>.wboard</code>.</p>
+      <p>Missing pictures or scripts are skipped and listed in a dialog you can copy. The <a href="wimport.html">import format</a> is the contract for that file.</p>
+    </section>
+
+    <section class="story">
+      <h3>Keep boards next to the material they document</h3>
+      <p>Save writes a <code>preview.png</code> into the <code>.wboard</code> ZIP. Explorer shows that picture as the thumbnail in the released install. In a repository, install <a href="https://marketplace.visualstudio.com/items?itemName=sqlbi.sqlbi-whiteboard">SQLBI Whiteboard for VS Code</a> so opening the file shows the same picture instead of the archive. Boards saved before previews existed keep the document icon until you open and save them again.</p>
+    </section>
+
+    <h2>The board</h2>
+
+    <h3>Ink and tools</h3>
+    <p>The pen starts on the Pen tool. Pressure is recorded. The rear eraser on a Wacom pen removes whole strokes. Palm rejection suspends touch navigation while the pen is down so a resting hand does not pan the board.</p>
+    <p>The toolbar stays small on purpose. Preferences control whether it sits in a corner or follows a layout you prefer.</p>
+
+    <h3>Navigation</h3>
+    <p>Touch pans. Two fingers pinch-zoom. The mouse wheel zooms at the pointer. Middle mouse, right mouse (held), or Space temporarily pans. F11 toggles full screen; Escape leaves it unless a text container is being edited.</p>
+
+    <h3>Containers</h3>
+    <p>Images, LiveViews, and text blocks are containers. With a mouse, click to move, drag the circular handle to resize while keeping aspect ratio. Releasing the mouse returns to the drawing tool you had. Imported images accept PNG, JPEG, BMP, and GIF, including clipboard paste and Explorer drag-and-drop.</p>
+
+    <h3>Text, DAX, and SQL</h3>
+    <p>Paste plain text to create a text container and enter edit mode. F2 edits the selected container. The language selector chooses Plain text, DAX, or SQL Server. F6 formats DAX or SQL locally. SQL Server mode targets SQL Server 2025 T-SQL, keeps <code>GO</code> batch separators, and leaves an invalid script unchanged. Ctrl+Enter commits; Escape restores the previous text, language, and size.</p>
+
+    <h3>LiveView</h3>
+    <p>Tools → Add LiveView captures a window or a display. The container behaves like an image: move, resize, frame, delete, undo. Tools → Freeze stops capture on the last frame; the same command resumes if the target is still there. Tools → Reconnect picks a new target without losing the container or its ink.</p>
+
+    <h3>Files</h3>
+    <p>Ctrl+S and Ctrl+O save and open a <code>.wboard</code>. The released installer registers that type and <code>.wimport</code>. The pre-release (Dev) channel does not, so it can sit beside a released copy without stealing the file association.</p>
+
+    <h3>Preferences</h3>
+    <p>Tools → Preferences is a searchable list: which monitor to open on, start full screen, laser trail timing, and toolbar placement. New settings are more rows in that list, not a new dialog.</p>
+  </article>
+
+  <footer>
+    <span><a href="index.html">Download SQLBI Whiteboard</a></span>
+    <span>
+      <a href="https://github.com/sql-bi/SQLBI-Whiteboard">GitHub</a> ·
+      <a href="https://www.sqlbi.com">SQLBI</a>
+    </span>
+  </footer>
+
+</div>
+</body>
+</html>

@@ -1,0 +1,119 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Shortcuts — SQLBI Whiteboard</title>
+<meta name="description" content="Pen, mouse, touch, and keyboard reference for SQLBI Whiteboard.">
+<link rel="icon" href="favicon.ico" sizes="any">
+<link rel="icon" href="favicon-32.png" type="image/png" sizes="32x32">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<meta property="og:type" content="website">
+<meta property="og:title" content="Shortcuts — SQLBI Whiteboard">
+<meta property="og:description" content="Pen, mouse, touch, and keyboard reference for SQLBI Whiteboard.">
+<meta property="og:url" content="https://whiteboard.sqlbi.com/shortcuts.html">
+<meta property="og:image" content="https://whiteboard.sqlbi.com/og-image.png">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<div class="wrap wide">
+
+  <header class="doc">
+    <nav class="nav" aria-label="Documentation">
+      <a href="index.html">Download</a>
+      <a href="guide.html">Guide</a>
+      <a href="shortcuts.html" aria-current="page">Shortcuts</a>
+      <a href="wimport.html">Import format</a>
+      <a href="https://marketplace.visualstudio.com/items?itemName=sqlbi.sqlbi-whiteboard">VS Code</a>
+    </nav>
+    <h1>Shortcuts</h1>
+    <p class="lede">Pen, mouse, touch, and keys. See the <a href="guide.html">guide</a> for why these exist in a live session.</p>
+  </header>
+
+  <article>
+    <h2>Pen</h2>
+    <table>
+      <thead><tr><th>Input</th><th>Action</th></tr></thead>
+      <tbody>
+        <tr><td>Pen tip</td><td>Current tool. Pen is selected at startup.</td></tr>
+        <tr><td>Pen hover</td><td>Show the small red pointer dot and hide the arrow.</td></tr>
+        <tr><td>Pen contact</td><td>Hide both the pointer dot and the arrow.</td></tr>
+        <tr><td>Pen eraser</td><td>Erase complete strokes.</td></tr>
+      </tbody>
+    </table>
+
+    <h2>Mouse</h2>
+    <table>
+      <thead><tr><th>Input</th><th>Action</th></tr></thead>
+      <tbody>
+        <tr><td>Physical mouse movement</td><td>Show the normal arrow.</td></tr>
+        <tr><td>Left button</td><td>Select, move, or resize a container. Release returns to the previous drawing tool.</td></tr>
+        <tr><td>Resize handle</td><td>Drag the circular bottom-right handle. Aspect ratio is preserved.</td></tr>
+        <tr><td>Wheel</td><td>Zoom at the pointer.</td></tr>
+        <tr><td>Middle button</td><td>Pan.</td></tr>
+        <tr><td>Right button</td><td>Pan while held. Release returns to Pen.</td></tr>
+      </tbody>
+    </table>
+
+    <h2>Touch</h2>
+    <table>
+      <thead><tr><th>Input</th><th>Action</th></tr></thead>
+      <tbody>
+        <tr><td>One finger</td><td>Pan. Suspended while the pen is in contact.</td></tr>
+        <tr><td>Two fingers</td><td>Pan and pinch zoom.</td></tr>
+      </tbody>
+    </table>
+
+    <h2>Keyboard</h2>
+    <table>
+      <thead><tr><th>Input</th><th>Action</th></tr></thead>
+      <tbody>
+        <tr><td>Space</td><td>Pan while held.</td></tr>
+        <tr><td>Ctrl+Z / Ctrl+Y</td><td>Undo / redo.</td></tr>
+        <tr><td>Ctrl+V</td><td>Paste an image, or create a text container from plain text.</td></tr>
+        <tr><td>Ctrl+C</td><td>Copy the selection. Copying a LiveView copies its last frame as a bitmap.</td></tr>
+        <tr><td>Ctrl+S / Ctrl+O</td><td>Save / open a board.</td></tr>
+        <tr><td>Delete</td><td>Delete the selected container and its linked strokes.</td></tr>
+        <tr><td>F2</td><td>Edit the selected text container.</td></tr>
+        <tr><td>F6</td><td>Format DAX or SQL Server code in an active text edit.</td></tr>
+        <tr><td>Ctrl+Enter</td><td>Commit the text edit and return to display mode.</td></tr>
+        <tr><td>Escape</td><td>Cancel the text edit, or leave full screen when not editing.</td></tr>
+        <tr><td>Alt+L</td><td>Laser pointer.</td></tr>
+        <tr><td>F11</td><td>Toggle full screen.</td></tr>
+      </tbody>
+    </table>
+
+    <h2>Double-click</h2>
+    <table>
+      <thead><tr><th>Target</th><th>Action</th></tr></thead>
+      <tbody>
+        <tr><td>Container</td><td>Center it and fit it to the canvas.</td></tr>
+        <tr><td>Empty canvas</td><td>Center and fit all content, or reset an empty board.</td></tr>
+      </tbody>
+    </table>
+
+    <h2>Tools menu</h2>
+    <table>
+      <thead><tr><th>Command</th><th>Action</th></tr></thead>
+      <tbody>
+        <tr><td>Preferences…</td><td>Searchable settings: startup monitor, full screen, laser trail, toolbar.</td></tr>
+        <tr><td>Add LiveView…</td><td>Capture an application window or display as a container.</td></tr>
+        <tr><td>Freeze selected LiveView</td><td>Freeze or resume the selected live feed.</td></tr>
+        <tr><td>Reconnect selected LiveView…</td><td>Pick a new capture target for the existing container.</td></tr>
+        <tr><td>Import (toolbar)</td><td>Add a <code>.wimport</code> recipe or an image at the top-left of the view.</td></tr>
+      </tbody>
+    </table>
+  </article>
+
+  <footer>
+    <span><a href="index.html">Download SQLBI Whiteboard</a></span>
+    <span>
+      <a href="https://github.com/sql-bi/SQLBI-Whiteboard">GitHub</a> ·
+      <a href="https://www.sqlbi.com">SQLBI</a>
+    </span>
+  </footer>
+
+</div>
+</body>
+</html>

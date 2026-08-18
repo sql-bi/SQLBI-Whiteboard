@@ -1,7 +1,7 @@
 # `.wimport` format for authors and agents
 
 Read this file before writing a `.wimport`. It is the contract SQLBI Whiteboard implements.
-The site documentation (TODO item 8) should publish this same file rather than a second copy.
+The public edition is [whiteboard.sqlbi.com/wimport.html](https://whiteboard.sqlbi.com/wimport.html). Keep the two in step.
 
 A `.wimport` file is a Markdown **recipe**. Whiteboard imports it as image and text
 containers. It is not a board file. There is no export back to `.wimport`. After import the
@@ -13,6 +13,10 @@ renderer. Associate the extension if the editor does not treat it as Markdown:
 ```json
 "files.associations": { "*.wimport": "markdown" }
 ```
+
+A folder of recipes can ship that association in `.vscode/settings.json`, and recommend
+`sqlbi.sqlbi-whiteboard` in `.vscode/extensions.json` so `.wboard` files open as the
+embedded preview. This repository and `docs/samples` both do that.
 
 ## Produce this
 

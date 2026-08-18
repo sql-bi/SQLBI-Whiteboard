@@ -16,150 +16,12 @@
 <meta property="og:url" content="https://whiteboard.sqlbi.com/">
 <meta property="og:image" content="https://whiteboard.sqlbi.com/og-image.png">
 <meta name="twitter:card" content="summary_large_image">
-
-<style>
-  :root {
-    --ground: #FAFAFB;
-    --surface: #FFFFFF;
-    --line: #E2E4E9;
-    --ink: #15171C;
-    --muted: #5C6371;
-    --brand: #F42727;
-    --brand-deep: #B71D1D;
-    --brand-ink: #FFFFFF;
-    --shadow: 0 1px 2px rgba(21,23,28,.06), 0 12px 32px -18px rgba(21,23,28,.30);
-  }
-  @media (prefers-color-scheme: dark) {
-    :root {
-      --ground: #0F1115;
-      --surface: #171A20;
-      --line: #272B33;
-      --ink: #E9EBEF;
-      --muted: #949CAA;
-      --brand: #FF3B3B;
-      --brand-deep: #C92020;
-      --shadow: 0 1px 2px rgba(0,0,0,.5), 0 12px 32px -18px rgba(0,0,0,.9);
-    }
-  }
-
-  * { box-sizing: border-box; }
-
-  body {
-    margin: 0;
-    padding: 0 24px 64px;
-    background: var(--ground);
-    color: var(--ink);
-    font-family: "Segoe UI Variable Text", "Segoe UI", system-ui, -apple-system, sans-serif;
-    line-height: 1.6;
-    -webkit-font-smoothing: antialiased;
-  }
-
-  .wrap { max-width: 640px; margin: 0 auto; }
-
-  header { padding: 88px 0 0; text-align: center; }
-
-  .mark { width: 104px; height: 104px; filter: drop-shadow(0 8px 24px rgba(183,29,29,.28)); }
-
-  h1 {
-    font-size: clamp(34px, 6vw, 46px);
-    line-height: 1.1;
-    letter-spacing: -.025em;
-    font-weight: 650;
-    margin: 22px 0 12px;
-  }
-
-  .tagline { font-size: 18px; color: var(--muted); margin: 0 auto; max-width: 30ch; }
-
-  .actions {
-    margin: 40px 0 0;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 14px;
-  }
-
-  .download {
-    display: inline-flex;
-    align-items: center;
-    gap: 10px;
-    background: linear-gradient(140deg, var(--brand), var(--brand-deep));
-    color: var(--brand-ink);
-    text-decoration: none;
-    font-size: 17px;
-    font-weight: 600;
-    padding: 15px 30px;
-    border-radius: 10px;
-    box-shadow: var(--shadow);
-    transition: transform .12s ease, box-shadow .12s ease;
-  }
-  .download:hover { transform: translateY(-1px); }
-  .download:focus-visible { outline: 3px solid var(--brand); outline-offset: 3px; }
-
-  .meta { font-size: 13.5px; color: var(--muted); min-height: 1.2em; }
-  .meta strong { color: var(--ink); font-weight: 600; }
-
-  .alternates { font-size: 14px; color: var(--muted); }
-  .alternates a { color: var(--muted); text-decoration: underline; text-underline-offset: 3px; }
-  .alternates a:hover { color: var(--ink); }
-  .sep { opacity: .45; padding: 0 8px; }
-
-  .notice {
-    margin: 44px auto 0;
-    max-width: 520px;
-    background: var(--surface);
-    border: 1px solid var(--line);
-    border-left: 3px solid var(--brand);
-    border-radius: 10px;
-    padding: 16px 20px;
-    font-size: 14.5px;
-    color: var(--muted);
-    text-align: left;
-  }
-  .notice strong { color: var(--ink); font-weight: 600; }
-
-  ul.features {
-    margin: 52px 0 0;
-    padding: 0;
-    list-style: none;
-    display: grid;
-    gap: 12px;
-    font-size: 15.5px;
-    color: var(--muted);
-  }
-  ul.features li { padding-left: 26px; position: relative; }
-  ul.features li::before {
-    content: "";
-    position: absolute;
-    left: 6px; top: .62em;
-    width: 6px; height: 6px;
-    border-radius: 50%;
-    background: var(--brand);
-  }
-
-  footer {
-    margin-top: 56px;
-    padding-top: 24px;
-    border-top: 1px solid var(--line);
-    font-size: 13.5px;
-    color: var(--muted);
-    display: flex;
-    flex-wrap: wrap;
-    gap: 8px 18px;
-    justify-content: space-between;
-  }
-  footer a { color: var(--muted); text-decoration: none; }
-  footer a:hover { color: var(--ink); text-decoration: underline; }
-
-  @media (prefers-reduced-motion: reduce) {
-    .download { transition: none; }
-    .download:hover { transform: none; }
-  }
-</style>
+<link rel="stylesheet" href="styles.css">
 </head>
 <body>
 <div class="wrap">
 
-  <header>
+  <header class="hero">
     <svg class="mark" viewBox="0 0 256 256" role="img" aria-label="SQLBI Whiteboard">
       <defs>
         <linearGradient id="tile" x1="32" y1="24" x2="224" y2="232" gradientUnits="userSpaceOnUse">
@@ -200,8 +62,15 @@
     <li>An unbounded canvas with touch pan and pinch zoom</li>
     <li>Live capture of any application window or display, embedded on the board</li>
     <li>Text containers with DAX and SQL syntax highlighting and formatting</li>
-    <li>Boards saved as portable <code>.wboard</code> files</li>
+    <li>Boards saved as portable <code>.wboard</code> files — Explorer and <a href="https://marketplace.visualstudio.com/items?itemName=sqlbi.sqlbi-whiteboard">VS Code</a> show the embedded preview</li>
   </ul>
+
+  <nav class="nav" aria-label="Documentation">
+    <a href="guide.html">Guide</a>
+    <a href="shortcuts.html">Shortcuts</a>
+    <a href="wimport.html">Import format</a>
+    <a href="https://marketplace.visualstudio.com/items?itemName=sqlbi.sqlbi-whiteboard">VS Code</a>
+  </nav>
 
   <footer>
     <span>Requires Windows 10 version 2004 or later, 64-bit.</span>
