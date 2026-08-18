@@ -78,10 +78,10 @@ and drag and drop.
 
 ### 8. Documentation on whiteboard.sqlbi.com — done
 
-The landing page stays the download. Guide, shortcuts, and the `.wimport` contract are
-separate pages under `site/`, linked from the nav. The site is hand-authored HTML, not
-generated from the README. `docs/wimport.md` remains the in-repo contract; `site/wimport.html`
-is the same grammar for the public site.
+The landing page stays the download. Guide, shortcuts, the `.wimport` contract, and
+contribute/publish are separate pages under `site/`, linked from the nav. The site is
+hand-authored HTML, not generated from the README. `docs/wimport.md` remains the in-repo
+contract; `site/wimport.html` is the same grammar for the public site.
 
 ### 9. Microsoft Store
 
