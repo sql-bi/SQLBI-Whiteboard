@@ -1,0 +1,76 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Contribute and publish — SQLBI Whiteboard</title>
+<meta name="description" content="How changes reach SQLBI Whiteboard: pull requests, protected main, and who may merge and publish.">
+<link rel="icon" href="favicon.ico" sizes="any">
+<link rel="icon" href="favicon-32.png" type="image/png" sizes="32x32">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<meta property="og:type" content="website">
+<meta property="og:title" content="Contribute and publish — SQLBI Whiteboard">
+<meta property="og:description" content="Pull requests are required. main is protected. Only authorized SQLBI developers merge.">
+<meta property="og:url" content="https://whiteboard.sqlbi.com/contribute.html">
+<meta property="og:image" content="https://whiteboard.sqlbi.com/og-image.png">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<div class="wrap wide">
+
+  <header class="doc">
+    <nav class="nav" aria-label="Documentation">
+      <a href="index.html">Download</a>
+      <a href="guide.html">Guide</a>
+      <a href="shortcuts.html">Shortcuts</a>
+      <a href="wimport.html">Import format</a>
+      <a href="contribute.html" aria-current="page">Contribute</a>
+      <a href="https://marketplace.visualstudio.com/items?itemName=sqlbi.sqlbi-whiteboard">VS Code</a>
+    </nav>
+    <h1>Contribute and publish</h1>
+    <p class="lede">Every change reaches the product through a pull request. <code>main</code> is protected. Only authorized SQLBI developers merge.</p>
+  </header>
+
+  <article>
+    <h2>Who may merge</h2>
+    <p>The repository is public. Anyone can open a pull request. Only SQLBI-authorized developers — today Marco Russo and Alberto Ferrari, including coding agents they instruct — may merge to <code>main</code>. They may merge once checks are green. They do not wait for each other’s approval.</p>
+    <p>An agent working for anyone else must open a pull request and stop. It must not push to <code>main</code>, force-push, or treat a green check as permission to merge.</p>
+
+    <h2>How a change lands</h2>
+    <ol>
+      <li>Branch from an up-to-date <code>main</code>. Keep the branch short-lived and one logical unit.</li>
+      <li>Confirm locally that <code>dotnet build Whiteboard.sln -c Release</code> and the Core smoke tests pass. A warning fails the build.</li>
+      <li>Open a pull request against <code>main</code>. The <strong>Pull request</strong> GitHub Action runs by itself.</li>
+      <li>An authorized SQLBI developer merges when the checks are green. The branch is deleted on merge.</li>
+    </ol>
+    <p><code>main</code> accepts squash merges only. The pull request title becomes the commit subject and the description becomes the commit body. Write the title in the imperative and use the description to say why the change was needed.</p>
+    <p>Do not push to <code>main</code>. A merge there can publish a pre-release of the application, update this site, or publish the VS Code extension.</p>
+    <p>The in-repo agreement is <a href="https://github.com/sql-bi/SQLBI-Whiteboard/blob/main/CONTRIBUTING.md">CONTRIBUTING.md</a>. Operations for maintainers are in <a href="https://github.com/sql-bi/SQLBI-Whiteboard/blob/main/docs/release-management.md">docs/release-management.md</a>.</p>
+
+    <h2>How a merge publishes</h2>
+    <p>Authorized developers do not upload installers or Marketplace packages by hand. They merge, then run a GitHub Action only when a retry is needed.</p>
+    <table>
+      <thead><tr><th>After a merge of</th><th>What happens</th></tr></thead>
+      <tbody>
+        <tr><td>Application code</td><td>Azure Pipelines signs and publishes a GitHub <em>prerelease</em> (SQLBI Whiteboard Dev). A full release is an approval on that same run, not a rebuild.</td></tr>
+        <tr><td><code>site/</code></td><td>The <strong>Publish site</strong> Action updates this website.</td></tr>
+        <tr><td>A new <code>version</code> in <code>vscode/sqlbi-whiteboard/package.json</code></td><td>The <strong>Publish VS Code extension</strong> Action publishes <code>sqlbi.sqlbi-whiteboard</code> if that version is not already listed.</td></tr>
+        <tr><td>Only <code>docs/</code> or top-level markdown</td><td>Nothing is published.</td></tr>
+      </tbody>
+    </table>
+    <p>Whiteboard’s version is <code>VersionPrefix</code> in <code>Directory.Build.props</code>. The VS Code extension’s version is in its own <code>package.json</code>. They move independently, each in a pull request.</p>
+    <p>To retry a site or Marketplace publish without a new commit: GitHub → Actions → the matching workflow → <strong>Run workflow</strong>. To rebuild Whiteboard from an existing commit: Azure DevOps → <strong>SQLBI Whiteboard</strong> → <strong>Run pipeline</strong>. Do not use <strong>Re-run</strong>.</p>
+  </article>
+
+  <footer>
+    <span><a href="index.html">Download SQLBI Whiteboard</a></span>
+    <span>
+      <a href="https://github.com/sql-bi/SQLBI-Whiteboard">GitHub</a> ·
+      <a href="https://www.sqlbi.com">SQLBI</a>
+    </span>
+  </footer>
+
+</div>
+</body>
+</html>

@@ -113,8 +113,8 @@ opening section of [docs/release-management.md](docs/release-management.md).
 ## Landing page
 
 `site/` is <https://whiteboard.sqlbi.com>: the download landing page plus the public
-guide, shortcuts, and `.wimport` contract. Styles live in `site/styles.css`. Pages are
-hand-authored HTML, not generated from this README.
+guide, shortcuts, `.wimport` contract, and contribute/publish page. Styles live in
+`site/styles.css`. Pages are hand-authored HTML, not generated from this README.
 
 `.github/workflows/publish-site.yml` deploys it to GitHub Pages whenever `site/` changes on
 `main`. `site/CNAME` carries the custom domain so it survives each deployment. Asset paths
