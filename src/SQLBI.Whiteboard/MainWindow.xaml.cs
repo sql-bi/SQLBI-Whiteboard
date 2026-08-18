@@ -350,11 +350,15 @@ public partial class MainWindow : Window
         }
         else if (EffectiveTool == BoardTool.Laser)
         {
-            HidePointerDot();
             InkSurface.Cursor = Cursors.None;
-            if (_stylusAction != PointerAction.Laser)
+            if (_stylusAction == PointerAction.Laser || _penInContact)
+            {
+                HidePointerDot();
+            }
+            else
             {
                 LaserTrail.HideHead();
+                UpdateHoverPointerDot(e);
             }
         }
         else if (EffectiveTool == BoardTool.Select)
@@ -424,10 +428,17 @@ public partial class MainWindow : Window
         _penInContact = false;
         if (EffectiveTool == BoardTool.Laser)
         {
-            HidePointerDot();
             StopLaserSampling();
             LaserTrail.Lift();
             InkSurface.Cursor = Cursors.None;
+            if (e.StylusDevice.InAir)
+            {
+                UpdateHoverPointerDot(e);
+            }
+            else
+            {
+                HidePointerDot();
+            }
         }
         else if (EffectiveTool == BoardTool.Select)
         {
@@ -456,9 +467,13 @@ public partial class MainWindow : Window
 
         if (EffectiveTool == BoardTool.Laser)
         {
-            HidePointerDot();
             LaserTrail.HideHead();
             InkSurface.Cursor = Cursors.None;
+            if (!_penInContact)
+            {
+                UpdateHoverPointerDot(e);
+            }
+
             return;
         }
 
@@ -1741,7 +1756,6 @@ public partial class MainWindow : Window
         else
         {
             InkSurface.SetLaserMode(true);
-            HidePointerDot();
             InkSurface.Cursor = Cursors.None;
         }
 
@@ -3860,7 +3874,7 @@ public partial class MainWindow : Window
     private void UpdateHoverPointerDotAt(Point rootPosition, bool overBoard)
     {
         if (_penInContact ||
-            EffectiveTool is BoardTool.Select or BoardTool.Laser ||
+            EffectiveTool == BoardTool.Select ||
             !overBoard)
         {
             HidePointerDot();
@@ -3884,7 +3898,7 @@ public partial class MainWindow : Window
 
     private void ShowPointerDot(Point position)
     {
-        if (EffectiveTool is BoardTool.Select or BoardTool.Laser)
+        if (EffectiveTool == BoardTool.Select)
         {
             HidePointerDot();
             return;
