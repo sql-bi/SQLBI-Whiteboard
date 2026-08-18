@@ -77,11 +77,65 @@ Note the Store signs the package itself, so the SQLBI certificate is not involve
 availability is also uneven on managed corporate machines, which is why the MSI channel stays
 the primary route rather than a fallback (decision 10).
 
+## Product work
+
+Features and material not yet built, listed independently of the release plumbing above.
+
+### Documentation on whiteboard.sqlbi.com
+
+The site is a download page today. It needs real documentation: the tool set, containers,
+LiveView, the DAX and SQL Server text containers, and the keyboard and pen shortcuts. The
+README already carries most of this content, so the open question is whether the site renders
+from those files or keeps its own copy.
+
+### Video teaser
+
+A short recording that shows what the application does. Nothing about the product is obvious
+from a screenshot: ink following a pen, containers carrying their strokes, and LiveView all
+need motion to read. It is also the asset the landing page, the Store listing, and any
+announcement all need.
+
+### Configuration dialog
+
+Settings are spread between defaults in code and whatever `AppSettingsStore` already persists,
+with no way to change them from the application. One dialog should own them: the monitor to
+open on, whether to start full screen, the laser pointer decay time, and the existing options
+now set only in code.
+
+### Preview of `.wboard` files in Explorer
+
+The association exists, but a `.wboard` file shows only the document icon. A thumbnail
+provider that renders the board would make a folder of boards browsable. The archive would
+need to carry a rendered preview for this to be cheap, which is a file-format decision as much
+as a shell-extension one.
+
+### Preview of `.wboard` files in VS Code
+
+The same preview in an editor: an extension that opens a `.wboard` file as an image rather
+than as an archive. Useful wherever boards live in a repository next to the material they
+document.
+
+### An import file format
+
+A plain-text format — Markdown is the obvious candidate — that builds a new whiteboard from
+images and text. This makes boards authorable outside the application and generatable by a
+script or an agent, instead of only by drawing.
+
+### Drag and drop import
+
+Dropping a file onto the canvas should import it as a container placed where the pointer was
+released, rather than at a default position. This applies to images and to the import format
+above.
+
+### Finger mode
+
+Touch input as an alternative to the pen, for machines without one. Timing is open, and it may
+be better after the first stable release: the interaction model assumes a pen and a separate
+pointing device, and finger drawing has to answer what pan and zoom do instead.
+
 ## Deferred, deliberately
 
 - **arm64.** Not built. Worth adding if Surface devices matter for a pen application.
-- **Telemetry.** Bravo's installer custom action and opt-in checkboxes were not ported
-  (decision 14). Port only if the data is actually wanted.
 - **The brand mark.** The icon is the Fluent whiteboard glyph in SQLBI colours: in-family and
   deliberate, but not distinctive (decision 12). Replacing it touches no installer plumbing —
   change the SVG and rerun `scripts/build-assets.ps1`.
