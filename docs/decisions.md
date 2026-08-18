@@ -194,19 +194,20 @@ later touches no installer plumbing.
 
 ## 13. Microsoft Store is a later, separate piece of work
 
-**Agreed, not yet built.**
+**Implemented** for packaging; listing and submission are still manual.
 
 Three constraints shape it:
 
-- The Store needs an MSIX, and only MSIs are built today. Bravo's `Bravo.Installer.Msix`
-  is the template.
-- Store version numbers must end in `.0`, which the current four-part scheme never
-  produces. The MSIX needs its own version derivation.
+- The Store needs an MSIX. `installer/msix` plus `scripts/build-msix.ps1` pack the
+  released-channel publish folder. Bravo's `Bravo.Installer.Msix` is the shape that was
+  followed (full-trust desktop package, file-type associations in the manifest).
+- Store version numbers must end in `.0`. The MSIX Identity Version is `VersionPrefix.0`,
+  not the four-part assembly stamp the MSI uses.
 - Certification takes hours to days, so submission must run in parallel with the web
   release and must never gate it.
 
-The first submission should be manual: listing, screenshots, and age rating are one-time
-work no pipeline performs.
+The first submission is still manual: listing, screenshots, and age rating are one-time
+work no pipeline performs. `installer/msix/STORE-LISTING.md` is the checklist.
 
 ## 14. Bravo's telemetry was not ported
 

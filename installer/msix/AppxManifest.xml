@@ -1,0 +1,91 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Package
+  xmlns="http://schemas.microsoft.com/appx/manifest/foundation/windows10"
+  xmlns:uap="http://schemas.microsoft.com/appx/manifest/uap/windows10"
+  xmlns:uap3="http://schemas.microsoft.com/appx/manifest/uap/windows10/3"
+  xmlns:desktop2="http://schemas.microsoft.com/appx/manifest/desktop/windows10/2"
+  xmlns:com="http://schemas.microsoft.com/appx/manifest/com/windows10"
+  xmlns:rescap="http://schemas.microsoft.com/appx/manifest/foundation/windows10/restrictedcapabilities"
+  IgnorableNamespaces="uap uap3 desktop2 com rescap">
+
+  <!--
+    Version is major.minor.patch.0 from VersionPrefix. The Store requires the last
+    part to be 0; the desktop assembly version uses a different four-part stamp.
+    Publisher and Name are replaced at pack time. Partner Center overwrites
+    Publisher with the Store identity after association.
+  -->
+  <Identity
+    Name="__PACKAGE_NAME__"
+    ProcessorArchitecture="x64"
+    Publisher="__PUBLISHER__"
+    Version="__VERSION__" />
+
+  <Properties>
+    <DisplayName>SQLBI Whiteboard</DisplayName>
+    <PublisherDisplayName>SQLBI Corporation</PublisherDisplayName>
+    <Description>A native Windows 11 whiteboard for pen, touch, and live application capture.</Description>
+    <Logo>Assets\StoreLogo.png</Logo>
+  </Properties>
+
+  <Resources>
+    <Resource Language="en-us" />
+  </Resources>
+
+  <Dependencies>
+    <TargetDeviceFamily Name="Windows.Desktop" MinVersion="10.0.19041.0" MaxVersionTested="10.0.26100.0" />
+  </Dependencies>
+
+  <Capabilities>
+    <rescap:Capability Name="runFullTrust" />
+  </Capabilities>
+
+  <Applications>
+    <Application
+        Id="App"
+        Executable="SQLBI.Whiteboard.exe"
+        EntryPoint="Windows.FullTrustApplication">
+      <uap:VisualElements
+          DisplayName="SQLBI Whiteboard"
+          Description="A native Windows 11 whiteboard for pen, touch, and live application capture."
+          BackgroundColor="transparent"
+          Square150x150Logo="Assets\Square150x150Logo.png"
+          Square44x44Logo="Assets\Square44x44Logo.png">
+        <uap:DefaultTile Wide310x150Logo="Assets\Wide310x150Logo.png" />
+        <uap:SplashScreen Image="Assets\SplashScreen.png" />
+      </uap:VisualElements>
+      <Extensions>
+        <uap3:Extension Category="windows.fileTypeAssociation">
+          <uap3:FileTypeAssociation Name="wboard" Parameters="&quot;%1&quot;">
+            <uap:SupportedFileTypes>
+              <uap:FileType>.wboard</uap:FileType>
+            </uap:SupportedFileTypes>
+            <uap:DisplayName>SQLBI Whiteboard board</uap:DisplayName>
+            <uap:Logo>Assets\DocumentLogo.png</uap:Logo>
+            <uap:EditFlags OpenIsSafe="true" />
+            <desktop2:ThumbnailHandler Clsid="7F3C1A2E-8D64-4B0F-9A51-E2C6D8B04715" />
+          </uap3:FileTypeAssociation>
+        </uap3:Extension>
+        <uap3:Extension Category="windows.fileTypeAssociation">
+          <uap3:FileTypeAssociation Name="wimport" Parameters="&quot;%1&quot;">
+            <uap:SupportedFileTypes>
+              <uap:FileType>.wimport</uap:FileType>
+            </uap:SupportedFileTypes>
+            <uap:DisplayName>SQLBI Whiteboard import</uap:DisplayName>
+            <uap:Logo>Assets\DocumentLogo.png</uap:Logo>
+            <uap:EditFlags OpenIsSafe="true" />
+          </uap3:FileTypeAssociation>
+        </uap3:Extension>
+        <com:Extension Category="windows.comServer">
+          <com:ComServer>
+            <com:SurrogateServer DisplayName="SQLBI Whiteboard thumbnail">
+              <com:Class
+                  Id="7F3C1A2E-8D64-4B0F-9A51-E2C6D8B04715"
+                  Path="SQLBI.Whiteboard.ThumbnailHandler.dll"
+                  ThreadingModel="STA" />
+            </com:SurrogateServer>
+          </com:ComServer>
+        </com:Extension>
+      </Extensions>
+    </Application>
+  </Applications>
+</Package>

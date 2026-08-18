@@ -85,24 +85,13 @@ contract; `site/wimport.html` is the same grammar for the public site.
 
 ### 9. Microsoft Store
 
-The largest remaining piece and the one with the longest lead time. It depends on none of the
-feature work above, so the packaging can start in parallel at any point; only the listing has to
-wait for the teaser and for screenshots of the finished UI.
-
-1. **Build an MSIX.** None exists; only MSIs are produced. `Bravo.Installer.Msix` in the Bravo
-   repository is the template. The application is already MSIX-clean: settings live in
-   `%APPDATA%`, the only registry use is a read, and nothing writes to the install folder. The
-   Explorer thumbnail provider is the one thing that changes this — an MSIX registers a shell
-   extension through its manifest rather than through installer custom actions, so items 5 and 9
-   have to agree on how the extension is declared.
-2. **Give the MSIX its own version derivation.** Store versions must end in `.0`, and the
-   current four-part scheme never produces that — the last part is seconds since midnight
-   divided by two.
-3. **Do the first submission by hand.** Listing text, screenshots, age rating, and privacy
-   details are one-time work no pipeline performs.
-4. **Then automate it** with the Microsoft Store Developer CLI or the Partner Center submission
-   API, as a stage that runs *in parallel* with the web release. Certification takes hours to
-   days and must never gate a download that is otherwise ready.
+Packaging is in the repo. `scripts/build-installer.ps1` writes an unsigned
+`SQLBI.Whiteboard.<version>.x64.msix` for the released channel. Identity version is
+`VersionPrefix.0` (0.6.0 → `0.6.0.0`). The package declares `.wboard` / `.wimport` and the
+thumbnail handler in the Appx manifest. Listing, screenshots, age rating, and the first
+Partner Center upload are still manual — see `installer/msix/STORE-LISTING.md`. Do not
+automate submission until that first upload has succeeded. Certification must never gate
+the GitHub MSI release.
 
 Note the Store signs the package itself, so the SQLBI certificate is not involved. Store
 availability is also uneven on managed corporate machines, which is why the MSI channel stays

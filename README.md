@@ -65,6 +65,7 @@ selected with the `Channel` and `Scope` preprocessor variables:
 | `SQLBI.Whiteboard.<version>.x64-dev-userinstaller.msi` | `%LOCALAPPDATA%\Programs\SQLBI\Whiteboard Dev`, no elevation |
 | `SQLBI.Whiteboard.<version>.x64-portable.zip` | runs without installing |
 | `SQLBI.Whiteboard.<version>.x64-dev-portable.zip` | runs without installing, as the pre-release channel |
+| `SQLBI.Whiteboard.<version>.x64.msix` | unsigned Store package for the released channel. Identity version is `<version>.0`. Not submitted automatically. |
 
 ### Channels
 
