@@ -48,23 +48,16 @@ images and DAX/SQL are inferred from the body or a local link. Drop adds to the 
 Open / double-click (released channel) starts a new board that saves as `.wboard`. There is no
 export. Languages are a table so later fences (Python, C#, …) do not need a new matcher.
 
-### 4. A rendered preview inside the `.wboard` archive
+### 4. A rendered preview inside the `.wboard` archive — done
 
-Both previews below need a picture of the board without opening the application. Rendering one
-on demand means a full WPF load inside a shell extension, which is exactly what a thumbnail
-provider must not do. Writing a rendered bitmap into the archive on save makes both previews
-cheap.
+Saving writes `preview.png` into the ZIP. Older boards and empty boards have none.
 
-This is a file-format change, so it lands before its two consumers rather than being retrofitted
-around them. Boards saved by earlier versions carry no preview and have to degrade to the
-document icon.
+### 5. Preview of `.wboard` files in Explorer — done
 
-### 5. Preview of `.wboard` files in Explorer
-
-The association exists, but a `.wboard` file shows only the document icon. A thumbnail provider
-reading the embedded preview makes a folder of boards browsable. Note this adds the project's
-first shell extension, which the installer has to register and the uninstaller has to remove
-cleanly.
+The released installer registers a Native AOT in-process thumbnail handler that reads
+`preview.png` only. It does not load WPF. Boards without a preview keep the document icon.
+The pre-release channel does not register `.wboard`, so it does not register the handler
+either.
 
 ### 6. Preview of `.wboard` files in VS Code
 

@@ -9,6 +9,7 @@ public static class BoardArchive
 {
     public const int CurrentVersion = 5;
     private const string SceneEntryName = "scene.json";
+    public const string PreviewEntryName = "preview.png";
 
     private static readonly JsonSerializerOptions JsonOptions = new()
     {
@@ -19,12 +20,20 @@ public static class BoardArchive
     public static async Task SaveAsync(
         BoardDocument document,
         Stream destination,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken = default,
+        ReadOnlyMemory<byte> previewPng = default)
     {
         ArgumentNullException.ThrowIfNull(document);
         ArgumentNullException.ThrowIfNull(destination);
 
         using var archive = new ZipArchive(destination, ZipArchiveMode.Create, leaveOpen: true);
+        if (!previewPng.IsEmpty)
+        {
+            var previewEntry = archive.CreateEntry(PreviewEntryName, CompressionLevel.NoCompression);
+            await using var previewStream = previewEntry.Open();
+            await previewStream.WriteAsync(previewPng, cancellationToken);
+        }
+
         var assetDtos = new List<AssetDto>();
 
         foreach (var asset in document.Assets.Values)
@@ -96,6 +105,32 @@ public static class BoardArchive
         }
 
         return document;
+    }
+
+    /// <summary>
+    /// Copies the embedded preview bitmap if the archive has one. Older boards and
+    /// empty boards have none; callers should fall back to the document icon.
+    /// </summary>
+    public static bool TryCopyPreview(Stream source, Stream destination)
+    {
+        ArgumentNullException.ThrowIfNull(source);
+        ArgumentNullException.ThrowIfNull(destination);
+
+        using var archive = new ZipArchive(source, ZipArchiveMode.Read, leaveOpen: true);
+        var previewEntry = archive.GetEntry(PreviewEntryName);
+        if (previewEntry is null)
+        {
+            return false;
+        }
+
+        if (previewEntry.Length == 0)
+        {
+            return false;
+        }
+
+        using var previewStream = previewEntry.Open();
+        previewStream.CopyTo(destination);
+        return true;
     }
 
     private static ObjectDto ToDto(BoardObject item) => item switch

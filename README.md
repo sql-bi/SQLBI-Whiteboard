@@ -23,7 +23,7 @@ How the project is developed and shipped is documented separately:
 - LiveView containers for GPU-backed capture of an application window or display, with freeze/resume and saved last-frame previews
 - Double-click a container to center it and fit it to the canvas
 - Undo and redo for strokes, erasing, containers, text edits, and transformations
-- Versioned ZIP-based `.wboard` documents with embedded image assets
+- Versioned ZIP-based `.wboard` documents with an embedded `preview.png`. Explorer shows that picture as the file thumbnail in the released install; older boards keep the document icon.
 - Markdown `.wimport` recipes that build image and text containers from headings
 - An intentionally small floating toolbar
 - Preferences for the startup monitor, full-screen start, laser trail, and toolbar layout

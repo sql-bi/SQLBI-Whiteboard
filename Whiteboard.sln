@@ -14,6 +14,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SQLBI.Whiteboard", "src\SQL
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SQLBI.Whiteboard.CalligraphyPrototype", "prototypes\SQLBI.Whiteboard.CalligraphyPrototype\SQLBI.Whiteboard.CalligraphyPrototype.csproj", "{B45B0BC9-F1F4-4F2F-A71D-9F73C7935512}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SQLBI.Whiteboard.ThumbnailHandler", "src\SQLBI.Whiteboard.ThumbnailHandler\SQLBI.Whiteboard.ThumbnailHandler.csproj", "{D4E8A1C0-7B52-4F19-9E6A-3C81D0F4A257}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|x64 = Debug|x64
@@ -44,5 +46,9 @@ Global
 		{B45B0BC9-F1F4-4F2F-A71D-9F73C7935512}.Debug|x64.Build.0 = Debug|Any CPU
 		{B45B0BC9-F1F4-4F2F-A71D-9F73C7935512}.Release|x64.ActiveCfg = Release|Any CPU
 		{B45B0BC9-F1F4-4F2F-A71D-9F73C7935512}.Release|x64.Build.0 = Release|Any CPU
+		{D4E8A1C0-7B52-4F19-9E6A-3C81D0F4A257}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{D4E8A1C0-7B52-4F19-9E6A-3C81D0F4A257}.Debug|x64.Build.0 = Debug|Any CPU
+		{D4E8A1C0-7B52-4F19-9E6A-3C81D0F4A257}.Release|x64.ActiveCfg = Release|Any CPU
+		{D4E8A1C0-7B52-4F19-9E6A-3C81D0F4A257}.Release|x64.Build.0 = Release|Any CPU
 	EndGlobalSection
 EndGlobal

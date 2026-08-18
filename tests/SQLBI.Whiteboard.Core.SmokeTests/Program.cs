@@ -501,6 +501,30 @@ Assert(
     TextLanguageIds.SqlServer,
     "Archive round trips should preserve the SQL Server text language.");
 
+await using var previewArchive = new MemoryStream();
+var previewBytes = new byte[] { 0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A, 1, 2, 3 };
+await BoardArchive.SaveAsync(
+    sqlArchiveDocument,
+    previewArchive,
+    previewPng: previewBytes);
+previewArchive.Position = 0;
+await using var extractedPreview = new MemoryStream();
+Assert(
+    BoardArchive.TryCopyPreview(previewArchive, extractedPreview) &&
+    extractedPreview.ToArray().SequenceEqual(previewBytes),
+    "A saved preview.png should be readable without loading the scene.");
+previewArchive.Position = 0;
+var loadedWithPreview = await BoardArchive.LoadAsync(previewArchive);
+Assert(
+    loadedWithPreview.Objects.Count == 1,
+    "A board with a preview should still load its scene.");
+await using var noPreviewArchive = new MemoryStream();
+await BoardArchive.SaveAsync(sqlArchiveDocument, noPreviewArchive);
+noPreviewArchive.Position = 0;
+Assert(
+    !BoardArchive.TryCopyPreview(noPreviewArchive, new MemoryStream()),
+    "Boards saved without a preview should report none.");
+
 AssertNear(
     20,
     PenStyleMetrics.MaximumThickness(new PenStyle(0xFF000000, 5, PenKind.Highlighter)),

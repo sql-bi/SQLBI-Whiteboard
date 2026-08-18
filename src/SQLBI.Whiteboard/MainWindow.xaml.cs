@@ -3184,6 +3184,7 @@ public partial class MainWindow : Window
         try
         {
             RefreshLiveViewSnapshots();
+            var preview = BoardPreviewRenderer.Render(_document, GetLiveViewImageSource);
             await using var stream = new FileStream(
                 filePath,
                 FileMode.Create,
@@ -3191,7 +3192,10 @@ public partial class MainWindow : Window
                 FileShare.None,
                 81920,
                 useAsync: true);
-            await BoardArchive.SaveAsync(_document, stream);
+            await BoardArchive.SaveAsync(
+                _document,
+                stream,
+                previewPng: preview is null ? default : preview);
             _currentBoardPath = filePath;
         }
         catch (Exception exception)
