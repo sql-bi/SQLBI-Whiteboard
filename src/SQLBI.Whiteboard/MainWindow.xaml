@@ -18,7 +18,10 @@
         PreviewDrop="Window_PreviewDrop"
         PreviewKeyDown="Window_PreviewKeyDown"
         PreviewKeyUp="Window_PreviewKeyUp"
-        PreviewStylusDown="Window_PreviewStylusDown">
+        PreviewStylusDown="Window_PreviewStylusDown"
+        PreviewStylusInRange="Window_PreviewStylusInRange"
+        PreviewStylusOutOfRange="Window_PreviewStylusOutOfRange"
+        PreviewStylusInAirMove="Window_PreviewStylusInAirMove">
     <Grid x:Name="RootGrid">
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto" />
@@ -155,6 +158,7 @@
                        Stylus.IsTouchFeedbackEnabled="False"
                        PreviewStylusDown="InkSurface_PreviewStylusDown"
                        PreviewStylusMove="InkSurface_PreviewStylusMove"
+                       PreviewStylusInAirMove="InkSurface_PreviewStylusInAirMove"
                        PreviewStylusUp="InkSurface_PreviewStylusUp"
                        PreviewStylusButtonDown="InkSurface_PreviewStylusButtonDown"
                        PreviewStylusButtonUp="InkSurface_PreviewStylusButtonUp"
