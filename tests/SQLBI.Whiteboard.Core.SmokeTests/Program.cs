@@ -2,6 +2,7 @@ using System.IO.Compression;
 using System.Text;
 using SQLBI.Whiteboard.Core.Commands;
 using SQLBI.Whiteboard.Core.Geometry;
+using SQLBI.Whiteboard.Core.Import;
 using SQLBI.Whiteboard.Core.Model;
 using SQLBI.Whiteboard.Core.Persistence;
 using SQLBI.Whiteboard.Core.Settings;
@@ -46,6 +47,26 @@ AssertNear(
     originalLiveViewBounds.Width * originalLiveViewBounds.Height,
     reconnectedLiveViewBounds.Width * reconnectedLiveViewBounds.Height,
     "Changing a LiveView aspect ratio must preserve its visual area.");
+
+Assert(
+    DroppedFileImport.Classify(@"C:\board\shot.PNG") == DroppedFileKind.Image &&
+    DroppedFileImport.Classify("notes.txt") == DroppedFileKind.Text &&
+    DroppedFileImport.Classify("measure.dax") == DroppedFileKind.Text &&
+    DroppedFileImport.Classify("query.sql") == DroppedFileKind.Text &&
+    DroppedFileImport.Classify("board.wboard") == DroppedFileKind.Unsupported &&
+    DroppedFileImport.Classify("notes.md") == DroppedFileKind.Unsupported,
+    "Drop import should accept images and text now, and leave markdown and boards for later.");
+Assert(
+    DroppedFileImport.CanImportAny(["skip.bin", "photo.jpg"]),
+    "A mixed drop should be accepted when any file can be imported.");
+Assert(
+    !DroppedFileImport.CanImportAny(["notes.md", "board.wboard"]),
+    "A drop of only later formats should not show a copy cursor yet.");
+Assert(
+    DroppedFileImport.LanguageIdFor("measure.dax") == TextLanguageIds.Dax &&
+    DroppedFileImport.LanguageIdFor("query.sql") == TextLanguageIds.SqlServer &&
+    DroppedFileImport.LanguageIdFor("notes.txt") == TextLanguageIds.Plain,
+    "Dropped text files should pick a language from the extension.");
 
 var document = new BoardDocument();
 Assert(document.ContentBounds is null, "An empty document should not have content bounds.");

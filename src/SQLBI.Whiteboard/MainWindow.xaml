@@ -13,6 +13,9 @@
         Background="White"
         Deactivated="Window_Deactivated"
         Closing="Window_Closing"
+        AllowDrop="True"
+        PreviewDragOver="Window_PreviewDragOver"
+        PreviewDrop="Window_PreviewDrop"
         PreviewKeyDown="Window_PreviewKeyDown"
         PreviewKeyUp="Window_PreviewKeyUp"
         PreviewStylusDown="Window_PreviewStylusDown">
@@ -144,7 +147,6 @@
                        EditingMode="Ink"
                        EditingModeInverted="None"
                        UseCustomCursor="True"
-                       AllowDrop="True"
                        Focusable="True"
                        IsManipulationEnabled="False"
                        Stylus.IsPressAndHoldEnabled="False"
@@ -163,9 +165,7 @@
                        PreviewMouseUp="InkSurface_PreviewMouseUp"
                        PreviewMouseWheel="InkSurface_PreviewMouseWheel"
                        LostMouseCapture="InkSurface_LostMouseCapture"
-                       StrokeCollected="InkSurface_StrokeCollected"
-                       DragOver="InkSurface_DragOver"
-                       Drop="InkSurface_Drop" />
+                       StrokeCollected="InkSurface_StrokeCollected" />
 
             <Canvas x:Name="LiveViewActionLayer"
                     Panel.ZIndex="20"
