@@ -2,7 +2,7 @@
   "name": "sqlbi-whiteboard",
   "displayName": "SQLBI Whiteboard",
   "description": "Opens .wboard files as the embedded preview image instead of a ZIP archive.",
-  "version": "0.1.0",
+  "version": "1.0.0",
   "publisher": "sqlbi",
   "license": "MIT",
   "engines": {
@@ -43,6 +43,7 @@
     ]
   },
   "scripts": {
+    "vscode:prepublish": "npm run compile",
     "compile": "tsc -p .",
     "watch": "tsc -watch -p .",
     "test": "npm run compile && node --test out/extractPreview.test.js"
