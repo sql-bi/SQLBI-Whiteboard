@@ -1,0 +1,28 @@
+# Contoso workshop
+
+This introductory paragraph is only for the Markdown preview. SQLBI Whiteboard
+ignores it.
+
+## Talking points
+- Grain is daily
+- Currency is EUR
+
+## Total Sales
+```dax
+Total Sales := SUM(Sales[Amount])
+```
+
+---
+
+## Test picture
+![demo](../../src/SQLBI.Whiteboard/Assets/SQLBI.Whiteboard.png)
+
+## Warehouse query
+```sql
+SELECT TOP (10)
+    CustomerKey,
+    SUM(SalesAmount) AS SalesAmount
+FROM FactInternetSales
+GROUP BY CustomerKey
+ORDER BY SalesAmount DESC;
+```

@@ -71,6 +71,37 @@ public sealed record AddObjectCommand(BoardObject Item) : IBoardCommand
     public void Undo(BoardDocument document) => document.RemoveObject(Item.Id);
 }
 
+public sealed record AddImportCommand(
+    IReadOnlyList<BoardObject> Objects,
+    IReadOnlyList<BoardAsset> Assets) : IBoardCommand
+{
+    public void Execute(BoardDocument document)
+    {
+        foreach (var asset in Assets)
+        {
+            document.AddAsset(asset);
+        }
+
+        foreach (var item in Objects)
+        {
+            document.AddObject(item);
+        }
+    }
+
+    public void Undo(BoardDocument document)
+    {
+        foreach (var item in Objects)
+        {
+            document.RemoveObject(item.Id);
+        }
+
+        foreach (var asset in Assets)
+        {
+            document.RemoveAsset(asset.Id);
+        }
+    }
+}
+
 public sealed record RemoveObjectsCommand(IReadOnlyList<BoardObject> Items) : IBoardCommand
 {
     public void Execute(BoardDocument document)
