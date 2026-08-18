@@ -1,0 +1,25 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Library</OutputType>
+    <TargetFramework>net10.0-windows</TargetFramework>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <InvariantGlobalization>true</InvariantGlobalization>
+    <AssemblyName>SQLBI.Whiteboard.ThumbnailHandler</AssemblyName>
+    <RootNamespace>SQLBI.Whiteboard.ThumbnailHandler</RootNamespace>
+    <AssemblyTitle>SQLBI Whiteboard Thumbnail Handler</AssemblyTitle>
+    <Product>SQLBI Whiteboard</Product>
+    <Description>
+      Explorer thumbnail handler for .wboard files. Reads the preview.png written
+      on save; it must not load WPF. Published as a Native AOT in-process COM server.
+    </Description>
+    <PublishAot>true</PublishAot>
+    <NativeLib>Shared</NativeLib>
+    <UseAppHost>false</UseAppHost>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\SQLBI.Whiteboard.Core\SQLBI.Whiteboard.Core.csproj" />
+  </ItemGroup>
+  <ItemGroup>
+    <PackageReference Include="System.Drawing.Common" Version="10.0.0" />
+  </ItemGroup>
+</Project>

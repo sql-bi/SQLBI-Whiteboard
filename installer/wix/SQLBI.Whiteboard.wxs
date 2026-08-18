@@ -23,6 +23,9 @@
   <?define BoardProgId = "SQLBI.Whiteboard.Board" ?>
   <?define ImportExtension = "wimport" ?>
   <?define ImportProgId = "SQLBI.Whiteboard.Import" ?>
+  <?define ThumbnailClsid = "7F3C1A2E-8D64-4B0F-9A51-E2C6D8B04715" ?>
+  <?define ThumbnailHandlerCategory = "e357fccd-a995-4576-b01f-234630154e96" ?>
+  <?define ThumbnailHandlerFile = "SQLBI.Whiteboard.ThumbnailHandler.dll" ?>
 
   <!--
     The pre-release channel is a separate product: its own UpgradeCodes, name, install
@@ -182,6 +185,43 @@
                   Argument="&quot;%1&quot;" />
             </Extension>
           </ProgId>
+          <!--
+            Thumbnail handler is a Native AOT in-process server. Explorer only
+            loads IThumbnailProvider from InprocServer32 and, in the isolated
+            host, only calls IInitializeWithStream. It must not load WPF. Dev
+            does not register .wboard, so it does not register this either.
+          -->
+          <RegistryValue
+              Root="HKMU"
+              Key="Software\Classes\CLSID\{$(var.ThumbnailClsid)}"
+              Value="!(loc.ThumbnailHandlerDescription)"
+              Type="string" />
+          <RegistryValue
+              Root="HKMU"
+              Key="Software\Classes\CLSID\{$(var.ThumbnailClsid)}\InprocServer32"
+              Value="[INSTALLFOLDER]$(var.ThumbnailHandlerFile)"
+              Type="string" />
+          <RegistryValue
+              Root="HKMU"
+              Key="Software\Classes\CLSID\{$(var.ThumbnailClsid)}\InprocServer32"
+              Name="ThreadingModel"
+              Value="Apartment"
+              Type="string" />
+          <RegistryValue
+              Root="HKMU"
+              Key="Software\Classes\$(var.BoardProgId)\shellex\{$(var.ThumbnailHandlerCategory)}"
+              Value="{$(var.ThumbnailClsid)}"
+              Type="string" />
+          <RegistryValue
+              Root="HKMU"
+              Key="Software\Classes\.$(var.BoardExtension)\shellex\{$(var.ThumbnailHandlerCategory)}"
+              Value="{$(var.ThumbnailClsid)}"
+              Type="string" />
+          <RegistryValue
+              Root="HKMU"
+              Key="Software\Microsoft\Windows\CurrentVersion\Shell Extensions\Approved\{$(var.ThumbnailClsid)}"
+              Value="!(loc.ThumbnailHandlerDescription)"
+              Type="string" />
           <ProgId
               Id="$(var.ImportProgId)"
               Description="!(loc.ImportFileTypeDescription)"

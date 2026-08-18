@@ -8,6 +8,7 @@
   <String Id="LaunchApplication" Value="Launch SQLBI Whiteboard" />
   <String Id="BoardFileTypeDescription" Value="SQLBI Whiteboard board" />
   <String Id="ImportFileTypeDescription" Value="SQLBI Whiteboard import" />
+  <String Id="ThumbnailHandlerDescription" Value="SQLBI Whiteboard thumbnail" />
   <String Id="BoardOpenVerb" Value="Open" />
 
 </WixLocalization>

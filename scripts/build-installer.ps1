@@ -77,6 +77,26 @@ if ($skipPublish) {
     if ($LASTEXITCODE -ne 0) { throw "dotnet publish failed with exit code $LASTEXITCODE" }
 }
 
+$thumbnailDll = Join-Path $publishFolder 'SQLBI.Whiteboard.ThumbnailHandler.dll'
+if (-not (Test-Path $thumbnailDll)) {
+    $thumbnailProject = Join-Path $repoRoot 'src\SQLBI.Whiteboard.ThumbnailHandler\SQLBI.Whiteboard.ThumbnailHandler.csproj'
+    Write-Host "==> dotnet publish thumbnail handler (Native AOT in-proc)" -ForegroundColor Cyan
+    $thumbnailOut = Join-Path $repoRoot 'artifacts\thumbnail'
+    if (Test-Path $thumbnailOut) { Remove-Item $thumbnailOut -Recurse -Force }
+    dotnet publish $thumbnailProject `
+        --configuration $Configuration `
+        --runtime "win-$Architecture" `
+        --self-contained true `
+        --output $thumbnailOut `
+        -p:Version=$fileVersion `
+        -p:InformationalVersion=$Version `
+        -p:ContinuousIntegrationBuild=true `
+        -p:DebugType=none `
+        --nologo
+    if ($LASTEXITCODE -ne 0) { throw "Thumbnail handler publish failed with exit code $LASTEXITCODE" }
+    Copy-Item (Join-Path $thumbnailOut 'SQLBI.Whiteboard.ThumbnailHandler.dll') $publishFolder -Force
+}
+
 Write-Host '==> Restoring the WiX tool' -ForegroundColor Cyan
 Push-Location $repoRoot
 try {
