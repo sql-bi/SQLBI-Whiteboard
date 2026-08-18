@@ -17,7 +17,13 @@
   <!-- Left panel: the announcement, quoted. No Microsoft branding is reproduced here;
        the final bitmap is supplied by SQLBI. -->
   <g font-family="Segoe UI Variable Display, Segoe UI, sans-serif" fill="#FFFFFF">
-    <text x="72" y="128" font-size="25" font-weight="600" letter-spacing="1" fill="#8FA5C4">MICROSOFT WHITEBOARD</text>
+    <g>
+      <rect x="72" y="88" width="22" height="22" fill="#F25022"/>
+      <rect x="99" y="88" width="22" height="22" fill="#7FBA00"/>
+      <rect x="72" y="115" width="22" height="22" fill="#00A4EF"/>
+      <rect x="99" y="115" width="22" height="22" fill="#FFB900"/>
+      <text x="139" y="125" font-size="34" font-weight="600">Microsoft</text>
+    </g>
 
     <text x="72" y="286" font-size="54" font-weight="700">&#8220;I am going to</text>
     <text x="72" y="352" font-size="54" font-weight="700">retire the</text>

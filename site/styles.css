@@ -62,6 +62,15 @@ code, kbd, pre {
 }
 code { font-size: .9em; }
 
+/* Third-party marks: the VS Code logo keeps its own blue, the GitHub mark is
+   monochrome by design and follows the text colour. */
+.ico-inline { width: 15px; height: 15px; flex: none; }
+/* Outside the flex nav, the mark needs its own spacing and baseline nudge. */
+.features .ico-inline,
+article .ico-inline,
+footer .ico-inline { vertical-align: -2px; margin-right: 5px; }
+.brandicon { width: 19px; height: 19px; vertical-align: -3px; margin-right: 9px; }
+
 /* ---------------------------------------------------------------- top bar */
 
 .topbar {
@@ -99,6 +108,9 @@ code { font-size: .9em; }
 }
 .topnav::-webkit-scrollbar { display: none; }
 .topnav a {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
   color: var(--muted);
   text-decoration: none;
   padding: 7px 12px;
