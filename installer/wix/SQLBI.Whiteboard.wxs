@@ -21,12 +21,15 @@
   <?define AppUrlInfoAbout = "https://whiteboard.sqlbi.com" ?>
   <?define BoardExtension = "wboard" ?>
   <?define BoardProgId = "SQLBI.Whiteboard.Board" ?>
+  <?define ImportExtension = "wimport" ?>
+  <?define ImportProgId = "SQLBI.Whiteboard.Import" ?>
 
   <!--
     The pre-release channel is a separate product: its own UpgradeCodes, name, install
     folder and settings, so a tester can keep a released copy installed alongside it.
-    It deliberately does not claim the .wboard file type, which stays with the released
-    channel; uninstalling a pre-release therefore cannot break that association.
+    It deliberately does not claim the .wboard or .wimport file types, which stay with
+    the released channel; uninstalling a pre-release therefore cannot break those
+    associations.
   -->
   <?if $(var.Channel) = dev ?>
     <?define ChannelName = "Dev" ?>
@@ -172,6 +175,18 @@
               Description="!(loc.BoardFileTypeDescription)"
               Icon="DocumentIcon">
             <Extension Id="$(var.BoardExtension)" ContentType="application/vnd.sqlbi.whiteboard">
+              <Verb
+                  Id="open"
+                  Command="!(loc.BoardOpenVerb)"
+                  TargetFile="MainExecutable"
+                  Argument="&quot;%1&quot;" />
+            </Extension>
+          </ProgId>
+          <ProgId
+              Id="$(var.ImportProgId)"
+              Description="!(loc.ImportFileTypeDescription)"
+              Icon="DocumentIcon">
+            <Extension Id="$(var.ImportExtension)" ContentType="application/vnd.sqlbi.whiteboard-import">
               <Verb
                   Id="open"
                   Command="!(loc.BoardOpenVerb)"

@@ -35,7 +35,7 @@ Two download channels, and they are separate products so both can be installed a
 | Product name | SQLBI Whiteboard | SQLBI Whiteboard (Dev) |
 | Install folder | `…\SQLBI\Whiteboard` | `…\SQLBI\Whiteboard Dev` |
 | Settings | `%APPDATA%\SQLBI\Whiteboard` | `%APPDATA%\SQLBI\Whiteboard Dev` |
-| Registers `.wboard` | yes | no |
+| Registers `.wboard` and `.wimport` | yes | no |
 | Marker file | none | `channel.txt` beside the executable |
 | Published as | GitHub Release | GitHub prerelease |
 

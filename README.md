@@ -15,7 +15,7 @@ How the project is developed and shipped is documented separately:
 - Basic palm rejection: touch navigation is suspended when the pen makes contact
 - Mouse-wheel zoom and middle-button or temporary Space-key panning
 - Whole-stroke erasing
-- PNG, JPEG, BMP, and GIF import, clipboard bitmap paste, and Explorer drag-and-drop of images and text files
+- PNG, JPEG, BMP, and GIF import, clipboard bitmap paste, and Explorer drag-and-drop of images, text files, and `.wimport` recipes
 - Image selection, movement, resizing, and deletion
 - Text containers created by pasting plain text, with display and in-place edit modes
 - Plain-text, DAX, and SQL Server language modes, with live syntax highlighting and local F6 formatting
@@ -24,6 +24,7 @@ How the project is developed and shipped is documented separately:
 - Double-click a container to center it and fit it to the canvas
 - Undo and redo for strokes, erasing, containers, text edits, and transformations
 - Versioned ZIP-based `.wboard` documents with embedded image assets
+- Markdown `.wimport` recipes that build image and text containers from headings
 - An intentionally small floating toolbar
 - Preferences for the startup monitor, full-screen start, laser trail, and toolbar layout
 
@@ -72,8 +73,8 @@ installed. They differ in three ways:
 
 - The pre-release channel installs under `Whiteboard Dev`, is named **SQLBI Whiteboard (Dev)**,
   and carries its own `UpgradeCode`, so it never upgrades or replaces a released install.
-- Only the released channel registers the `.wboard` file type. Uninstalling a pre-release
-  build therefore cannot leave the association broken.
+- Only the released channel registers the `.wboard` and `.wimport` file types. Uninstalling a
+  pre-release build therefore cannot leave those associations broken.
 - The pre-release installer places a `channel.txt` beside the executable, and the pre-release
   portable ZIP carries the same file. `AppChannel` reads it at startup to append `(Dev)` to
   the window title and to keep settings in `%APPDATA%\SQLBI\Whiteboard Dev`, so the two
@@ -190,7 +191,27 @@ Imported images, LiveViews, and text objects act as containers. A completed stro
 
 Paste plain text to create a text container and enter edit mode immediately. Text reflows while its edit-mode resize grip changes the width, and the height grows automatically when necessary. Choose **DAX** or **SQL Server** in the title-bar language selector for syntax highlighting in both edit and display modes. A language-aware title identifies a defined DAX or SQL object when possible. Press **F6** to apply the corresponding local formatter. SQL Server mode targets SQL Server 2025 T-SQL, preserves `GO` batch separators, and leaves invalid scripts unchanged. Press **Ctrl+Enter** to commit or **Escape** to restore the previous text, language, and dimensions. In display mode, resizing preserves the aspect ratio and scales the complete text visual without reflowing it.
 
-Image files, and `.txt`, `.dax`, and `.sql` files, can be dropped directly from File Explorer. Their initial center is the board position at which they were dropped. DAX and SQL files open in the matching language mode. Markdown import is a later format; dropping a `.md` file does nothing yet.
+Image files, and `.txt`, `.dax`, and `.sql` files, can be dropped directly from File Explorer. Their initial center is the board position at which they were dropped. DAX and SQL files open in the matching language mode.
+
+### `.wimport` recipes
+
+A `.wimport` file is Markdown that builds containers on a board. It is import-only: there is no export, and saving always writes a `.wboard`.
+
+- `#` is an optional title (not a container).
+- `##` starts one container. The heading is the title.
+- An image (`![](path)`), a `dax` / `sql` fence, a link to `.dax` / `.sql` / an image file, or leftover prose chooses the container kind.
+- A thematic break (`---`) starts a new row. Items otherwise flow left to right and wrap.
+- Paths are local and relative to the `.wimport` file. Missing files are skipped and listed in a dialog.
+
+Drop a `.wimport` onto an open board to add its containers, with the pointer as the group’s top-left. **File → Import…** does the same at the top-left of the view. **File → Open** or double-click (released installer) starts a new untitled board from the recipe.
+
+The full contract for authors and agents is [docs/wimport.md](docs/wimport.md). A sample lives at `docs/samples/contoso-workshop.wimport`. In VS Code, associate the extension with Markdown to use the built-in preview:
+
+```json
+"files.associations": { "*.wimport": "markdown" }
+```
+
+Plain `.md` files are not imported.
 
 ## Architecture
 

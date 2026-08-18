@@ -163,7 +163,7 @@ public partial class MainWindow : Window
         Loaded -= MainWindow_Loaded;
         if (_initialBoardPath is not null)
         {
-            await LoadBoardAsync(_initialBoardPath);
+            await OpenPathAsync(_initialBoardPath, confirmDiscard: false);
         }
     }
 
@@ -2640,13 +2640,7 @@ public partial class MainWindow : Window
     private void NewMenuItem_Click(object sender, RoutedEventArgs e)
     {
         CommitTextEdit();
-        if ((_document.Objects.Count > 0 || _document.Assets.Count > 0) &&
-            MessageBox.Show(
-                this,
-                "Create a new whiteboard? Any unsaved changes will be lost.",
-                "New whiteboard",
-                MessageBoxButton.YesNo,
-                MessageBoxImage.Warning) != MessageBoxResult.Yes)
+        if (!ConfirmDiscardUnsaved("Create a new whiteboard? Any unsaved changes will be lost."))
         {
             return;
         }
@@ -2655,6 +2649,15 @@ public partial class MainWindow : Window
         _currentBoardPath = null;
         ResetBoardView();
     }
+
+    private bool ConfirmDiscardUnsaved(string message) =>
+        _document.Objects.Count == 0 && _document.Assets.Count == 0 ||
+        MessageBox.Show(
+            this,
+            message,
+            "SQLBI Whiteboard",
+            MessageBoxButton.YesNo,
+            MessageBoxImage.Warning) == MessageBoxResult.Yes;
 
     private async void SaveAsMenuItem_Click(object sender, RoutedEventArgs e) =>
         await SaveBoardAsync(saveAs: true);
@@ -2700,12 +2703,19 @@ public partial class MainWindow : Window
     {
         var dialog = new OpenFileDialog
         {
-            Title = "Import image",
-            Filter = "Images|*.png;*.jpg;*.jpeg;*.bmp;*.gif",
+            Title = "Import",
+            Filter =
+                "Importable files|*.wimport;*.png;*.jpg;*.jpeg;*.bmp;*.gif|Whiteboard import|*.wimport|Images|*.png;*.jpg;*.jpeg;*.bmp;*.gif",
             Multiselect = false,
         };
         if (dialog.ShowDialog(this) != true)
         {
+            return;
+        }
+
+        if (DroppedFileImport.Classify(dialog.FileName) == DroppedFileKind.Import)
+        {
+            await ImportRecipeAsync(dialog.FileName, VisibleTopLeft(), replaceDocument: false);
             return;
         }
 
@@ -3181,8 +3191,9 @@ public partial class MainWindow : Window
         CommitTextEdit();
         var dialog = new OpenFileDialog
         {
-            Title = "Open board",
-            Filter = "Whiteboard document|*.wboard",
+            Title = "Open",
+            Filter =
+                "Whiteboard|*.wboard;*.wimport|Whiteboard document|*.wboard|Whiteboard import|*.wimport",
             Multiselect = false,
         };
         if (dialog.ShowDialog(this) != true)
@@ -3190,7 +3201,30 @@ public partial class MainWindow : Window
             return;
         }
 
-        await LoadBoardAsync(dialog.FileName);
+        await OpenPathAsync(dialog.FileName, confirmDiscard: true);
+    }
+
+    private async Task OpenPathAsync(string filePath, bool confirmDiscard)
+    {
+        if (DroppedFileImport.Classify(filePath) == DroppedFileKind.Import)
+        {
+            if (confirmDiscard &&
+                !ConfirmDiscardUnsaved("Open this import? Any unsaved changes will be lost."))
+            {
+                return;
+            }
+
+            await ImportRecipeAsync(filePath, VisibleTopLeft(), replaceDocument: true);
+            return;
+        }
+
+        if (confirmDiscard &&
+            !ConfirmDiscardUnsaved("Open this board? Any unsaved changes will be lost."))
+        {
+            return;
+        }
+
+        await LoadBoardAsync(filePath);
     }
 
     private async Task LoadBoardAsync(string filePath)
@@ -3318,11 +3352,11 @@ public partial class MainWindow : Window
             return;
         }
 
-        var dropCenter = _camera.ScreenToWorld(ToPointD(e.GetPosition(InkSurface)));
-        await ImportDroppedFilesAsync(paths, dropCenter);
+        var dropPoint = _camera.ScreenToWorld(ToPointD(e.GetPosition(InkSurface)));
+        await ImportDroppedFilesAsync(paths, dropPoint);
     }
 
-    private async Task ImportDroppedFilesAsync(string[] paths, PointD worldCenter)
+    private async Task ImportDroppedFilesAsync(string[] paths, PointD worldPoint)
     {
         var imported = 0;
         try
@@ -3335,7 +3369,14 @@ public partial class MainWindow : Window
                     continue;
                 }
 
-                var center = worldCenter + new PointD(imported * 24, imported * 24);
+                if (kind == DroppedFileKind.Import)
+                {
+                    await ImportRecipeAsync(path, worldPoint, replaceDocument: false);
+                    imported++;
+                    continue;
+                }
+
+                var center = worldPoint + new PointD(imported * 24, imported * 24);
                 switch (kind)
                 {
                     case DroppedFileKind.Image:
@@ -3372,6 +3413,155 @@ public partial class MainWindow : Window
             ShowError("Could not drop file", exception);
         }
     }
+
+    private async Task ImportRecipeAsync(
+        string filePath,
+        PointD originTopLeft,
+        bool replaceDocument)
+    {
+        try
+        {
+            var markdown = await File.ReadAllTextAsync(filePath);
+            var baseDirectory = Path.GetDirectoryName(filePath);
+            if (string.IsNullOrWhiteSpace(baseDirectory))
+            {
+                baseDirectory = Environment.CurrentDirectory;
+            }
+
+            var imported = ImportDocument.Parse(markdown).Resolve(baseDirectory);
+            if (replaceDocument)
+            {
+                ReplaceDocument(new BoardDocument());
+                _currentBoardPath = null;
+                ResetBoardView();
+                originTopLeft = VisibleTopLeft();
+            }
+
+            ApplyImport(imported, originTopLeft, recordUndo: !replaceDocument);
+            if (imported.MissingFiles.Count > 0)
+            {
+                new MissingFilesWindow(imported.MissingFiles)
+                {
+                    Owner = this,
+                }.ShowDialog();
+            }
+        }
+        catch (Exception exception)
+        {
+            ShowError("Could not import whiteboard", exception);
+        }
+    }
+
+    private void ApplyImport(ImportDocument imported, PointD originTopLeft, bool recordUndo)
+    {
+        if (imported.Items.Count == 0)
+        {
+            return;
+        }
+
+        var dpi = VisualTreeHelper.GetDpi(SceneSurface).PixelsPerDip;
+        var sizes = new List<(double Width, double Height, bool StartNewRow)>(imported.Items.Count);
+        var decoded = new List<(ImportItem Item, byte[]? Bytes, double Width, double Height)>(
+            imported.Items.Count);
+        foreach (var item in imported.Items)
+        {
+            if (item.Kind == ImportItemKind.Image)
+            {
+                if (item.ImageBytes is null)
+                {
+                    continue;
+                }
+
+                try
+                {
+                    var bitmap = WpfImageCodec.Decode(item.ImageBytes);
+                    var (width, height) = ImportLayout.ImageSize(bitmap.PixelWidth, bitmap.PixelHeight);
+                    sizes.Add((width, height, item.StartNewRow));
+                    decoded.Add((item, item.ImageBytes, width, height));
+                }
+                catch (Exception)
+                {
+                    continue;
+                }
+            }
+            else
+            {
+                var text = item.Text ?? string.Empty;
+                if (text.Length == 0)
+                {
+                    continue;
+                }
+
+                var width = Math.Min(
+                    TextContainerVisual.DefaultWidth,
+                    Math.Max(320, _camera.VisibleWorldBounds.Width * 0.7));
+                var height = TextContainerVisual.MeasureDesiredHeight(text, width, 1, dpi);
+                sizes.Add((width, height, item.StartNewRow));
+                decoded.Add((item, null, width, height));
+            }
+        }
+
+        if (decoded.Count == 0)
+        {
+            return;
+        }
+
+        var rects = ImportLayout.Place(sizes, originTopLeft);
+        var objects = new List<BoardObject>(decoded.Count);
+        var assets = new List<BoardAsset>();
+        for (var index = 0; index < decoded.Count; index++)
+        {
+            var (item, bytes, _, _) = decoded[index];
+            var bounds = rects[index];
+            if (item.Kind == ImportItemKind.Image && bytes is not null)
+            {
+                var assetId = Guid.NewGuid().ToString("N");
+                assets.Add(new BoardAsset(
+                    assetId,
+                    item.ImageFileName ?? "image.png",
+                    ContentTypeFor(item.ImageFileName ?? item.SourcePath ?? "image.png"),
+                    bytes));
+                objects.Add(new ImageBoardObject(
+                    Guid.NewGuid(),
+                    _document.NextZIndex + objects.Count,
+                    bounds,
+                    assetId));
+            }
+            else
+            {
+                objects.Add(new TextBoardObject(
+                    Guid.NewGuid(),
+                    _document.NextZIndex + objects.Count,
+                    bounds,
+                    item.Title,
+                    item.Text ?? string.Empty,
+                    LanguageId: TextLanguageIds.Normalize(item.LanguageId)));
+            }
+        }
+
+        var command = new AddImportCommand(objects, assets);
+        if (recordUndo)
+        {
+            _history.Execute(command, _document);
+        }
+        else
+        {
+            command.Execute(_document);
+            _history.Clear();
+        }
+
+        SceneSurface.InvalidateAssets();
+        if (objects.Count > 0)
+        {
+            _selectedObjectId = objects[^1].Id;
+            SceneSurface.SelectedObjectId = _selectedObjectId;
+            SetActiveTool(BoardTool.Select);
+        }
+
+        UpdateLiveViewActionOverlay();
+    }
+
+    private PointD VisibleTopLeft() => _camera.ScreenToWorld(new PointD(0, 0));
 
     private void Window_PreviewKeyDown(object sender, KeyEventArgs e)
     {

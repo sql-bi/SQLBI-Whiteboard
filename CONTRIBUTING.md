@@ -74,7 +74,7 @@ and per-user, selected by the `Channel` and `Scope` preprocessor variables. Chan
 identity, install folder, or the file association affects all four.
 
 **The pre-release channel must stay a separate product,** with its own `UpgradeCode`, and
-must not register `.wboard`. Decision 7 explains what breaks otherwise.
+must not register `.wboard` or `.wimport`. Decision 7 explains what breaks otherwise.
 
 **The channel is detected at run time,** never compiled in, so one publish serves both
 channels and a tested build can be promoted without rebuilding.

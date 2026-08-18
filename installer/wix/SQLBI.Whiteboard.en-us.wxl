@@ -7,6 +7,7 @@
   <String Id="SupportedWindowsVersionMessage" Value="SQLBI Whiteboard requires Windows 10 version 2004 (build 19041) or later." />
   <String Id="LaunchApplication" Value="Launch SQLBI Whiteboard" />
   <String Id="BoardFileTypeDescription" Value="SQLBI Whiteboard board" />
+  <String Id="ImportFileTypeDescription" Value="SQLBI Whiteboard import" />
   <String Id="BoardOpenVerb" Value="Open" />
 
 </WixLocalization>

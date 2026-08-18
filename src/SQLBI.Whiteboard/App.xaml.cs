@@ -15,7 +15,7 @@ public partial class App : Application
 
     /// <summary>
     /// Returns the first existing file passed on the command line, as supplied by the
-    /// shell when a <c>.wboard</c> document is opened from Explorer.
+    /// shell when a <c>.wboard</c> or <c>.wimport</c> file is opened from Explorer.
     /// </summary>
     private static string? FindBoardPath(string[] args)
     {

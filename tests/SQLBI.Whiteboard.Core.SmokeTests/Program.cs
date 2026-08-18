@@ -53,9 +53,10 @@ Assert(
     DroppedFileImport.Classify("notes.txt") == DroppedFileKind.Text &&
     DroppedFileImport.Classify("measure.dax") == DroppedFileKind.Text &&
     DroppedFileImport.Classify("query.sql") == DroppedFileKind.Text &&
+    DroppedFileImport.Classify("lesson.wimport") == DroppedFileKind.Import &&
     DroppedFileImport.Classify("board.wboard") == DroppedFileKind.Unsupported &&
     DroppedFileImport.Classify("notes.md") == DroppedFileKind.Unsupported,
-    "Drop import should accept images and text now, and leave markdown and boards for later.");
+    "Drop import should accept images, text, and .wimport, and leave markdown and boards for later.");
 Assert(
     DroppedFileImport.CanImportAny(["skip.bin", "photo.jpg"]),
     "A mixed drop should be accepted when any file can be imported.");
@@ -67,6 +68,135 @@ Assert(
     DroppedFileImport.LanguageIdFor("query.sql") == TextLanguageIds.SqlServer &&
     DroppedFileImport.LanguageIdFor("notes.txt") == TextLanguageIds.Plain,
     "Dropped text files should pick a language from the extension.");
+
+var parsedImport = ImportDocument.Parse(
+    """
+    # Contoso workshop
+
+    This intro is ignored.
+
+    ## Sales model
+    ![Sales model](./images/model.png)
+
+    ## Talking points
+    - Grain is daily
+
+    ---
+
+    ## Total Sales
+    ```dax
+    Total Sales := SUM(Sales[Amount])
+    ```
+
+    ## Warehouse query
+    [top customers](./sql/top-customers.sql)
+
+    ## Unknown fence
+    ```python
+    print("hi")
+    ```
+    """);
+Assert(
+    parsedImport.Title == "Contoso workshop" &&
+    parsedImport.Items.Count == 5,
+    "A .wimport file should yield one item per ## heading.");
+Assert(
+    parsedImport.Items[0] is
+    {
+        Kind: ImportItemKind.Image,
+        SourcePath: "./images/model.png",
+        Title: "Sales model",
+        StartNewRow: false,
+    },
+    "A Markdown image should become an image item.");
+Assert(
+    parsedImport.Items[1] is { Kind: ImportItemKind.Text, LanguageId: TextLanguageIds.Plain } &&
+    parsedImport.Items[1].Text!.Contains("Grain is daily", StringComparison.Ordinal),
+    "Notes should import as plain Markdown source.");
+Assert(
+    parsedImport.Items[2] is
+    {
+        Kind: ImportItemKind.Text,
+        LanguageId: TextLanguageIds.Dax,
+        StartNewRow: true,
+        Text: "Total Sales := SUM(Sales[Amount])",
+    },
+    "A thematic break should force the next container onto a new row.");
+Assert(
+    parsedImport.Items[3] is
+    {
+        Kind: ImportItemKind.Text,
+        LanguageId: TextLanguageIds.SqlServer,
+        SourcePath: "./sql/top-customers.sql",
+    },
+    "A link to a .sql file should become a SQL text item.");
+Assert(
+    parsedImport.Items[4] is { LanguageId: TextLanguageIds.Plain } &&
+    parsedImport.Items[4].Text!.Contains("print", StringComparison.Ordinal),
+    "An unknown fence should fall through to plain text.");
+
+var pythonCatalog = ImportCatalog.Default.WithLanguage(
+    new ImportLanguage
+    {
+        Id = "python",
+        FenceTags = ["python", "py"],
+        Extensions = [".py"],
+    });
+var pythonFromFence = ImportDocument.Parse(
+    """
+    ## Script
+    ```python
+    print("hi")
+    ```
+    """,
+    pythonCatalog);
+var pythonFromLink = ImportDocument.Parse(
+    """
+    ## Script
+    [script](./util.py)
+    """,
+    pythonCatalog);
+Assert(
+    pythonFromFence.Items is [{ LanguageId: "python", Text: "print(\"hi\")" }] &&
+    pythonFromLink.Items is [{ LanguageId: "python", SourcePath: "./util.py" }],
+    "A new language row should be picked up by fence and by link without matcher changes.");
+
+var importFolder = Path.Combine(Path.GetTempPath(), "wimport-" + Guid.NewGuid().ToString("N"));
+Directory.CreateDirectory(importFolder);
+File.WriteAllText(Path.Combine(importFolder, "ok.dax"), "x := 1");
+var resolvedImport = ImportDocument.Parse(
+    """
+    ## Present
+    [ok](./ok.dax)
+
+    ## Missing
+    ![](./missing.png)
+    """).Resolve(importFolder);
+Assert(
+    resolvedImport.Items is [{ LanguageId: TextLanguageIds.Dax, Text: "x := 1" }] &&
+    resolvedImport.MissingFiles.Count == 1 &&
+    resolvedImport.MissingFiles[0].EndsWith("missing.png", StringComparison.OrdinalIgnoreCase),
+    "Resolve should load linked files and list missing paths without aborting.");
+Directory.Delete(importFolder, recursive: true);
+
+var placed = ImportLayout.Place(
+    [
+        (400, 200, false),
+        (400, 180, false),
+        (400, 200, true),
+        (ImportLayout.MaxRowWidth, 100, false),
+        (500, 100, false),
+    ],
+    new PointD(10, 20));
+Assert(
+    placed[0].X == 10 && placed[0].Y == 20 &&
+    placed[1].X == 10 + 400 + ImportLayout.Gap && placed[1].Y == 20 &&
+    placed[2].X == 10 && placed[2].Y > placed[0].Bottom &&
+    placed[4].Y > placed[3].Y,
+    "Flow layout should pack left to right, honour a forced row, and wrap on max width.");
+Assert(
+    ImportLayout.ImageSize(1800, 1400) is { Width: 900, Height: 700 },
+    "Imported images should use the same 900 by 700 cap as a dropped image.");
 
 var document = new BoardDocument();
 Assert(document.ContentBounds is null, "An empty document should not have content bounds.");

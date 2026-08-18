@@ -94,9 +94,10 @@ A dev build installs alongside a released one rather than replacing it: its own
 
 Three consequences were chosen deliberately:
 
-- **Dev does not register `.wboard`.** If both channels claimed it the last install would
-  win, and uninstalling dev would delete the association outright, breaking the released
-  copy. Boards always open in the released build; dev is launched explicitly.
+- **Dev does not register `.wboard` or `.wimport`.** If both channels claimed them the last
+  install would win, and uninstalling dev would delete the association outright, breaking
+  the released copy. Boards and import recipes always open in the released build; dev is
+  launched explicitly.
 - **Settings are separated** through a `channel.txt` placed beside the executable by the dev
   installer, and carried inside the dev portable ZIP. Without this the two copies silently
   overwrite each other's settings on every save — the settings parser ignores the `Version`

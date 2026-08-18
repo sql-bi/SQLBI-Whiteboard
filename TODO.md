@@ -41,15 +41,12 @@ A drop on the window imports at the release point in camera space. Images become
 containers; `.txt`, `.dax`, and `.sql` become text containers in the matching language.
 The classifier is the hook for the import format below — `.md` is still unsupported.
 
-### 3. An import file format
+### 3. An import file format — done
 
-A plain-text format — Markdown is the obvious candidate — that builds a new whiteboard from
-images and text. This makes boards authorable outside the application and generatable by a
-script or an agent, instead of only by drawing.
-
-Two decisions to settle before writing code: which subset of Markdown maps to containers, and
-how positions are expressed when the source has none. Once the format exists, drag and drop
-carries it too.
+`.wimport` is Markdown that builds containers: `##` is one container, `---` starts a new row,
+images and DAX/SQL are inferred from the body or a local link. Drop adds to the current board;
+Open / double-click (released channel) starts a new board that saves as `.wboard`. There is no
+export. Languages are a table so later fences (Python, C#, …) do not need a new matcher.
 
 ### 4. A rendered preview inside the `.wboard` archive
 
@@ -92,7 +89,8 @@ The site is a download page today. It needs real documentation: the tool set, co
 LiveView, the DAX and SQL Server text containers, the import format, and the keyboard and pen
 shortcuts. The README already carries most of this content, so the open question is whether the
 site renders from those files or keeps its own copy — decide that before writing the pages
-twice.
+twice. The `.wimport` contract for authors and agents is already written in
+[docs/wimport.md](docs/wimport.md); publish that file rather than rewriting it.
 
 ### 9. Microsoft Store
 

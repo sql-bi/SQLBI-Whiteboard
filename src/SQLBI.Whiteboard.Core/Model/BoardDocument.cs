@@ -102,6 +102,17 @@ public sealed class BoardDocument
         Changed?.Invoke(this, EventArgs.Empty);
     }
 
+    public bool RemoveAsset(string id)
+    {
+        var removed = _assets.Remove(id);
+        if (removed)
+        {
+            Changed?.Invoke(this, EventArgs.Empty);
+        }
+
+        return removed;
+    }
+
     public IEnumerable<BoardObject> Query(RectD worldBounds) =>
         _objects.Where(item => item.Bounds.Intersects(worldBounds));
 
