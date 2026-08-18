@@ -465,6 +465,40 @@ Assert(
         "{ \"pen\": { \"argb\": 1, \"thickness\": 99 } }").Pen.Argb ==
     InkPalettes.DefaultPen.Argb,
     "Saved ink that is no longer in the palette should fall back to the tool default.");
+Assert(
+    defaultSettings.StartupMonitor == StartupMonitorKind.WacomIfPresent &&
+    defaultSettings.StartupMonitorName is null &&
+    !defaultSettings.StartFullScreen,
+    "Missing settings should default to Wacom-if-present and a windowed start.");
+Assert(
+    AppSettingsSerializer.Parse("{ \"startupMonitor\": \"Sideways\" }").StartupMonitor ==
+    StartupMonitorKind.WacomIfPresent,
+    "Unknown startup monitors should fall back to Wacom-if-present.");
+Assert(
+    AppSettingsSerializer.Parse(
+        "{ \"startupMonitor\": \"Named\" }").StartupMonitor ==
+    StartupMonitorKind.WacomIfPresent,
+    "A named startup monitor without a name should fall back to Wacom-if-present.");
+Assert(
+    AppSettingsSerializer.Parse(
+        "{ \"startupMonitor\": \"Primary\", \"startupMonitorName\": \"Cintiq Pro 27\" }") is
+    {
+        StartupMonitor: StartupMonitorKind.Primary,
+        StartupMonitorName: null,
+    },
+    "A primary startup monitor should drop a leftover display name.");
+var namedStartup = AppSettingsSerializer.Parse(
+    AppSettingsSerializer.Format(new AppSettings
+    {
+        StartupMonitor = StartupMonitorKind.Named,
+        StartupMonitorName = "  Cintiq Pro 27  ",
+        StartFullScreen = true,
+    }));
+Assert(
+    namedStartup.StartupMonitor == StartupMonitorKind.Named &&
+    namedStartup.StartupMonitorName == "Cintiq Pro 27" &&
+    namedStartup.StartFullScreen,
+    "Settings JSON should round-trip a named startup monitor and full-screen start.");
 
 var daxSource = """
 Tricky :=

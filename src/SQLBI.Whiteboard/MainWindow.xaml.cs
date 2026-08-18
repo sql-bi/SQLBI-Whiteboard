@@ -149,7 +149,14 @@ public partial class MainWindow : Window
 
     private void MainWindow_SourceInitialized(object? sender, EventArgs e)
     {
-        MonitorStartupPlacement.PlaceMaximizedOnWacom(this);
+        MonitorStartupPlacement.PlaceMaximized(
+            this,
+            _settings.StartupMonitor,
+            _settings.StartupMonitorName);
+        if (_settings.StartFullScreen)
+        {
+            EnterFullScreen();
+        }
     }
 
     private async void MainWindow_Loaded(object sender, RoutedEventArgs e)
@@ -2405,13 +2412,17 @@ public partial class MainWindow : Window
         }
     }
 
+    private void ApplyPreferences()
+    {
+        ApplyToolbarPlacement();
+        ApplyCalligraphyAccess();
+        ApplyLaserSettings();
+        PersistSettings();
+    }
+
     private void PreferencesMenuItem_Click(object sender, RoutedEventArgs e)
     {
-        var dialog = new PreferencesWindow(
-            _settings.ToolbarPlacement,
-            _settings.CalligraphyAccess,
-            SetToolbarPlacement,
-            SetCalligraphyAccess)
+        var dialog = new PreferencesWindow(_settings, ApplyPreferences)
         {
             Owner = this,
         };
