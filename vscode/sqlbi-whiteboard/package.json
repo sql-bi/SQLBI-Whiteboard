@@ -2,7 +2,7 @@
   "name": "sqlbi-whiteboard",
   "displayName": "SQLBI Whiteboard",
   "description": "Opens .wboard files as the embedded preview image instead of a ZIP archive.",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "publisher": "sqlbi",
   "license": "MIT",
   "engines": {
@@ -29,6 +29,17 @@
     "onCustomEditor:sqlbi.whiteboard.preview"
   ],
   "contributes": {
+    "languages": [
+      {
+        "id": "wboard",
+        "aliases": ["Whiteboard", "SQLBI Whiteboard"],
+        "extensions": [".wboard"]
+      },
+      {
+        "id": "markdown",
+        "extensions": [".wimport"]
+      }
+    ],
     "customEditors": [
       {
         "viewType": "sqlbi.whiteboard.preview",

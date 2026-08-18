@@ -1,0 +1,153 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>.wimport format — SQLBI Whiteboard</title>
+<meta name="description" content="The .wimport Markdown recipe format for building image and text containers in SQLBI Whiteboard.">
+<link rel="icon" href="favicon.ico" sizes="any">
+<link rel="icon" href="favicon-32.png" type="image/png" sizes="32x32">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<meta property="og:type" content="website">
+<meta property="og:title" content=".wimport format — SQLBI Whiteboard">
+<meta property="og:description" content="Markdown recipes that build image and text containers on a whiteboard.">
+<meta property="og:url" content="https://whiteboard.sqlbi.com/wimport.html">
+<meta property="og:image" content="https://whiteboard.sqlbi.com/og-image.png">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<div class="wrap wide">
+
+  <header class="doc">
+    <nav class="nav" aria-label="Documentation">
+      <a href="index.html">Download</a>
+      <a href="guide.html">Guide</a>
+      <a href="shortcuts.html">Shortcuts</a>
+      <a href="wimport.html" aria-current="page">Import format</a>
+      <a href="https://marketplace.visualstudio.com/items?itemName=sqlbi.sqlbi-whiteboard">VS Code</a>
+    </nav>
+    <h1>The <code>.wimport</code> format</h1>
+    <p class="lede">A Markdown recipe that builds image and text containers. It is not a board file. There is no export back to <code>.wimport</code>. After import you rearrange, draw, and save a <code>.wboard</code>.</p>
+  </header>
+
+  <article>
+    <p>This page is the public edition of the in-repo contract <a href="https://github.com/sql-bi/SQLBI-Whiteboard/blob/main/docs/wimport.md"><code>docs/wimport.md</code></a>. Authors and agents should treat the two as the same grammar. A <a href="https://github.com/sql-bi/SQLBI-Whiteboard/blob/main/docs/samples/contoso-workshop.wimport">sample workshop</a> lives next to that file.</p>
+    <p>The file must be valid CommonMark so it previews in VS Code and GitHub without a custom renderer. Associate the extension if the editor does not treat it as Markdown:</p>
+    <pre><code>"files.associations": { "*.wimport": "markdown" }</code></pre>
+
+    <h2>Produce this</h2>
+    <ul>
+      <li>Extension: <code>.wimport</code> (not <code>.md</code>).</li>
+      <li>Encoding: UTF-8.</li>
+      <li>Paths: local and relative to the <code>.wimport</code> file. No <code>http://</code> or <code>https://</code>.</li>
+      <li>One idea per <code>##</code> heading. One container per heading.</li>
+    </ul>
+
+    <h2>Heading grammar</h2>
+    <table>
+      <thead><tr><th>Line</th><th>Meaning</th></tr></thead>
+      <tbody>
+        <tr><td><code># Title</code></td><td>Optional board title. At most one. Not a container. Ignored if it appears after the first <code>##</code>.</td></tr>
+        <tr><td><code>## Title</code></td><td>Starts a container. The heading text is the container title.</td></tr>
+        <tr><td><code>###</code> and deeper</td><td>Stay inside the current container body. They do not start a new object.</td></tr>
+        <tr><td><code>---</code>, <code>***</code>, or <code>___</code> on its own line</td><td>Thematic break. Starts a new row of containers. Not a container.</td></tr>
+        <tr><td>Any other line before the first <code>##</code></td><td>Documentation for the preview. Not imported.</td></tr>
+      </tbody>
+    </table>
+    <p>An empty <code>##</code> heading is titled <code>Text</code>.</p>
+
+    <h2>How the body becomes a container</h2>
+    <p>Recognizers run in this order. The first match wins. Extra material after the match is ignored.</p>
+    <ol>
+      <li><strong>Markdown image</strong> — <code>![optional alt](relative/path.png)</code>. Image container. Title is the <code>##</code> heading, then the alt text, then the file name. Allowed extensions: <code>.png</code>, <code>.jpg</code>, <code>.jpeg</code>, <code>.bmp</code>, <code>.gif</code>.</li>
+      <li><strong>Fenced code</strong> whose info-string is a registered language. Text container. Contents of the fence. Language from the tag.</li>
+      <li><strong>Markdown link</strong> to an image extension — same as an image.</li>
+      <li><strong>Markdown link</strong> to a registered language extension — <code>[label](relative/path.dax)</code>. Text container. File contents. Language from the extension.</li>
+      <li><strong>Any remaining text</strong> — text container. The Markdown source is stored as plain text. Whiteboard does not render Markdown.</li>
+      <li><strong>Empty body</strong> — the heading is skipped.</li>
+    </ol>
+    <p>Do not put an image and a measure under the same <code>##</code>. Use two headings.</p>
+    <p>A fenced block whose tag is unknown (for example <code>python</code> today) is not a language container. The whole body, fence included, becomes plain text.</p>
+
+    <h3>Languages shipped today</h3>
+    <table>
+      <thead><tr><th>Language</th><th>Fence info-string</th><th>File extensions</th></tr></thead>
+      <tbody>
+        <tr><td>DAX</td><td><code>dax</code></td><td><code>.dax</code></td></tr>
+        <tr><td>SQL Server</td><td><code>sql</code>, <code>tsql</code></td><td><code>.sql</code></td></tr>
+      </tbody>
+    </table>
+    <p>Further languages will be extra rows in this table. Do not invent fence tags Whiteboard does not list here: they import as plain text. Linked text files larger than 1&nbsp;000&nbsp;000 bytes are skipped and reported as missing.</p>
+
+    <h2>Layout</h2>
+    <p>Whiteboard measures each container, then packs them left to right. A thematic break starts a new row even if the current row is not full. Without a break, a row wraps when the next item would exceed about 2400 world units.</p>
+    <p>On drop, the group’s top-left is the pointer. On Open or toolbar Import, the group’s top-left is the top-left of the visible view. Do not put coordinates in the file. There is no <code>pos:</code>, no YAML front matter, and no HTML comment layout.</p>
+
+    <h2>How the file is opened</h2>
+    <table>
+      <thead><tr><th>Action</th><th>Result</th></tr></thead>
+      <tbody>
+        <tr><td>Drop onto an open board</td><td>Containers are added. Pointer is the group top-left. Undo is one step.</td></tr>
+        <tr><td>Toolbar Import</td><td>Containers are added at the visible top-left.</td></tr>
+        <tr><td>File → Open, or double-click</td><td>New untitled board, then import. Save / Save As writes <code>.wboard</code> only. The <code>.wimport</code> path is used only to resolve relative links.</td></tr>
+      </tbody>
+    </table>
+    <p>Missing or unreadable linked files are skipped. Whiteboard then shows a dialog listing the resolved paths, which can be copied.</p>
+
+    <h2>Template</h2>
+    <pre><code># Optional board title
+
+Optional notes for the Markdown preview. Not imported.
+
+## Container title for an image
+![short alt](./images/diagram.png)
+
+## Container title for notes
+- Bullet one
+- Bullet two
+
+---
+
+## Container title for embedded DAX
+&#96;&#96;&#96;dax
+Total Sales := SUM(Sales[Amount])
+&#96;&#96;&#96;
+
+## Container title for linked SQL
+[Top customers](./sql/top-customers.sql)</code></pre>
+
+    <h2>Checklist</h2>
+    <ul>
+      <li>File name ends in <code>.wimport</code>.</li>
+      <li>Every container is a <code>##</code> heading with exactly one payload.</li>
+      <li>Images and linked code exist next to the file, using relative paths.</li>
+      <li>Image files are png/jpeg/bmp/gif. Linked code files are <code>.dax</code> or <code>.sql</code>, or the code is embedded in a <code>dax</code> / <code>sql</code> / <code>tsql</code> fence.</li>
+      <li>Row breaks are a thematic break on its own line, not a fake heading.</li>
+      <li>You did not use <code>http://</code>, YAML, or explicit positions.</li>
+      <li>Opening the file in a Markdown preview still reads as a normal document.</li>
+    </ul>
+
+    <h2>Do not</h2>
+    <ul>
+      <li>Write a <code>.md</code> and expect Whiteboard to import it.</li>
+      <li>Ask Whiteboard to save or export <code>.wimport</code>.</li>
+      <li>Embed bitmap bytes. Images are always a link to a file.</li>
+      <li>Mix two payloads in one <code>##</code> section.</li>
+      <li>Use HTML, YAML front matter, or custom XML.</li>
+      <li>Reference network URLs.</li>
+      <li>Generate ink, LiveViews, or a <code>.wboard</code> ZIP. Those are not this format.</li>
+    </ul>
+  </article>
+
+  <footer>
+    <span><a href="index.html">Download SQLBI Whiteboard</a></span>
+    <span>
+      <a href="https://github.com/sql-bi/SQLBI-Whiteboard">GitHub</a> ·
+      <a href="https://www.sqlbi.com">SQLBI</a>
+    </span>
+  </footer>
+
+</div>
+</body>
+</html>

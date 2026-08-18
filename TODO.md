@@ -59,11 +59,12 @@ The released installer registers a Native AOT in-process thumbnail handler that 
 The pre-release channel does not register `.wboard`, so it does not register the handler
 either.
 
-### 6. Preview of `.wboard` files in VS Code
+### 6. Preview of `.wboard` files in VS Code — done
 
-The extension lives in `vscode/sqlbi-whiteboard/`. It opens a `.wboard` file as the embedded
-`preview.png` rather than as an archive. Marketplace listing is still outstanding — until then
-install from a local VSIX as described in that folder's README.
+`sqlbi.sqlbi-whiteboard` on the Marketplace opens a `.wboard` file as the embedded
+`preview.png`. The source is `vscode/sqlbi-whiteboard/`. Boards without a preview show a
+short message. Bump that folder's `package.json` version to ship an update; GitHub Actions
+publishes it. The desktop installer does not carry the extension.
 
 ### 7. Video teaser
 
@@ -75,19 +76,12 @@ all need, so it sits on the critical path for all three.
 Here rather than earlier because it should show the 1.0 UI, including the configuration dialog
 and drag and drop.
 
-### 8. Documentation on whiteboard.sqlbi.com
+### 8. Documentation on whiteboard.sqlbi.com — done
 
-The site is a download page today. It needs real documentation: the tool set, containers,
-LiveView, the DAX and SQL Server text containers, the import format, and the keyboard and pen
-shortcuts. The README already carries most of this content, so the open question is whether the
-site renders from those files or keeps its own copy — decide that before writing the pages
-twice. The `.wimport` contract for authors and agents is already written in
-[docs/wimport.md](docs/wimport.md); publish that file rather than rewriting it.
-
-The pages should also spell out user stories, not only what each control does. Features that
-look small in a reference list are the ones people miss in a live session. One to write up:
-copying a LiveView and pasting it produces a bitmap of the last frame, which is how you freeze
-a screenshot onto the board during an interactive explanation without leaving the whiteboard.
+The landing page stays the download. Guide, shortcuts, and the `.wimport` contract are
+separate pages under `site/`, linked from the nav. The site is hand-authored HTML, not
+generated from the README. `docs/wimport.md` remains the in-repo contract; `site/wimport.html`
+is the same grammar for the public site.
 
 ### 9. Microsoft Store
 
