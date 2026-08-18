@@ -635,6 +635,10 @@ footer .wrap {
 footer a { color: var(--muted); text-decoration: none; }
 footer a:hover { color: var(--ink); text-decoration: underline; }
 
+.sqlbi-mark { display: inline-block; line-height: 0; vertical-align: -4px; }
+.sqlbi-mark svg { height: 17px; width: auto; display: block; }
+.sqlbi-mark:hover { text-decoration: none; }
+
 @media (prefers-reduced-motion: reduce) {
   .download, .ghost, .doclink, .doclink .go, .pagenav a { transition: none; }
   .download:hover, .ghost:hover, .pagenav a:hover { transform: none; }
