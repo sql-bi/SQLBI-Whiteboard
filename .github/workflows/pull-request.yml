@@ -32,7 +32,7 @@ jobs:
       code: ${{ steps.filter.outputs.code }}
       vscode: ${{ steps.filter.outputs.vscode }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           fetch-depth: 0
 
@@ -61,10 +61,10 @@ jobs:
     needs: changes
     runs-on: windows-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         if: needs.changes.outputs.code == 'true'
 
-      - uses: actions/setup-dotnet@v4
+      - uses: actions/setup-dotnet@v5
         if: needs.changes.outputs.code == 'true'
         with:
           dotnet-version: '10.0.x'
@@ -90,10 +90,10 @@ jobs:
     needs: changes
     runs-on: windows-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         if: needs.changes.outputs.code == 'true'
 
-      - uses: actions/setup-dotnet@v4
+      - uses: actions/setup-dotnet@v5
         if: needs.changes.outputs.code == 'true'
         with:
           dotnet-version: '10.0.x'
@@ -130,10 +130,10 @@ jobs:
     needs: changes
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         if: needs.changes.outputs.vscode == 'true'
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v5
         if: needs.changes.outputs.vscode == 'true'
         with:
           node-version: '22'

@@ -18,7 +18,7 @@ Then **Run > Start Debugging** in VS Code with this folder as the workspace, or 
 
 ```powershell
 npx --yes @vscode/vsce package
-code --install-extension sqlbi-whiteboard-0.1.0.vsix
+code --install-extension sqlbi-whiteboard-1.0.0.vsix
 ```
 
 ## Use

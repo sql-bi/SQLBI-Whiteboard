@@ -70,18 +70,36 @@ Colours live in two places that must be changed together: the SVG, and
 
 ## Pull request validation
 
-`.github/workflows/pull-request.yml` runs on every pull request against `main`, in two jobs:
+`.github/workflows/pull-request.yml` runs on every pull request against `main`:
 
 - **Build and test** — restores, builds the solution in Release, and runs the Core smoke
   tests. `TreatWarningsAsErrors` means a warning fails it.
 - **Build installers** — runs `scripts/build-installer.ps1` unsigned, so WiX authoring
   errors surface here rather than at release time. The output is discarded.
+- **VS Code extension** — compiles and tests `vscode/sqlbi-whiteboard` when that tree
+  changed.
 
 It signs nothing and publishes nothing. Everything that touches the certificate stays in
 Azure Pipelines, because this repository is public and so are these logs (decision 3).
 
 Running on GitHub also means it works for pull requests from forks, which have no access to
 secrets and need none.
+
+## VS Code extension publishing
+
+`.github/workflows/publish-vscode-extension.yml` publishes `vscode/sqlbi-whiteboard` to
+the Visual Studio Marketplace as `sqlbi.sqlbi-whiteboard`. It does not touch the EV
+certificate.
+
+It runs on a push to `main` that changes that extension's `package.json`, and on
+**Run workflow**. It packages, then publishes only when `package.json` `version` is not
+already on the Marketplace. Bump that version in a pull request to ship; do not let CI
+rewrite it.
+
+The repository secret `VSCE_PAT` must be a Marketplace **Manage** personal access token
+with organization **All accessible organizations**. Create it in the Azure DevOps
+organization tied to the `sqlbi` publisher, then add it under the GitHub repo
+**Settings → Secrets and variables → Actions**.
 
 ## The pipeline
 

@@ -1,0 +1,84 @@
+# Publishes vscode/sqlbi-whiteboard to the Visual Studio Marketplace.
+#
+# Not the Whiteboard installer: that is signed in Azure Pipelines (decision 3).
+# This job needs only a Marketplace token, stored as the repository secret VSCE_PAT.
+#
+# Automatic runs fire when package.json lands on main. The job still no-ops unless
+# that file's version is higher than anything already on the Marketplace, so a
+# description-only edit of package.json does not republish 0.1.0. workflow_dispatch
+# is the retry path and uses the same version check.
+name: Publish VS Code extension
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'vscode/sqlbi-whiteboard/package.json'
+      - '.github/workflows/publish-vscode-extension.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: publish-vscode-extension
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    name: Publish to Marketplace
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: vscode/sqlbi-whiteboard
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: vscode/sqlbi-whiteboard/package-lock.json
+
+      - name: Install, test, and package
+        run: |
+          npm ci
+          npm test
+          npx --yes @vscode/vsce package --no-update-package-json
+
+      - name: Decide whether this version is new
+        id: decide
+        run: |
+          version=$(node -p "require('./package.json').version")
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          echo "vsix=sqlbi-whiteboard-${version}.vsix" >> "$GITHUB_OUTPUT"
+
+          if npx --yes @vscode/vsce show sqlbi.sqlbi-whiteboard --json > "$RUNNER_TEMP/published.json"; then
+            already=$(VERSION="$version" node -e "
+              const data = require(process.env.RUNNER_TEMP + '/published.json');
+              const versions = (data.versions || []).map((item) => item.version);
+              process.stdout.write(versions.includes(process.env.VERSION) ? 'yes' : 'no');
+            ")
+          else
+            echo "Extension is not on the Marketplace yet."
+            already=no
+          fi
+
+          if [ "$already" = "yes" ]; then
+            echo "publish=false" >> "$GITHUB_OUTPUT"
+            echo "sqlbi.sqlbi-whiteboard $version is already published."
+          else
+            echo "publish=true" >> "$GITHUB_OUTPUT"
+            echo "Will publish sqlbi.sqlbi-whiteboard $version."
+          fi
+
+      - name: Publish
+        if: steps.decide.outputs.publish == 'true'
+        env:
+          VSCE_PAT: ${{ secrets.VSCE_PAT }}
+        run: |
+          if [ -z "$VSCE_PAT" ]; then
+            echo "Repository secret VSCE_PAT is missing. Create a Marketplace Manage PAT and add it as VSCE_PAT."
+            exit 1
+          fi
+          npx --yes @vscode/vsce publish --packagePath "${{ steps.decide.outputs.vsix }}" --no-update-package-json --pat "$VSCE_PAT"
