@@ -1,0 +1,58 @@
+{
+  "name": "sqlbi-whiteboard",
+  "displayName": "SQLBI Whiteboard",
+  "description": "Opens .wboard files as the embedded preview image instead of a ZIP archive.",
+  "version": "0.1.0",
+  "publisher": "sqlbi",
+  "license": "MIT",
+  "engines": {
+    "vscode": "^1.90.0"
+  },
+  "categories": [
+    "Visualization"
+  ],
+  "keywords": [
+    "wboard",
+    "whiteboard",
+    "sqlbi",
+    "preview"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/sql-bi/SQLBI-Whiteboard.git",
+    "directory": "vscode/sqlbi-whiteboard"
+  },
+  "homepage": "https://whiteboard.sqlbi.com",
+  "icon": "media/icon.png",
+  "main": "./out/extension.js",
+  "activationEvents": [
+    "onCustomEditor:sqlbi.whiteboard.preview"
+  ],
+  "contributes": {
+    "customEditors": [
+      {
+        "viewType": "sqlbi.whiteboard.preview",
+        "displayName": "Whiteboard Preview",
+        "selector": [
+          {
+            "filenamePattern": "*.wboard"
+          }
+        ],
+        "priority": "default"
+      }
+    ]
+  },
+  "scripts": {
+    "compile": "tsc -p .",
+    "watch": "tsc -watch -p .",
+    "test": "npm run compile && node --test out/extractPreview.test.js"
+  },
+  "dependencies": {
+    "fflate": "^0.8.2"
+  },
+  "devDependencies": {
+    "@types/node": "^22.15.0",
+    "@types/vscode": "^1.90.0",
+    "typescript": "^5.8.3"
+  }
+}

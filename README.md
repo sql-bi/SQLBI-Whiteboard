@@ -23,7 +23,7 @@ How the project is developed and shipped is documented separately:
 - LiveView containers for GPU-backed capture of an application window or display, with freeze/resume and saved last-frame previews
 - Double-click a container to center it and fit it to the canvas
 - Undo and redo for strokes, erasing, containers, text edits, and transformations
-- Versioned ZIP-based `.wboard` documents with an embedded `preview.png`. Explorer shows that picture as the file thumbnail in the released install; older boards keep the document icon.
+- Versioned ZIP-based `.wboard` documents with an embedded `preview.png`. Explorer shows that picture as the file thumbnail in the released install; older boards keep the document icon. The VS Code extension in `vscode/sqlbi-whiteboard` opens the same picture instead of the ZIP.
 - Markdown `.wimport` recipes that build image and text containers from headings
 - An intentionally small floating toolbar
 - Preferences for the startup monitor, full-screen start, laser trail, and toolbar layout
@@ -213,11 +213,16 @@ The full contract for authors and agents is [docs/wimport.md](docs/wimport.md). 
 
 Plain `.md` files are not imported.
 
+A `.wboard` in the same tree opens as the embedded preview if the extension in
+`vscode/sqlbi-whiteboard` is installed. Marketplace listing is still outstanding; that
+folder's README has the local VSIX steps.
+
 ## Architecture
 
 - `SQLBI.Whiteboard.Core` contains world geometry, camera math, retained board objects, commands, hit testing, and archive persistence. It has no UI-framework dependency.
 - `SQLBI.Whiteboard.Dax` contains the framework-neutral DAX lexer, parser, classifier, and deterministic formatter adapted from Prompt Assistant.
 - `SQLBI.Whiteboard.SqlServer` contains the framework-neutral SQL Server 2025 adapter over Microsoft's ScriptDOM parser and script generator.
+- `vscode/sqlbi-whiteboard` is a VS Code custom editor that shows `preview.png` from a `.wboard` ZIP. It is not part of the desktop installer.
 - `SQLBI.Whiteboard` is the WPF shell. `InkCanvas` supplies system-managed wet ink, while `BoardSurface` renders completed ink, images, text, and selection on a white canvas in camera space. A transient AvalonEdit surface is overlaid only while a text container is being edited; language services translate parser classifications into WPF text styles.
 - `SQLBI.Whiteboard/LiveView` owns Windows Graphics Capture and the Direct3D-to-WPF bridge. Capture retains one GPU frame per active LiveView; CPU bitmap conversion occurs only when copying or saving a snapshot.
 - `SQLBI.Whiteboard.Core.SmokeTests` is a package-free executable test harness for camera anchoring, commands, hit testing, and archive round trips.

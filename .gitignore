@@ -13,3 +13,4 @@ TestResults/
 *.user
 *.suo
 *.wboard
+!vscode/sqlbi-whiteboard/fixtures/*.wboard
