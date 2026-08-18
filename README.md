@@ -15,7 +15,7 @@ How the project is developed and shipped is documented separately:
 - Basic palm rejection: touch navigation is suspended when the pen makes contact
 - Mouse-wheel zoom and middle-button or temporary Space-key panning
 - Whole-stroke erasing
-- PNG, JPEG, BMP, and GIF import, clipboard bitmap paste, and Explorer drag-and-drop
+- PNG, JPEG, BMP, and GIF import, clipboard bitmap paste, and Explorer drag-and-drop of images and text files
 - Image selection, movement, resizing, and deletion
 - Text containers created by pasting plain text, with display and in-place edit modes
 - Plain-text, DAX, and SQL Server language modes, with live syntax highlighting and local F6 formatting
@@ -190,7 +190,7 @@ Imported images, LiveViews, and text objects act as containers. A completed stro
 
 Paste plain text to create a text container and enter edit mode immediately. Text reflows while its edit-mode resize grip changes the width, and the height grows automatically when necessary. Choose **DAX** or **SQL Server** in the title-bar language selector for syntax highlighting in both edit and display modes. A language-aware title identifies a defined DAX or SQL object when possible. Press **F6** to apply the corresponding local formatter. SQL Server mode targets SQL Server 2025 T-SQL, preserves `GO` batch separators, and leaves invalid scripts unchanged. Press **Ctrl+Enter** to commit or **Escape** to restore the previous text, language, and dimensions. In display mode, resizing preserves the aspect ratio and scales the complete text visual without reflowing it.
 
-Image files can be dropped directly from File Explorer. Their initial center is the board position at which they were dropped.
+Image files, and `.txt`, `.dax`, and `.sql` files, can be dropped directly from File Explorer. Their initial center is the board position at which they were dropped. DAX and SQL files open in the matching language mode. Markdown import is a later format; dropping a `.md` file does nothing yet.
 
 ## Architecture
 

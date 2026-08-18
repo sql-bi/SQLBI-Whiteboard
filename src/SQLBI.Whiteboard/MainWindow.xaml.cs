@@ -14,6 +14,7 @@ using ICSharpCode.AvalonEdit.Document;
 using Microsoft.Win32;
 using SQLBI.Whiteboard.Core.Commands;
 using SQLBI.Whiteboard.Core.Geometry;
+using SQLBI.Whiteboard.Core.Import;
 using SQLBI.Whiteboard.Core.Model;
 using SQLBI.Whiteboard.Core.Persistence;
 using SQLBI.Whiteboard.Core.Settings;
@@ -25,16 +26,6 @@ namespace SQLBI.Whiteboard;
 
 public partial class MainWindow : Window
 {
-    private static readonly HashSet<string> ImageFileExtensions =
-        new(StringComparer.OrdinalIgnoreCase)
-        {
-            ".png",
-            ".jpg",
-            ".jpeg",
-            ".bmp",
-            ".gif",
-        };
-
     private enum BoardTool
     {
         Pen,
@@ -2783,7 +2774,12 @@ public partial class MainWindow : Window
         UpdateLiveViewActionOverlay();
     }
 
-    private void AddText(string text, PointD? worldCenter = null)
+    private void AddText(
+        string text,
+        PointD? worldCenter = null,
+        bool beginEdit = true,
+        string? title = null,
+        string? languageId = null)
     {
         if (string.IsNullOrEmpty(text))
         {
@@ -2808,14 +2804,18 @@ public partial class MainWindow : Window
                 center.Y - (height / 2),
                 width,
                 height),
-            "Text",
-            text);
+            string.IsNullOrWhiteSpace(title) ? "Text" : title,
+            text,
+            LanguageId: TextLanguageIds.Normalize(languageId));
 
         _history.Execute(new AddObjectCommand(textObject), _document);
         _selectedObjectId = textObject.Id;
         SceneSurface.SelectedObjectId = textObject.Id;
         SetActiveTool(BoardTool.Select);
-        BeginTextEdit(textObject);
+        if (beginEdit)
+        {
+            BeginTextEdit(textObject);
+        }
     }
 
     private async Task AddLiveViewAsync()
@@ -3288,51 +3288,77 @@ public partial class MainWindow : Window
         }
     }
 
-    private void InkSurface_DragOver(object sender, DragEventArgs e)
+    private void Window_PreviewDragOver(object sender, DragEventArgs e)
     {
-        if (e.Data.GetDataPresent(DataFormats.FileDrop))
-        {
-            e.Effects = DragDropEffects.Copy;
-        }
-        else
-        {
-            e.Effects = DragDropEffects.None;
-        }
-
+        e.Effects = e.Data.GetDataPresent(DataFormats.FileDrop) &&
+                    e.Data.GetData(DataFormats.FileDrop) is string[] paths &&
+                    DroppedFileImport.CanImportAny(paths)
+            ? DragDropEffects.Copy
+            : DragDropEffects.None;
         e.Handled = true;
     }
 
-    private async void InkSurface_Drop(object sender, DragEventArgs e)
+    private async void Window_PreviewDrop(object sender, DragEventArgs e)
     {
+        e.Handled = true;
         if (e.Data.GetData(DataFormats.FileDrop) is not string[] paths)
         {
             return;
         }
 
         var dropCenter = _camera.ScreenToWorld(ToPointD(e.GetPosition(InkSurface)));
+        await ImportDroppedFilesAsync(paths, dropCenter);
+    }
+
+    private async Task ImportDroppedFilesAsync(string[] paths, PointD worldCenter)
+    {
         var imported = 0;
         try
         {
-            foreach (var path in paths.Where(path =>
-                         ImageFileExtensions.Contains(Path.GetExtension(path))))
+            foreach (var path in paths)
             {
-                var bytes = await File.ReadAllBytesAsync(path);
-                var offset = new PointD(imported * 24, imported * 24);
-                AddImage(
-                    bytes,
-                    Path.GetFileName(path),
-                    ContentTypeFor(path),
-                    dropCenter + offset);
+                var kind = DroppedFileImport.Classify(path);
+                if (kind == DroppedFileKind.Unsupported)
+                {
+                    continue;
+                }
+
+                var center = worldCenter + new PointD(imported * 24, imported * 24);
+                switch (kind)
+                {
+                    case DroppedFileKind.Image:
+                        AddImage(
+                            await File.ReadAllBytesAsync(path),
+                            Path.GetFileName(path),
+                            ContentTypeFor(path),
+                            center);
+                        break;
+                    case DroppedFileKind.Text:
+                        if (new FileInfo(path).Length > DroppedFileImport.MaximumTextBytes)
+                        {
+                            ShowError(
+                                "Could not drop file",
+                                new InvalidOperationException(
+                                    $"{Path.GetFileName(path)} is too large to import as text."));
+                            continue;
+                        }
+
+                        AddText(
+                            await File.ReadAllTextAsync(path),
+                            center,
+                            beginEdit: false,
+                            title: Path.GetFileNameWithoutExtension(path),
+                            languageId: DroppedFileImport.LanguageIdFor(path));
+                        break;
+                }
+
                 imported++;
             }
-
         }
         catch (Exception exception)
         {
-            ShowError("Could not drop image", exception);
+            ShowError("Could not drop file", exception);
         }
-
-        e.Handled = true;
     }
 
     private void Window_PreviewKeyDown(object sender, KeyEventArgs e)

@@ -35,14 +35,11 @@ trail timing, and the toolbar options. New settings are catalog entries rather t
 layout. The menu is still always visible; hide-on-demand is a later UI pass, not a missing
 piece of this item.
 
-### 2. Drag and drop import
+### 2. Drag and drop import — done
 
-Dropping a file onto the canvas should import it as a container placed where the pointer was
-released, rather than at a default position. Images already arrive through the clipboard, so
-this is mostly hit-testing the drop point into camera space and reusing the existing import
-path.
-
-Small and self-contained, and it becomes the natural entry point for the format below.
+A drop on the window imports at the release point in camera space. Images become image
+containers; `.txt`, `.dax`, and `.sql` become text containers in the matching language.
+The classifier is the hook for the import format below — `.md` is still unsupported.
 
 ### 3. An import file format
 
