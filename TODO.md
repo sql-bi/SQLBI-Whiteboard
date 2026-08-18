@@ -92,6 +92,11 @@ site renders from those files or keeps its own copy — decide that before writi
 twice. The `.wimport` contract for authors and agents is already written in
 [docs/wimport.md](docs/wimport.md); publish that file rather than rewriting it.
 
+The pages should also spell out user stories, not only what each control does. Features that
+look small in a reference list are the ones people miss in a live session. One to write up:
+copying a LiveView and pasting it produces a bitmap of the last frame, which is how you freeze
+a screenshot onto the board during an interactive explanation without leaving the whiteboard.
+
 ### 9. Microsoft Store
 
 The largest remaining piece and the one with the longest lead time. It depends on none of the
