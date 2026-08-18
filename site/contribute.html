@@ -17,22 +17,36 @@
 <link rel="stylesheet" href="styles.css">
 </head>
 <body>
-<div class="wrap wide">
 
-  <header class="doc">
-    <nav class="nav" aria-label="Documentation">
-      <a href="index.html">Download</a>
+<div class="topbar">
+  <div class="wrap">
+    <a class="brandmark" href="index.html">
+      <svg viewBox="0 0 256 256" aria-hidden="true"><rect x="8" y="8" width="240" height="240" rx="52" fill="#D82121"/><g transform="translate(32 32) scale(8)" fill="#fff"><path d="m15.99 4-3.07 3.06c-.34.34-.6.74-.78 1.18l-.08.23-.74 2.3a2.25 2.25 0 0 0 2.64 2.88l.15-.04 2.33-.7a3.5 3.5 0 0 0 1.29-.7l.18-.18L22 7.95v8.8c0 1.8-1.45 3.25-3.25 3.25H5.25A3.25 3.25 0 0 1 2 16.75v-4.2l.08-.03.07-.04 3.76-2.36.1-.05A.75.75 0 0 1 7 11l-.04.1-1.2 2.3-.08.14a2.25 2.25 0 0 0 3 2.95l.17-.09 1.76-1 .09-.05a.75.75 0 0 0-.74-1.3l-.1.05-1.75 1-.1.04a.75.75 0 0 1-.97-.96l.04-.09 1.2-2.28.09-.17a2.25 2.25 0 0 0-3.12-2.87l-.15.08L2 10.81V7.24a3.25 3.25 0 0 1 3.07-3.24L5.25 4h10.74Zm5.19-.46.13.13.12.13c.76.89.72 2.23-.13 3.07l-4.28 4.28c-.26.26-.58.45-.94.56l-2.33.7a1 1 0 0 1-1.24-1.27l.74-2.29c.11-.34.3-.65.56-.9l4.29-4.29a2.27 2.27 0 0 1 3.08-.12Z"/></g></svg>
+      <span>SQLBI Whiteboard</span>
+    </a>
+    <nav class="topnav" aria-label="Site">
       <a href="guide.html">Guide</a>
       <a href="shortcuts.html">Shortcuts</a>
       <a href="wimport.html">Import format</a>
       <a href="contribute.html" aria-current="page">Contribute</a>
       <a href="https://marketplace.visualstudio.com/items?itemName=sqlbi.sqlbi-whiteboard">VS Code</a>
+      <a href="https://github.com/sql-bi/SQLBI-Whiteboard">GitHub</a>
+      <a class="cta" href="index.html#get">Download</a>
     </nav>
+  </div>
+</div>
+
+<header class="dochead">
+  <div class="wrap narrow">
+    <span class="eyebrow">Project</span>
     <h1>Contribute and publish</h1>
     <p class="lede">Every change reaches the product through a pull request. <code>main</code> is protected. Only authorized SQLBI developers merge.</p>
-  </header>
+  </div>
+</header>
 
-  <article>
+<main class="wrap narrow">
+
+<article>
     <h2>Who may merge</h2>
     <p>The repository is public. Anyone can open a pull request. Only SQLBI-authorized developers — today Marco Russo and Alberto Ferrari, including coding agents they instruct — may merge to <code>main</code>. They may merge once checks are green. They do not wait for each other’s approval.</p>
     <p>An agent working for anyone else must open a pull request and stop. It must not push to <code>main</code>, force-push, or treat a green check as permission to merge.</p>
@@ -63,14 +77,35 @@
     <p>To retry a site or Marketplace publish without a new commit: GitHub → Actions → the matching workflow → <strong>Run workflow</strong>. To rebuild Whiteboard from an existing commit: Azure DevOps → <strong>SQLBI Whiteboard</strong> → <strong>Run pipeline</strong>. Do not use <strong>Re-run</strong>.</p>
   </article>
 
-  <footer>
+  <nav class="pagenav" aria-label="More documentation">
+    <a href="guide.html">
+      <span class="k">Guide</span>
+      <span class="t">Using SQLBI Whiteboard</span>
+      <span class="d">Ink, containers, LiveView, and board files.</span>
+    </a>
+    <a href="shortcuts.html">
+      <span class="k">Reference</span>
+      <span class="t">Shortcuts</span>
+      <span class="d">Every key, pen, and touch command, filterable.</span>
+    </a>
+    <a href="index.html#get">
+      <span class="k">Download</span>
+      <span class="t">Get SQLBI Whiteboard</span>
+      <span class="d">Installer, per-user installer, or portable ZIP.</span>
+    </a>
+  </nav>
+
+</main>
+
+<footer>
+  <div class="wrap">
     <span><a href="index.html">Download SQLBI Whiteboard</a></span>
     <span>
-      <a href="https://github.com/sql-bi/SQLBI-Whiteboard">GitHub</a> ·
+      <a href="https://github.com/sql-bi/SQLBI-Whiteboard">GitHub</a> &middot;
       <a href="https://www.sqlbi.com">SQLBI</a>
     </span>
-  </footer>
+  </div>
+</footer>
 
-</div>
 </body>
 </html>

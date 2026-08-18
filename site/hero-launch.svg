@@ -1,0 +1,151 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 1200" width="1200" height="1200" role="img"
+     aria-label="Microsoft is retiring its Whiteboard app on 14 September 2026. SQLBI Whiteboard is the answer, shown on a pen display with charts, a DAX measure, and handwriting.">
+  <title>Hold my beer</title>
+  <defs>
+    <linearGradient id="left" x1="0" y1="0" x2="540" y2="1200" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#0A1B33"/><stop offset="1" stop-color="#071426"/>
+    </linearGradient>
+    <linearGradient id="pen" x1="600" y1="560" x2="1200" y2="1200" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#2B3038"/><stop offset="1" stop-color="#14171C"/>
+    </linearGradient>
+    <clipPath id="board"><rect x="676" y="600" width="600" height="520" rx="10"/></clipPath>
+  </defs>
+
+  <rect width="1200" height="1200" fill="#F7F6F2"/>
+  <rect width="540" height="1200" fill="url(#left)"/>
+
+  <!-- Left panel: the announcement, quoted. No Microsoft branding is reproduced here;
+       the final bitmap is supplied by SQLBI. -->
+  <g font-family="Segoe UI Variable Display, Segoe UI, sans-serif" fill="#FFFFFF">
+    <text x="72" y="128" font-size="25" font-weight="600" letter-spacing="1" fill="#8FA5C4">MICROSOFT WHITEBOARD</text>
+
+    <text x="72" y="286" font-size="54" font-weight="700">&#8220;I am going to</text>
+    <text x="72" y="352" font-size="54" font-weight="700">retire the</text>
+    <text x="72" y="418" font-size="54" font-weight="700">Whiteboard app&#8221;</text>
+
+    <path d="M72 492h396" stroke="#2B4266" stroke-width="3"/>
+    <path d="M262 492l14-14 14 14-14 14z" fill="#3E5C8A"/>
+
+    <text x="72" y="566" font-size="27" fill="#B9C7DA">Retiring soon. Thank you for</text>
+    <text x="72" y="602" font-size="27" fill="#B9C7DA">using Microsoft Whiteboard.</text>
+
+    <g transform="translate(72 706)">
+      <rect x="0" y="-28" width="40" height="40" rx="8" fill="none" stroke="#8FA5C4" stroke-width="3"/>
+      <path d="M0 -16h40M11 -28v-9M29 -28v-9" stroke="#8FA5C4" stroke-width="3"/>
+      <text x="60" y="-6" font-size="26" fill="#DCE4EE">Effective date:</text>
+      <text x="60" y="30" font-size="26" font-weight="600">September 14, 2026</text>
+    </g>
+  </g>
+
+  <!-- Right panel: the reply -->
+  <g font-family="Segoe UI Variable Display, Segoe UI, sans-serif" fill="#0A1B33">
+    <text x="620" y="172" font-size="88" font-weight="800" letter-spacing="-2">SQLBI:</text>
+    <text x="620" y="278" font-size="72" font-weight="700" font-style="italic">Hold my beer&#8230;</text>
+    <path d="M626 308c112-14 222-14 332 2" stroke="#0A1B33" stroke-width="9" fill="none" stroke-linecap="round"/>
+  </g>
+
+  <!-- Pen display -->
+  <g>
+    <rect x="600" y="430" width="700" height="770" rx="34" fill="url(#pen)"/>
+    <rect x="640" y="470" width="640" height="690" rx="14" fill="#FFFFFF"/>
+
+    <!-- side buttons -->
+    <g fill="#3A4049">
+      <rect x="614" y="520" width="24" height="46" rx="8"/>
+      <rect x="614" y="580" width="24" height="46" rx="8"/>
+      <rect x="614" y="640" width="24" height="46" rx="8"/>
+      <circle cx="626" cy="740" r="30" fill="#22272E"/>
+      <circle cx="626" cy="740" r="14" fill="#3A4049"/>
+      <rect x="614" y="820" width="24" height="46" rx="8"/>
+      <rect x="614" y="880" width="24" height="46" rx="8"/>
+    </g>
+
+    <!-- application chrome -->
+    <rect x="640" y="470" width="640" height="56" rx="14" fill="#F4F5F8"/>
+    <rect x="640" y="512" width="640" height="14" fill="#F4F5F8"/>
+    <rect x="664" y="486" width="26" height="26" rx="7" fill="#D82121"/>
+    <text x="704" y="507" font-family="Segoe UI, sans-serif" font-size="19" font-weight="600" fill="#15171C">SQLBI Whiteboard</text>
+    <g fill="#9AA1AD">
+      <circle cx="1216" cy="499" r="3"/><circle cx="1228" cy="499" r="3"/><circle cx="1240" cy="499" r="3"/>
+    </g>
+
+    <!-- toolbar -->
+    <rect x="640" y="526" width="52" height="634" fill="#FAFAFB"/>
+    <g fill="none" stroke="#5C6371" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M655 566l22-22M655 566l4-10 14 4z"/>
+      <path d="M656 618l16-16 6 6-16 16z"/>
+      <path d="M656 668h22M660 660l14 14"/>
+      <rect x="656" y="712" width="22" height="18" rx="3"/>
+      <rect x="656" y="760" width="22" height="16" rx="3"/><path d="M664 780h6"/>
+      <path d="M657 828l18-18 5 5-18 18z"/>
+      <path d="M657 876h8M657 876v8M679 876h-8M671 884v-8"/>
+    </g>
+
+    <g clip-path="url(#board)">
+      <!-- board title -->
+      <text x="712" y="668" font-family="Segoe UI Variable Display, Segoe UI, sans-serif" font-size="34" font-weight="700" font-style="italic" fill="#0A1B33">Sales Overview</text>
+      <path d="M712 686c86-8 172-8 258 2" stroke="#1F4E8C" stroke-width="5" fill="none" stroke-linecap="round"/>
+
+      <!-- revenue trend -->
+      <text x="712" y="736" font-family="Segoe UI, sans-serif" font-size="17" font-weight="600" fill="#15171C">Revenue Trend</text>
+      <g stroke="#DCDFE5" stroke-width="1">
+        <path d="M736 762h214M736 792h214M736 822h214M736 852h214"/>
+      </g>
+      <path d="M736 852v-92" stroke="#C6CAD2" stroke-width="1.5"/>
+      <polyline points="748,838 786,806 824,818 862,782 900,800 938,772" fill="none" stroke="#2F6FD0" stroke-width="3.5" stroke-linejoin="round"/>
+      <polyline points="748,850 786,826 824,846 862,812 900,830 938,806" fill="none" stroke="#3F9A57" stroke-width="3.5" stroke-linejoin="round"/>
+      <g fill="#FFFFFF" stroke="#2F6FD0" stroke-width="2.5">
+        <circle cx="748" cy="838" r="4"/><circle cx="786" cy="806" r="4"/><circle cx="824" cy="818" r="4"/>
+        <circle cx="862" cy="782" r="4"/><circle cx="900" cy="800" r="4"/><circle cx="938" cy="772" r="4"/>
+      </g>
+      <g font-family="Segoe UI, sans-serif" font-size="12" fill="#5C6371">
+        <text x="740" y="872">Jan</text><text x="778" y="872">Mar</text><text x="816" y="872">May</text>
+        <text x="854" y="872">Jul</text><text x="892" y="872">Sep</text><text x="928" y="872">Dec</text>
+      </g>
+      <g font-family="Segoe UI, sans-serif" font-size="12" fill="#5C6371">
+        <text x="712" y="898">2024</text><text x="800" y="898">2025</text>
+      </g>
+      <path d="M690 894h16" stroke="#2F6FD0" stroke-width="3"/>
+      <path d="M778 894h16" stroke="#3F9A57" stroke-width="3"/>
+
+      <!-- key takeaway -->
+      <text x="998" y="736" font-family="Segoe UI, sans-serif" font-size="17" font-weight="600" fill="#15171C">Key Takeaway</text>
+      <rect x="998" y="752" width="240" height="118" rx="10" fill="#F6F7F9" stroke="#E2E4E9"/>
+      <g font-family="Segoe UI, sans-serif" font-size="15" fill="#15171C">
+        <text x="1052" y="790">North America</text>
+        <text x="1052" y="816">drives growth.</text>
+        <text x="1052" y="842">Focus on enterprise.</text>
+      </g>
+      <g stroke="#B79A1D" stroke-width="2.2" fill="none" stroke-linecap="round">
+        <path d="M1020 796a12 12 0 1 1 12 0v6h-12z"/><path d="M1021 810h10"/>
+      </g>
+
+      <!-- DAX highlight -->
+      <text x="712" y="948" font-family="Segoe UI, sans-serif" font-size="17" font-weight="600" fill="#15171C">DAX Highlight</text>
+      <rect x="712" y="964" width="248" height="86" rx="10" fill="#F6F7F9" stroke="#E2E4E9"/>
+      <g font-family="Cascadia Mono, Consolas, monospace" font-size="15">
+        <text x="732" y="998" fill="#B71D1D">Sales Amount</text><text x="856" y="998" fill="#15171C">=</text>
+        <text x="732" y="1026" fill="#0B6FB8">SUM</text><text x="768" y="1026" fill="#15171C">( Sales[Amount] )</text>
+      </g>
+
+      <!-- top products -->
+      <text x="998" y="948" font-family="Segoe UI, sans-serif" font-size="17" font-weight="600" fill="#15171C">Top Products</text>
+      <g font-family="Segoe UI, sans-serif" font-size="14" fill="#5C6371">
+        <text x="998" y="986">Apex Pro</text><text x="998" y="1014">Nova Elite</text><text x="998" y="1042">Zenith</text>
+      </g>
+      <g>
+        <rect x="1076" y="972" width="146" height="16" rx="3" fill="#2F6FD0"/>
+        <rect x="1076" y="1000" width="102" height="16" rx="3" fill="#2F6FD0"/>
+        <rect x="1076" y="1028" width="58" height="16" rx="3" fill="#3F9A57"/>
+      </g>
+
+      <!-- ink over the board -->
+      <g fill="none" stroke="#F42727" stroke-linecap="round" stroke-linejoin="round" opacity=".92">
+        <path d="M862 762c26-24 62-26 88-4" stroke-width="6"/>
+        <path d="M938 744l10 26 26-14" stroke-width="6"/>
+      </g>
+    </g>
+
+    <rect x="640" y="470" width="640" height="690" rx="14" fill="none" stroke="#0A0C10" stroke-opacity=".12"/>
+  </g>
+</svg>
