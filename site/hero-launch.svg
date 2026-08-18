@@ -18,11 +18,11 @@
        the final bitmap is supplied by SQLBI. -->
   <g font-family="Segoe UI Variable Display, Segoe UI, sans-serif" fill="#FFFFFF">
     <g>
-      <rect x="72" y="94" width="24" height="24" fill="#F25022"/>
-      <rect x="101" y="94" width="24" height="24" fill="#7FBA00"/>
-      <rect x="72" y="123" width="24" height="24" fill="#00A4EF"/>
-      <rect x="101" y="123" width="24" height="24" fill="#FFB900"/>
-      <text x="145" y="133" font-size="36" font-weight="600">Microsoft</text>
+      <rect x="72" y="85" width="32" height="32" fill="#F25022"/>
+      <rect x="110" y="85" width="32" height="32" fill="#7FBA00"/>
+      <rect x="72" y="123" width="32" height="32" fill="#00A4EF"/>
+      <rect x="110" y="123" width="32" height="32" fill="#FFB900"/>
+      <text x="164" y="136" font-size="46" font-weight="600">Microsoft</text>
     </g>
 
     <text x="72" y="286" font-size="54" font-weight="700">&#8220;We are going</text>
