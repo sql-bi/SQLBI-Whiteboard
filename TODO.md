@@ -61,10 +61,9 @@ either.
 
 ### 6. Preview of `.wboard` files in VS Code
 
-The same preview in an editor: an extension that opens a `.wboard` file as an image rather than
-as an archive. Useful wherever boards live in a repository next to the material they document.
-Cheaper than the Explorer provider once the archive carries the bitmap, and shipped through the
-marketplace rather than through the installer.
+The extension lives in `vscode/sqlbi-whiteboard/`. It opens a `.wboard` file as the embedded
+`preview.png` rather than as an archive. Marketplace listing is still outstanding — until then
+install from a local VSIX as described in that folder's README.
 
 ### 7. Video teaser
 

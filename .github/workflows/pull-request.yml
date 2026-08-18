@@ -30,6 +30,7 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       code: ${{ steps.filter.outputs.code }}
+      vscode: ${{ steps.filter.outputs.vscode }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -41,12 +42,18 @@ jobs:
           files=$(git diff --name-only "origin/${{ github.base_ref }}...HEAD")
           echo "Changed files:"
           echo "$files" | sed 's/^/  /'
-          if echo "$files" | grep -qvE '^(site/|docs/|[^/]*\.md$)'; then
+          if echo "$files" | grep -qE '^vscode/'; then
+            echo "vscode=true" >> "$GITHUB_OUTPUT"
+            echo "-> vscode extension changed"
+          else
+            echo "vscode=false" >> "$GITHUB_OUTPUT"
+          fi
+          if echo "$files" | grep -qvE '^(site/|docs/|vscode/|[^/]*\.md$)'; then
             echo "code=true" >> "$GITHUB_OUTPUT"
-            echo "-> building: something outside site/, docs/ and top-level markdown changed"
+            echo "-> building: something outside site/, docs/, vscode/ and top-level markdown changed"
           else
             echo "code=false" >> "$GITHUB_OUTPUT"
-            echo "-> nothing to build: only the site, docs or markdown changed"
+            echo "-> nothing to build: only the site, docs, vscode extension or markdown changed"
           fi
 
   build:
@@ -117,3 +124,25 @@ jobs:
           -Version 0.0.0
           -SelfContained false
           -Variants stable/perMachine,dev/perUser
+
+  vscode:
+    name: VS Code extension
+    needs: changes
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        if: needs.changes.outputs.vscode == 'true'
+
+      - uses: actions/setup-node@v4
+        if: needs.changes.outputs.vscode == 'true'
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: vscode/sqlbi-whiteboard/package-lock.json
+
+      - name: Compile and test
+        if: needs.changes.outputs.vscode == 'true'
+        working-directory: vscode/sqlbi-whiteboard
+        run: |
+          npm ci
+          npm test
