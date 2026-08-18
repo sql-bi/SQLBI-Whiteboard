@@ -20,6 +20,7 @@ itself. Do not run it to “release” anything.
 | Ship a VS Code extension update | Bump `version` in `vscode/sqlbi-whiteboard/package.json` in a pull request and merge. The **Publish VS Code extension** Action publishes `sqlbi.sqlbi-whiteboard` if that version is not already on the Marketplace. To retry: Actions → **Publish VS Code extension** → **Run workflow**. |
 | Update whiteboard.sqlbi.com | Merge a change under `site/`. The **Publish site** Action deploys. To retry: Actions → **Publish site** → **Run workflow**. |
 | Rebuild brand assets | Run `scripts/build-assets.ps1` locally. Only when the artwork changes. |
+| Build a Store MSIX (do not submit) | `scripts/build-installer.ps1` already writes `SQLBI.Whiteboard.<version>.x64.msix`. To pack only: `scripts/build-msix.ps1`. Identity version is `VersionPrefix.0`. |
 
 The three GitHub Actions live under **Actions** in this repository. Their names are
 **Pull request**, **Publish VS Code extension**, and **Publish site**. The signed
@@ -160,10 +161,11 @@ Signing uses `AzureSignTool` against the certificate in Azure Key Vault.
 > executable. This has already happened once. The VS Code extension is not an assembly and
 > is not signed here.
 
-Stages: **Build** produces every installer variant, **PreRelease** publishes the
-pre-release channel to GitHub, **Release** is gated by approvals on the
-`whiteboard-release` environment and uploads the released-channel installers **that the
-same run already produced** (decision 9).
+Stages: **Build** produces every installer variant plus an unsigned released-channel
+MSIX, **PreRelease** publishes the pre-release channel to GitHub, **Release** is gated
+by approvals on the `whiteboard-release` environment and uploads the released-channel
+installers **that the same run already produced** (decision 9). The MSIX is an artifact
+only until a Partner Center listing exists; it is not submitted by the pipeline.
 
 Creating a GitHub Release uses the `sql-bi write assets` service connection
 (`contents: write`).
@@ -200,7 +202,8 @@ Roughly in dependency order:
 1. Publish `stable.json` and `dev.json` manifests alongside the binaries, for the download
    page, a future in-app update check, and winget automation to share one source.
 2. Add winget submission triggered by a published release.
-3. MSIX packaging and Store submission (decision 13).
+3. Partner Center listing and first Store submission (decision 13). Packaging exists;
+   do not automate upload until that first submission has been done by hand.
 
 ### Verification before a public release
 

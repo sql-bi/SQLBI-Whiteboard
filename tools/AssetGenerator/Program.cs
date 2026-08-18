@@ -57,9 +57,11 @@ internal static class Program
         var root = Path.GetFullPath(args[0]);
         var appAssets = Path.Combine(root, "src", "SQLBI.Whiteboard", "Assets");
         var installerAssets = Path.Combine(root, "installer", "wix", "assets");
+        var msixAssets = Path.Combine(root, "installer", "msix", "Assets");
         // Generated beside the landing page so site/ is one deployable folder.
         var webAssets = Path.Combine(root, "site");
         Directory.CreateDirectory(installerAssets);
+        Directory.CreateDirectory(msixAssets);
         Directory.CreateDirectory(webAssets);
 
         Console.WriteLine("Application");
@@ -78,6 +80,14 @@ internal static class Program
         // iOS rounds the corners itself and composites over black, so this one is full bleed.
         Write(Path.Combine(webAssets, "apple-touch-icon.png"), EncodePng(RenderFullBleed(180)));
         Write(Path.Combine(webAssets, "og-image.png"), EncodePng(RenderSocialCard()));
+
+        Console.WriteLine("Store");
+        Write(Path.Combine(msixAssets, "StoreLogo.png"), EncodePng(RenderTile(50)));
+        Write(Path.Combine(msixAssets, "Square44x44Logo.png"), EncodePng(RenderTile(44)));
+        Write(Path.Combine(msixAssets, "Square150x150Logo.png"), EncodePng(RenderTile(150)));
+        Write(Path.Combine(msixAssets, "Wide310x150Logo.png"), EncodePng(RenderWideTile(310, 150)));
+        Write(Path.Combine(msixAssets, "SplashScreen.png"), EncodePng(RenderWideTile(620, 300)));
+        Write(Path.Combine(msixAssets, "DocumentLogo.png"), EncodePng(RenderDocument(256)));
 
         return 0;
     }
@@ -243,6 +253,14 @@ internal static class Program
             size,
             new SolidColorBrush(color),
             1.0);
+
+    private static BitmapSource RenderWideTile(int width, int height) => Render(width, height, context =>
+    {
+        context.DrawRectangle(Brushes.White, null, new Rect(0, 0, width, height));
+        context.DrawRectangle(new SolidColorBrush(BrandRed), null, new Rect(0, 0, width, Math.Max(4, height * 0.03)));
+        var tile = Math.Min(height * 0.72, width * 0.28);
+        DrawTile(context, width * 0.08, (height - tile) / 2, tile);
+    });
 
     /// <summary>WiX draws the dialog title over the left of the banner, so the mark sits right.</summary>
     private static BitmapSource RenderBanner() => Render(986, 116, context =>

@@ -2,8 +2,8 @@
 <#
 .SYNOPSIS
     Publishes SQLBI Whiteboard and builds the per-machine MSI, the per-user MSI,
-    and the portable ZIP. Local equivalent of .azure/pipelines/build-whiteboard.yaml,
-    minus code signing.
+    the portable ZIP, and an unsigned released-channel MSIX. Local equivalent of
+    .azure/pipelines/build-whiteboard.yaml, minus code signing.
 
 .EXAMPLE
     ./scripts/build-installer.ps1 -Version 1.0.0
@@ -179,6 +179,18 @@ foreach ($channel in ($Variants | ForEach-Object { $_.Split('/')[0] } | Sort-Obj
             Remove-Item $staging -Recurse -Force
         }
     }
+}
+
+# One unsigned MSIX for the released channel. Version is VersionPrefix.0, which is
+# what the Store accepts. Dev is MSI-only, same as file-type registration.
+if ($Variants -contains 'stable/perMachine' -or $Variants -contains 'stable/perUser') {
+    $msixScript = Join-Path $PSScriptRoot 'build-msix.ps1'
+    Write-Host '==> MSIX (released channel, unsigned)' -ForegroundColor Cyan
+    & $msixScript `
+        -Version $Version `
+        -PublishFolder $publishFolder `
+        -OutputFolder $outputFolder `
+        -Architecture $Architecture
 }
 
 Write-Host ''

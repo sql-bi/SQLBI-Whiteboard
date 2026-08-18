@@ -1,8 +1,8 @@
 #Requires -Version 7.0
 <#
 .SYNOPSIS
-    Regenerates the derived brand assets: the application icon and PNG, and the
-    installer banner and dialog background.
+    Regenerates the derived brand assets: the application icon and PNG, the
+    installer banner and dialog background, and the Store tile images.
 
 .DESCRIPTION
     The master artwork is src/SQLBI.Whiteboard/Assets/SQLBI.Whiteboard.svg. The generator
