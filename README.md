@@ -25,6 +25,7 @@ How the project is developed and shipped is documented separately:
 - Undo and redo for strokes, erasing, containers, text edits, and transformations
 - Versioned ZIP-based `.wboard` documents with embedded image assets
 - An intentionally small floating toolbar
+- Preferences for the startup monitor, full-screen start, laser trail, and toolbar layout
 
 ## Build and run
 
@@ -177,9 +178,11 @@ Use **Copy settings** after finding a useful combination so the exact values can
 | Escape | Cancel the active text edit |
 | Ctrl+S / Ctrl+O | Save / open a board |
 | Delete | Delete the selected container and its linked strokes |
+| Tools > Preferences... | Searchable settings: startup monitor, full screen, laser trail, toolbar |
 | Tools > Add LiveView | Capture an application window or display as a container |
 | Tools > Freeze selected LiveView | Freeze or resume the selected live feed |
 | Tools > Reconnect selected LiveView | Select a new capture target for the existing container |
+| F11 | Toggle full screen; Escape leaves it when a text container is not being edited |
 
 With the mouse, selection is automatic: click a container to move it, or drag the circular bottom-right handle to resize it while preserving its aspect ratio. Double-click a container to center it and fit it to the canvas. Releasing the mouse returns to the previously selected drawing tool.
 

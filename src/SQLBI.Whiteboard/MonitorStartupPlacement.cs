@@ -4,33 +4,52 @@ using System.Text;
 using System.Windows;
 using System.Windows.Interop;
 using Microsoft.Win32;
+using SQLBI.Whiteboard.Core.Settings;
 
 namespace SQLBI.Whiteboard;
+
+internal sealed record DisplayMonitor(string DeviceName, string? FriendlyName, bool IsPrimary)
+{
+    public string DisplayName =>
+        string.IsNullOrWhiteSpace(FriendlyName) ? DeviceName : FriendlyName;
+}
 
 internal static class MonitorStartupPlacement
 {
     private const uint EddGetDeviceInterfaceName = 0x00000001;
     private const uint MonitorDefaultToNearest = 0x00000002;
+    private const uint MonitorInfoPrimary = 0x00000001;
     private const uint SwpNoZOrder = 0x0004;
     private const uint SwpNoActivate = 0x0010;
     private const uint SwpFrameChanged = 0x0020;
 
-    public static void PlaceMaximizedOnWacom(Window window)
+    public static IReadOnlyList<DisplayMonitor> Enumerate() =>
+        EnumerateMonitors()
+            .Select(monitor => new DisplayMonitor(
+                monitor.DeviceName,
+                monitor.MonitorName,
+                monitor.IsPrimary))
+            .ToArray();
+
+    public static void PlaceMaximized(
+        Window window,
+        StartupMonitorKind kind,
+        string? name)
     {
         ArgumentNullException.ThrowIfNull(window);
 
-        var target = EnumerateMonitors().FirstOrDefault(monitor =>
-            IsWacomMonitorName(monitor.MonitorName));
+        var monitors = EnumerateMonitors();
+        var target = FindTarget(monitors, kind, name);
         if (target is null)
         {
             Debug.WriteLine(
-                "[Startup] No Wacom/Cintiq monitor name was found; maximizing on the Windows-selected monitor.");
+                "[Startup] No matching monitor was found; maximizing on the Windows-selected monitor.");
             window.WindowState = WindowState.Maximized;
             return;
         }
 
         Debug.WriteLine(
-            $"[Startup] Using {target.MonitorName} on {target.DeviceName}.");
+            $"[Startup] Using {target.MonitorName ?? target.DeviceName} on {target.DeviceName}.");
         var windowHandle = new WindowInteropHelper(window).Handle;
         var area = target.WorkingArea;
         SetWindowPos(
@@ -43,6 +62,27 @@ internal static class MonitorStartupPlacement
             SwpNoZOrder | SwpNoActivate);
         window.WindowState = WindowState.Maximized;
     }
+
+    private static MonitorDescriptor? FindTarget(
+        IReadOnlyList<MonitorDescriptor> monitors,
+        StartupMonitorKind kind,
+        string? name) =>
+        kind switch
+        {
+            StartupMonitorKind.Primary =>
+                monitors.FirstOrDefault(monitor => monitor.IsPrimary),
+            StartupMonitorKind.Named when !string.IsNullOrWhiteSpace(name) =>
+                monitors.FirstOrDefault(monitor =>
+                    string.Equals(
+                        string.IsNullOrWhiteSpace(monitor.MonitorName)
+                            ? monitor.DeviceName
+                            : monitor.MonitorName,
+                        name,
+                        StringComparison.OrdinalIgnoreCase)),
+            StartupMonitorKind.WacomIfPresent =>
+                monitors.FirstOrDefault(monitor => IsWacomMonitorName(monitor.MonitorName)),
+            _ => null,
+        };
 
     public static void FillCurrentMonitor(Window window)
     {
@@ -94,6 +134,7 @@ internal static class MonitorStartupPlacement
                     monitors.Add(new MonitorDescriptor(
                         monitorInfo.DeviceName,
                         ReadMonitorName(monitorInfo.DeviceName),
+                        (monitorInfo.Flags & MonitorInfoPrimary) != 0,
                         monitorInfo.WorkingArea));
                 }
 
@@ -214,6 +255,7 @@ internal static class MonitorStartupPlacement
     private sealed record MonitorDescriptor(
         string DeviceName,
         string? MonitorName,
+        bool IsPrimary,
         NativeRectangle WorkingArea);
 
     [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Unicode)]

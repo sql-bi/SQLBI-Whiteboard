@@ -10,6 +10,8 @@
                      Color="#14000000" />
     <SolidColorBrush x:Key="ToolbarSelectedBrush"
                      Color="#1A2563EB" />
+    <SolidColorBrush x:Key="ToolbarAccentBrush"
+                     Color="#FF2563EB" />
     <SolidColorBrush x:Key="ToolbarSeparatorBrush"
                      Color="#22000000" />
 

@@ -36,6 +36,17 @@ public enum CalligraphyAccess
     DualPalette = 2,
 }
 
+public enum StartupMonitorKind
+{
+    /// <summary>
+    /// Current default: a Wacom/Cintiq if one is attached, otherwise
+    /// the monitor Windows selected for the window.
+    /// </summary>
+    WacomIfPresent = 0,
+    Primary = 1,
+    Named = 2,
+}
+
 public sealed class AppSettings
 {
     public int Version { get; set; } = AppSettingsSerializer.CurrentVersion;
@@ -43,6 +54,12 @@ public sealed class AppSettings
     public ToolbarPlacement ToolbarPlacement { get; set; } = ToolbarPlacement.TopRight;
 
     public CalligraphyAccess CalligraphyAccess { get; set; } = CalligraphyAccess.DualPalette;
+
+    public StartupMonitorKind StartupMonitor { get; set; } = StartupMonitorKind.WacomIfPresent;
+
+    public string? StartupMonitorName { get; set; }
+
+    public bool StartFullScreen { get; set; }
 
     public InkToolSettings Pen { get; set; } = InkToolSettings.From(InkPalettes.DefaultPen);
 
@@ -57,7 +74,7 @@ public sealed class AppSettings
 
 public static class AppSettingsSerializer
 {
-    public const int CurrentVersion = 6;
+    public const int CurrentVersion = 7;
 
     private static readonly JsonSerializerOptions JsonOptions = new()
     {
@@ -123,6 +140,28 @@ public static class AppSettingsSerializer
         if (!Enum.IsDefined(settings.CalligraphyAccess))
         {
             settings.CalligraphyAccess = CalligraphyAccess.DualPalette;
+        }
+
+        if (!Enum.IsDefined(settings.StartupMonitor))
+        {
+            settings.StartupMonitor = StartupMonitorKind.WacomIfPresent;
+        }
+
+        if (settings.StartupMonitor == StartupMonitorKind.Named)
+        {
+            if (string.IsNullOrWhiteSpace(settings.StartupMonitorName))
+            {
+                settings.StartupMonitor = StartupMonitorKind.WacomIfPresent;
+                settings.StartupMonitorName = null;
+            }
+            else
+            {
+                settings.StartupMonitorName = settings.StartupMonitorName.Trim();
+            }
+        }
+        else
+        {
+            settings.StartupMonitorName = null;
         }
 
         settings.Pen = InkPalettes.Normalize(settings.Pen, PenKind.Pen);

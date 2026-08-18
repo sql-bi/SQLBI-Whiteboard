@@ -28,15 +28,12 @@ Ordered by dependency first and effort second, so an item can be picked up as so
 above it are done. The feature work comes before the material that describes it, because a
 teaser and a documentation page written against a moving UI have to be redone.
 
-### 1. Configuration dialog
+### 1. Configuration dialog — done
 
-Settings are spread between defaults in code and whatever `AppSettingsStore` already persists,
-with no way to change them from the application. One dialog should own them: the monitor to
-open on, whether to start full screen, the laser pointer decay time, and the existing options
-now set only in code.
-
-First because it depends on nothing and because it gives every later preference somewhere to
-go. Without it, each new option is another constant to recompile.
+`Tools > Preferences...` is a searchable catalog: startup monitor, start full screen, laser
+trail timing, and the toolbar options. New settings are catalog entries rather than a new
+layout. The menu is still always visible; hide-on-demand is a later UI pass, not a missing
+piece of this item.
 
 ### 2. Drag and drop import
 
