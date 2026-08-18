@@ -6,7 +6,9 @@ This extension does not render the board and does not edit the file. Open the bo
 
 ## Install
 
-Not on the Marketplace yet. From the repository:
+Install [SQLBI Whiteboard](https://marketplace.visualstudio.com/items?itemName=sqlbi.sqlbi-whiteboard) from the Marketplace (`sqlbi.sqlbi-whiteboard`).
+
+To run from this folder during development:
 
 ```powershell
 cd vscode/sqlbi-whiteboard
@@ -14,12 +16,14 @@ npm install
 npm run compile
 ```
 
-Then **Run > Start Debugging** in VS Code with this folder as the workspace, or install a packaged VSIX:
+Then **Run > Start Debugging**, or package a VSIX:
 
 ```powershell
 npx --yes @vscode/vsce package
 code --install-extension sqlbi-whiteboard-1.0.0.vsix
 ```
+
+Shipping a new Marketplace version is a `package.json` version bump merged to `main`. See [docs/release-management.md](../../docs/release-management.md).
 
 ## Use
 

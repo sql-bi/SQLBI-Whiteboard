@@ -59,11 +59,12 @@ The released installer registers a Native AOT in-process thumbnail handler that 
 The pre-release channel does not register `.wboard`, so it does not register the handler
 either.
 
-### 6. Preview of `.wboard` files in VS Code
+### 6. Preview of `.wboard` files in VS Code — done
 
-The extension lives in `vscode/sqlbi-whiteboard/`. It opens a `.wboard` file as the embedded
-`preview.png` rather than as an archive. Marketplace listing is still outstanding — until then
-install from a local VSIX as described in that folder's README.
+`sqlbi.sqlbi-whiteboard` on the Marketplace opens a `.wboard` file as the embedded
+`preview.png`. The source is `vscode/sqlbi-whiteboard/`. Boards without a preview show a
+short message. Bump that folder's `package.json` version to ship an update; GitHub Actions
+publishes it. The desktop installer does not carry the extension.
 
 ### 7. Video teaser
 
