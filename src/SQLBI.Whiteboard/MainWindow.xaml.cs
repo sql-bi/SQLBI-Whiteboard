@@ -3101,23 +3101,22 @@ public partial class MainWindow : Window
         }
     }
 
-    private Task PasteFromClipboardAsync()
+    private async Task PasteFromClipboardAsync()
     {
         try
         {
-            if (Clipboard.ContainsImage())
+            string[] files = ClipboardImage.GetImportableFiles();
+            if (files.Length > 0)
             {
-                var bitmap = Clipboard.GetImage();
-                if (bitmap is null)
-                {
-                    return Task.CompletedTask;
-                }
+                await ImportDroppedFilesAsync(files, _camera.Center);
+                return;
+            }
 
-                AddImage(
-                    WpfImageCodec.EncodePng(bitmap),
-                    "clipboard-image.png",
-                    "image/png");
-                return Task.CompletedTask;
+            byte[]? png = ClipboardImage.TryGetEncodedPng();
+            if (png is not null)
+            {
+                AddImage(png, "clipboard-image.png", "image/png");
+                return;
             }
 
             if (Clipboard.ContainsText(TextDataFormat.UnicodeText))
@@ -3130,8 +3129,6 @@ public partial class MainWindow : Window
         {
             ShowError("Could not paste clipboard content", exception);
         }
-
-        return Task.CompletedTask;
     }
 
     private void AddImage(

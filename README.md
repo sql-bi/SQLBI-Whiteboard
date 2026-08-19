@@ -181,7 +181,7 @@ Use **Copy settings** after finding a useful combination so the exact values can
 | Space | Temporarily switch to Pan |
 | Ctrl+Z / Ctrl+Y | Undo / redo |
 | Ctrl+C | Copy the selection. Copying a LiveView copies its last frame as a bitmap |
-| Ctrl+V | Paste an image, or create a text container from plain text |
+| Ctrl+V | Paste prefers an image (including a file on the clipboard) over text. Otherwise create a text container from plain text |
 | F2 | Edit the selected text container |
 | Language chip | Choose Plain text, DAX, or SQL Server on a selected text container |
 | F6 | Format DAX or SQL Server code while its text container is in edit mode |
