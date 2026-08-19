@@ -2,7 +2,7 @@
 
 The pipeline and `scripts/build-installer.ps1` produce
 `SQLBI.Whiteboard.<version>.x64.msix`. Identity version is `VersionPrefix.0`
-(so 0.9.1 becomes `0.9.1.0`). The Store re-signs the package. Do not upload
+(so 0.9.2 becomes `0.9.2.0`). The Store re-signs the package. Do not upload
 until the listing assets below exist.
 
 ## Package identity
@@ -92,7 +92,7 @@ Then, and not before, the Store becomes a second route on
 managed corporate machines, which is why the MSI is the primary channel
 (decision 10).
 
-## Draft listing copy (0.9.1)
+## Draft listing copy (0.9.2)
 
 **Title:** SQLBI Whiteboard
 
