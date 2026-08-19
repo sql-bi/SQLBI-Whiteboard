@@ -88,6 +88,9 @@ public partial class SessionChrome : UserControl
         FreezeLiveViewIcon.Data = resume
             ? (Geometry)FindResource("PlayGeometry")
             : (Geometry)FindResource("PauseGeometry");
+        FreezeLiveViewIcon.Fill = resume
+            ? (Brush)FindResource("LiveViewResumeBrush")
+            : (Brush)FindResource("ToolbarIconBrush");
     }
 
     public bool TryHandleAltKey(Key key)

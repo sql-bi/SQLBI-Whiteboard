@@ -263,10 +263,11 @@
                                 Tag="DisconnectLiveView"
                                 Click="Command_Click">
                             <StackPanel HorizontalAlignment="Center">
-                                <Path Width="18"
+                                <Path x:Name="DisconnectLiveViewIcon"
+                                      Width="18"
                                       Height="18"
                                       Stretch="Uniform"
-                                      Fill="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"
+                                      Fill="{StaticResource LiveViewDisconnectBrush}"
                                       Data="{StaticResource DisconnectGeometry}" />
                                 <TextBlock Margin="0,4,0,0"
                                            HorizontalAlignment="Center"
@@ -279,10 +280,11 @@
                                 Tag="ReconnectLiveView"
                                 Click="Command_Click">
                             <StackPanel HorizontalAlignment="Center">
-                                <Path Width="18"
+                                <Path x:Name="ReconnectLiveViewIcon"
+                                      Width="18"
                                       Height="18"
                                       Stretch="Uniform"
-                                      Fill="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"
+                                      Fill="{StaticResource ToolbarAccentBrush}"
                                       Data="{StaticResource SyncGeometry}" />
                                 <TextBlock Margin="0,4,0,0"
                                            HorizontalAlignment="Center"
