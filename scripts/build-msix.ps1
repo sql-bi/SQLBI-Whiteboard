@@ -17,7 +17,7 @@ param(
     [string] $PublishFolder,
     [string] $OutputFolder,
     [string] $PackageName = 'SQLBI.Whiteboard',
-    [string] $Publisher = 'CN=SQLBI Corporation',
+    [string] $Publisher = 'CN=SQLBI Corp',
     [ValidateSet('x64')]
     [string] $Architecture = 'x64'
 )

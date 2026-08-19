@@ -146,7 +146,7 @@ powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\run.ps1
 
 Choose **Tools > Add LiveView...** and select an application window or display in the Windows capture picker. A LiveView behaves like an imported-image container: it can be selected, moved, resized while preserving its aspect ratio, framed by double-clicking, deleted with its linked strokes, and manipulated through undo/redo.
 
-Use **Tools > Freeze selected LiveView** to stop capture while retaining the last frame. The same command resumes a target that is still available. **Reconnect selected LiveView...** selects a new target while preserving the container, snapshot, and linked strokes.
+Use **View > Freeze** to stop capture while retaining the last frame. The same command resumes a target that is still available. **View > Disconnect** releases the target, keeps the last frame, and hides the on-frame freeze/play controls; **View > Reconnect** is then the only way back to a live feed.
 
 Saving a board captures the latest LiveView bitmap and stores it with the source label, frame-rate setting, cursor setting, frozen state, and container geometry. Loading a board displays that bitmap immediately. Windows capture permission objects cannot be serialized, so use **Reconnect** to restore the live feed after loading.
 
@@ -190,7 +190,7 @@ Use **Copy settings** after finding a useful combination so the exact values can
 | File / Edit / View / Help | Tab strip. Click a tab for a one-row command strip over the canvas. Click the canvas to hide it |
 | Help > Preferences | Searchable settings: startup monitor, full screen, finger drawing, laser trail, toolbar |
 | Help > About | Version, channel, license, and the product site |
-| View > LiveView | Capture, freeze, or reconnect a window or display |
+| View > LiveView | Capture, freeze, disconnect, or reconnect a window or display |
 | F11 | Fill the current monitor and hide title and tabs. Escape leaves it when a text container is not being edited |
 | Ctrl+F11 | Hide title and tabs but keep this window’s size and place |
 

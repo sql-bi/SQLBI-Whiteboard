@@ -49,7 +49,7 @@
     <section class="story">
       <h3>Pin a live demo without leaving the board</h3>
       <p>Add a LiveView of DAX Studio, SSMS, or a browser. When the query result is the thing you want to keep talking about, copy the LiveView and paste. The paste is a still bitmap of the last frame, a screenshot that stays on the board while you keep drawing.</p>
-      <p><span class="ui">Freeze</span> the original LiveView if you want that same container to stay put and resume later. <span class="ui">Reconnect</span> after you reload a board: Windows cannot save the capture permission, so the saved frame appears immediately and <span class="ui">Reconnect</span> restores the live feed.</p>
+      <p><span class="ui">Freeze</span> the original LiveView if you want that same container to stay put and resume later. <span class="ui">Disconnect</span> if you want the last frame with no live controls; only <span class="ui">Reconnect</span> brings a feed back. <span class="ui">Reconnect</span> after you reload a board: Windows cannot save the capture permission, so the saved frame appears immediately and <span class="ui">Reconnect</span> restores the live feed.</p>
     </section>
 
     <section class="story">
@@ -100,7 +100,7 @@
     <p>Paste plain text to create a text container and enter edit mode. <kbd>F2</kbd> edits the selected container. The language selector chooses Plain text, DAX, or SQL Server. <kbd>F6</kbd> formats DAX or SQL locally. SQL Server mode targets SQL Server 2025 T-SQL, keeps <code>GO</code> batch separators, and leaves an invalid script unchanged. <kbd>Ctrl</kbd><span class="plus">+</span><kbd>Enter</kbd> commits; <kbd>Escape</kbd> restores the previous text, language, and size.</p>
 
     <h3>LiveView</h3>
-    <p><span class="ui">View → LiveView</span> captures a window or a display. The container behaves like an image: move, resize, frame, delete, undo. <span class="ui">View → Freeze</span> stops capture on the last frame; the same command resumes if the target is still there. <span class="ui">View → Reconnect</span> picks a new target without losing the container or its ink.</p>
+    <p><span class="ui">View → LiveView</span> captures a window or a display. The container behaves like an image: move, resize, frame, delete, undo. <span class="ui">View → Freeze</span> stops capture on the last frame and can resume the same target. <span class="ui">View → Disconnect</span> releases the target, keeps the last frame, and hides the on-frame controls; <span class="ui">View → Reconnect</span> is then the only way back to a live feed.</p>
 
     <h3>Files</h3>
     <p><kbd>Ctrl</kbd><span class="plus">+</span><kbd>S</kbd> and <kbd>Ctrl</kbd><span class="plus">+</span><kbd>O</kbd> save and open a <code>.wboard</code>. The released installer registers that type and <code>.wimport</code>. The pre-release (Dev) channel does not, so it can sit beside a released copy without stealing the file association.</p>

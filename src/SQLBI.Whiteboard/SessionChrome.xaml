@@ -35,7 +35,7 @@
                Placement="Bottom"
                PlacementTarget="{Binding ElementName=Root}"
                AllowsTransparency="True"
-               StaysOpen="False"
+               StaysOpen="True"
                Closed="CommandPopup_Closed">
             <Border Width="{Binding ActualWidth, ElementName=Root}"
                     Background="{StaticResource ToolbarBackgroundBrush}"
@@ -74,6 +74,8 @@
                                 <TextBlock Margin="0,4,0,0"
                                            HorizontalAlignment="Center"
                                            Text="Open" />
+                                <TextBlock Style="{StaticResource SessionShortcutHint}"
+                                           Text="Ctrl+O" />
                             </StackPanel>
                         </Button>
                         <Button Style="{StaticResource SessionCommandButton}"
@@ -89,6 +91,8 @@
                                 <TextBlock Margin="0,4,0,0"
                                            HorizontalAlignment="Center"
                                            Text="Save" />
+                                <TextBlock Style="{StaticResource SessionShortcutHint}"
+                                           Text="Ctrl+S" />
                             </StackPanel>
                         </Button>
                         <Button Style="{StaticResource SessionCommandButton}"
@@ -104,21 +108,8 @@
                                 <TextBlock Margin="0,4,0,0"
                                            HorizontalAlignment="Center"
                                            Text="Save As" />
-                            </StackPanel>
-                        </Button>
-                        <Button Style="{StaticResource SessionCommandButton}"
-                                ToolTip="Close"
-                                Tag="Close"
-                                Click="Command_Click">
-                            <StackPanel HorizontalAlignment="Center">
-                                <Path Width="18"
-                                      Height="18"
-                                      Stretch="Uniform"
-                                      Fill="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"
-                                      Data="{StaticResource DismissGeometry}" />
-                                <TextBlock Margin="0,4,0,0"
-                                           HorizontalAlignment="Center"
-                                           Text="Close" />
+                                <TextBlock Style="{StaticResource SessionShortcutHint}"
+                                           Text="Shift+F12" />
                             </StackPanel>
                         </Button>
                     </StackPanel>
@@ -139,6 +130,8 @@
                                 <TextBlock Margin="0,4,0,0"
                                            HorizontalAlignment="Center"
                                            Text="Undo" />
+                                <TextBlock Style="{StaticResource SessionShortcutHint}"
+                                           Text="Ctrl+Z" />
                             </StackPanel>
                         </Button>
                         <Button x:Name="RedoButton"
@@ -155,6 +148,8 @@
                                 <TextBlock Margin="0,4,0,0"
                                            HorizontalAlignment="Center"
                                            Text="Redo" />
+                                <TextBlock Style="{StaticResource SessionShortcutHint}"
+                                           Text="Ctrl+Y" />
                             </StackPanel>
                         </Button>
                         <Button Style="{StaticResource SessionCommandButton}"
@@ -170,6 +165,8 @@
                                 <TextBlock Margin="0,4,0,0"
                                            HorizontalAlignment="Center"
                                            Text="Copy" />
+                                <TextBlock Style="{StaticResource SessionShortcutHint}"
+                                           Text="Ctrl+C" />
                             </StackPanel>
                         </Button>
                         <Button Style="{StaticResource SessionCommandButton}"
@@ -185,6 +182,8 @@
                                 <TextBlock Margin="0,4,0,0"
                                            HorizontalAlignment="Center"
                                            Text="Paste" />
+                                <TextBlock Style="{StaticResource SessionShortcutHint}"
+                                           Text="Ctrl+V" />
                             </StackPanel>
                         </Button>
                     </StackPanel>
@@ -204,6 +203,8 @@
                                 <TextBlock Margin="0,4,0,0"
                                            HorizontalAlignment="Center"
                                            Text="Full screen" />
+                                <TextBlock Style="{StaticResource SessionShortcutHint}"
+                                           Text="F11" />
                             </StackPanel>
                         </Button>
                         <Button Style="{StaticResource SessionCommandButton}"
@@ -219,6 +220,8 @@
                                 <TextBlock Margin="0,4,0,0"
                                            HorizontalAlignment="Center"
                                            Text="Canvas only" />
+                                <TextBlock Style="{StaticResource SessionShortcutHint}"
+                                           Text="Ctrl+F11" />
                             </StackPanel>
                         </Button>
                         <Button Style="{StaticResource SessionCommandButton}"
@@ -242,7 +245,8 @@
                                 Tag="FreezeLiveView"
                                 Click="Command_Click">
                             <StackPanel HorizontalAlignment="Center">
-                                <Path Width="18"
+                                <Path x:Name="FreezeLiveViewIcon"
+                                      Width="18"
                                       Height="18"
                                       Stretch="Uniform"
                                       Fill="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"
@@ -251,6 +255,22 @@
                                            Margin="0,4,0,0"
                                            HorizontalAlignment="Center"
                                            Text="Freeze" />
+                            </StackPanel>
+                        </Button>
+                        <Button x:Name="DisconnectLiveViewButton"
+                                Style="{StaticResource SessionCommandButton}"
+                                ToolTip="Disconnect the selected LiveView. The last frame stays; Reconnect restores a live feed."
+                                Tag="DisconnectLiveView"
+                                Click="Command_Click">
+                            <StackPanel HorizontalAlignment="Center">
+                                <Path Width="18"
+                                      Height="18"
+                                      Stretch="Uniform"
+                                      Fill="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"
+                                      Data="{StaticResource DisconnectGeometry}" />
+                                <TextBlock Margin="0,4,0,0"
+                                           HorizontalAlignment="Center"
+                                           Text="Disconnect" />
                             </StackPanel>
                         </Button>
                         <Button x:Name="ReconnectLiveViewButton"

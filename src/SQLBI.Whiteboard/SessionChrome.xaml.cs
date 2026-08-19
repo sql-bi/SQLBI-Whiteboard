@@ -2,6 +2,7 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Controls.Primitives;
 using System.Windows.Input;
+using System.Windows.Media;
 
 namespace SQLBI.Whiteboard;
 
@@ -20,6 +21,7 @@ public enum SessionCommand
     CanvasOnly,
     AddLiveView,
     FreezeLiveView,
+    DisconnectLiveView,
     ReconnectLiveView,
     Preferences,
     About,
@@ -33,7 +35,7 @@ public partial class SessionChrome : UserControl
     {
         InitializeComponent();
         SetEditEnabled(canUndo: false, canRedo: false);
-        SetLiveViewCommands(selected: false, canResume: false);
+        SetLiveViewCommands(selected: false, hasTarget: false, frozen: false);
     }
 
     public event Action<SessionCommand>? CommandRequested;
@@ -47,6 +49,14 @@ public partial class SessionChrome : UserControl
         _openTab = null;
     }
 
+    public void CollapseIfTransient()
+    {
+        if (!IsStickyTab(_openTab))
+        {
+            Collapse();
+        }
+    }
+
     public void SetEditEnabled(bool canUndo, bool canRedo)
     {
         if (UndoButton is null)
@@ -58,19 +68,24 @@ public partial class SessionChrome : UserControl
         RedoButton.IsEnabled = canRedo;
     }
 
-    public void SetLiveViewCommands(bool selected, bool canResume)
+    public void SetLiveViewCommands(bool selected, bool hasTarget, bool frozen)
     {
         if (FreezeLiveViewButton is null)
         {
             return;
         }
 
-        FreezeLiveViewButton.IsEnabled = selected;
+        FreezeLiveViewButton.IsEnabled = selected && hasTarget;
+        DisconnectLiveViewButton.IsEnabled = selected && hasTarget;
         ReconnectLiveViewButton.IsEnabled = selected;
-        FreezeLiveViewLabel.Text = canResume ? "Resume" : "Freeze";
-        FreezeLiveViewButton.ToolTip = canResume
+        var resume = hasTarget && frozen;
+        FreezeLiveViewLabel.Text = resume ? "Resume" : "Freeze";
+        FreezeLiveViewButton.ToolTip = resume
             ? "Resume the selected LiveView"
             : "Freeze the selected LiveView";
+        FreezeLiveViewIcon.Data = resume
+            ? (Geometry)FindResource("PlayGeometry")
+            : (Geometry)FindResource("PauseGeometry");
     }
 
     public bool TryHandleAltKey(Key key)
@@ -145,9 +160,16 @@ public partial class SessionChrome : UserControl
             return;
         }
 
-        Collapse();
+        if (!IsStickyTab(_openTab))
+        {
+            Collapse();
+        }
+
         CommandRequested?.Invoke(command);
     }
+
+    private bool IsStickyTab(ToggleButton? tab) =>
+        ReferenceEquals(tab, EditTab) || ReferenceEquals(tab, HelpTab);
 
     private void CommandPopup_Closed(object? sender, EventArgs e)
     {

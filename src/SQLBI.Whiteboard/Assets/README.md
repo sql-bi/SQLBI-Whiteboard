@@ -30,7 +30,8 @@ powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\build-assets.ps1
 and `chevron_down` (16 regular) from the same set. The session tab strip uses
 `document`, `folder_open`, `save`, `arrow_undo`, `arrow_redo`, `copy`,
 `clipboard_paste`, `full_screen_maximize`, `window`, `live`, `pause`,
-`arrow_sync`, `settings`, `info`, and `dismiss` (24 regular).
+`play`, `plug_disconnected`, `arrow_sync`, `settings`, `info`, and `dismiss`
+(24 regular).
 obtained from
 `@fluentui/svg-icons` version 1.1.308:
 

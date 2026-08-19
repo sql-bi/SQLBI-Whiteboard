@@ -22,7 +22,7 @@
 
   <Properties>
     <DisplayName>SQLBI Whiteboard</DisplayName>
-    <PublisherDisplayName>SQLBI Corporation</PublisherDisplayName>
+    <PublisherDisplayName>SQLBI Corp</PublisherDisplayName>
     <Description>A native Windows 11 whiteboard for pen, touch, and live application capture.</Description>
     <Logo>Assets\StoreLogo.png</Logo>
   </Properties>

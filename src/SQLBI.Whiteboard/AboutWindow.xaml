@@ -13,8 +13,9 @@
         <StackPanel Orientation="Horizontal">
             <Image Width="48"
                    Height="48"
+                   SnapsToDevicePixels="True"
                    RenderOptions.BitmapScalingMode="HighQuality"
-                   Source="Assets/SQLBI.Whiteboard.ico" />
+                   Source="pack://application:,,,/Assets/SQLBI.Whiteboard.png" />
             <StackPanel Margin="16,0,0,0"
                         VerticalAlignment="Center">
                 <TextBlock x:Name="ProductTitle"
@@ -34,7 +35,7 @@
                    FontFamily="Segoe UI"
                    FontSize="13"
                    Foreground="#FF1F2937"
-                   Text="© 2026 SQLBI Corporation" />
+                   Text="© 2026 SQLBI Corp." />
         <TextBlock Margin="0,4,0,0"
                    FontFamily="Segoe UI"
                    FontSize="13"

@@ -32,7 +32,7 @@ for it alone, granted only certificate `Get` and key `Sign`.
 
 Sharing Bravo's identity would mean a single compromised secret affected every product and
 one audit trail covering all of them. A separate identity can be revoked on its own. A
-separate certificate was not worth the cost, and releases sign as SQLBI Corporation either
+separate certificate was not worth the cost, and releases sign as SQLBI Corp. either
 way.
 
 ## 3. Signing runs in Azure Pipelines, not GitHub Actions

@@ -19,6 +19,7 @@
   </PropertyGroup>
   <ItemGroup>
     <Resource Include="Assets\SQLBI.Whiteboard.ico" />
+    <Resource Include="Assets\SQLBI.Whiteboard.png" />
     <!-- Copied beside the executable so the installer can register it for .wboard files. -->
     <Content Include="Assets\SQLBI.Whiteboard.Document.ico"
              Link="SQLBI.Whiteboard.Document.ico"

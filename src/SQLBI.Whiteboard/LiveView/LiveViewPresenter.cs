@@ -87,6 +87,8 @@ internal sealed class LiveViewPresenter : IDisposable
 
     public void Resume() => _capture.Resume();
 
+    public void ClearTarget() => _capture.ClearTarget();
+
     public byte[]? CaptureSnapshotPng()
     {
         _dispatcher.VerifyAccess();

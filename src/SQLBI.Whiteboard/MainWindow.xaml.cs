@@ -262,7 +262,7 @@ public partial class MainWindow : Window
     private void InkSurface_PreviewStylusDown(object sender, StylusDownEventArgs e)
     {
         CommitTextEdit();
-        SessionBar.Collapse();
+        SessionBar.CollapseIfTransient();
 
         if (TryActivatePaletteFromStylus(e))
         {
@@ -540,6 +540,7 @@ public partial class MainWindow : Window
 
     private void ToolPalette_PreviewStylusDown(object sender, StylusDownEventArgs e)
     {
+        SessionBar.CollapseIfTransient();
         ReleaseBoardPointerCapture(e.StylusDevice);
         LaserTrail.Lift();
     }
@@ -790,7 +791,7 @@ public partial class MainWindow : Window
             return;
         }
 
-        SessionBar.Collapse();
+        SessionBar.CollapseIfTransient();
         CommitTextEdit();
         InkSurface.Focus();
         var screen = ToPointD(e.GetPosition(InkSurface));
@@ -2660,6 +2661,9 @@ public partial class MainWindow : Window
             case SessionCommand.FreezeLiveView:
                 FreezeLiveViewMenuItem_Click(this, new RoutedEventArgs());
                 break;
+            case SessionCommand.DisconnectLiveView:
+                DisconnectSelectedLiveView();
+                break;
             case SessionCommand.ReconnectLiveView:
                 ReconnectLiveViewMenuItem_Click(this, new RoutedEventArgs());
                 break;
@@ -2796,6 +2800,32 @@ public partial class MainWindow : Window
         }
 
         await ResumeLiveViewAsync(liveView);
+    }
+
+    private void DisconnectSelectedLiveView()
+    {
+        if (GetSelectedLiveView() is not { } liveView ||
+            !_liveViewPresenters.TryGetValue(liveView.Id, out LiveViewPresenter? presenter) ||
+            !presenter.HasTarget)
+        {
+            return;
+        }
+
+        try
+        {
+            LiveViewBoardObject updated = SaveLiveViewSnapshot(
+                liveView with { IsFrozen = true },
+                presenter);
+            presenter.ClearTarget();
+            DetachLiveViewSurface(presenter);
+            _document.ReplaceObject(updated);
+            UpdateLiveViewMenuItems();
+            UpdateLiveViewActionOverlay();
+        }
+        catch (Exception exception)
+        {
+            ShowError("Could not disconnect LiveView", exception);
+        }
     }
 
     private void PauseLiveViewButton_Click(object sender, RoutedEventArgs e)
@@ -3292,18 +3322,25 @@ public partial class MainWindow : Window
     private void UpdateLiveViewMenuItems()
     {
         LiveViewBoardObject? liveView = GetSelectedLiveView();
-        bool selected = liveView is not null;
-        bool canResume = liveView is not null &&
-            (!_liveViewPresenters.TryGetValue(liveView.Id, out LiveViewPresenter? presenter) ||
-             presenter.IsFrozen ||
-             !presenter.HasTarget);
-        SessionBar.SetLiveViewCommands(selected, canResume);
+        if (liveView is null ||
+            !_liveViewPresenters.TryGetValue(liveView.Id, out LiveViewPresenter? presenter))
+        {
+            SessionBar.SetLiveViewCommands(selected: liveView is not null, hasTarget: false, frozen: false);
+            return;
+        }
+
+        SessionBar.SetLiveViewCommands(
+            selected: true,
+            hasTarget: presenter.HasTarget,
+            frozen: presenter.IsFrozen);
     }
 
     private void UpdateLiveViewActionOverlay()
     {
         LiveViewBoardObject? liveView = GetSelectedLiveView();
-        if (liveView is null)
+        if (liveView is null ||
+            !_liveViewPresenters.TryGetValue(liveView.Id, out LiveViewPresenter? overlayPresenter) ||
+            !overlayPresenter.HasTarget)
         {
             LiveViewActionsBorder.Visibility = Visibility.Collapsed;
             return;

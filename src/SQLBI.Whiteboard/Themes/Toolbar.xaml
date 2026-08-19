@@ -39,6 +39,8 @@
     <Geometry x:Key="InfoGeometry">M12 2a10 10 0 1 1 0 20 10 10 0 0 1 0-20Zm0 1.5a8.5 8.5 0 1 0 0 17 8.5 8.5 0 0 0 0-17Zm0 7c.41 0 .75.34.75.75v5a.75.75 0 0 1-1.5 0v-5c0-.41.34-.75.75-.75ZM12 9a1 1 0 1 0 0-2 1 1 0 0 0 0 2Z</Geometry>
     <Geometry x:Key="DismissGeometry">m4.4 4.55.07-.08a.75.75 0 0 1 .98-.07l.08.07L12 10.94l6.47-6.47a.75.75 0 1 1 1.06 1.06L13.06 12l6.47 6.47c.27.27.3.68.07.98l-.07.08a.75.75 0 0 1-.98.07l-.08-.07L12 13.06l-6.47 6.47a.75.75 0 0 1-1.06-1.06L10.94 12 4.47 5.53a.75.75 0 0 1-.07-.98l.07-.08-.07.08Z</Geometry>
     <Geometry x:Key="PauseGeometry">M6.25 3C5.01 3 4 4 4 5.25v13.5C4 19.99 5 21 6.25 21h2.5C9.99 21 11 20 11 18.75V5.25C11 4.01 10 3 8.75 3h-2.5ZM5.5 5.25c0-.41.34-.75.75-.75h2.5c.41 0 .75.34.75.75v13.5c0 .41-.34.75-.75.75h-2.5a.75.75 0 0 1-.75-.75V5.25ZM15.25 3C14.01 3 13 4 13 5.25v13.5c0 1.24 1 2.25 2.25 2.25h2.5c1.24 0 2.25-1 2.25-2.25V5.25C20 4.01 19 3 17.75 3h-2.5Zm-.75 2.25c0-.41.34-.75.75-.75h2.5c.41 0 .75.34.75.75v13.5c0 .41-.34.75-.75.75h-2.5a.75.75 0 0 1-.75-.75V5.25Z</Geometry>
+    <Geometry x:Key="PlayGeometry">M7.6 4.61a.75.75 0 0 0-1.1.66v13.46c0 .56.6.93 1.1.65l12.37-6.72a.75.75 0 0 0 0-1.32L7.61 4.61ZM5 5.27c0-1.7 1.83-2.79 3.33-1.97l12.36 6.72a2.25 2.25 0 0 1 0 3.96L8.33 20.7A2.25 2.25 0 0 1 5 18.73V5.27Z</Geometry>
+    <Geometry x:Key="DisconnectGeometry">M21.78 3.28a.75.75 0 0 0-1.06-1.06l-2.01 2.01a4.25 4.25 0 0 0-5.47.46l-1.06 1.07c-.69.69-.69 1.8 0 2.48l3.58 3.58c.69.69 1.8.69 2.48 0l1.07-1.06a4.25 4.25 0 0 0 .46-5.47l2.01-2.01Zm-3.59 2.48.03.02.02.03a2.75 2.75 0 0 1 0 3.88l-1.06 1.07c-.1.1-.26.1-.36 0l-3.58-3.58a.25.25 0 0 1 0-.36l1.07-1.06a2.75 2.75 0 0 1 3.88 0Zm-7.41 5.52a.75.75 0 1 0-1.06-1.06L8 11.94l-.47-.47a.75.75 0 0 0-1.06 0l-1.78 1.77a4.25 4.25 0 0 0-.46 5.47l-2.01 2.01a.75.75 0 1 0 1.06 1.06l2.01-2.01a4.25 4.25 0 0 0 5.47-.46l1.77-1.78c.3-.3.3-.77 0-1.06l-.47-.47 1.72-1.72a.75.75 0 1 0-1.06-1.06L11 14.94 9.06 13l1.72-1.72Zm-3.31 2.25 3 3 .47.47-1.25 1.24a2.75 2.75 0 0 1-3.88 0l-.05-.05a2.75 2.75 0 0 1 0-3.88L7 13.06l.47.47Z</Geometry>
 
     <Style x:Key="ToolbarIconButton"
            TargetType="{x:Type ToggleButton}">
@@ -256,9 +258,9 @@
     <Style x:Key="SessionCommandButton"
            TargetType="{x:Type Button}">
         <Setter Property="Width"
-                Value="68" />
+                Value="76" />
         <Setter Property="Height"
-                Value="52" />
+                Value="64" />
         <Setter Property="Margin"
                 Value="2,0" />
         <Setter Property="Background"
@@ -301,6 +303,20 @@
                 </ControlTemplate>
             </Setter.Value>
         </Setter>
+    </Style>
+
+    <Style x:Key="SessionShortcutHint"
+           TargetType="TextBlock">
+        <Setter Property="Margin"
+                Value="0,1,0,0" />
+        <Setter Property="HorizontalAlignment"
+                Value="Center" />
+        <Setter Property="FontFamily"
+                Value="Segoe UI" />
+        <Setter Property="FontSize"
+                Value="9" />
+        <Setter Property="Foreground"
+                Value="#FF9CA3AF" />
     </Style>
 
 </ResourceDictionary>
