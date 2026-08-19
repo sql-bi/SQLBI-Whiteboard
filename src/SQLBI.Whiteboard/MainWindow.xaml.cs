@@ -122,6 +122,7 @@ public partial class MainWindow : Window
     {
         InitializeComponent();
         SessionBar.CommandRequested += SessionChrome_CommandRequested;
+        SessionBar.ViewOpened += UpdateLiveViewMenuItems;
         Title += AppChannel.WindowTitleSuffix;
         _initialBoardPath = initialBoardPath;
         TextEditorLanguageCombo.ItemsSource = TextLanguageRegistry.All;
@@ -2602,15 +2603,8 @@ public partial class MainWindow : Window
         PersistSettings();
     }
 
-    private void PreferencesMenuItem_Click(object sender, RoutedEventArgs e)
-    {
-        var dialog = new PreferencesWindow(_settings, ApplyPreferences)
-        {
-            Owner = this,
-        };
-        dialog.ShowDialog();
-        InkSurface.Focus();
-    }
+    private void PreferencesMenuItem_Click(object sender, RoutedEventArgs e) =>
+        ShowOwnedDialog(new PreferencesWindow(_settings, ApplyPreferences));
 
     private void SessionChrome_CommandRequested(SessionCommand command)
     {
@@ -2676,12 +2670,13 @@ public partial class MainWindow : Window
         }
     }
 
-    private void ShowAbout()
+    private void ShowAbout() => ShowOwnedDialog(new AboutWindow());
+
+    private void ShowOwnedDialog(Window dialog)
     {
-        var dialog = new AboutWindow
-        {
-            Owner = this,
-        };
+        SessionBar.Collapse();
+        UpdateLayout();
+        dialog.Owner = this;
         dialog.ShowDialog();
         InkSurface.Focus();
     }
@@ -3337,6 +3332,7 @@ public partial class MainWindow : Window
 
     private void UpdateLiveViewActionOverlay()
     {
+        UpdateLiveViewMenuItems();
         LiveViewBoardObject? liveView = GetSelectedLiveView();
         if (liveView is null ||
             !_liveViewPresenters.TryGetValue(liveView.Id, out LiveViewPresenter? overlayPresenter) ||

@@ -40,6 +40,8 @@ public partial class SessionChrome : UserControl
 
     public event Action<SessionCommand>? CommandRequested;
 
+    public event Action? ViewOpened;
+
     public bool IsCommandRowOpen => CommandPopup.IsOpen;
 
     public void Collapse()
@@ -150,6 +152,10 @@ public partial class SessionChrome : UserControl
         tab.IsChecked = true;
         _openTab = tab;
         CommandPopup.IsOpen = true;
+        if (ReferenceEquals(tab, ViewTab))
+        {
+            ViewOpened?.Invoke();
+        }
     }
 
     private void Command_Click(object sender, RoutedEventArgs e)
