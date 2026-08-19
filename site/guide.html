@@ -59,7 +59,7 @@
 
     <section class="story">
       <h3>Explain a measure</h3>
-      <p>Paste DAX, or drop a <code>.dax</code> file. Switch the language selector to DAX, press <kbd>F6</kbd> to format it locally, then draw on the container. The same path works for SQL Server scripts with <code>.sql</code> files and <kbd>F6</kbd>.</p>
+      <p>Paste DAX, or drop a <code>.dax</code> file. Use the title-bar chip to switch to DAX, press <kbd>F2</kbd> then <kbd>F6</kbd> to format it locally, then draw on the container. The same path works for SQL Server scripts with <code>.sql</code> files and <kbd>F6</kbd>.</p>
       <p>In edit mode the text reflows as you change the width. In display mode a resize scales the whole visual, like a picture of the code, so the room still sees the layout you just formatted.</p>
     </section>
 
@@ -97,7 +97,7 @@
     <p>Images, LiveViews, and text blocks are containers. With a mouse, click to move, drag the circular handle to resize while keeping aspect ratio. Releasing the mouse returns to the drawing tool you had. Imported images accept PNG, JPEG, BMP, and GIF, including clipboard paste and Explorer drag-and-drop.</p>
 
     <h3>Text, DAX, and SQL</h3>
-    <p>Paste plain text to create a text container and enter edit mode. <kbd>F2</kbd> edits the selected container. The language selector chooses Plain text, DAX, or SQL Server. <kbd>F6</kbd> formats DAX or SQL locally. SQL Server mode targets SQL Server 2025 T-SQL, keeps <code>GO</code> batch separators, and leaves an invalid script unchanged. <kbd>Ctrl</kbd><span class="plus">+</span><kbd>Enter</kbd> commits; <kbd>Escape</kbd> restores the previous text, language, and size.</p>
+    <p>Paste plain text to create a selected text container. Use the title-bar chip to choose Plain text, DAX, or SQL Server. <kbd>F2</kbd> edits the selected container. Double-click still centers the container and fits it to the canvas. <kbd>F6</kbd> formats DAX or SQL locally. SQL Server mode targets SQL Server 2025 T-SQL, keeps <code>GO</code> batch separators, and leaves an invalid script unchanged. <kbd>Ctrl</kbd><span class="plus">+</span><kbd>Enter</kbd> commits; <kbd>Escape</kbd> restores the previous text, language, and size.</p>
 
     <h3>LiveView</h3>
     <p><span class="ui">View → LiveView</span> captures a window or a display. The container behaves like an image: move, resize, frame, delete, undo. <span class="ui">View → Freeze</span> stops capture on the last frame and can resume the same target. <span class="ui">View → Disconnect</span> releases the target, keeps the last frame, and hides the on-frame controls; <span class="ui">View → Reconnect</span> is then the only way back to a live feed.</p>

@@ -18,6 +18,9 @@ internal static class TextContainerVisual
     public const double ContentPadding = 10;
     public const double BodyBottomAllowance = 6;
     public const double BorderThickness = 1;
+    public const double LanguageChipWidth = 132;
+    public const double LanguageChipHeight = 22;
+    public const double LanguageChipMargin = 6;
 
     private static readonly Typeface TitleTypeface = new(
         new FontFamily("Segoe UI"),
@@ -61,7 +64,8 @@ internal static class TextContainerVisual
         DrawingContext drawingContext,
         TextBoardObject textObject,
         Camera2D camera,
-        double pixelsPerDip)
+        double pixelsPerDip,
+        double trailingTitleReserve = 0)
     {
         ITextLanguageService language = TextLanguageRegistry.Resolve(textObject.LanguageId);
         CachedTextVisual cachedVisual = GetCachedVisual(textObject, language);
@@ -101,7 +105,9 @@ internal static class TextContainerVisual
             TextBrush,
             pixelsPerDip)
         {
-            MaxTextWidth = Math.Max(1, destination.Width - (2 * padding)),
+            MaxTextWidth = Math.Max(
+                1,
+                destination.Width - (2 * padding) - Math.Max(0, trailingTitleReserve)),
             MaxTextHeight = Math.Max(1, titleHeight),
             Trimming = TextTrimming.CharacterEllipsis,
         };

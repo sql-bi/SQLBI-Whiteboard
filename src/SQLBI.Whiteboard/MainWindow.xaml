@@ -156,6 +156,7 @@
                                            TextTrimming="CharacterEllipsis" />
                                 <ComboBox x:Name="TextEditorLanguageCombo"
                                           Grid.Column="1"
+                                          Style="{StaticResource LanguageComboBox}"
                                           Width="110"
                                           Height="22"
                                           Margin="0,0,6,0"
@@ -202,6 +203,15 @@
                         </Thumb>
                     </Grid>
                 </Border>
+                <ComboBox x:Name="LanguageChipCombo"
+                          Style="{StaticResource LanguageComboBox}"
+                          Width="132"
+                          Height="22"
+                          Visibility="Collapsed"
+                          ToolTip="Snippet type"
+                          SelectionChanged="LanguageChipCombo_SelectionChanged"
+                          PreviewMouseDown="LanguageChipCombo_PreviewMouseDown"
+                          PreviewMouseWheel="TextEditorBorder_PreviewMouseWheel" />
             </Canvas>
         </Grid>
 

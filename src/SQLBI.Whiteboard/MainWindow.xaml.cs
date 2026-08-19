@@ -87,6 +87,7 @@ public partial class MainWindow : Window
     private InkStrokeObject[] _textEditLinkedBefore = [];
     private RectD _textEditBounds;
     private bool _updatingTextEditor;
+    private bool _updatingLanguageChip;
     private string _textEditLanguageId = TextLanguageIds.Plain;
     private readonly TextClassificationColorizer _textColorizer = new();
     private readonly DispatcherTimer _textHighlightTimer;
@@ -126,6 +127,7 @@ public partial class MainWindow : Window
         Title += AppChannel.WindowTitleSuffix;
         _initialBoardPath = initialBoardPath;
         TextEditorLanguageCombo.ItemsSource = TextLanguageRegistry.All;
+        LanguageChipCombo.ItemsSource = TextLanguageRegistry.All;
         TextEditor.TextArea.TextView.LineTransformers.Add(_textColorizer);
         TextEditor.Options.ConvertTabsToSpaces = true;
         TextEditor.Options.IndentationSize = 4;
@@ -2675,6 +2677,7 @@ public partial class MainWindow : Window
     private void ShowOwnedDialog(Window dialog)
     {
         SessionBar.Collapse();
+        CloseLanguagePickers();
         UpdateLayout();
         dialog.Owner = this;
         dialog.ShowDialog();
@@ -3064,7 +3067,7 @@ public partial class MainWindow : Window
     private void AddText(
         string text,
         PointD? worldCenter = null,
-        bool beginEdit = true,
+        bool beginEdit = false,
         string? title = null,
         string? languageId = null)
     {
@@ -3102,7 +3105,10 @@ public partial class MainWindow : Window
         if (beginEdit)
         {
             BeginTextEdit(textObject);
+            return;
         }
+
+        UpdateLiveViewActionOverlay();
     }
 
     private async Task AddLiveViewAsync()
@@ -3339,6 +3345,7 @@ public partial class MainWindow : Window
             !overlayPresenter.HasTarget)
         {
             LiveViewActionsBorder.Visibility = Visibility.Collapsed;
+            UpdateLanguageChipOverlay();
             return;
         }
 
@@ -3361,6 +3368,145 @@ public partial class MainWindow : Window
         PauseLiveViewButton.IsEnabled = isRunning;
         PlayLiveViewButton.IsEnabled = !isRunning;
         LiveViewActionsBorder.Visibility = Visibility.Visible;
+        UpdateLanguageChipOverlay();
+    }
+
+    private TextBoardObject? GetSelectedText() =>
+        _selectedObjectId is Guid selectedId
+            ? _document.Objects.FirstOrDefault(item => item.Id == selectedId) as TextBoardObject
+            : null;
+
+    private void UpdateLanguageChipOverlay()
+    {
+        TextBoardObject? textObject = GetSelectedText();
+        if (textObject is null || _textEditBefore is not null)
+        {
+            HideLanguageChip();
+            return;
+        }
+
+        PointD topLeft = _camera.WorldToScreen(
+            new PointD(textObject.Bounds.Left, textObject.Bounds.Top));
+        PointD bottomRight = _camera.WorldToScreen(
+            new PointD(textObject.Bounds.Right, textObject.Bounds.Bottom));
+        double width = Math.Max(1, bottomRight.X - topLeft.X);
+        double height = Math.Max(1, bottomRight.Y - topLeft.Y);
+        const double chipWidth = TextContainerVisual.LanguageChipWidth;
+        const double chipHeight = TextContainerVisual.LanguageChipHeight;
+        const double margin = TextContainerVisual.LanguageChipMargin;
+        if (width < chipWidth + (margin * 2) || height < chipHeight)
+        {
+            HideLanguageChip();
+            return;
+        }
+
+        double scale = Math.Max(0.01, textObject.VisualScale * _camera.Zoom);
+        double titleHeight = Math.Min(height, TextContainerVisual.TitleBarHeight * scale);
+        double left = bottomRight.X - margin - chipWidth;
+        double top = topLeft.Y + Math.Max(0, (titleHeight - chipHeight) / 2);
+        if (LanguageChipCombo.IsDropDownOpen &&
+            LanguageChipCombo.Visibility == Visibility.Visible &&
+            (Math.Abs(Canvas.GetLeft(LanguageChipCombo) - left) > 0.5 ||
+             Math.Abs(Canvas.GetTop(LanguageChipCombo) - top) > 0.5))
+        {
+            LanguageChipCombo.IsDropDownOpen = false;
+        }
+
+        Canvas.SetLeft(LanguageChipCombo, left);
+        Canvas.SetTop(LanguageChipCombo, top);
+
+        ITextLanguageService language = TextLanguageRegistry.Resolve(textObject.LanguageId);
+        if (!ReferenceEquals(LanguageChipCombo.SelectedItem, language))
+        {
+            _updatingLanguageChip = true;
+            try
+            {
+                LanguageChipCombo.SelectedItem = language;
+            }
+            finally
+            {
+                _updatingLanguageChip = false;
+            }
+        }
+
+        LanguageChipCombo.Visibility = Visibility.Visible;
+    }
+
+    private void HideLanguageChip()
+    {
+        LanguageChipCombo.IsDropDownOpen = false;
+        LanguageChipCombo.Visibility = Visibility.Collapsed;
+    }
+
+    private void CloseLanguagePickers()
+    {
+        LanguageChipCombo.IsDropDownOpen = false;
+        TextEditorLanguageCombo.IsDropDownOpen = false;
+    }
+
+    private void LanguageChipCombo_PreviewMouseDown(object sender, MouseButtonEventArgs e)
+    {
+        if (e.StylusDevice is not null)
+        {
+            return;
+        }
+
+        SessionBar.CollapseIfTransient();
+        if (e.ChangedButton != MouseButton.Left || e.ClickCount < 2)
+        {
+            return;
+        }
+
+        LanguageChipCombo.IsDropDownOpen = false;
+        FrameContentAt(ToPointD(e.GetPosition(InkSurface)));
+        e.Handled = true;
+    }
+
+    private void LanguageChipCombo_SelectionChanged(object sender, SelectionChangedEventArgs e)
+    {
+        if (_updatingLanguageChip ||
+            LanguageChipCombo.SelectedItem is not ITextLanguageService language ||
+            GetSelectedText() is not { } textObject)
+        {
+            return;
+        }
+
+        if (TextLanguageIds.Normalize(textObject.LanguageId) == language.Id)
+        {
+            return;
+        }
+
+        ApplyTextLanguage(textObject, language);
+        InkSurface.Focus();
+    }
+
+    private void ApplyTextLanguage(TextBoardObject textObject, ITextLanguageService language)
+    {
+        double desiredHeight = TextContainerVisual.MeasureDesiredHeight(
+            textObject.Text,
+            textObject.Bounds.Width,
+            textObject.VisualScale,
+            VisualTreeHelper.GetDpi(SceneSurface).PixelsPerDip,
+            language.Id);
+        RectD bounds = desiredHeight > textObject.Bounds.Height
+            ? textObject.Bounds.WithSize(textObject.Bounds.Width, desiredHeight)
+            : textObject.Bounds;
+        var after = textObject with
+        {
+            LanguageId = language.Id,
+            Bounds = bounds,
+        };
+        InkStrokeObject[] linkedBefore = _document.LinkedStrokes(textObject.Id).ToArray();
+        InkStrokeObject[] linkedAfter = textObject.Bounds == bounds
+            ? linkedBefore
+            : linkedBefore
+                .Select(stroke => stroke.TransformWithContainer(textObject.Bounds, bounds))
+                .ToArray();
+        _history.Execute(
+            new ReplaceObjectsCommand(
+                [textObject, .. linkedBefore],
+                [after, .. linkedAfter]),
+            _document);
     }
 
     private void DisposeLiveViewPresenter(Guid objectId)

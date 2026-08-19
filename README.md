@@ -181,7 +181,7 @@ Use **Copy settings** after finding a useful combination so the exact values can
 | Ctrl+Z / Ctrl+Y | Undo / redo |
 | Ctrl+V | Paste an image, or create a text container from plain text |
 | F2 | Edit the selected text container |
-| Language selector | Choose Plain text, DAX, or SQL Server while a text container is in edit mode |
+| Language chip | Choose Plain text, DAX, or SQL Server on a selected text container |
 | F6 | Format DAX or SQL Server code while its text container is in edit mode |
 | Ctrl+Enter | Commit the active text edit and return to display mode |
 | Escape | Cancel the active text edit |
@@ -198,7 +198,7 @@ With the mouse, selection is automatic: click a container to move it, or drag th
 
 Imported images, LiveViews, and text objects act as containers. A completed stroke is linked when it touches exactly one container, including crossing its edge; a stroke touching multiple containers remains independent. Moving or resizing a container transforms its linked strokes with it. Deleting a container also deletes all of its linked strokes. Undo/redo treats each complete container operation as one action.
 
-Paste plain text to create a text container and enter edit mode immediately. Text reflows while its edit-mode resize grip changes the width, and the height grows automatically when necessary. Choose **DAX** or **SQL Server** in the title-bar language selector for syntax highlighting in both edit and display modes. A language-aware title identifies a defined DAX or SQL object when possible. Press **F6** to apply the corresponding local formatter. SQL Server mode targets SQL Server 2025 T-SQL, preserves `GO` batch separators, and leaves invalid scripts unchanged. Press **Ctrl+Enter** to commit or **Escape** to restore the previous text, language, and dimensions. In display mode, resizing preserves the aspect ratio and scales the complete text visual without reflowing it.
+Paste plain text to create a selected text container in display mode. Choose **Plain text**, **DAX**, or **SQL Server** from the title-bar chip. Press **F2** to edit the body; the same list is in the title bar while editing. Text reflows while its edit-mode resize grip changes the width, and the height grows automatically when necessary. Double-click still centers and fits the container. Syntax highlighting applies in both edit and display modes. A language-aware title identifies a defined DAX or SQL object when possible. Press **F6** to apply the corresponding local formatter. SQL Server mode targets SQL Server 2025 T-SQL, preserves `GO` batch separators, and leaves invalid scripts unchanged. Press **Ctrl+Enter** to commit or **Escape** to restore the previous text, language, and dimensions. In display mode, resizing preserves the aspect ratio and scales the complete text visual without reflowing it.
 
 Image files, and `.txt`, `.dax`, and `.sql` files, can be dropped directly from File Explorer. Their initial center is the board position at which they were dropped. DAX and SQL files open in the matching language mode.
 
