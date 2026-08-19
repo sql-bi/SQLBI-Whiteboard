@@ -194,7 +194,7 @@ later touches no installer plumbing.
 
 ## 13. Microsoft Store is a later, separate piece of work
 
-**Implemented** for packaging; listing and submission are still manual.
+**Implemented** for packaging and for the listing. Submission is still manual.
 
 Three constraints shape it:
 
@@ -206,8 +206,12 @@ Three constraints shape it:
 - Certification takes hours to days, so submission must run in parallel with the web
   release and must never gate it.
 
-The first submission is still manual: listing, screenshots, and age rating are one-time
-work no pipeline performs. `installer/msix/STORE-LISTING.md` is the checklist.
+The first submission was manual, and was made on 20 August 2026 for 0.9.2: listing,
+screenshots, and age rating are one-time work no pipeline performs.
+`installer/msix/STORE-LISTING.md` records every field that was entered, which is what a
+later automated submission reproduces. Automating the upload was deliberately held until
+that first submission had succeeded, so an API failure could never be confused with an
+incomplete listing.
 
 ## 14. Bravo's telemetry was not ported
 
@@ -286,6 +290,5 @@ ships can inherit it by accident.
 - Whether the first public release is `0.2.0` or `1.0.0`. `VersionPrefix` in
   `Directory.Build.props` reads `0.2.0`, bumped for the .NET 10 upgrade but still a
   development number.
-- When the Store listing happens, and who owns the one-time listing work.
 - arm64 is not built; add it if Surface devices matter for a pen application.
 - The brand mark is placeholder-grade (decision 12).

@@ -20,7 +20,8 @@ per release. The current product version is `VersionPrefix` in `Directory.Build.
 
 What 1.0 was waiting on is in the product: Preferences, `.wimport`, Explorer and VS Code
 previews, the public documentation site, and Finger drawing (default when no pen is
-detected). Two launch assets remain.
+detected). The Store listing was submitted by hand on 20 August 2026 for 0.9.2. One launch
+asset remains, and one piece of automation follows from the submission.
 
 ## 1. Video teaser
 
@@ -36,21 +37,35 @@ Record against the current UI: Preferences, Finger drawing, the tab strip, LiveV
 freeze/disconnect/reconnect, and a `.wimport` drop. The campaign hero on the home page
 stays through 14 September 2026; the teaser is independent of that art.
 
-## 2. Microsoft Store
+## 2. Automatic Store submission
 
-Packaging is in the repo. `scripts/build-installer.ps1` writes an unsigned
-`SQLBI.Whiteboard.<version>.x64.msix` for the released channel. The package declares
-`.wboard` / `.wimport` and the thumbnail handler. The Store signs the package itself, so
-the SQLBI certificate is not involved.
+The one-time work is done: 0.9.2 was submitted by hand on 20 August 2026, with the listing,
+screenshots, age rating, and package upload entered in Partner Center. Every field that was
+entered is recorded in [installer/msix/STORE-LISTING.md](installer/msix/STORE-LISTING.md),
+so an automated submission has an exact target rather than a guess. That page is also where
+a listing change belongs, so the record does not drift from what the Store shows.
 
-Listing, screenshots, age rating, and the first Partner Center upload are still manual.
-Follow [installer/msix/STORE-LISTING.md](installer/msix/STORE-LISTING.md), which records
-the reserved package identity. `PublisherDisplayName` is `SQLBI Corp` (no period) and
-copyright elsewhere is `SQLBI Corp.`, but the manifest `Publisher` is the Store identity
-`CN=<GUID>`, not a readable name — the two are unrelated fields. Do not automate
-submission until that first upload has succeeded. Certification must never gate the
-GitHub MSI release.
+What remains is publishing the next version without visiting Partner Center, through the
+Microsoft Store submission API. It needs an Azure AD application authorised for the Partner
+Center account; its tenant, client id, and secret are infrastructure, so they belong in the
+pipeline's variable group and never in this repository (CONTRIBUTING.md).
+
+Two constraints shape where it can sit in the pipeline:
+
+- Certification takes hours to days, so submission runs beside the GitHub release and never
+  gates it (decision 13). A failed or slow submission must leave the MSI download unaffected.
+- Only the released channel is submittable, and only from a run that already produced the
+  MSIX it uploads (decision 9). Do not rebuild for the Store.
+
+Packaging itself needs no work. `scripts/build-installer.ps1` writes an unsigned
+`SQLBI.Whiteboard.<version>.x64.msix` for the released channel, the package declares
+`.wboard` / `.wimport` and the thumbnail handler, and the Store re-signs it, so the SQLBI
+certificate is not involved.
+
+Watch the identity fields when touching any of this: `PublisherDisplayName` is `SQLBI Corp`
+(no period) and copyright elsewhere is `SQLBI Corp.`, while the manifest `Publisher` is the
+Store identity `CN=<GUID>` rather than a readable name. The three are unrelated fields.
 
 Store availability is uneven on managed corporate machines, which is why the MSI channel
-stays the primary route rather than a fallback (decision 10). The teaser can wait; the
-listing cannot ship without stills (1366×768 or 1920×1080) of the real UI.
+stays the primary route rather than a fallback (decision 10). Nothing links to the Store
+until certification completes.

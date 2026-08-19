@@ -20,7 +20,8 @@ itself. Do not run it to “release” anything.
 | Ship a VS Code extension update | Bump `version` in `vscode/sqlbi-whiteboard/package.json` in a pull request and merge. The **Publish VS Code extension** Action publishes `sqlbi.sqlbi-whiteboard` if that version is not already on the Marketplace. To retry: Actions → **Publish VS Code extension** → **Run workflow**. |
 | Update whiteboard.sqlbi.com | Merge a change under `site/`. The **Publish site** Action deploys. To retry: Actions → **Publish site** → **Run workflow**. |
 | Rebuild brand assets | Run `scripts/build-assets.ps1` locally. Only when the artwork changes. |
-| Build a Store MSIX (do not submit) | `scripts/build-installer.ps1` already writes `SQLBI.Whiteboard.<version>.x64.msix`. To pack only: `scripts/build-msix.ps1`. Identity version is `VersionPrefix.0`. |
+| Build a Store MSIX | `scripts/build-installer.ps1` already writes `SQLBI.Whiteboard.<version>.x64.msix`. To pack only: `scripts/build-msix.ps1`. Identity version is `VersionPrefix.0`. |
+| Submit to the Store | By hand in Partner Center, from the MSIX the release run produced. The listing exists (0.9.2, submitted 20 August 2026); `installer/msix/STORE-LISTING.md` is what to enter. The pipeline does not submit. |
 
 The three GitHub Actions live under **Actions** in this repository. Their names are
 **Pull request**, **Publish VS Code extension**, and **Publish site**. The signed
@@ -165,7 +166,8 @@ Stages: **Build** produces every installer variant plus an unsigned released-cha
 MSIX, **PreRelease** publishes the pre-release channel to GitHub, **Release** is gated
 by approvals on the `whiteboard-release` environment and uploads the released-channel
 installers **that the same run already produced** (decision 9). The MSIX is an artifact
-only until a Partner Center listing exists; it is not submitted by the pipeline.
+the pipeline publishes but does not submit; uploading it to Partner Center is still a
+manual act.
 
 Creating a GitHub Release uses the `sql-bi write assets` service connection
 (`contents: write`).
@@ -192,8 +194,9 @@ The agreed shape, now in use for the pre-release path:
    prerelease.
 3. Promotion is an approval on the Release stage of **that** run. It publishes the
    already-built released-channel artifacts — nothing is rebuilt.
-4. winget submission and the Store submission follow from the published release, in
-   parallel, once those pieces exist. Neither gates the download being available.
+4. The Store submission follows from the published release, by hand for now. winget
+   submission follows the same way once it exists. Neither gates the download being
+   available.
 
 ### Still to build
 
@@ -202,8 +205,9 @@ Roughly in dependency order:
 1. Publish `stable.json` and `dev.json` manifests alongside the binaries, for the download
    page, a future in-app update check, and winget automation to share one source.
 2. Add winget submission triggered by a published release.
-3. Partner Center listing and first Store submission (decision 13). Packaging exists;
-   do not automate upload until that first submission has been done by hand.
+3. Automate Store submission from the published release (decision 13). The listing and
+   the first submission were done by hand on 20 August 2026, which was the precondition;
+   `installer/msix/STORE-LISTING.md` records what an automated submission must reproduce.
 
 ### Verification before a public release
 
