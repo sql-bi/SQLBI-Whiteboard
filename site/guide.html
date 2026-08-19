@@ -49,7 +49,7 @@
     <section class="story">
       <h3>Pin a live demo without leaving the board</h3>
       <p>Add a LiveView of DAX Studio, SSMS, or a browser. When the query result is the thing you want to keep talking about, copy the LiveView and paste. The paste is a still bitmap of the last frame, a screenshot that stays on the board while you keep drawing.</p>
-      <p>Freeze the original LiveView if you want that same container to stay put and resume later. Reconnect after you reload a board: Windows cannot save the capture permission, so the saved frame appears immediately and Reconnect restores the live feed.</p>
+      <p><span class="ui">Freeze</span> the original LiveView if you want that same container to stay put and resume later. <span class="ui">Reconnect</span> after you reload a board: Windows cannot save the capture permission, so the saved frame appears immediately and <span class="ui">Reconnect</span> restores the live feed.</p>
     </section>
 
     <section class="story">
@@ -59,13 +59,13 @@
 
     <section class="story">
       <h3>Explain a measure</h3>
-      <p>Paste DAX, or drop a <code>.dax</code> file. Switch the language selector to DAX, press F6 to format it locally, then draw on the container. The same path works for SQL Server scripts with <code>.sql</code> files and F6.</p>
+      <p>Paste DAX, or drop a <code>.dax</code> file. Switch the language selector to DAX, press <kbd>F6</kbd> to format it locally, then draw on the container. The same path works for SQL Server scripts with <code>.sql</code> files and <kbd>F6</kbd>.</p>
       <p>In edit mode the text reflows as you change the width. In display mode a resize scales the whole visual, like a picture of the code, so the room still sees the layout you just formatted.</p>
     </section>
 
     <section class="story">
       <h3>Talk to the room</h3>
-      <p>The laser pointer is for the projector, not for the file. The trail length and fade live in Preferences. A pen in the air shows a small high-contrast hover dot; the dot disappears on contact so it never sits under the nib. A physical mouse keeps a normal arrow.</p>
+      <p>The laser pointer is for the projector, not for the file. The trail length and fade live in <span class="ui">Preferences</span>. A pen in the air shows a small high-contrast hover dot; the dot disappears on contact so it never sits under the nib. A physical mouse keeps a normal arrow.</p>
     </section>
 
     <section class="story">
@@ -75,7 +75,7 @@
 
     <section class="story">
       <h3>Bring a workshop in</h3>
-      <p>A <code>.wimport</code> file is Markdown that builds image and text containers. Drop it on an open board to add them under the pointer. The toolbar Import button does the same at the top-left of the view. File → Open, or a double-click in the released install, starts a new untitled board from the recipe. Save always writes a <code>.wboard</code>.</p>
+      <p>A <code>.wimport</code> file is Markdown that builds image and text containers. Drop it on an open board to add them under the pointer. The toolbar <span class="ui">Import</span> button does the same at the top-left of the view. <span class="ui">File → Open</span>, or a double-click in the released install, starts a new untitled board from the recipe. Save always writes a <code>.wboard</code>.</p>
       <p>Missing pictures or scripts are skipped and listed in a dialog you can copy. The <a href="wimport.html">import format</a> is the contract for that file.</p>
     </section>
 
@@ -87,26 +87,26 @@
     <h2>The board</h2>
 
     <h3>Ink and tools</h3>
-    <p>The session starts on the Pen tool. Pressure is recorded. Highlighter is a translucent stroke for marking a line of DAX or a region of a chart without covering it. Calligraphy is a nib that responds to direction, for labels and arrows that need to read from the back of the room. Laser is the pointer for the projector; it does not write to the file. The rear eraser on a Wacom pen removes whole strokes. Palm rejection suspends touch navigation while the pen is down so a resting hand does not pan the board.</p>
-    <p>The toolbar stays small on purpose. Preferences control whether it sits in a corner or follows a layout you prefer.</p>
+    <p>The session starts on the <span class="ui">Pen</span> tool. Pressure is recorded. <span class="ui">Highlighter</span> is a translucent stroke for marking a line of DAX or a region of a chart without covering it. <span class="ui">Calligraphy</span> is a nib that responds to direction, for labels and arrows that need to read from the back of the room. <span class="ui">Laser</span> is the pointer for the projector; it does not write to the file. The rear eraser on a Wacom pen removes whole strokes. Palm rejection suspends touch navigation while the pen is down so a resting hand does not pan the board.</p>
+    <p>The toolbar stays small on purpose. <span class="ui">Preferences</span> control whether it sits in a corner or follows a layout you prefer.</p>
 
     <h3>Navigation</h3>
-    <p>Touch pans. Two fingers pinch-zoom. The mouse wheel zooms at the pointer. Middle mouse, right mouse (held), or Space temporarily pans. F11 toggles full screen; Escape leaves it unless a text container is being edited.</p>
+    <p>Touch pans. Two fingers pinch-zoom. The mouse wheel zooms at the pointer. Middle mouse, right mouse (held), or <kbd>Space</kbd> temporarily pans. <kbd>F11</kbd> toggles full screen; <kbd>Escape</kbd> leaves it unless a text container is being edited.</p>
 
     <h3>Containers</h3>
     <p>Images, LiveViews, and text blocks are containers. With a mouse, click to move, drag the circular handle to resize while keeping aspect ratio. Releasing the mouse returns to the drawing tool you had. Imported images accept PNG, JPEG, BMP, and GIF, including clipboard paste and Explorer drag-and-drop.</p>
 
     <h3>Text, DAX, and SQL</h3>
-    <p>Paste plain text to create a text container and enter edit mode. F2 edits the selected container. The language selector chooses Plain text, DAX, or SQL Server. F6 formats DAX or SQL locally. SQL Server mode targets SQL Server 2025 T-SQL, keeps <code>GO</code> batch separators, and leaves an invalid script unchanged. Ctrl+Enter commits; Escape restores the previous text, language, and size.</p>
+    <p>Paste plain text to create a text container and enter edit mode. <kbd>F2</kbd> edits the selected container. The language selector chooses Plain text, DAX, or SQL Server. <kbd>F6</kbd> formats DAX or SQL locally. SQL Server mode targets SQL Server 2025 T-SQL, keeps <code>GO</code> batch separators, and leaves an invalid script unchanged. <kbd>Ctrl</kbd><span class="plus">+</span><kbd>Enter</kbd> commits; <kbd>Escape</kbd> restores the previous text, language, and size.</p>
 
     <h3>LiveView</h3>
-    <p>Tools → Add LiveView captures a window or a display. The container behaves like an image: move, resize, frame, delete, undo. Tools → Freeze stops capture on the last frame; the same command resumes if the target is still there. Tools → Reconnect picks a new target without losing the container or its ink.</p>
+    <p><span class="ui">Tools → Add LiveView</span> captures a window or a display. The container behaves like an image: move, resize, frame, delete, undo. <span class="ui">Tools → Freeze</span> stops capture on the last frame; the same command resumes if the target is still there. <span class="ui">Tools → Reconnect</span> picks a new target without losing the container or its ink.</p>
 
     <h3>Files</h3>
-    <p>Ctrl+S and Ctrl+O save and open a <code>.wboard</code>. The released installer registers that type and <code>.wimport</code>. The pre-release (Dev) channel does not, so it can sit beside a released copy without stealing the file association.</p>
+    <p><kbd>Ctrl</kbd><span class="plus">+</span><kbd>S</kbd> and <kbd>Ctrl</kbd><span class="plus">+</span><kbd>O</kbd> save and open a <code>.wboard</code>. The released installer registers that type and <code>.wimport</code>. The pre-release (Dev) channel does not, so it can sit beside a released copy without stealing the file association.</p>
 
     <h3>Preferences</h3>
-    <p>Tools → Preferences is a searchable list: which monitor to open on, start full screen, laser trail timing, and toolbar placement. New settings are more rows in that list, not a new dialog.</p>
+    <p><span class="ui">Tools → Preferences</span> is a searchable list: which monitor to open on, start full screen, laser trail timing, and toolbar placement. New settings are more rows in that list, not a new dialog.</p>
   </article>
 
   <nav class="pagenav" aria-label="More documentation">

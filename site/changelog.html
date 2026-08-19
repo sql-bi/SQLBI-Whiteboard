@@ -120,18 +120,53 @@
           });
         }
 
-        var html = '';
-        for (var i = 0; i < rows.length; i++) {
-          var r = rows[i];
-          var when = new Date(r.published_at).toLocaleDateString(undefined, {
-            year: 'numeric', month: 'long', day: 'numeric'
-          });
-          var label = r.prerelease ? 'Pre-release' : 'Open';
-          html += '<li><a href="' + esc(r.html_url) + '"><span class="ver">' +
-            esc(r.tag_name.replace(/^v/, '')) + '</span><span class="when">' +
-            esc(when) + '</span><span class="go">' + label + '</span></a></li>';
+        function firstLine(text) {
+          var lines = String(text).replace(/\r\n/g, '\n').split('\n');
+          for (var i = 0; i < lines.length; i++) {
+            var line = lines[i].replace(/^#+\s*/, '').trim();
+            if (line) return line;
+          }
+          return '';
         }
-        list.innerHTML = html;
+
+        function notesFor(release) {
+          var body = (release.body || '').trim();
+          if (body) return Promise.resolve(body);
+          return fetch('https://api.github.com/repos/sql-bi/SQLBI-Whiteboard/commits/' +
+              encodeURIComponent(release.tag_name))
+            .then(function (response) {
+              if (!response.ok) return '';
+              return response.json();
+            })
+            .then(function (commit) {
+              return (commit && commit.commit && commit.commit.message) || '';
+            })
+            .catch(function () { return ''; });
+        }
+
+        Promise.all(rows.map(notesFor)).then(function (notes) {
+          var html = '';
+          for (var i = 0; i < rows.length; i++) {
+            var r = rows[i];
+            var when = new Date(r.published_at).toLocaleDateString(undefined, {
+              year: 'numeric', month: 'long', day: 'numeric'
+            });
+            var full = notes[i] || '';
+            var sum = firstLine(full);
+            html += '<li><div class="reltop"><a class="ver" href="' + esc(r.html_url) + '">' +
+              esc(r.tag_name.replace(/^v/, '')) + '</a><span class="when">' +
+              esc(when) + '</span></div>';
+            if (sum) {
+              html += '<p class="relsum">' + esc(sum) + '</p>';
+            }
+            if (full && full.replace(/\r\n/g, '\n').trim() !== sum) {
+              html += '<details><summary>Notes</summary><pre class="relbody">' +
+                esc(full.trim()) + '</pre></details>';
+            }
+            html += '</li>';
+          }
+          list.innerHTML = html;
+        });
       })
       .catch(function () {
         // Leave the static All releases row, which needs no scripting.

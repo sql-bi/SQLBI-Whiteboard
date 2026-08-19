@@ -92,6 +92,7 @@ code { font-size: .9em; }
 .features .ico-inline,
 article .ico-inline,
 footer .ico-inline { vertical-align: -2px; margin-right: 5px; }
+.nowrap { white-space: nowrap; }
 .brandicon { width: 19px; height: 19px; vertical-align: -3px; margin-right: 9px; }
 
 /* ---------------------------------------------------------------- top bar */
@@ -597,6 +598,9 @@ th {
 }
 .chipnav::-webkit-scrollbar { display: none; }
 .chipnav a {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
   font-size: 13.5px;
   font-weight: 600;
   color: var(--muted);
@@ -608,7 +612,15 @@ th {
   background: var(--surface);
   transition: color .12s ease, border-color .12s ease;
 }
+.chipnav a svg {
+  display: block;
+  width: 14px;
+  height: 14px;
+  flex: none;
+  opacity: .68;
+}
 .chipnav a:hover { color: var(--ink); border-color: var(--brand); }
+.chipnav a:hover svg { opacity: .9; }
 .chipnav a:focus-visible { outline: 2px solid var(--brand); outline-offset: 2px; }
 
 .keyfilter {
@@ -652,8 +664,23 @@ th {
 
 .keygroup { margin-top: 44px; padding-top: 0; }
 .keygroup:first-of-type { margin-top: 28px; }
-.keygroup h2 { margin-bottom: 14px; }
+.keygroup h2 {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 14px;
+  line-height: 1;
+}
 .keygroup[hidden] { display: none; }
+.secico {
+  display: flex;
+  align-items: center;
+  color: var(--muted);
+  flex: none;
+  height: 1em;
+  transform: translateY(0.06em);
+}
+.secico svg { display: block; width: 1em; height: 1em; }
 
 .keyrows {
   border: 1px solid var(--line);
@@ -678,6 +705,13 @@ th {
 .keyrow .act code { color: var(--ink); }
 @media (max-width: 700px) {
   .keyrow { grid-template-columns: 1fr; gap: 6px; }
+}
+
+/* A command in the application (or in GitHub / Azure, on Contribute):
+   heavier than body text, not a keycap, not bold emphasis. */
+.ui {
+  font-weight: 600;
+  letter-spacing: -.01em;
 }
 
 kbd {
@@ -738,21 +772,45 @@ footer a:hover { color: var(--ink); text-decoration: underline; }
   background: var(--surface);
   box-shadow: var(--shadow-sm);
 }
-.releases li { border-bottom: 1px solid var(--line); }
+.releases li { border-bottom: 1px solid var(--line); padding: 14px 18px; }
 .releases li:last-child { border-bottom: 0; }
-.releases a {
-  display: grid;
-  grid-template-columns: auto 1fr auto;
-  gap: 16px;
+.reltop {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 16px;
   align-items: baseline;
-  padding: 14px 18px;
-  text-decoration: none;
-  color: inherit;
+  justify-content: space-between;
 }
-.releases a:hover { background: var(--surface-2); }
-.releases .ver { font-weight: 640; color: var(--ink); }
+.releases .ver { font-weight: 640; color: var(--ink); text-decoration: none; }
+.releases .ver:hover { text-decoration: underline; }
 .releases .when { color: var(--muted); font-size: 14px; }
-.releases .go { color: var(--brand); }
+.relsum {
+  margin: 6px 0 0;
+  color: var(--muted);
+  font-size: 14.5px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.releases details { margin-top: 8px; }
+.releases summary {
+  cursor: pointer;
+  color: var(--brand-link);
+  font-size: 13.5px;
+  font-weight: 600;
+  list-style: none;
+}
+.releases summary::-webkit-details-marker { display: none; }
+.releases summary::after { content: " +"; font-weight: 500; }
+.releases details[open] summary::after { content: " \2212"; }
+.relbody {
+  margin: 10px 0 0;
+  font: inherit;
+  font-size: 14px;
+  line-height: 1.55;
+  white-space: pre-wrap;
+  color: var(--ink);
+}
 
 .compare { font-size: 14.5px; }
 .compare th:nth-child(2),

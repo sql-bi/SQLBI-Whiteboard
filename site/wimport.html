@@ -94,15 +94,15 @@
 
     <h2>Layout</h2>
     <p>Whiteboard measures each container, then packs them left to right. A thematic break starts a new row even if the current row is not full. Without a break, a row wraps when the next item would exceed about 2400 world units.</p>
-    <p>On drop, the group’s top-left is the pointer. On Open or toolbar Import, the group’s top-left is the top-left of the visible view. Do not put coordinates in the file. There is no <code>pos:</code>, no YAML front matter, and no HTML comment layout.</p>
+    <p>On drop, the group’s top-left is the pointer. On <span class="ui">Open</span> or toolbar <span class="ui">Import</span>, the group’s top-left is the top-left of the visible view. Do not put coordinates in the file. There is no <code>pos:</code>, no YAML front matter, and no HTML comment layout.</p>
 
     <h2>How the file is opened</h2>
     <table>
       <thead><tr><th>Action</th><th>Result</th></tr></thead>
       <tbody>
         <tr><td>Drop onto an open board</td><td>Containers are added. Pointer is the group top-left. Undo is one step.</td></tr>
-        <tr><td>Toolbar Import</td><td>Containers are added at the visible top-left.</td></tr>
-        <tr><td>File → Open, or double-click</td><td>New untitled board, then import. Save / Save As writes <code>.wboard</code> only. The <code>.wimport</code> path is used only to resolve relative links.</td></tr>
+        <tr><td><span class="ui">Import</span> (toolbar)</td><td>Containers are added at the visible top-left.</td></tr>
+        <tr><td><span class="ui">File → Open</span>, or double-click</td><td>New untitled board, then import. <span class="ui">Save</span> / <span class="ui">Save As</span> writes <code>.wboard</code> only. The <code>.wimport</code> path is used only to resolve relative links.</td></tr>
       </tbody>
     </table>
     <p>Missing or unreadable linked files are skipped. Whiteboard then shows a dialog listing the resolved paths, which can be copied.</p>
