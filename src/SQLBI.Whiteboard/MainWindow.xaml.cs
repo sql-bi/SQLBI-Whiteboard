@@ -2926,24 +2926,20 @@ public partial class MainWindow : Window
     {
         try
         {
-            if (Clipboard.ContainsImage())
+            var clipboard = Clipboard.GetDataObject();
+            if (ClipboardImageReader.TryRead(clipboard, out var pngBytes))
             {
-                var bitmap = Clipboard.GetImage();
-                if (bitmap is null)
-                {
-                    return Task.CompletedTask;
-                }
-
                 AddImage(
-                    WpfImageCodec.EncodePng(bitmap),
+                    pngBytes,
                     "clipboard-image.png",
                     "image/png");
                 return Task.CompletedTask;
             }
 
-            if (Clipboard.ContainsText(TextDataFormat.UnicodeText))
+            if (clipboard?.GetDataPresent(DataFormats.UnicodeText, autoConvert: true) == true &&
+                clipboard.GetData(DataFormats.UnicodeText, autoConvert: true) is string text)
             {
-                AddText(Clipboard.GetText(TextDataFormat.UnicodeText));
+                AddText(text);
             }
         }
         catch (Exception exception)

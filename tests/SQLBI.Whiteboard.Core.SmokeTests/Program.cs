@@ -69,6 +69,37 @@ Assert(
     DroppedFileImport.LanguageIdFor("notes.txt") == TextLanguageIds.Plain,
     "Dropped text files should pick a language from the extension.");
 
+var mixedClipboardFormats = ClipboardImageImport.PreferredFormats(
+    ["UnicodeText", "HTML Format", "DeviceIndependentBitmap", "PNG"]);
+Assert(
+    mixedClipboardFormats.Count == 2 &&
+    mixedClipboardFormats[0] == new ClipboardImageFormat("PNG", ClipboardImageDataKind.Encoded) &&
+    mixedClipboardFormats[1] == new ClipboardImageFormat(
+        "DeviceIndependentBitmap",
+        ClipboardImageDataKind.Dib),
+    "Clipboard images should be preferred by fidelity rather than source format order.");
+var reorderedClipboardFormats = ClipboardImageImport.PreferredFormats(
+    ["DeviceIndependentBitmap", "UnicodeText", "png"]);
+Assert(
+    reorderedClipboardFormats.Count == 2 &&
+    reorderedClipboardFormats[0].Name == "png" &&
+    reorderedClipboardFormats[1].Kind == ClipboardImageDataKind.Dib,
+    "Clipboard image selection should be case-insensitive and independent of enumeration order.");
+var clipboardDib = new byte[44];
+BitConverter.GetBytes(40).CopyTo(clipboardDib, 0);
+BitConverter.GetBytes(1).CopyTo(clipboardDib, 4);
+BitConverter.GetBytes(1).CopyTo(clipboardDib, 8);
+BitConverter.GetBytes((short)1).CopyTo(clipboardDib, 12);
+BitConverter.GetBytes((short)32).CopyTo(clipboardDib, 14);
+BitConverter.GetBytes(4).CopyTo(clipboardDib, 20);
+var clipboardBmp = ClipboardImageImport.WrapDibAsBmp(clipboardDib);
+Assert(
+    clipboardBmp.Length == clipboardDib.Length + 14 &&
+    clipboardBmp[0] == 'B' &&
+    clipboardBmp[1] == 'M' &&
+    BitConverter.ToInt32(clipboardBmp, 10) == 54,
+    "A clipboard DIB should gain a valid bitmap file header before WPF decoding.");
+
 var parsedImport = ImportDocument.Parse(
     """
     # Contoso workshop
