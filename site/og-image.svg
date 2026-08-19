@@ -1,5 +1,5 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 630" width="1200" height="630" role="img"
-     aria-label="SQLBI Whiteboard — the whiteboard for teaching. whiteboard.sqlbi.com">
+     aria-label="SQLBI Whiteboard, the whiteboard for teaching. whiteboard.sqlbi.com">
   <title>SQLBI Whiteboard</title>
   <!-- The evergreen card, in the same language as the site: grid ground, one red
        accent, the application tile. hero-launch-card.svg is the campaign one. -->
@@ -30,7 +30,7 @@
   </g>
 
   <g font-family="Segoe UI Variable Display, Segoe UI, sans-serif" fill="#15171C">
-    <text x="80" y="306" font-size="70" font-weight="700" letter-spacing="-2.5">The whiteboard for <tspan fill="#D82121">teaching</tspan></text>
+    <text x="80" y="306" font-size="70" font-weight="700" letter-spacing="-2.5">The whiteboard for <tspan fill="#F42727">teaching</tspan></text>
     <text x="80" y="368" font-size="27" fill="#5C6371">DAX, SQL, data modeling, and anything else you explain to people.</text>
     <text x="80" y="412" font-size="27" fill="#5C6371">A native Windows application for pen, touch, and live capture.</text>
     <text x="80" y="572" font-size="26" font-weight="600" fill="#B71D1D">whiteboard.sqlbi.com</text>

@@ -27,6 +27,7 @@ New-Item -ItemType Directory -Force -Path $work | Out-Null
 # delivery: wide enough for a high-density display, small enough to always fetch.
 $cards = @(
     @{ svg = 'og-image.svg';         png = 'og-image.png';         width = 1200 },
+    @{ svg = 'hero.svg';             png = 'hero.png';             width = 1200 },
     @{ svg = 'hero-launch-card.svg'; png = 'hero-launch-card.png'; width = 1200 },
     @{ svg = 'hero-launch.svg';      png = 'hero-launch.png';      width = 1600 }
 )
@@ -57,7 +58,13 @@ img{display:block;width:$($card.width)px;height:${height}px}</style>
         --screenshot="$out" --window-size="$($card.width),$height" `
         ([Uri]$page).AbsoluteUri *> $null
 
-    # Chrome can still be flushing the file as it exits, so settle before reporting.
+    # Chrome can still be flushing the file as it exits, so wait for it to appear
+    # and then settle on a stable size before reporting.
+    $deadline = (Get-Date).AddSeconds(8)
+    while (-not (Test-Path $out) -and (Get-Date) -lt $deadline) {
+        Start-Sleep -Milliseconds 150
+    }
+    if (-not (Test-Path $out)) { throw "Chrome did not write $out" }
     $kb = 0
     do { $previous = $kb; Start-Sleep -Milliseconds 150; $kb = [Math]::Round((Get-Item $out).Length / 1KB) }
     while ($kb -ne $previous)

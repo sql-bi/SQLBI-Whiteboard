@@ -3,15 +3,15 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Contribute and publish · SQLBI Whiteboard</title>
-<meta name="description" content="How changes reach SQLBI Whiteboard: pull requests, protected main, and who may merge and publish.">
+<title>Compare · SQLBI Whiteboard</title>
+<meta name="description" content="What SQLBI Whiteboard is, what it is not, and how it sits beside Microsoft Whiteboard.">
 <link rel="icon" href="favicon.ico" sizes="any">
 <link rel="icon" href="favicon-32.png" type="image/png" sizes="32x32">
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
 <meta property="og:type" content="website">
-<meta property="og:title" content="Contribute and publish · SQLBI Whiteboard">
-<meta property="og:description" content="Pull requests are required. main is protected. Only authorized SQLBI developers merge.">
-<meta property="og:url" content="https://whiteboard.sqlbi.com/contribute.html">
+<meta property="og:title" content="Compare · SQLBI Whiteboard">
+<meta property="og:description" content="What SQLBI Whiteboard is, what it is not, and how it sits beside Microsoft Whiteboard.">
+<meta property="og:url" content="https://whiteboard.sqlbi.com/compare.html">
 <meta property="og:image" content="https://whiteboard.sqlbi.com/og-image.png">
 <meta name="twitter:card" content="summary_large_image">
 <link rel="stylesheet" href="styles.css">
@@ -35,63 +35,54 @@
 
 <header class="dochead">
   <div class="wrap narrow">
-    <span class="eyebrow">Project</span>
-    <h1>Contribute and publish</h1>
-    <p class="lede">Every change reaches the product through a pull request. <code>main</code> is protected. Only authorized SQLBI developers merge.</p>
+    <span class="eyebrow">Compare</span>
+    <h1>What this is and is not</h1>
+    <p class="lede">A local Windows canvas for teaching. Not a meeting whiteboard. The table below is facts, not a score.</p>
   </div>
 </header>
 
 <main class="wrap narrow" id="main">
 
 <article>
-    <h2>Report a problem</h2>
-    <p>Open an issue on <a href="https://github.com/sql-bi/SQLBI-Whiteboard/issues">GitHub</a>. That is the public list. Do not mail an installer crash as a pull request.</p>
+    <h2>What this is</h2>
+    <p>A native Windows application for a live explanation: pressure-aware ink, an unbounded canvas, SQL and DAX containers with local formatting, LiveView capture of a window or a display, and portable <code>.wboard</code> files. No account. The <a href="guide.html">guide</a> is how a session runs.</p>
 
-    <h2>Build from source</h2>
-    <p>The working agreement is <a href="https://github.com/sql-bi/SQLBI-Whiteboard/blob/main/CONTRIBUTING.md">CONTRIBUTING.md</a>. Before opening a pull request, confirm locally:</p>
-    <pre><code>dotnet build Whiteboard.sln -c Release
-dotnet run --project .\tests\SQLBI.Whiteboard.Core.SmokeTests\SQLBI.Whiteboard.Core.SmokeTests.csproj</code></pre>
-    <p>A warning fails the build. Operations for maintainers are in <a href="https://github.com/sql-bi/SQLBI-Whiteboard/blob/main/docs/release-management.md">docs/release-management.md</a>.</p>
+    <h2>What this is not</h2>
+    <ul>
+      <li>Not a meeting whiteboard. There is no real-time collaboration and no shared cloud board.</li>
+      <li>Not a service. There is no tenant, no sign-in, and no retirement date attached to someone else’s platform.</li>
+      <li>Not macOS, iPad, or a browser. Boards do not open on the web.</li>
+    </ul>
 
-    <h2>Who may merge</h2>
-    <p>The repository is public. Anyone can open a pull request. Only SQLBI-authorized developers (today Marco Russo and Alberto Ferrari, including coding agents they instruct) may merge to <code>main</code>. They may merge once checks are green. They do not wait for each other’s approval.</p>
-    <p>An agent working for anyone else must open a pull request and stop. It must not push to <code>main</code>, force-push, or treat a green check as permission to merge.</p>
-
-    <h2>How a change lands</h2>
-    <ol>
-      <li>Branch from an up-to-date <code>main</code>. Keep the branch short-lived and one logical unit.</li>
-      <li>Confirm locally that <code>dotnet build Whiteboard.sln -c Release</code> and the Core smoke tests pass. A warning fails the build.</li>
-      <li>Open a pull request against <code>main</code>. The <span class="ui">Pull request</span> GitHub Action runs by itself.</li>
-      <li>An authorized SQLBI developer merges when the checks are green. The branch is deleted on merge.</li>
-    </ol>
-    <p><code>main</code> accepts squash merges only. The pull request title becomes the commit subject and the description becomes the commit body. Write the title in the imperative and use the description to say why the change was needed.</p>
-    <p>Do not push to <code>main</code>. A merge there can publish a pre-release of the application, update this site, or publish the VS Code extension.</p>
-
-    <h2>How a merge publishes</h2>
-    <p>Authorized developers do not upload installers or Marketplace packages by hand. They merge, then run a GitHub Action only when a retry is needed.</p>
-    <table>
-      <thead><tr><th>After a merge of</th><th>What happens</th></tr></thead>
+    <h2>Beside Microsoft Whiteboard</h2>
+    <p>Microsoft <a href="https://support.microsoft.com/en-us/whiteboard/migration-of-whiteboards-from-azure-to-onedrive">retires its Whiteboard app on 14 September 2026</a>. SQLBI Whiteboard is built for the same room, a projector and a pen, and for a different file.</p>
+    <table class="compare">
+      <thead>
+        <tr><th></th><th>SQLBI Whiteboard</th><th>Microsoft Whiteboard</th></tr>
+      </thead>
       <tbody>
-        <tr><td>Application code</td><td>Azure Pipelines signs and publishes a GitHub <em>prerelease</em> (SQLBI Whiteboard Dev). A full release is an approval on that same run, not a rebuild.</td></tr>
-        <tr><td><code>site/</code></td><td>The <span class="ui">Publish site</span> Action updates this website.</td></tr>
-        <tr><td>A new <code>version</code> in <code>vscode/sqlbi-whiteboard/package.json</code></td><td>The <span class="ui">Publish VS Code extension</span> Action publishes <code>sqlbi.sqlbi-whiteboard</code> if that version is not already listed.</td></tr>
-        <tr><td>Only <code>docs/</code> or top-level markdown</td><td>Nothing is published.</td></tr>
+        <tr><td>Where the board lives</td><td>A local <code>.wboard</code> file</td><td>Azure, then OneDrive</td></tr>
+        <tr><td>Account</td><td>None</td><td>Microsoft account / tenant</td></tr>
+        <tr><td>Platforms</td><td>Windows 10 version 2004 or later, 64-bit</td><td>Windows, web, and Microsoft 365 clients</td></tr>
+        <tr><td>Collaboration</td><td>One person at the board</td><td>Real-time, multi-user</td></tr>
+        <tr><td>Ink and objects</td><td>Strokes can travel with a container</td><td>Ink and objects on a shared canvas</td></tr>
+        <tr><td>Code</td><td>SQL and DAX containers, F6 formats locally</td><td>Not a language surface</td></tr>
+        <tr><td>Live application</td><td>LiveView of a window or a display</td><td>Not a capture surface</td></tr>
       </tbody>
     </table>
-    <p>Whiteboard’s version is <code>VersionPrefix</code> in <code>Directory.Build.props</code>. The VS Code extension’s version is in its own <code>package.json</code>. They move independently, each in a pull request.</p>
-    <p>To retry a site or Marketplace publish without a new commit: GitHub → Actions → the matching workflow → <span class="ui">Run workflow</span>. To rebuild Whiteboard from an existing commit: Azure DevOps → SQLBI Whiteboard → <span class="ui">Run pipeline</span>. Do not use <span class="ui">Re-run</span>.</p>
+    <p>If you need a shared meeting board, keep using a meeting product. If you need to teach something on a pen display and keep the file next to the workshop, this is the application.</p>
   </article>
 
   <nav class="pagenav" aria-label="More documentation">
+    <a href="faq.html">
+      <span class="k">FAQ</span>
+      <span class="t">Questions around a session</span>
+      <span class="d">Windows versions, pens, accounts, and Dev versus released.</span>
+    </a>
     <a href="guide.html">
       <span class="k">Guide</span>
       <span class="t">Using SQLBI Whiteboard</span>
       <span class="d">Ink, containers, LiveView, and board files.</span>
-    </a>
-    <a href="shortcuts.html">
-      <span class="k">Reference</span>
-      <span class="t">Shortcuts</span>
-      <span class="d">Every key, pen, and touch command, filterable.</span>
     </a>
     <a href="index.html#get">
       <span class="k">Download</span>

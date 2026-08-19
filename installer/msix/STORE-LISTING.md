@@ -24,8 +24,8 @@ until the listing assets below exist.
 
 3. **Associate** the app so Partner Center accepts that identity.
 4. **Age rating** questionnaire.
-5. **Privacy policy URL** (required). A SQLBI privacy page is enough if it
-   covers this product.
+5. **Privacy policy URL** (required). Use
+   `https://whiteboard.sqlbi.com/privacy.html`.
 6. **Support contact** (email or https://www.sqlbi.com).
 7. **Category** — Productivity is the closest fit.
 8. **`runFullTrust` declaration** — required for this Win32 package. Partner

@@ -19,28 +19,25 @@
 <link rel="stylesheet" href="styles.css">
 </head>
 <body>
+<a class="skip" href="#get">Skip to content</a>
 
 <div class="topbar">
   <div class="wrap">
     <a class="brandmark" href="index.html">
-      <svg viewBox="0 0 256 256" aria-hidden="true"><rect x="8" y="8" width="240" height="240" rx="52" fill="#D82121"/><g transform="translate(32 32) scale(8)" fill="#fff"><path d="m15.99 4-3.07 3.06c-.34.34-.6.74-.78 1.18l-.08.23-.74 2.3a2.25 2.25 0 0 0 2.64 2.88l.15-.04 2.33-.7a3.5 3.5 0 0 0 1.29-.7l.18-.18L22 7.95v8.8c0 1.8-1.45 3.25-3.25 3.25H5.25A3.25 3.25 0 0 1 2 16.75v-4.2l.08-.03.07-.04 3.76-2.36.1-.05A.75.75 0 0 1 7 11l-.04.1-1.2 2.3-.08.14a2.25 2.25 0 0 0 3 2.95l.17-.09 1.76-1 .09-.05a.75.75 0 0 0-.74-1.3l-.1.05-1.75 1-.1.04a.75.75 0 0 1-.97-.96l.04-.09 1.2-2.28.09-.17a2.25 2.25 0 0 0-3.12-2.87l-.15.08L2 10.81V7.24a3.25 3.25 0 0 1 3.07-3.24L5.25 4h10.74Zm5.19-.46.13.13.12.13c.76.89.72 2.23-.13 3.07l-4.28 4.28c-.26.26-.58.45-.94.56l-2.33.7a1 1 0 0 1-1.24-1.27l.74-2.29c.11-.34.3-.65.56-.9l4.29-4.29a2.27 2.27 0 0 1 3.08-.12Z"/></g></svg>
+      <svg viewBox="0 0 256 256" aria-hidden="true"><defs><linearGradient id="tile" x1="32" y1="24" x2="224" y2="232" gradientUnits="userSpaceOnUse"><stop stop-color="#F42727"/><stop offset="1" stop-color="#B71D1D"/></linearGradient></defs><rect x="8" y="8" width="240" height="240" rx="52" fill="url(#tile)"/><rect x="9" y="9" width="238" height="238" rx="51" fill="none" stroke="#fff" stroke-opacity=".18" stroke-width="2"/><g transform="translate(32 32) scale(8)" fill="#fff"><path d="m15.99 4-3.07 3.06c-.34.34-.6.74-.78 1.18l-.08.23-.74 2.3a2.25 2.25 0 0 0 2.64 2.88l.15-.04 2.33-.7a3.5 3.5 0 0 0 1.29-.7l.18-.18L22 7.95v8.8c0 1.8-1.45 3.25-3.25 3.25H5.25A3.25 3.25 0 0 1 2 16.75v-4.2l.08-.03.07-.04 3.76-2.36.1-.05A.75.75 0 0 1 7 11l-.04.1-1.2 2.3-.08.14a2.25 2.25 0 0 0 3 2.95l.17-.09 1.76-1 .09-.05a.75.75 0 0 0-.74-1.3l-.1.05-1.75 1-.1.04a.75.75 0 0 1-.97-.96l.04-.09 1.2-2.28.09-.17a2.25 2.25 0 0 0-3.12-2.87l-.15.08L2 10.81V7.24a3.25 3.25 0 0 1 3.07-3.24L5.25 4h10.74Zm5.19-.46.13.13.12.13c.76.89.72 2.23-.13 3.07l-4.28 4.28c-.26.26-.58.45-.94.56l-2.33.7a1 1 0 0 1-1.24-1.27l.74-2.29c.11-.34.3-.65.56-.9l4.29-4.29a2.27 2.27 0 0 1 3.08-.12Z"/></g></svg>
       <span>SQLBI Whiteboard</span>
     </a>
     <nav class="topnav" aria-label="Site">
       <a href="guide.html">Guide</a>
       <a href="shortcuts.html">Shortcuts</a>
-      <a href="wimport.html">Import format</a>
-      <a href="contribute.html">Contribute</a>
-      <a href="https://marketplace.visualstudio.com/items?itemName=sqlbi.sqlbi-whiteboard"><svg class="ico-inline" viewBox="0 0 24 24" fill="#0098FF" aria-hidden="true"><path d="M23.15 2.587 18.21.21a1.494 1.494 0 0 0-1.705.29l-9.46 8.63-4.12-3.128a.999.999 0 0 0-1.276.057L.327 7.261A1 1 0 0 0 .326 8.74L3.899 12 .326 15.26a1 1 0 0 0 .001 1.479L1.65 17.94a.999.999 0 0 0 1.276.057l4.12-3.128 9.46 8.63a1.492 1.492 0 0 0 1.704.29l4.942-2.377A1.5 1.5 0 0 0 24 20.06V3.939a1.5 1.5 0 0 0-.85-1.352zm-5.146 14.861L10.826 12l7.178-5.448z"/></svg>VS Code</a>
-      <a href="https://github.com/sql-bi/SQLBI-Whiteboard"><svg class="ico-inline" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 .297c-6.63 0-12 5.373-12 12 0 5.303 3.438 9.8 8.205 11.385.6.113.82-.258.82-.577 0-.285-.01-1.04-.015-2.04-3.338.724-4.042-1.61-4.042-1.61C4.422 18.07 3.633 17.7 3.633 17.7c-1.087-.744.084-.729.084-.729 1.205.084 1.838 1.236 1.838 1.236 1.07 1.835 2.809 1.305 3.495.998.108-.776.417-1.305.76-1.605-2.665-.3-5.466-1.332-5.466-5.93 0-1.31.465-2.38 1.235-3.22-.135-.303-.54-1.523.105-3.176 0 0 1.005-.322 3.3 1.23.96-.267 1.98-.399 3-.405 1.02.006 2.04.138 3 .405 2.28-1.552 3.285-1.23 3.285-1.23.645 1.653.24 2.873.12 3.176.765.84 1.23 1.91 1.23 3.22 0 4.61-2.805 5.625-5.475 5.92.42.36.81 1.096.81 2.22 0 1.606-.015 2.896-.015 3.286 0 .315.21.69.825.57C20.565 22.092 24 17.592 24 12.297c0-6.627-5.373-12-12-12"/></svg>GitHub</a>
-      <a class="cta" href="#get">Download</a>
+      <a class="cta" href="#get" aria-current="page">Download</a>
     </nav>
   </div>
 </div>
 
 <header class="hero" id="get">
   <div class="wrap">
-    <div>
+    <div class="hero-copy">
       <span class="pill"><span class="dot"></span> Free and open source &middot; Windows</span>
 
       <h1>The whiteboard for <span class="accent">teaching</span></h1>
@@ -58,9 +55,9 @@
         </div>
         <p class="meta" id="meta"></p>
         <p class="alternates">
-          <a id="user-installer" href="https://github.com/sql-bi/SQLBI-Whiteboard/releases">Per-user installer</a>
+          <a id="user-installer" href="https://github.com/sql-bi/SQLBI-Whiteboard/releases">Per-user installer, no elevation</a>
           <span class="sep">&middot;</span>
-          <a id="portable" href="https://github.com/sql-bi/SQLBI-Whiteboard/releases">Portable ZIP</a>
+          <a id="portable" href="https://github.com/sql-bi/SQLBI-Whiteboard/releases">Portable ZIP, no install</a>
           <span class="sep">&middot;</span>
           <a href="https://github.com/sql-bi/SQLBI-Whiteboard/releases">All releases</a>
         </p>
@@ -69,14 +66,26 @@
       <p class="notice" id="notice" hidden></p>
     </div>
 
-    <div>
+    <figure class="hero-art">
       <!-- The page draws the vector: it stays sharp at any size and weighs a
            tenth of the export. The PNGs beside it are for social cards, which
            cannot render SVG. -->
       <img class="launch" src="hero-launch.svg" width="1200" height="1200"
-           alt="Microsoft is retiring its Whiteboard app on 14 September 2026. SQLBI Whiteboard is the replacement, shown on a pen display with a board of charts, a DAX measure, and handwriting.">
-      <p class="launch-caption">Microsoft <a href="https://support.microsoft.com/en-us/whiteboard/migration-of-whiteboards-from-azure-to-onedrive">retires its Whiteboard on 14 September 2026</a>.<br>This is what we drew instead.</p>
-    </div>
+           alt="Microsoft is retiring its Whiteboard app on 14 September 2026. SQLBI Whiteboard, shown on a pen display with charts, a DAX measure, and handwriting.">
+      <figcaption class="launch-caption">Microsoft <a href="https://support.microsoft.com/en-us/whiteboard/migration-of-whiteboards-from-azure-to-onedrive">retires its Whiteboard on 14 September 2026</a>.<br>This is what we drew instead.</figcaption>
+    </figure>
+
+    <section class="teaser" aria-label="Product teaser">
+      <div class="teaser-frame">
+        <!-- Replace 763673561 with the teaser id when that clip is published. -->
+        <iframe
+          src="https://player.vimeo.com/video/763673561?badge=0&amp;dnt=1&amp;title=0&amp;byline=0&amp;portrait=0"
+          allow="fullscreen; picture-in-picture"
+          referrerpolicy="strict-origin-when-cross-origin"
+          title="SQLBI Whiteboard, thirty seconds"></iframe>
+      </div>
+      <p class="launch-caption">Thirty seconds on a board.</p>
+    </section>
   </div>
 </header>
 
@@ -84,7 +93,7 @@
   <section class="wrap">
     <span class="eyebrow">Features</span>
     <h2>Everything stays on one canvas</h2>
-    <p class="section-lede">Ink, code, and a live application in the same place, so the explanation never breaks to switch windows — recording a lesson or standing at a projector.</p>
+    <p class="section-lede">Ink, code, and a live application in the same place, so the explanation never breaks to switch windows, whether you are recording a lesson or standing at a projector.</p>
     <ul class="features">
       <li>
         <span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 19l7-7 3 3-7 7-3-3z"/><path d="M18 13l-1.5-7.5L2 2l3.5 14.5L13 18l5-5z"/><path d="M2 2l7.6 7.6"/></svg></span>
@@ -109,7 +118,7 @@
       <li>
         <span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/></svg></span>
         <b>Portable board files</b>
-        Boards save as <code>.wboard</code> — Explorer and <a href="https://marketplace.visualstudio.com/items?itemName=sqlbi.sqlbi-whiteboard"><svg class="ico-inline" viewBox="0 0 24 24" fill="#0098FF" aria-hidden="true"><path d="M23.15 2.587 18.21.21a1.494 1.494 0 0 0-1.705.29l-9.46 8.63-4.12-3.128a.999.999 0 0 0-1.276.057L.327 7.261A1 1 0 0 0 .326 8.74L3.899 12 .326 15.26a1 1 0 0 0 .001 1.479L1.65 17.94a.999.999 0 0 0 1.276.057l4.12-3.128 9.46 8.63a1.492 1.492 0 0 0 1.704.29l4.942-2.377A1.5 1.5 0 0 0 24 20.06V3.939a1.5 1.5 0 0 0-.85-1.352zm-5.146 14.861L10.826 12l7.178-5.448z"/></svg>VS Code</a> show the embedded preview.
+        Boards save as <code>.wboard</code> files. Explorer and <a class="nowrap" href="https://marketplace.visualstudio.com/items?itemName=sqlbi.sqlbi-whiteboard"><svg class="ico-inline" viewBox="0 0 24 24" fill="#0098FF" aria-hidden="true"><path d="M23.15 2.587 18.21.21a1.494 1.494 0 0 0-1.705.29l-9.46 8.63-4.12-3.128a.999.999 0 0 0-1.276.057L.327 7.261A1 1 0 0 0 .326 8.74L3.899 12 .326 15.26a1 1 0 0 0 .001 1.479L1.65 17.94a.999.999 0 0 0 1.276.057l4.12-3.128 9.46 8.63a1.492 1.492 0 0 0 1.704.29l4.942-2.377A1.5 1.5 0 0 0 24 20.06V3.939a1.5 1.5 0 0 0-.85-1.352zm-5.146 14.861L10.826 12l7.178-5.448z"/></svg>VS Code</a> show the embedded preview.
       </li>
       <li>
         <span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 8v4l3 2"/></svg></span>
@@ -122,19 +131,33 @@
   <section class="wrap">
     <span class="eyebrow">Documentation</span>
     <h2>Read next</h2>
-    <p class="section-lede">Four pages cover the whole application. The shortcut list is the one to keep open during a session.</p>
+    <p class="section-lede">The pages on this site cover the application. The shortcut list is the one to keep open during a session.</p>
     <div class="doclist">
-      <a class="doclink" href="shortcuts.html">
-        <span>
-          <span class="title">Shortcuts</span>
-          <span class="desc">Every key, pen, mouse, and touch command on one filterable page — <kbd>F6</kbd> formats, <kbd>Alt</kbd><span class="plus">+</span><kbd>L</kbd> is the laser, <kbd>F11</kbd> is full screen.</span>
-        </span>
-        <span class="go"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h13"/><path d="m12 5 7 7-7 7"/></svg></span>
-      </a>
       <a class="doclink" href="guide.html">
         <span>
           <span class="title">Guide</span>
-          <span class="desc">Ink, containers, LiveView, DAX and SQL, and board files — the way a live session actually runs.</span>
+          <span class="desc">Ink, containers, LiveView, DAX and SQL, and board files. The way a live session actually runs.</span>
+        </span>
+        <span class="go"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h13"/><path d="m12 5 7 7-7 7"/></svg></span>
+      </a>
+      <a class="doclink" href="shortcuts.html">
+        <span>
+          <span class="title">Shortcuts</span>
+          <span class="desc">Every key, pen, mouse, and touch command on one filterable page. <kbd>F6</kbd> formats, <kbd>Alt</kbd><span class="plus">+</span><kbd>L</kbd> is the laser, <kbd>F11</kbd> is full screen.</span>
+        </span>
+        <span class="go"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h13"/><path d="m12 5 7 7-7 7"/></svg></span>
+      </a>
+      <a class="doclink" href="faq.html">
+        <span>
+          <span class="title">FAQ</span>
+          <span class="desc">Windows versions, pens, accounts, Dev versus released, and how to report a problem.</span>
+        </span>
+        <span class="go"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h13"/><path d="m12 5 7 7-7 7"/></svg></span>
+      </a>
+      <a class="doclink" href="compare.html">
+        <span>
+          <span class="title">Compare</span>
+          <span class="desc">What this is, what it is not, and how it sits beside Microsoft Whiteboard.</span>
         </span>
         <span class="go"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h13"/><path d="m12 5 7 7-7 7"/></svg></span>
       </a>
@@ -148,7 +171,7 @@
       <a class="doclink" href="contribute.html">
         <span>
           <span class="title">Contribute</span>
-          <span class="desc">Build from source, report a bug, and how a merge publishes a release.</span>
+          <span class="desc">How a change reaches the product: pull requests, who may merge, and what a merge publishes.</span>
         </span>
         <span class="go"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h13"/><path d="m12 5 7 7-7 7"/></svg></span>
       </a>
@@ -172,9 +195,16 @@
 
 <footer>
   <div class="wrap">
-    <span>Requires Windows 10 version 2004 or later, 64-bit.</span>
-    <span>
-      <a href="https://github.com/sql-bi/SQLBI-Whiteboard"><svg class="ico-inline" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 .297c-6.63 0-12 5.373-12 12 0 5.303 3.438 9.8 8.205 11.385.6.113.82-.258.82-.577 0-.285-.01-1.04-.015-2.04-3.338.724-4.042-1.61-4.042-1.61C4.422 18.07 3.633 17.7 3.633 17.7c-1.087-.744.084-.729.084-.729 1.205.084 1.838 1.236 1.838 1.236 1.07 1.835 2.809 1.305 3.495.998.108-.776.417-1.305.76-1.605-2.665-.3-5.466-1.332-5.466-5.93 0-1.31.465-2.38 1.235-3.22-.135-.303-.54-1.523.105-3.176 0 0 1.005-.322 3.3 1.23.96-.267 1.98-.399 3-.405 1.02.006 2.04.138 3 .405 2.28-1.552 3.285-1.23 3.285-1.23.645 1.653.24 2.873.12 3.176.765.84 1.23 1.91 1.23 3.22 0 4.61-2.805 5.625-5.475 5.92.42.36.81 1.096.81 2.22 0 1.606-.015 2.896-.015 3.286 0 .315.21.69.825.57C20.565 22.092 24 17.592 24 12.297c0-6.627-5.373-12-12-12"/></svg>GitHub</a> &middot;
+    <span>Built for Windows 11. Requires Windows 10 version 2004 or later, 64-bit.</span>
+    <span class="footlinks">
+      <a href="faq.html">FAQ</a><span class="sep">&middot;</span>
+      <a href="compare.html">Compare</a><span class="sep">&middot;</span>
+      <a href="changelog.html">Changelog</a><span class="sep">&middot;</span>
+      <a href="wimport.html">Import format</a><span class="sep">&middot;</span>
+      <a href="contribute.html">Contribute</a><span class="sep">&middot;</span>
+      <a href="privacy.html">Privacy</a><span class="sep">&middot;</span>
+      <a href="https://github.com/sql-bi/SQLBI-Whiteboard"><svg class="ico-inline" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 .297c-6.63 0-12 5.373-12 12 0 5.303 3.438 9.8 8.205 11.385.6.113.82-.258.82-.577 0-.285-.01-1.04-.015-2.04-3.338.724-4.042-1.61-4.042-1.61C4.422 18.07 3.633 17.7 3.633 17.7c-1.087-.744.084-.729.084-.729 1.205.084 1.838 1.236 1.838 1.236 1.07 1.835 2.809 1.305 3.495.998.108-.776.417-1.305.76-1.605-2.665-.3-5.466-1.332-5.466-5.93 0-1.31.465-2.38 1.235-3.22-.135-.303-.54-1.523.105-3.176 0 0 1.005-.322 3.3 1.23.96-.267 1.98-.399 3-.405 1.02.006 2.04.138 3 .405 2.28-1.552 3.285-1.23 3.285-1.23.645 1.653.24 2.873.12 3.176.765.84 1.23 1.91 1.23 3.22 0 4.61-2.805 5.625-5.475 5.92.42.36.81 1.096.81 2.22 0 1.606-.015 2.896-.015 3.286 0 .315.21.69.825.57C20.565 22.092 24 17.592 24 12.297c0-6.627-5.373-12-12-12"/></svg>GitHub</a><span class="sep">&middot;</span>
+      <a href="https://github.com/sql-bi/SQLBI-Whiteboard/blob/main/LICENSE">MIT</a><span class="sep">&middot;</span>
       <a class="sqlbi-mark" href="https://www.sqlbi.com" aria-label="SQLBI"><svg viewBox="0 0 1414.5 500" aria-hidden="true"><path d="M349.1,111.4c0-18.8-77.3-33.1-173.3-33.1S2.4,92.7,2.4,110.3v265c0,18.8,79.5,33.1,175.5,33.1s173.3-15.5,173.3-33.1V109.2ZM107.3,356.5c-23.2-2.2-46.4-4.4-69.6-7.7V310.2c23.2,2.2,46.4,4.4,69.6,5.5Zm103.8,2.3q-34.8,1.65-69.6,0V204.2h69.6Zm102.6-10c-23.2,3.3-46.4,6.6-69.6,7.7V243.9c23.2,0,46.4-1.1,69.6-2.2Z" style="fill:#eb5e5e"/><path d="M177.9,78.3c96.1,0,173.3,14.4,173.3,30.9s-77.3,30.9-173.3,30.9S2.4,125.8,2.4,109.2,81.9,78.3,177.9,78.3Z" style="fill:#d35455"/><path d="M481.6,293.6a197.51,197.51,0,0,0,88.3,21c25.4,0,54.1-4.4,54.1-21,0-17.7-26.5-26.5-55.2-30.9-42-6.6-100.5-18.8-100.5-80.6,0-62.9,56.3-79.5,110.4-79.5,49.7,0,82.8,14.4,101.6,25.4l-18.8,51.9c-15.5-9.9-46.4-21-82.8-21-25.4,0-48.6,5.5-48.6,21,0,19.9,32,21,49.7,23.2,74,12.1,106,43.1,106,91.6,0,62.9-66.2,75.1-115.9,75.1-45.3,0-81.7-11-107.1-25.4C462.8,345.5,481.6,293.6,481.6,293.6ZM939.7,493.4H877.9v-127c-12.1,5.5-27.6,6.6-43.1,6.6-72.9,0-128.1-40.9-128.1-131.4V234c0-87.2,51.9-131.4,128.1-131.4,21,0,70.7,3.3,104.9,23.2V493.4Zm-170-251.7c0,61.8,28.7,75.1,69.6,75.1,18.8,0,32-3.3,38.6-7.7V166.6c-9.9-4.4-22.1-7.7-40.9-7.7-42,0-67.3,14.4-67.3,75.1v7.7ZM977.3,6.6h64V374.3h-64V6.6Z" style="fill:currentColor"/><path d="M1077.8,6.6h61.8V109.3c12.1-5.5,27.6-6.6,43.1-6.6,72.9,0,128.1,40.9,128.1,131.4v7.7c0,88.3-51.9,131.4-128.1,131.4-21,0-70.7-3.3-104.9-23.2Zm171,227.3c0-61.8-29.7-76.1-70.6-76.1-17.7,0-32,4.4-37.5,7.7V308c8.8,4.4,22.1,7.7,40.9,7.7,42,0,67.3-14.4,67.3-75.1ZM1377,6.6c21,0,37.5,15.5,37.5,35.3s-16.6,36.4-37.5,36.4c-19.9,0-37.5-16.6-37.5-36.4S1356,6.6,1377,6.6Zm-31,109.3h61.8V373.1H1346V115.9Z" style="fill:#eb5e5e"/></svg></a>
     </span>
   </div>

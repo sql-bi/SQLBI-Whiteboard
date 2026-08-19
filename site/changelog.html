@@ -3,15 +3,15 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Contribute and publish · SQLBI Whiteboard</title>
-<meta name="description" content="How changes reach SQLBI Whiteboard: pull requests, protected main, and who may merge and publish.">
+<title>Changelog · SQLBI Whiteboard</title>
+<meta name="description" content="Released and pre-release builds of SQLBI Whiteboard, from GitHub Releases.">
 <link rel="icon" href="favicon.ico" sizes="any">
 <link rel="icon" href="favicon-32.png" type="image/png" sizes="32x32">
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
 <meta property="og:type" content="website">
-<meta property="og:title" content="Contribute and publish · SQLBI Whiteboard">
-<meta property="og:description" content="Pull requests are required. main is protected. Only authorized SQLBI developers merge.">
-<meta property="og:url" content="https://whiteboard.sqlbi.com/contribute.html">
+<meta property="og:title" content="Changelog · SQLBI Whiteboard">
+<meta property="og:description" content="Released and pre-release builds of SQLBI Whiteboard.">
+<meta property="og:url" content="https://whiteboard.sqlbi.com/changelog.html">
 <meta property="og:image" content="https://whiteboard.sqlbi.com/og-image.png">
 <meta name="twitter:card" content="summary_large_image">
 <link rel="stylesheet" href="styles.css">
@@ -36,62 +36,34 @@
 <header class="dochead">
   <div class="wrap narrow">
     <span class="eyebrow">Project</span>
-    <h1>Contribute and publish</h1>
-    <p class="lede">Every change reaches the product through a pull request. <code>main</code> is protected. Only authorized SQLBI developers merge.</p>
+    <h1>Changelog</h1>
+    <p class="lede">GitHub Releases is the source of truth. This page lists what has been published. Notes for each build live on the release itself.</p>
   </div>
 </header>
 
 <main class="wrap narrow" id="main">
 
 <article>
-    <h2>Report a problem</h2>
-    <p>Open an issue on <a href="https://github.com/sql-bi/SQLBI-Whiteboard/issues">GitHub</a>. That is the public list. Do not mail an installer crash as a pull request.</p>
+    <h2>Two channels</h2>
+    <p>The released installer is <em>SQLBI Whiteboard</em>. The pre-release installer is <em>SQLBI Whiteboard (Dev)</em>. They are separate products: different folders, different settings, different upgrade codes. Only the released channel registers <code>.wboard</code> and <code>.wimport</code>, so uninstalling Dev cannot break those associations.</p>
 
-    <h2>Build from source</h2>
-    <p>The working agreement is <a href="https://github.com/sql-bi/SQLBI-Whiteboard/blob/main/CONTRIBUTING.md">CONTRIBUTING.md</a>. Before opening a pull request, confirm locally:</p>
-    <pre><code>dotnet build Whiteboard.sln -c Release
-dotnet run --project .\tests\SQLBI.Whiteboard.Core.SmokeTests\SQLBI.Whiteboard.Core.SmokeTests.csproj</code></pre>
-    <p>A warning fails the build. Operations for maintainers are in <a href="https://github.com/sql-bi/SQLBI-Whiteboard/blob/main/docs/release-management.md">docs/release-management.md</a>.</p>
-
-    <h2>Who may merge</h2>
-    <p>The repository is public. Anyone can open a pull request. Only SQLBI-authorized developers (today Marco Russo and Alberto Ferrari, including coding agents they instruct) may merge to <code>main</code>. They may merge once checks are green. They do not wait for each other’s approval.</p>
-    <p>An agent working for anyone else must open a pull request and stop. It must not push to <code>main</code>, force-push, or treat a green check as permission to merge.</p>
-
-    <h2>How a change lands</h2>
-    <ol>
-      <li>Branch from an up-to-date <code>main</code>. Keep the branch short-lived and one logical unit.</li>
-      <li>Confirm locally that <code>dotnet build Whiteboard.sln -c Release</code> and the Core smoke tests pass. A warning fails the build.</li>
-      <li>Open a pull request against <code>main</code>. The <span class="ui">Pull request</span> GitHub Action runs by itself.</li>
-      <li>An authorized SQLBI developer merges when the checks are green. The branch is deleted on merge.</li>
-    </ol>
-    <p><code>main</code> accepts squash merges only. The pull request title becomes the commit subject and the description becomes the commit body. Write the title in the imperative and use the description to say why the change was needed.</p>
-    <p>Do not push to <code>main</code>. A merge there can publish a pre-release of the application, update this site, or publish the VS Code extension.</p>
-
-    <h2>How a merge publishes</h2>
-    <p>Authorized developers do not upload installers or Marketplace packages by hand. They merge, then run a GitHub Action only when a retry is needed.</p>
-    <table>
-      <thead><tr><th>After a merge of</th><th>What happens</th></tr></thead>
-      <tbody>
-        <tr><td>Application code</td><td>Azure Pipelines signs and publishes a GitHub <em>prerelease</em> (SQLBI Whiteboard Dev). A full release is an approval on that same run, not a rebuild.</td></tr>
-        <tr><td><code>site/</code></td><td>The <span class="ui">Publish site</span> Action updates this website.</td></tr>
-        <tr><td>A new <code>version</code> in <code>vscode/sqlbi-whiteboard/package.json</code></td><td>The <span class="ui">Publish VS Code extension</span> Action publishes <code>sqlbi.sqlbi-whiteboard</code> if that version is not already listed.</td></tr>
-        <tr><td>Only <code>docs/</code> or top-level markdown</td><td>Nothing is published.</td></tr>
-      </tbody>
-    </table>
-    <p>Whiteboard’s version is <code>VersionPrefix</code> in <code>Directory.Build.props</code>. The VS Code extension’s version is in its own <code>package.json</code>. They move independently, each in a pull request.</p>
-    <p>To retry a site or Marketplace publish without a new commit: GitHub → Actions → the matching workflow → <span class="ui">Run workflow</span>. To rebuild Whiteboard from an existing commit: Azure DevOps → SQLBI Whiteboard → <span class="ui">Run pipeline</span>. Do not use <span class="ui">Re-run</span>.</p>
+    <h2>Published builds</h2>
+    <p id="release-note">Until a stable release exists, the list below is pre-release builds. Without scripting, use <a href="https://github.com/sql-bi/SQLBI-Whiteboard/releases">All releases</a>.</p>
+    <ul class="releases" id="releases">
+      <li><a href="https://github.com/sql-bi/SQLBI-Whiteboard/releases"><span class="ver">All releases</span><span class="when">GitHub</span><span class="go">Open</span></a></li>
+    </ul>
   </article>
 
   <nav class="pagenav" aria-label="More documentation">
-    <a href="guide.html">
-      <span class="k">Guide</span>
-      <span class="t">Using SQLBI Whiteboard</span>
-      <span class="d">Ink, containers, LiveView, and board files.</span>
+    <a href="contribute.html">
+      <span class="k">Project</span>
+      <span class="t">Contribute and publish</span>
+      <span class="d">How a merge publishes a release.</span>
     </a>
-    <a href="shortcuts.html">
-      <span class="k">Reference</span>
-      <span class="t">Shortcuts</span>
-      <span class="d">Every key, pen, and touch command, filterable.</span>
+    <a href="faq.html">
+      <span class="k">FAQ</span>
+      <span class="t">Questions around a session</span>
+      <span class="d">Dev versus released, and how to report a problem.</span>
     </a>
     <a href="index.html#get">
       <span class="k">Download</span>
@@ -119,5 +91,87 @@ dotnet run --project .\tests\SQLBI.Whiteboard.Core.SmokeTests\SQLBI.Whiteboard.C
   </div>
 </footer>
 
+<script>
+  (function () {
+    var list = document.getElementById('releases');
+    var note = document.getElementById('release-note');
+
+    fetch('https://api.github.com/repos/sql-bi/SQLBI-Whiteboard/releases?per_page=20')
+      .then(function (response) {
+        if (!response.ok) throw new Error(response.status);
+        return response.json();
+      })
+      .then(function (releases) {
+        var published = releases.filter(function (r) { return !r.draft; });
+        if (!published.length) return;
+
+        var stable = published.filter(function (r) { return !r.prerelease; });
+        var rows = stable.length ? stable : published.slice(0, 12);
+
+        if (stable.length) {
+          note.textContent = 'Stable releases. Pre-release (Dev) builds stay on GitHub.';
+        } else {
+          note.innerHTML = 'No stable release yet, so this list is pre-release builds. They install as <em>SQLBI Whiteboard (Dev)</em>.';
+        }
+
+        function esc(s) {
+          return String(s).replace(/[&<>"']/g, function (c) {
+            return ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c];
+          });
+        }
+
+        function firstLine(text) {
+          var lines = String(text).replace(/\r\n/g, '\n').split('\n');
+          for (var i = 0; i < lines.length; i++) {
+            var line = lines[i].replace(/^#+\s*/, '').trim();
+            if (line) return line;
+          }
+          return '';
+        }
+
+        function notesFor(release) {
+          var body = (release.body || '').trim();
+          if (body) return Promise.resolve(body);
+          return fetch('https://api.github.com/repos/sql-bi/SQLBI-Whiteboard/commits/' +
+              encodeURIComponent(release.tag_name))
+            .then(function (response) {
+              if (!response.ok) return '';
+              return response.json();
+            })
+            .then(function (commit) {
+              return (commit && commit.commit && commit.commit.message) || '';
+            })
+            .catch(function () { return ''; });
+        }
+
+        Promise.all(rows.map(notesFor)).then(function (notes) {
+          var html = '';
+          for (var i = 0; i < rows.length; i++) {
+            var r = rows[i];
+            var when = new Date(r.published_at).toLocaleDateString(undefined, {
+              year: 'numeric', month: 'long', day: 'numeric'
+            });
+            var full = notes[i] || '';
+            var sum = firstLine(full);
+            html += '<li><div class="reltop"><a class="ver" href="' + esc(r.html_url) + '">' +
+              esc(r.tag_name.replace(/^v/, '')) + '</a><span class="when">' +
+              esc(when) + '</span></div>';
+            if (sum) {
+              html += '<p class="relsum">' + esc(sum) + '</p>';
+            }
+            if (full && full.replace(/\r\n/g, '\n').trim() !== sum) {
+              html += '<details><summary>Notes</summary><pre class="relbody">' +
+                esc(full.trim()) + '</pre></details>';
+            }
+            html += '</li>';
+          }
+          list.innerHTML = html;
+        });
+      })
+      .catch(function () {
+        // Leave the static All releases row, which needs no scripting.
+      });
+  })();
+</script>
 </body>
 </html>
