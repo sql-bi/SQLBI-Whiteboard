@@ -86,6 +86,14 @@
                           InputGestureText="Alt+L"
                           IsCheckable="True"
                           Click="LaserToolButton_Click" />
+                <MenuItem x:Name="EraserToolMenuItem"
+                          Header="_Eraser"
+                          IsCheckable="True"
+                          Click="EraserToolButton_Click" />
+                <MenuItem x:Name="PanToolMenuItem"
+                          Header="P_an"
+                          IsCheckable="True"
+                          Click="PanToolButton_Click" />
                 <Separator />
                 <MenuItem Header="Add _LiveView..."
                           Click="AddLiveViewMenuItem_Click" />
@@ -535,6 +543,31 @@
                         </StackPanel>
                     </Border>
                 </DockPanel>
+                <StackPanel x:Name="FingerToolsRow"
+                            Margin="0,4,0,0"
+                            Orientation="Horizontal"
+                            Visibility="Collapsed">
+                    <ToggleButton x:Name="EraserToolButton"
+                                  Style="{StaticResource ToolbarIconButton}"
+                                  ToolTip="Eraser"
+                                  Click="EraserToolButton_Click">
+                        <Path Width="20"
+                              Height="20"
+                              Stretch="Uniform"
+                              Fill="{Binding Foreground, RelativeSource={RelativeSource AncestorType=ToggleButton}}"
+                              Data="{StaticResource EraserGeometry}" />
+                    </ToggleButton>
+                    <ToggleButton x:Name="PanToolButton"
+                                  Style="{StaticResource ToolbarIconButton}"
+                                  ToolTip="Pan"
+                                  Click="PanToolButton_Click">
+                        <Path Width="20"
+                              Height="20"
+                              Stretch="Uniform"
+                              Fill="{Binding Foreground, RelativeSource={RelativeSource AncestorType=ToggleButton}}"
+                              Data="{StaticResource PanGeometry}" />
+                    </ToggleButton>
+                </StackPanel>
             </StackPanel>
         </Border>
 

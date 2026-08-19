@@ -643,8 +643,9 @@ Assert(
 Assert(
     defaultSettings.StartupMonitor == StartupMonitorKind.WacomIfPresent &&
     defaultSettings.StartupMonitorName is null &&
-    !defaultSettings.StartFullScreen,
-    "Missing settings should default to Wacom-if-present and a windowed start.");
+    !defaultSettings.StartFullScreen &&
+    defaultSettings.FingerMode == FingerMode.WhenNoPen,
+    "Missing settings should default to Wacom-if-present, a windowed start, and finger drawing when no pen is detected.");
 Assert(
     AppSettingsSerializer.Parse("{ \"startupMonitor\": \"Sideways\" }").StartupMonitor ==
     StartupMonitorKind.WacomIfPresent,
@@ -674,6 +675,23 @@ Assert(
     namedStartup.StartupMonitorName == "Cintiq Pro 27" &&
     namedStartup.StartFullScreen,
     "Settings JSON should round-trip a named startup monitor and full-screen start.");
+Assert(
+    AppSettingsSerializer.Parse("{ \"fingerMode\": \"Sideways\" }").FingerMode == FingerMode.WhenNoPen,
+    "Unknown finger-mode values should fall back to when-no-pen.");
+Assert(
+    AppSettingsSerializer.Parse("{ \"fingerMode\": \"Off\" }").FingerMode == FingerMode.Off,
+    "Saved finger drawing Off should still load.");
+Assert(
+    AppSettingsSerializer.Parse("{ \"fingerMode\": \"On\" }").FingerMode == FingerMode.On,
+    "Saved finger drawing On should still load.");
+Assert(
+    AppSettingsSerializer.Parse("{ \"fingerMode\": \"WhenNoPen\" }").FingerMode == FingerMode.WhenNoPen,
+    "Saved when-no-pen finger drawing should still load.");
+var fingerModeRoundTrip = AppSettingsSerializer.Parse(
+    AppSettingsSerializer.Format(new AppSettings { FingerMode = FingerMode.WhenNoPen }));
+Assert(
+    fingerModeRoundTrip.FingerMode == FingerMode.WhenNoPen,
+    "Settings JSON should round-trip when-no-pen finger drawing.");
 
 var daxSource = """
 Tricky :=

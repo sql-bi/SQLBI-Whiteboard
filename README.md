@@ -12,6 +12,7 @@ How the project is developed and shipped is documented separately:
 - Low-latency, pressure-aware WPF wet ink, including Wacom rear-eraser detection
 - A normal cursor for physical mouse input and a high-contrast pen-hover dot that disappears on contact
 - Touch panning and two-finger pinch zoom
+- Optional finger drawing (default when no pen is detected): one finger uses the current tool, two fingers still pan and pinch-zoom, and Eraser and Pan appear on the toolbar
 - Basic palm rejection: touch navigation is suspended when the pen makes contact
 - Mouse-wheel zoom and middle-button or temporary Space-key panning
 - Whole-stroke erasing
@@ -26,7 +27,7 @@ How the project is developed and shipped is documented separately:
 - Versioned ZIP-based `.wboard` documents with an embedded `preview.png`. Explorer shows that picture as the file thumbnail in the released install; older boards keep the document icon. The VS Code extension in `vscode/sqlbi-whiteboard` opens the same picture instead of the ZIP.
 - Markdown `.wimport` recipes that build image and text containers from headings
 - An intentionally small floating toolbar
-- Preferences for the startup monitor, full-screen start, laser trail, and toolbar layout
+- Preferences for the startup monitor, full-screen start, finger drawing, laser trail, and toolbar layout
 
 ## Build and run
 
@@ -169,8 +170,8 @@ Use **Copy settings** after finding a useful combination so the exact values can
 | Double-click container | Center and fit the image or LiveView to the canvas |
 | Double-click empty canvas | Center and fit all board content, or reset an empty board |
 | Pen eraser | Erase complete strokes |
-| One finger | Pan |
-| Two fingers | Pan and pinch zoom |
+| One finger | Pan. With Finger drawing on, uses the current tool instead |
+| Two fingers | Pan and pinch zoom. Cancels an in-progress finger stroke when Finger drawing is on |
 | Mouse wheel | Zoom at the pointer |
 | Middle mouse | Pan |
 | Right mouse | Pan while held; return to Pen on release |
@@ -184,7 +185,7 @@ Use **Copy settings** after finding a useful combination so the exact values can
 | Escape | Cancel the active text edit |
 | Ctrl+S / Ctrl+O | Save / open a board |
 | Delete | Delete the selected container and its linked strokes |
-| Tools > Preferences... | Searchable settings: startup monitor, full screen, laser trail, toolbar |
+| Tools > Preferences... | Searchable settings: startup monitor, full screen, finger drawing, laser trail, toolbar |
 | Tools > Add LiveView | Capture an application window or display as a container |
 | Tools > Freeze selected LiveView | Freeze or resume the selected live feed |
 | Tools > Reconnect selected LiveView | Select a new capture target for the existing container |

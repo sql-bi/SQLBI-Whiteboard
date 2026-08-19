@@ -2,7 +2,7 @@
 
 The pipeline and `scripts/build-installer.ps1` produce
 `SQLBI.Whiteboard.<version>.x64.msix`. Identity version is `VersionPrefix.0`
-(so 0.6.0 becomes `0.6.0.0`). The Store re-signs the package. Do not upload
+(so 0.9.0 becomes `0.9.0.0`). The Store re-signs the package. Do not upload
 until the listing assets below exist.
 
 ## What the repo already produces
@@ -39,7 +39,7 @@ until the listing assets below exist.
 Do **not** start certification. Upload the MSIX only when you are ready to
 submit. Certification must never gate the MSI / GitHub release.
 
-## Draft listing copy (0.6.0)
+## Draft listing copy (0.9.0)
 
 **Title:** SQLBI Whiteboard
 

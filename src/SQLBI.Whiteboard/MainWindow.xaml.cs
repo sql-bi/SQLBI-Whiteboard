@@ -73,6 +73,8 @@ public partial class MainWindow : Window
     private PointerAction _mouseAction;
     private PointD _lastPanPoint;
     private bool _penInContact;
+    private bool _touchNavigationLocked;
+    private int? _fingerToolDeviceId;
     private bool _spaceTemporaryPan;
     private Guid? _selectedObjectId;
     private BoardObject? _containerGestureBefore;
@@ -141,6 +143,7 @@ public partial class MainWindow : Window
         ApplyLaserSettings();
         ApplyToolbarPlacement();
         ApplyCalligraphyAccess();
+        ApplyFingerMode();
         ApplyDrawingAttributes();
         SetActiveTool(BoardTool.Pen);
         InkSurface.Focus();
@@ -253,22 +256,27 @@ public partial class MainWindow : Window
     {
         CommitTextEdit();
 
+        if (TryActivatePaletteFromStylus(e))
+        {
+            return;
+        }
+
         if (IsTouchStylus(e))
         {
-            InkSurface.RegisterTouchTablet(e.StylusDevice.TabletDevice.Id);
-            BeginTouchNavigation(e);
-            return;
+            if (!TryBeginFingerTool(e))
+            {
+                return;
+            }
         }
-
-        if (TryForwardCapturedStylusToPalette(e))
+        else
         {
-            return;
+            _discardInkStroke = false;
+            _penInContact = true;
+            CancelFingerTool();
+            ClearTouchNavigation();
+            UsePenCursor();
+            HidePointerDot();
         }
-
-        _penInContact = true;
-        ClearTouchNavigation();
-        UsePenCursor();
-        HidePointerDot();
 
         if (e.StylusDevice.Inverted || EffectiveTool != BoardTool.Select)
         {
@@ -317,8 +325,13 @@ public partial class MainWindow : Window
         if (IsTouchStylus(e))
         {
             InkSurface.RegisterTouchTablet(e.StylusDevice.TabletDevice.Id);
-            UpdateTouchNavigation(e);
-            return;
+            if (IsTouchNavigating)
+            {
+                UpdateTouchNavigation(e);
+                return;
+            }
+
+            TrackTouchPoint(e);
         }
 
         var position = e.GetPosition(InkSurface);
@@ -389,8 +402,12 @@ public partial class MainWindow : Window
         if (IsTouchStylus(e))
         {
             InkSurface.RegisterTouchTablet(e.StylusDevice.TabletDevice.Id);
-            EndTouchNavigation(e);
-            return;
+            var navigating = IsTouchNavigating;
+            EndTouchTracking(e, navigating);
+            if (navigating)
+            {
+                return;
+            }
         }
 
         var screen = ToPointD(e.GetPosition(InkSurface));
@@ -510,15 +527,7 @@ public partial class MainWindow : Window
 
     private void Window_PreviewStylusDown(object sender, StylusDownEventArgs e)
     {
-        if (IsTouchStylus(e) || !ShouldRouteStylusToPalette())
-        {
-            return;
-        }
-
-        if (TryActivatePaletteAt(e.GetPosition(ToolPalette), e.StylusDevice))
-        {
-            e.Handled = true;
-        }
+        TryActivatePaletteFromStylus(e);
     }
 
     private void ToolPalette_PreviewStylusDown(object sender, StylusDownEventArgs e)
@@ -527,20 +536,16 @@ public partial class MainWindow : Window
         LaserTrail.Lift();
     }
 
-    private bool ShouldRouteStylusToPalette() =>
-        EffectiveTool == BoardTool.Laser ||
-        _stylusAction == PointerAction.Laser ||
-        InkSurface.IsStylusCaptured ||
-        Stylus.Captured is not null;
-
-    private bool TryForwardCapturedStylusToPalette(StylusDownEventArgs e)
+    private bool TryActivatePaletteFromStylus(StylusDownEventArgs e)
     {
-        if (!ShouldRouteStylusToPalette())
+        if (!TryActivatePaletteAt(e.GetPosition(ToolPalette), e.StylusDevice))
         {
             return false;
         }
 
-        return TryActivatePaletteAt(e.GetPosition(ToolPalette), e.StylusDevice);
+        CancelFingerTool();
+        e.Handled = true;
+        return true;
     }
 
     private bool TryActivatePaletteAt(Point palettePoint, StylusDevice? device)
@@ -766,6 +771,14 @@ public partial class MainWindow : Window
     {
         if (e.StylusDevice is not null)
         {
+            // Touch is owned by the stylus handlers. If this promotion is left
+            // unhandled, InkCanvas treats the tap as mouse ink: a leftover
+            // pen dot or highlighter square, then the stylus path pans.
+            if (IsTouchDevice(e.StylusDevice))
+            {
+                e.Handled = true;
+            }
+
             return;
         }
 
@@ -826,6 +839,11 @@ public partial class MainWindow : Window
         // those events, so only a physical mouse can restore the arrow.
         if (e.StylusDevice is not null)
         {
+            if (IsTouchDevice(e.StylusDevice))
+            {
+                e.Handled = true;
+            }
+
             return;
         }
 
@@ -879,7 +897,17 @@ public partial class MainWindow : Window
 
     private void InkSurface_PreviewMouseUp(object sender, MouseButtonEventArgs e)
     {
-        if (e.StylusDevice is not null || _mouseAction == PointerAction.None)
+        if (e.StylusDevice is not null)
+        {
+            if (IsTouchDevice(e.StylusDevice))
+            {
+                e.Handled = true;
+            }
+
+            return;
+        }
+
+        if (_mouseAction == PointerAction.None)
         {
             return;
         }
@@ -976,19 +1004,128 @@ public partial class MainWindow : Window
         e.Handled = true;
     }
 
-    private void BeginTouchNavigation(StylusEventArgs e)
+    private bool IsFingerModeEffective =>
+        _settings.FingerMode switch
+        {
+            FingerMode.On => true,
+            FingerMode.WhenNoPen => !HasStylusDigitizer(),
+            _ => false,
+        };
+
+    private bool IsTouchNavigating =>
+        !IsFingerModeEffective || _touchNavigationLocked || _penInContact;
+
+    private static bool HasStylusDigitizer()
     {
+        foreach (TabletDevice device in Tablet.TabletDevices)
+        {
+            if (device.Type == TabletDeviceType.Stylus)
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private void ApplyFingerMode()
+    {
+        var enabled = IsFingerModeEffective;
+        if (!enabled)
+        {
+            CancelFingerTool();
+        }
+
+        InkSurface.SetAllowTouchInk(enabled);
+        if (FingerToolsRow is not null)
+        {
+            FingerToolsRow.Visibility = enabled ? Visibility.Visible : Visibility.Collapsed;
+        }
+
+        if (!enabled && _activeTool is BoardTool.Eraser or BoardTool.Pan)
+        {
+            SetActiveTool(_lastDrawingTool);
+        }
+    }
+
+    private bool TryBeginFingerTool(StylusDownEventArgs e)
+    {
+        InkSurface.RegisterTouchTablet(e.StylusDevice.TabletDevice.Id);
+
         if (_penInContact)
         {
             e.Handled = true;
+            return false;
+        }
+
+        TrackTouchPoint(e);
+
+        if (!IsFingerModeEffective)
+        {
+            InkSurface.AbortWetInk();
+            e.StylusDevice.Capture(InkSurface);
+            e.Handled = true;
+            return false;
+        }
+
+        if (_touchPoints.Count > 1 || _touchNavigationLocked)
+        {
+            CancelFingerTool();
+            _touchNavigationLocked = true;
+            CaptureTouchDevices();
+            e.Handled = true;
+            return false;
+        }
+
+        _fingerToolDeviceId = e.StylusDevice.Id;
+        HidePointerDot();
+        return true;
+    }
+
+    private void TrackTouchPoint(StylusEventArgs e)
+    {
+        _touchPoints[e.StylusDevice.Id] = e.GetPosition(InkSurface);
+        _touchDevices[e.StylusDevice.Id] = e.StylusDevice;
+    }
+
+    private void CaptureTouchDevices()
+    {
+        foreach (var device in _touchDevices.Values)
+        {
+            device.Capture(InkSurface);
+        }
+    }
+
+    private void CancelFingerTool()
+    {
+        if (_fingerToolDeviceId is null && _stylusAction == PointerAction.None)
+        {
             return;
         }
 
-        var id = e.StylusDevice.Id;
-        _touchPoints[id] = e.GetPosition(InkSurface);
-        _touchDevices[id] = e.StylusDevice;
-        e.StylusDevice.Capture(InkSurface);
-        e.Handled = true;
+        _discardInkStroke = true;
+        InkSurface.AbortWetInk();
+        switch (_stylusAction)
+        {
+            case PointerAction.Erase:
+                CompleteErase();
+                break;
+            case PointerAction.Container:
+                CompleteContainerGesture();
+                break;
+            case PointerAction.Laser:
+                StopLaserSampling();
+                LaserTrail.Lift();
+                break;
+        }
+
+        if (_stylusAction != PointerAction.None)
+        {
+            ReleaseBoardPointerCapture();
+        }
+
+        _stylusAction = PointerAction.None;
+        _fingerToolDeviceId = null;
     }
 
     private void UpdateTouchNavigation(StylusEventArgs e)
@@ -1006,13 +1143,26 @@ public partial class MainWindow : Window
         e.Handled = true;
     }
 
-    private void EndTouchNavigation(StylusEventArgs e)
+    private void EndTouchTracking(StylusEventArgs e, bool navigating)
     {
         var id = e.StylusDevice.Id;
         _touchPoints.Remove(id);
         _touchDevices.Remove(id);
-        e.StylusDevice.Capture(null);
-        e.Handled = true;
+        if (_fingerToolDeviceId == id)
+        {
+            _fingerToolDeviceId = null;
+        }
+
+        if (_touchPoints.Count == 0)
+        {
+            _touchNavigationLocked = false;
+        }
+
+        if (navigating)
+        {
+            e.StylusDevice.Capture(null);
+            e.Handled = true;
+        }
     }
 
     private void UpdateTouchNavigation(IReadOnlyDictionary<int, Point> before)
@@ -1060,6 +1210,8 @@ public partial class MainWindow : Window
 
         _touchPoints.Clear();
         _touchDevices.Clear();
+        _touchNavigationLocked = false;
+        _fingerToolDeviceId = null;
     }
 
     private void PanTo(PointD screen)
@@ -1679,8 +1831,11 @@ public partial class MainWindow : Window
     private void PenChevronButton_Click(object sender, RoutedEventArgs e) =>
         SetNibPickerOpen(!_isNibPickerOpen);
 
-    private void EraserToolButton_Click(object sender, RoutedEventArgs e) =>
+    private void EraserToolButton_Click(object sender, RoutedEventArgs e)
+    {
+        LeaveLaserIfActive();
         SetActiveTool(BoardTool.Eraser);
+    }
 
     private void SelectToolButton_Click(object sender, RoutedEventArgs e)
     {
@@ -1688,8 +1843,11 @@ public partial class MainWindow : Window
         SetActiveTool(BoardTool.Select);
     }
 
-    private void PanToolButton_Click(object sender, RoutedEventArgs e) =>
+    private void PanToolButton_Click(object sender, RoutedEventArgs e)
+    {
+        LeaveLaserIfActive();
         SetActiveTool(BoardTool.Pan);
+    }
 
     private BoardTool EffectiveTool =>
         _spaceTemporaryPan
@@ -1763,11 +1921,30 @@ public partial class MainWindow : Window
         PenToolButton.IsChecked = penFamilyActive;
         HighlighterToolButton.IsChecked = tool == BoardTool.Highlighter;
         SelectToolButton.IsChecked = tool == BoardTool.Select;
+        if (EraserToolButton is not null)
+        {
+            EraserToolButton.IsChecked = tool == BoardTool.Eraser;
+        }
+
+        if (PanToolButton is not null)
+        {
+            PanToolButton.IsChecked = tool == BoardTool.Pan;
+        }
+
         UpdateDualToolChecks();
         PenToolMenuItem.IsChecked = tool == BoardTool.Pen;
         HighlighterToolMenuItem.IsChecked = tool == BoardTool.Highlighter;
         CalligraphyToolMenuItem.IsChecked = tool == BoardTool.Calligraphy;
         LaserToolMenuItem.IsChecked = tool == BoardTool.Laser;
+        if (EraserToolMenuItem is not null)
+        {
+            EraserToolMenuItem.IsChecked = tool == BoardTool.Eraser;
+        }
+
+        if (PanToolMenuItem is not null)
+        {
+            PanToolMenuItem.IsChecked = tool == BoardTool.Pan;
+        }
         InkSurface.EditingMode =
             tool is BoardTool.Pen or BoardTool.Highlighter or BoardTool.Calligraphy or BoardTool.Laser
             ? InkCanvasEditingMode.Ink
@@ -2434,6 +2611,7 @@ public partial class MainWindow : Window
         ApplyToolbarPlacement();
         ApplyCalligraphyAccess();
         ApplyLaserSettings();
+        ApplyFingerMode();
         PersistSettings();
     }
 
@@ -3930,7 +4108,10 @@ public partial class MainWindow : Window
     }
 
     private static bool IsTouchStylus(StylusEventArgs e) =>
-        e.StylusDevice.TabletDevice.Type == TabletDeviceType.Touch;
+        IsTouchDevice(e.StylusDevice);
+
+    private static bool IsTouchDevice(StylusDevice? device) =>
+        device?.TabletDevice?.Type == TabletDeviceType.Touch;
 
     private static string ContentTypeFor(string path) =>
         Path.GetExtension(path).ToLowerInvariant() switch

@@ -26,8 +26,8 @@ powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\build-assets.ps1
 
 `SQLBI.Whiteboard.svg` is derived from Microsoft Fluent UI System Icons'
 `whiteboard_24_filled` glyph. The toolbar uses `inking_tool`, `highlight`,
-`calligraphy_pen`, `resize_image`, `record` (24 regular), and `chevron_down`
-(16 regular) from the same set,
+`calligraphy_pen`, `resize_image`, `record`, `eraser`, `arrow_move` (24 regular),
+and `chevron_down` (16 regular) from the same set,
 obtained from
 `@fluentui/svg-icons` version 1.1.308:
 

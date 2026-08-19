@@ -53,13 +53,15 @@ internal static class SettingsCatalog
         public const string LaserHoldMode = "laser.holdMode";
         public const string ToolbarPlacement = "toolbar.placement";
         public const string ToolbarLayout = "toolbar.layout";
+        public const string FingerMode = "input.fingerMode";
     }
 
     public const string Startup = "Startup";
+    public const string Input = "Input";
     public const string Laser = "Laser pointer";
     public const string Toolbar = "Toolbar";
 
-    public static IReadOnlyList<string> Categories { get; } = [Startup, Laser, Toolbar];
+    public static IReadOnlyList<string> Categories { get; } = [Startup, Input, Laser, Toolbar];
 
     public static IReadOnlyList<SettingDescriptor> All { get; } =
     [
@@ -80,6 +82,21 @@ internal static class SettingsCatalog
             Description = "Hide the menu and title bar the next time the application starts. F11 still toggles this session.",
             Keywords = ["fullscreen", "full screen", "f11", "maximize"],
             Editor = SettingEditorKind.BooleanSwitch,
+        },
+        new()
+        {
+            Id = Ids.FingerMode,
+            Category = Input,
+            Title = "Finger drawing",
+            Description = "New installs default to When no pen is detected. Off keeps one-finger pan. On makes one finger use the current tool; two fingers still pan and pinch-zoom, and Eraser and Pan appear on the toolbar. \"When no pen is detected\" uses the digitizer list Windows reports, which is not the same as a pen being in the room.",
+            Keywords = ["finger", "touch", "pen", "draw", "tablet", "stylus", "digitizer"],
+            Editor = SettingEditorKind.EnumChoice,
+            Choices =
+            [
+                new() { Id = nameof(Core.Settings.FingerMode.WhenNoPen), Title = "When no pen is detected" },
+                new() { Id = nameof(Core.Settings.FingerMode.Off), Title = "Off" },
+                new() { Id = nameof(Core.Settings.FingerMode.On), Title = "On" },
+            ],
         },
         new()
         {
