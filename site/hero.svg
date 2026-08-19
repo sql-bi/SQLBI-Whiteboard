@@ -1,0 +1,68 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 720" width="1200" height="720" role="img"
+     aria-label="SQLBI Whiteboard: a small toolbar, a DAX container, and ink on an unbounded canvas.">
+  <title>SQLBI Whiteboard</title>
+  <defs>
+    <radialGradient id="fade" cx="0.42" cy="0.38" r="0.78">
+      <stop offset="0.25" stop-color="#fff"/><stop offset="1" stop-color="#000"/>
+    </radialGradient>
+    <mask id="gridmask"><rect width="1200" height="720" fill="url(#fade)"/></mask>
+    <pattern id="grid" width="34" height="34" patternUnits="userSpaceOnUse">
+      <path d="M34 0H0v34" fill="none" stroke="#15171C" stroke-opacity=".055" stroke-width="1"/>
+    </pattern>
+    <filter id="soft" x="-8%" y="-8%" width="116%" height="116%">
+      <feDropShadow dx="0" dy="10" stdDeviation="18" flood-color="#15171C" flood-opacity=".14"/>
+    </filter>
+  </defs>
+
+  <rect width="1200" height="720" fill="#FAFAFB"/>
+  <rect width="1200" height="720" fill="url(#grid)" mask="url(#gridmask)"/>
+
+  <!-- Board surface: the unbounded canvas, not a window chrome. -->
+  <rect x="72" y="56" width="1056" height="608" rx="22" fill="#FFFFFF" stroke="#E2E4E9" filter="url(#soft)"/>
+
+  <!-- DAX container -->
+  <g transform="translate(168 148)">
+    <rect width="520" height="268" rx="14" fill="#FAFAFB" stroke="#E2E4E9"/>
+    <rect width="520" height="44" rx="14" fill="#F2F3F7"/>
+    <rect y="30" width="520" height="14" fill="#F2F3F7"/>
+    <text x="18" y="28" font-family="Segoe UI, sans-serif" font-size="16" font-weight="650" fill="#15171C">Total Sales</text>
+    <text x="428" y="28" font-family="Segoe UI, sans-serif" font-size="13" fill="#5C6371">DAX</text>
+    <g font-family="Cascadia Mono, Consolas, monospace" font-size="22">
+      <text x="28" y="108" fill="#B71D1D">Total Sales</text>
+      <text x="176" y="108" fill="#15171C">:=</text>
+      <text x="28" y="152" fill="#0B6FB8">SUM</text>
+      <text x="80" y="152" fill="#15171C">( Sales[Amount] )</text>
+    </g>
+  </g>
+
+  <!-- A second container, notes -->
+  <g transform="translate(720 188)">
+    <rect width="328" height="188" rx="14" fill="#FAFAFB" stroke="#E2E4E9"/>
+    <rect width="328" height="44" rx="14" fill="#F2F3F7"/>
+    <rect y="30" width="328" height="14" fill="#F2F3F7"/>
+    <text x="18" y="28" font-family="Segoe UI, sans-serif" font-size="16" font-weight="650" fill="#15171C">Filter context</text>
+    <text x="24" y="88" font-family="Segoe UI, sans-serif" font-size="16" fill="#5C6371">The year is already</text>
+    <text x="24" y="114" font-family="Segoe UI, sans-serif" font-size="16" fill="#5C6371">in the filter. Do not</text>
+    <text x="24" y="140" font-family="Segoe UI, sans-serif" font-size="16" fill="#5C6371">wrap this in CALCULATE.</text>
+  </g>
+
+  <!-- Ink that belongs to the DAX container -->
+  <g fill="none" stroke="#F42727" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M214 318c48 6 92-18 126-8" stroke-width="5"/>
+    <path d="M332 304l14 22 22-10" stroke-width="5"/>
+    <path d="M744 322c40 36 88 44 140 18" stroke-width="4.5" opacity=".9"/>
+  </g>
+
+  <!-- Small floating toolbar, bottom center — the real chrome, not a left rail. -->
+  <g transform="translate(430 556)">
+    <rect width="340" height="64" rx="16" fill="#FFFFFF" stroke="#E2E4E9"/>
+    <g fill="none" stroke="#5C6371" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M36 40l16-16 6 6-16 16z"/>
+      <path d="M92 26h20M96 22l12 20"/>
+      <path d="M148 24c10-8 22-4 26 6-8 2-16 8-22 16-8-8-10-16-4-22z"/>
+      <circle cx="214" cy="32" r="10"/>
+      <path d="M214 26v8M210 32h8"/>
+    </g>
+    <circle cx="300" cy="32" r="11" fill="#F42727"/>
+  </g>
+</svg>
