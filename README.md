@@ -27,7 +27,9 @@ How the project is developed and shipped is documented separately:
 - Versioned ZIP-based `.wboard` documents with an embedded `preview.png`. Explorer shows that picture as the file thumbnail in the released install; older boards keep the document icon. The VS Code extension in `vscode/sqlbi-whiteboard` opens the same picture instead of the ZIP.
 - Markdown `.wimport` recipes that build image and text containers from headings
 - An intentionally small floating toolbar
+- A File / Edit / View / Help tab strip. Click a tab for a one-row command strip over the canvas
 - Preferences for the startup monitor, full-screen start, finger drawing, laser trail, and toolbar layout
+- About, with version and channel
 
 ## Build and run
 
@@ -185,11 +187,12 @@ Use **Copy settings** after finding a useful combination so the exact values can
 | Escape | Cancel the active text edit |
 | Ctrl+S / Ctrl+O | Save / open a board |
 | Delete | Delete the selected container and its linked strokes |
-| Tools > Preferences... | Searchable settings: startup monitor, full screen, finger drawing, laser trail, toolbar |
-| Tools > Add LiveView | Capture an application window or display as a container |
-| Tools > Freeze selected LiveView | Freeze or resume the selected live feed |
-| Tools > Reconnect selected LiveView | Select a new capture target for the existing container |
-| F11 | Toggle full screen; Escape leaves it when a text container is not being edited |
+| File / Edit / View / Help | Tab strip. Click a tab for a one-row command strip over the canvas. Click the canvas to hide it |
+| Help > Preferences | Searchable settings: startup monitor, full screen, finger drawing, laser trail, toolbar |
+| Help > About | Version, channel, license, and the product site |
+| View > LiveView | Capture, freeze, or reconnect a window or display |
+| F11 | Fill the current monitor and hide title and tabs. Escape leaves it when a text container is not being edited |
+| Ctrl+F11 | Hide title and tabs but keep this window’s size and place |
 
 With the mouse, selection is automatic: click a container to move it, or drag the circular bottom-right handle to resize it while preserving its aspect ratio. Double-click a container to center it and fit it to the canvas. Releasing the mouse returns to the previously selected drawing tool.
 

@@ -91,7 +91,14 @@ public partial class MainWindow : Window
     private readonly TextClassificationColorizer _textColorizer = new();
     private readonly DispatcherTimer _textHighlightTimer;
     private CancellationTokenSource? _textAnalysisCancellation;
-    private bool _isFullScreen;
+    private enum SessionChromeMode
+    {
+        Windowed,
+        CanvasOnly,
+        FullScreen,
+    }
+
+    private SessionChromeMode _chromeMode;
     private bool _isToolPaletteHidden;
     private bool _isInkOptionsOpen;
     private bool _isNibPickerOpen;
@@ -114,6 +121,7 @@ public partial class MainWindow : Window
     public MainWindow(string? initialBoardPath)
     {
         InitializeComponent();
+        SessionBar.CommandRequested += SessionChrome_CommandRequested;
         Title += AppChannel.WindowTitleSuffix;
         _initialBoardPath = initialBoardPath;
         TextEditorLanguageCombo.ItemsSource = TextLanguageRegistry.All;
@@ -157,7 +165,7 @@ public partial class MainWindow : Window
             _settings.StartupMonitorName);
         if (_settings.StartFullScreen)
         {
-            EnterFullScreen();
+            SetChromeMode(SessionChromeMode.FullScreen);
         }
     }
 
@@ -204,8 +212,7 @@ public partial class MainWindow : Window
 
     private void History_Changed(object? sender, EventArgs e)
     {
-        UndoMenuItem.IsEnabled = _history.CanUndo;
-        RedoMenuItem.IsEnabled = _history.CanRedo;
+        SessionBar.SetEditEnabled(_history.CanUndo, _history.CanRedo);
     }
 
     private void InkSurface_StrokeCollected(object sender, InkCanvasStrokeCollectedEventArgs e)
@@ -255,6 +262,7 @@ public partial class MainWindow : Window
     private void InkSurface_PreviewStylusDown(object sender, StylusDownEventArgs e)
     {
         CommitTextEdit();
+        SessionBar.Collapse();
 
         if (TryActivatePaletteFromStylus(e))
         {
@@ -782,6 +790,7 @@ public partial class MainWindow : Window
             return;
         }
 
+        SessionBar.Collapse();
         CommitTextEdit();
         InkSurface.Focus();
         var screen = ToPointD(e.GetPosition(InkSurface));
@@ -1770,8 +1779,7 @@ public partial class MainWindow : Window
             return;
         }
 
-        UndoMenuItem.IsEnabled = TextEditor.CanUndo;
-        RedoMenuItem.IsEnabled = TextEditor.CanRedo;
+        SessionBar.SetEditEnabled(TextEditor.CanUndo, TextEditor.CanRedo);
     }
 
     private void PenToolButton_Click(object sender, RoutedEventArgs e)
@@ -1932,19 +1940,6 @@ public partial class MainWindow : Window
         }
 
         UpdateDualToolChecks();
-        PenToolMenuItem.IsChecked = tool == BoardTool.Pen;
-        HighlighterToolMenuItem.IsChecked = tool == BoardTool.Highlighter;
-        CalligraphyToolMenuItem.IsChecked = tool == BoardTool.Calligraphy;
-        LaserToolMenuItem.IsChecked = tool == BoardTool.Laser;
-        if (EraserToolMenuItem is not null)
-        {
-            EraserToolMenuItem.IsChecked = tool == BoardTool.Eraser;
-        }
-
-        if (PanToolMenuItem is not null)
-        {
-            PanToolMenuItem.IsChecked = tool == BoardTool.Pan;
-        }
         InkSurface.EditingMode =
             tool is BoardTool.Pen or BoardTool.Highlighter or BoardTool.Calligraphy or BoardTool.Laser
             ? InkCanvasEditingMode.Ink
@@ -2597,15 +2592,6 @@ public partial class MainWindow : Window
         return brush;
     }
 
-    private void ToolbarPlacementMenuItem_Click(object sender, RoutedEventArgs e)
-    {
-        if (sender is MenuItem { Tag: string name } &&
-            Enum.TryParse<ToolbarPlacement>(name, out var placement))
-        {
-            SetToolbarPlacement(placement);
-        }
-    }
-
     private void ApplyPreferences()
     {
         ApplyToolbarPlacement();
@@ -2618,6 +2604,77 @@ public partial class MainWindow : Window
     private void PreferencesMenuItem_Click(object sender, RoutedEventArgs e)
     {
         var dialog = new PreferencesWindow(_settings, ApplyPreferences)
+        {
+            Owner = this,
+        };
+        dialog.ShowDialog();
+        InkSurface.Focus();
+    }
+
+    private void SessionChrome_CommandRequested(SessionCommand command)
+    {
+        switch (command)
+        {
+            case SessionCommand.New:
+                NewMenuItem_Click(this, new RoutedEventArgs());
+                break;
+            case SessionCommand.Open:
+                OpenButton_Click(this, new RoutedEventArgs());
+                break;
+            case SessionCommand.Save:
+                SaveButton_Click(this, new RoutedEventArgs());
+                break;
+            case SessionCommand.SaveAs:
+                SaveAsMenuItem_Click(this, new RoutedEventArgs());
+                break;
+            case SessionCommand.Close:
+                Close();
+                break;
+            case SessionCommand.Undo:
+                UndoButton_Click(this, new RoutedEventArgs());
+                break;
+            case SessionCommand.Redo:
+                RedoButton_Click(this, new RoutedEventArgs());
+                break;
+            case SessionCommand.Copy:
+                CopySelectionToClipboard();
+                break;
+            case SessionCommand.Paste:
+                PasteButton_Click(this, new RoutedEventArgs());
+                break;
+            case SessionCommand.FullScreen:
+                SetChromeMode(
+                    _chromeMode == SessionChromeMode.FullScreen
+                        ? SessionChromeMode.Windowed
+                        : SessionChromeMode.FullScreen);
+                break;
+            case SessionCommand.CanvasOnly:
+                SetChromeMode(
+                    _chromeMode == SessionChromeMode.CanvasOnly
+                        ? SessionChromeMode.Windowed
+                        : SessionChromeMode.CanvasOnly);
+                break;
+            case SessionCommand.AddLiveView:
+                AddLiveViewMenuItem_Click(this, new RoutedEventArgs());
+                break;
+            case SessionCommand.FreezeLiveView:
+                FreezeLiveViewMenuItem_Click(this, new RoutedEventArgs());
+                break;
+            case SessionCommand.ReconnectLiveView:
+                ReconnectLiveViewMenuItem_Click(this, new RoutedEventArgs());
+                break;
+            case SessionCommand.Preferences:
+                PreferencesMenuItem_Click(this, new RoutedEventArgs());
+                break;
+            case SessionCommand.About:
+                ShowAbout();
+                break;
+        }
+    }
+
+    private void ShowAbout()
+    {
+        var dialog = new AboutWindow
         {
             Owner = this,
         };
@@ -2652,12 +2709,6 @@ public partial class MainWindow : Window
             or ToolbarPlacement.BottomRight
             or ToolbarPlacement.BottomCenter;
         DockPanel.SetDock(ToolChrome, isBottom ? Dock.Bottom : Dock.Top);
-
-        ToolbarTopRightMenuItem.IsChecked = placement == ToolbarPlacement.TopRight;
-        ToolbarTopLeftMenuItem.IsChecked = placement == ToolbarPlacement.TopLeft;
-        ToolbarBottomRightMenuItem.IsChecked = placement == ToolbarPlacement.BottomRight;
-        ToolbarBottomLeftMenuItem.IsChecked = placement == ToolbarPlacement.BottomLeft;
-        ToolbarBottomCenterMenuItem.IsChecked = placement == ToolbarPlacement.BottomCenter;
     }
 
     private void ApplyToolPaletteChrome()
@@ -2746,9 +2797,6 @@ public partial class MainWindow : Window
 
         await ResumeLiveViewAsync(liveView);
     }
-
-    private void ToolsMenu_SubmenuOpened(object sender, RoutedEventArgs e) =>
-        UpdateLiveViewMenuItems();
 
     private void PauseLiveViewButton_Click(object sender, RoutedEventArgs e)
     {
@@ -3245,16 +3293,11 @@ public partial class MainWindow : Window
     {
         LiveViewBoardObject? liveView = GetSelectedLiveView();
         bool selected = liveView is not null;
-        FreezeLiveViewMenuItem.IsEnabled = selected;
-        ReconnectLiveViewMenuItem.IsEnabled = selected;
-
         bool canResume = liveView is not null &&
             (!_liveViewPresenters.TryGetValue(liveView.Id, out LiveViewPresenter? presenter) ||
              presenter.IsFrozen ||
              !presenter.HasTarget);
-        FreezeLiveViewMenuItem.Header = canResume
-            ? "_Resume selected LiveView..."
-            : "_Freeze selected LiveView";
+        SessionBar.SetLiveViewCommands(selected, canResume);
     }
 
     private void UpdateLiveViewActionOverlay()
@@ -3761,20 +3804,44 @@ public partial class MainWindow : Window
 
     private void Window_PreviewKeyDown(object sender, KeyEventArgs e)
     {
-        if (e.Key == Key.F11)
+        var modifiers = Keyboard.Modifiers;
+        var controlDown = modifiers.HasFlag(ModifierKeys.Control);
+        var shiftDown = modifiers.HasFlag(ModifierKeys.Shift);
+        var altDown = modifiers.HasFlag(ModifierKeys.Alt) || e.Key == Key.System;
+
+        if (e.Key == Key.F11 || (e.Key == Key.System && e.SystemKey == Key.F11))
         {
             if (!e.IsRepeat)
             {
-                ToggleFullScreen();
+                SetChromeMode(
+                    controlDown
+                        ? (_chromeMode == SessionChromeMode.CanvasOnly
+                            ? SessionChromeMode.Windowed
+                            : SessionChromeMode.CanvasOnly)
+                        : (_chromeMode == SessionChromeMode.FullScreen
+                            ? SessionChromeMode.Windowed
+                            : SessionChromeMode.FullScreen));
             }
 
             e.Handled = true;
             return;
         }
 
-        var modifiers = Keyboard.Modifiers;
-        var controlDown = modifiers.HasFlag(ModifierKeys.Control);
-        var shiftDown = modifiers.HasFlag(ModifierKeys.Shift);
+        if (SessionBar.IsCommandRowOpen && e.Key == Key.Escape)
+        {
+            SessionBar.Collapse();
+            e.Handled = true;
+            return;
+        }
+
+        if (altDown &&
+            _chromeMode == SessionChromeMode.Windowed &&
+            !e.IsRepeat &&
+            SessionBar.TryHandleAltKey(e.Key == Key.System ? e.SystemKey : e.Key))
+        {
+            e.Handled = true;
+            return;
+        }
         if (_textEditBefore is not null)
         {
             if (e.Key == Key.F6 && !e.IsRepeat)
@@ -3814,9 +3881,9 @@ public partial class MainWindow : Window
             return;
         }
 
-        if (_isFullScreen && e.Key == Key.Escape)
+        if (_chromeMode != SessionChromeMode.Windowed && e.Key == Key.Escape)
         {
-            ExitFullScreen();
+            SetChromeMode(SessionChromeMode.Windowed);
             e.Handled = true;
             return;
         }
@@ -3897,40 +3964,62 @@ public partial class MainWindow : Window
         }
     }
 
-    private void ToggleFullScreen()
+    private void SetChromeMode(SessionChromeMode mode)
     {
-        if (_isFullScreen)
+        if (_chromeMode == mode)
         {
-            ExitFullScreen();
+            return;
         }
-        else
+
+        SessionBar.Collapse();
+        if (mode == SessionChromeMode.Windowed)
         {
-            EnterFullScreen();
+            RestoreWindowedChrome();
+            _chromeMode = SessionChromeMode.Windowed;
+            return;
         }
+
+        if (_chromeMode == SessionChromeMode.Windowed)
+        {
+            SnapshotWindowedChrome();
+        }
+
+        WindowState = WindowState.Normal;
+        SessionBar.Visibility = Visibility.Collapsed;
+        WindowStyle = WindowStyle.None;
+        ResizeMode = ResizeMode.NoResize;
+        if (mode == SessionChromeMode.FullScreen)
+        {
+            MonitorStartupPlacement.FillCurrentMonitor(this);
+        }
+        else if (_chromeMode == SessionChromeMode.FullScreen)
+        {
+            RestoreWindowedBounds();
+        }
+
+        _chromeMode = mode;
     }
 
-    private void EnterFullScreen()
+    private void SnapshotWindowedChrome()
     {
         _windowStateBeforeFullScreen = WindowState;
         _windowStyleBeforeFullScreen = WindowStyle;
         _resizeModeBeforeFullScreen = ResizeMode;
         _windowBoundsBeforeFullScreen = new Rect(Left, Top, Width, Height);
-
-        WindowState = WindowState.Normal;
-        MainMenu.Visibility = Visibility.Collapsed;
-        WindowStyle = WindowStyle.None;
-        ResizeMode = ResizeMode.NoResize;
-        MonitorStartupPlacement.FillCurrentMonitor(this);
-        _isFullScreen = true;
     }
 
-    private void ExitFullScreen()
+    private void RestoreWindowedChrome()
     {
         WindowState = WindowState.Normal;
-        MainMenu.Visibility = Visibility.Visible;
+        SessionBar.Visibility = Visibility.Visible;
         WindowStyle = _windowStyleBeforeFullScreen;
         ResizeMode = _resizeModeBeforeFullScreen;
+        RestoreWindowedBounds();
+        WindowState = _windowStateBeforeFullScreen;
+    }
 
+    private void RestoreWindowedBounds()
+    {
         if (_windowStateBeforeFullScreen == WindowState.Normal)
         {
             Left = _windowBoundsBeforeFullScreen.Left;
@@ -3938,9 +4027,6 @@ public partial class MainWindow : Window
             Width = _windowBoundsBeforeFullScreen.Width;
             Height = _windowBoundsBeforeFullScreen.Height;
         }
-
-        WindowState = _windowStateBeforeFullScreen;
-        _isFullScreen = false;
     }
 
     private void Window_PreviewKeyUp(object sender, KeyEventArgs e)

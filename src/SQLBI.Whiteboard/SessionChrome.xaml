@@ -1,0 +1,311 @@
+<UserControl x:Class="SQLBI.Whiteboard.SessionChrome"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             Background="{StaticResource ToolbarBackgroundBrush}"
+             BorderBrush="{StaticResource ToolbarBorderBrush}"
+             BorderThickness="0,0,0,1"
+             PreviewKeyDown="UserControl_PreviewKeyDown">
+    <Grid x:Name="Root">
+        <StackPanel x:Name="TabBar"
+                    Height="32"
+                    Orientation="Horizontal">
+            <ToggleButton x:Name="FileTab"
+                          Style="{StaticResource SessionTabButton}"
+                          Click="Tab_Click">
+                <AccessText Text="_File" />
+            </ToggleButton>
+            <ToggleButton x:Name="EditTab"
+                          Style="{StaticResource SessionTabButton}"
+                          Click="Tab_Click">
+                <AccessText Text="_Edit" />
+            </ToggleButton>
+            <ToggleButton x:Name="ViewTab"
+                          Style="{StaticResource SessionTabButton}"
+                          Click="Tab_Click">
+                <AccessText Text="_View" />
+            </ToggleButton>
+            <ToggleButton x:Name="HelpTab"
+                          Style="{StaticResource SessionTabButton}"
+                          Click="Tab_Click">
+                <AccessText Text="_Help" />
+            </ToggleButton>
+        </StackPanel>
+
+        <Popup x:Name="CommandPopup"
+               Placement="Bottom"
+               PlacementTarget="{Binding ElementName=Root}"
+               AllowsTransparency="True"
+               StaysOpen="False"
+               Closed="CommandPopup_Closed">
+            <Border Width="{Binding ActualWidth, ElementName=Root}"
+                    Background="{StaticResource ToolbarBackgroundBrush}"
+                    BorderBrush="{StaticResource ToolbarBorderBrush}"
+                    BorderThickness="0,0,0,1"
+                    Padding="8,4,8,6">
+                <Grid>
+                    <StackPanel x:Name="FileRow"
+                                Orientation="Horizontal"
+                                Visibility="Collapsed">
+                        <Button Style="{StaticResource SessionCommandButton}"
+                                ToolTip="New"
+                                Tag="New"
+                                Click="Command_Click">
+                            <StackPanel HorizontalAlignment="Center">
+                                <Path Width="18"
+                                      Height="18"
+                                      Stretch="Uniform"
+                                      Fill="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"
+                                      Data="{StaticResource DocumentGeometry}" />
+                                <TextBlock Margin="0,4,0,0"
+                                           HorizontalAlignment="Center"
+                                           Text="New" />
+                            </StackPanel>
+                        </Button>
+                        <Button Style="{StaticResource SessionCommandButton}"
+                                ToolTip="Open (Ctrl+O)"
+                                Tag="Open"
+                                Click="Command_Click">
+                            <StackPanel HorizontalAlignment="Center">
+                                <Path Width="18"
+                                      Height="18"
+                                      Stretch="Uniform"
+                                      Fill="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"
+                                      Data="{StaticResource FolderOpenGeometry}" />
+                                <TextBlock Margin="0,4,0,0"
+                                           HorizontalAlignment="Center"
+                                           Text="Open" />
+                            </StackPanel>
+                        </Button>
+                        <Button Style="{StaticResource SessionCommandButton}"
+                                ToolTip="Save (Ctrl+S)"
+                                Tag="Save"
+                                Click="Command_Click">
+                            <StackPanel HorizontalAlignment="Center">
+                                <Path Width="18"
+                                      Height="18"
+                                      Stretch="Uniform"
+                                      Fill="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"
+                                      Data="{StaticResource SaveGeometry}" />
+                                <TextBlock Margin="0,4,0,0"
+                                           HorizontalAlignment="Center"
+                                           Text="Save" />
+                            </StackPanel>
+                        </Button>
+                        <Button Style="{StaticResource SessionCommandButton}"
+                                ToolTip="Save As (Shift+F12)"
+                                Tag="SaveAs"
+                                Click="Command_Click">
+                            <StackPanel HorizontalAlignment="Center">
+                                <Path Width="18"
+                                      Height="18"
+                                      Stretch="Uniform"
+                                      Fill="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"
+                                      Data="{StaticResource SaveGeometry}" />
+                                <TextBlock Margin="0,4,0,0"
+                                           HorizontalAlignment="Center"
+                                           Text="Save As" />
+                            </StackPanel>
+                        </Button>
+                        <Button Style="{StaticResource SessionCommandButton}"
+                                ToolTip="Close"
+                                Tag="Close"
+                                Click="Command_Click">
+                            <StackPanel HorizontalAlignment="Center">
+                                <Path Width="18"
+                                      Height="18"
+                                      Stretch="Uniform"
+                                      Fill="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"
+                                      Data="{StaticResource DismissGeometry}" />
+                                <TextBlock Margin="0,4,0,0"
+                                           HorizontalAlignment="Center"
+                                           Text="Close" />
+                            </StackPanel>
+                        </Button>
+                    </StackPanel>
+                    <StackPanel x:Name="EditRow"
+                                Orientation="Horizontal"
+                                Visibility="Collapsed">
+                        <Button x:Name="UndoButton"
+                                Style="{StaticResource SessionCommandButton}"
+                                ToolTip="Undo (Ctrl+Z)"
+                                Tag="Undo"
+                                Click="Command_Click">
+                            <StackPanel HorizontalAlignment="Center">
+                                <Path Width="18"
+                                      Height="18"
+                                      Stretch="Uniform"
+                                      Fill="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"
+                                      Data="{StaticResource UndoGeometry}" />
+                                <TextBlock Margin="0,4,0,0"
+                                           HorizontalAlignment="Center"
+                                           Text="Undo" />
+                            </StackPanel>
+                        </Button>
+                        <Button x:Name="RedoButton"
+                                Style="{StaticResource SessionCommandButton}"
+                                ToolTip="Redo (Ctrl+Y)"
+                                Tag="Redo"
+                                Click="Command_Click">
+                            <StackPanel HorizontalAlignment="Center">
+                                <Path Width="18"
+                                      Height="18"
+                                      Stretch="Uniform"
+                                      Fill="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"
+                                      Data="{StaticResource RedoGeometry}" />
+                                <TextBlock Margin="0,4,0,0"
+                                           HorizontalAlignment="Center"
+                                           Text="Redo" />
+                            </StackPanel>
+                        </Button>
+                        <Button Style="{StaticResource SessionCommandButton}"
+                                ToolTip="Copy (Ctrl+C)"
+                                Tag="Copy"
+                                Click="Command_Click">
+                            <StackPanel HorizontalAlignment="Center">
+                                <Path Width="18"
+                                      Height="18"
+                                      Stretch="Uniform"
+                                      Fill="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"
+                                      Data="{StaticResource CopyGeometry}" />
+                                <TextBlock Margin="0,4,0,0"
+                                           HorizontalAlignment="Center"
+                                           Text="Copy" />
+                            </StackPanel>
+                        </Button>
+                        <Button Style="{StaticResource SessionCommandButton}"
+                                ToolTip="Paste (Ctrl+V)"
+                                Tag="Paste"
+                                Click="Command_Click">
+                            <StackPanel HorizontalAlignment="Center">
+                                <Path Width="18"
+                                      Height="18"
+                                      Stretch="Uniform"
+                                      Fill="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"
+                                      Data="{StaticResource PasteGeometry}" />
+                                <TextBlock Margin="0,4,0,0"
+                                           HorizontalAlignment="Center"
+                                           Text="Paste" />
+                            </StackPanel>
+                        </Button>
+                    </StackPanel>
+                    <StackPanel x:Name="ViewRow"
+                                Orientation="Horizontal"
+                                Visibility="Collapsed">
+                        <Button Style="{StaticResource SessionCommandButton}"
+                                ToolTip="Full screen (F11)"
+                                Tag="FullScreen"
+                                Click="Command_Click">
+                            <StackPanel HorizontalAlignment="Center">
+                                <Path Width="18"
+                                      Height="18"
+                                      Stretch="Uniform"
+                                      Fill="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"
+                                      Data="{StaticResource FullScreenGeometry}" />
+                                <TextBlock Margin="0,4,0,0"
+                                           HorizontalAlignment="Center"
+                                           Text="Full screen" />
+                            </StackPanel>
+                        </Button>
+                        <Button Style="{StaticResource SessionCommandButton}"
+                                ToolTip="Hide title and tabs, keep this window size (Ctrl+F11)"
+                                Tag="CanvasOnly"
+                                Click="Command_Click">
+                            <StackPanel HorizontalAlignment="Center">
+                                <Path Width="18"
+                                      Height="18"
+                                      Stretch="Uniform"
+                                      Fill="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"
+                                      Data="{StaticResource WindowGeometry}" />
+                                <TextBlock Margin="0,4,0,0"
+                                           HorizontalAlignment="Center"
+                                           Text="Canvas only" />
+                            </StackPanel>
+                        </Button>
+                        <Button Style="{StaticResource SessionCommandButton}"
+                                ToolTip="Add LiveView"
+                                Tag="AddLiveView"
+                                Click="Command_Click">
+                            <StackPanel HorizontalAlignment="Center">
+                                <Path Width="18"
+                                      Height="18"
+                                      Stretch="Uniform"
+                                      Fill="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"
+                                      Data="{StaticResource LiveGeometry}" />
+                                <TextBlock Margin="0,4,0,0"
+                                           HorizontalAlignment="Center"
+                                           Text="LiveView" />
+                            </StackPanel>
+                        </Button>
+                        <Button x:Name="FreezeLiveViewButton"
+                                Style="{StaticResource SessionCommandButton}"
+                                ToolTip="Freeze or resume the selected LiveView"
+                                Tag="FreezeLiveView"
+                                Click="Command_Click">
+                            <StackPanel HorizontalAlignment="Center">
+                                <Path Width="18"
+                                      Height="18"
+                                      Stretch="Uniform"
+                                      Fill="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"
+                                      Data="{StaticResource PauseGeometry}" />
+                                <TextBlock x:Name="FreezeLiveViewLabel"
+                                           Margin="0,4,0,0"
+                                           HorizontalAlignment="Center"
+                                           Text="Freeze" />
+                            </StackPanel>
+                        </Button>
+                        <Button x:Name="ReconnectLiveViewButton"
+                                Style="{StaticResource SessionCommandButton}"
+                                ToolTip="Reconnect the selected LiveView"
+                                Tag="ReconnectLiveView"
+                                Click="Command_Click">
+                            <StackPanel HorizontalAlignment="Center">
+                                <Path Width="18"
+                                      Height="18"
+                                      Stretch="Uniform"
+                                      Fill="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"
+                                      Data="{StaticResource SyncGeometry}" />
+                                <TextBlock Margin="0,4,0,0"
+                                           HorizontalAlignment="Center"
+                                           Text="Reconnect" />
+                            </StackPanel>
+                        </Button>
+                    </StackPanel>
+                    <StackPanel x:Name="HelpRow"
+                                Orientation="Horizontal"
+                                Visibility="Collapsed">
+                        <Button Style="{StaticResource SessionCommandButton}"
+                                ToolTip="Preferences"
+                                Tag="Preferences"
+                                Click="Command_Click">
+                            <StackPanel HorizontalAlignment="Center">
+                                <Path Width="18"
+                                      Height="18"
+                                      Stretch="Uniform"
+                                      Fill="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"
+                                      Data="{StaticResource SettingsGeometry}" />
+                                <TextBlock Margin="0,4,0,0"
+                                           HorizontalAlignment="Center"
+                                           Text="Preferences" />
+                            </StackPanel>
+                        </Button>
+                        <Button Style="{StaticResource SessionCommandButton}"
+                                ToolTip="About SQLBI Whiteboard"
+                                Tag="About"
+                                Click="Command_Click">
+                            <StackPanel HorizontalAlignment="Center">
+                                <Path Width="18"
+                                      Height="18"
+                                      Stretch="Uniform"
+                                      Fill="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"
+                                      Data="{StaticResource InfoGeometry}" />
+                                <TextBlock Margin="0,4,0,0"
+                                           HorizontalAlignment="Center"
+                                           Text="About" />
+                            </StackPanel>
+                        </Button>
+                    </StackPanel>
+                </Grid>
+            </Border>
+        </Popup>
+    </Grid>
+</UserControl>

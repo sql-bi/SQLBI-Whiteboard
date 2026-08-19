@@ -79,7 +79,7 @@ internal static class SettingsCatalog
             Id = Ids.StartFullScreen,
             Category = Startup,
             Title = "Start full screen",
-            Description = "Hide the menu and title bar the next time the application starts. F11 still toggles this session.",
+            Description = "Fill the current monitor and hide the title and tabs the next time the application starts. F11 still toggles this session. Ctrl+F11 hides chrome without filling the monitor.",
             Keywords = ["fullscreen", "full screen", "f11", "maximize"],
             Editor = SettingEditorKind.BooleanSwitch,
         },
