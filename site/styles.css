@@ -820,6 +820,240 @@ footer a:hover { color: var(--ink); text-decoration: underline; }
 .sqlbi-mark svg { height: 17px; width: auto; display: block; }
 .sqlbi-mark:hover { text-decoration: none; }
 
+/* ------------------------------------------------------------ guide figures */
+
+/* The Guide draws the application instead of describing it twice. Figures are
+   inline SVG rather than <img>, because an external image cannot read these
+   tokens and would be locked to one theme.
+
+   Every figure's base state is the informative one. The animation only replays
+   how it got there, so a reader who never scrolls that far, or who asks for
+   reduced motion, still sees the whole idea. Keyframes therefore declare only
+   a "from"; the implicit "to" is the element's own resting value. */
+
+:root {
+  --fig-ground: #FAFAFB;
+  --fig-surface: #FFFFFF;
+  --fig-surface-2: #F2F3F7;
+  --fig-line: #E2E4E9;
+  --fig-ink: #15171C;
+  --fig-muted: #5C6371;
+  --fig-grid: rgba(21, 23, 28, .055);
+  --fig-danger: #C24141;
+  --fig-accent: #2563EB;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --fig-ground: #12151A;
+    --fig-surface: #1C2027;
+    --fig-surface-2: #232830;
+    --fig-line: #343A45;
+    --fig-ink: #E9EBEF;
+    --fig-muted: #949CAA;
+    --fig-grid: rgba(255, 255, 255, .05);
+    --fig-danger: #E8776F;
+    --fig-accent: #6EA0F5;
+  }
+}
+
+.fig {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  padding: 14px 14px 12px;
+  margin: 0 0 20px;
+  box-shadow: var(--shadow-sm);
+}
+.figbox { overflow-x: auto; }
+.fig svg { display: block; width: 100%; height: auto; }
+
+/* Below the point where a figure would shrink its own labels into illegibility,
+   the artwork keeps a readable size and the box pans instead. The caption stays
+   at card width so the sentence never scrolls away from the picture. */
+@media (max-width: 720px) {
+  .figbox svg { min-width: 660px; }
+}
+
+.fig figcaption {
+  margin-top: 10px;
+  padding: 0 2px;
+  font-size: 13.5px;
+  line-height: 1.5;
+  color: var(--muted);
+}
+.fig figcaption b { font-weight: 620; color: var(--ink); }
+.fig .swatch {
+  display: inline-block;
+  width: 9px;
+  height: 9px;
+  border-radius: 9px;
+  vertical-align: -1px;
+  margin-right: 5px;
+}
+
+/* Inside a story card the figure is a recess, not a second card. */
+.story .fig {
+  background: var(--ground);
+  box-shadow: none;
+  margin: 2px 0 16px;
+}
+
+/* The tools are a list of tools, not a paragraph about them. */
+.toolrows { margin: 0 0 1.4em; border-top: 1px solid var(--line); }
+.toolrow {
+  display: grid;
+  grid-template-columns: 26px 138px 1fr;
+  gap: 14px;
+  align-items: baseline;
+  padding: 11px 2px;
+  border-bottom: 1px solid var(--line);
+}
+.toolrow .glyph {
+  width: 20px;
+  height: 20px;
+  color: var(--muted);
+  align-self: start;
+  margin-top: -2px;
+}
+.toolrow .name { font-weight: 620; letter-spacing: -.01em; }
+.toolrow .chip {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  border-radius: 3px;
+  margin-left: 7px;
+  vertical-align: -1px;
+  border: 1px solid rgba(21, 23, 28, .2);
+}
+.toolrow .role { color: var(--muted); font-size: 14.5px; }
+
+.navtable th:first-child,
+.navtable td:first-child { width: 27%; }
+.navtable th:last-child,
+.navtable td:last-child { width: 31%; color: var(--muted); }
+
+@media (max-width: 560px) {
+  .toolrow { grid-template-columns: 22px 1fr; gap: 4px 10px; }
+  .toolrow .role { grid-column: 2; }
+}
+
+/* Resting states. These are what the figure means, and what is shown whenever
+   the loop below is not running: off screen, under reduced motion, or with no
+   IntersectionObserver. Each one has to read on its own. */
+.f1-carry { transform: translate(-24px, 56px); }
+.f2-trail { stroke-dasharray: 640; stroke-dashoffset: 0; }
+.f3-zoom { transform-origin: 350px 126px; transform: scale(1.85) translate(30px, 18px); }
+.f3-tap { opacity: 0; }
+
+/* Motion is opt-in: no animation is declared at all unless the reader allows
+   it, which is why the reduce block below needs no figure rules.
+
+   Each cycle demonstrates, then rests on the informative state for most of its
+   length, then returns. A reader who looks up mid-loop sees the finished idea
+   far more often than the transition. Every cycle starts and ends on the same
+   frame so the repeat never jumps. The script only runs a figure while it is
+   on screen, so nothing off screen is burning a compositor thread. */
+@media (prefers-reduced-motion: no-preference) {
+  .fig.is-visible .f1-carry { animation: fig-carry 7s cubic-bezier(.4, 0, .2, 1) infinite; }
+  .fig.is-visible .f1-ghost { animation: fig-ghost 7s ease infinite; }
+
+  .fig.is-visible .f2-trail { animation: fig-trail 6.5s ease-out infinite; }
+  .fig.is-visible .f2-head { animation: fig-head 6.5s ease-out infinite; }
+
+  .fig.is-visible .f3-zoom { animation: fig-frame 7.5s cubic-bezier(.4, 0, .2, 1) infinite; }
+  .fig.is-visible .f3-tap { animation: fig-tap 7.5s ease-out infinite; }
+
+  .fig.is-visible .f4-a { animation: fig-pop 6.5s ease infinite both; }
+  .fig.is-visible .f4-b { animation: fig-pop 6.5s ease .3s infinite both; }
+  .fig.is-visible .f4-c { animation: fig-pop 6.5s ease .6s infinite both; }
+
+  .fig.is-visible .f5-cursor { animation: fig-point 7.5s cubic-bezier(.4, 0, .2, 1) infinite; }
+  .fig.is-visible .f5-tab { animation: fig-tabon 7.5s ease infinite; }
+  .fig.is-visible .f5-strip { animation: fig-strip 7.5s cubic-bezier(.2, .8, .3, 1) infinite; }
+
+  .fig.is-visible .f6-1 { animation: fig-pop 6.5s ease infinite both; }
+  .fig.is-visible .f6-2 { animation: fig-pop 6.5s ease .45s infinite both; }
+  .fig.is-visible .f6-3 { animation: fig-pop 6.5s ease .9s infinite both; }
+  .fig.is-visible .f6-4 { animation: fig-pop 6.5s ease 1.35s infinite both; }
+}
+
+/* The container carries its ink out, holds, and is put back. */
+@keyframes fig-carry {
+  0%, 8% { transform: translate(0, 0); }
+  30%, 82% { transform: translate(-24px, 56px); }
+  96%, 100% { transform: translate(0, 0); }
+}
+@keyframes fig-ghost {
+  0%, 10% { opacity: 0; }
+  30%, 82% { opacity: 1; }
+  94%, 100% { opacity: 0; }
+}
+
+/* The trail draws, holds, then fades the way the real laser does. It resets
+   while the dash offset already hides it, so the loop has no visible snap. */
+@keyframes fig-trail {
+  0% { stroke-dashoffset: 640px; opacity: 1; }
+  24% { stroke-dashoffset: 0px; opacity: 1; }
+  64% { stroke-dashoffset: 0px; opacity: 1; }
+  78% { stroke-dashoffset: 0px; opacity: 0; }
+  79% { stroke-dashoffset: 640px; opacity: 0; }
+  100% { stroke-dashoffset: 640px; opacity: 1; }
+}
+
+/* The head follows the same curve the trail draws, sampled at quarters. */
+@keyframes fig-head {
+  0% { transform: translate(-528px, 72px); opacity: 0; }
+  3% { opacity: 1; }
+  6% { transform: translate(-377px, -2px); }
+  12% { transform: translate(-220px, 22px); }
+  18% { transform: translate(-85px, 54px); }
+  24%, 64% { transform: translate(0, 0); opacity: 1; }
+  78% { transform: translate(0, 0); opacity: 0; }
+  100% { transform: translate(-528px, 72px); opacity: 0; }
+}
+
+@keyframes fig-frame {
+  0%, 12% { transform: scale(1) translate(0, 0); }
+  36%, 80% { transform: scale(1.85) translate(30px, 18px); }
+  94%, 100% { transform: scale(1) translate(0, 0); }
+}
+@keyframes fig-tap {
+  0%, 8% { opacity: 0; transform: scale(.5); }
+  12% { opacity: 1; transform: scale(.8); }
+  24% { opacity: 0; transform: scale(1.25); }
+  25%, 100% { opacity: 0; transform: scale(.5); }
+}
+
+@keyframes fig-pop {
+  0%, 4% { opacity: 0; transform: scale(.94); }
+  14%, 76% { opacity: 1; transform: scale(1); }
+  88%, 100% { opacity: 0; transform: scale(.94); }
+}
+
+/* The pointer goes to the tab, the row drops open, then the canvas closes it. */
+@keyframes fig-point {
+  0%, 8% { transform: translate(276px, 196px); }
+  22%, 74% { transform: translate(0, 0); }
+  88%, 100% { transform: translate(276px, 196px); }
+}
+@keyframes fig-tabon {
+  0%, 20% { opacity: 0; }
+  26%, 78% { opacity: 1; }
+  86%, 100% { opacity: 0; }
+}
+@keyframes fig-strip {
+  0%, 22% { opacity: 0; transform: translateY(-10px); }
+  32%, 76% { opacity: 1; transform: translateY(0); }
+  86%, 100% { opacity: 0; transform: translateY(-10px); }
+}
+
+.fig .f3-tap,
+.fig .f4-a, .fig .f4-b, .fig .f4-c,
+.fig .f6-1, .fig .f6-2, .fig .f6-3, .fig .f6-4 {
+  transform-box: fill-box;
+  transform-origin: center;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .download, .ghost, .doclink, .doclink .go, .pagenav a { transition: none; }
   .download:hover, .ghost:hover, .pagenav a:hover { transform: none; }

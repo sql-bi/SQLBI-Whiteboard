@@ -49,12 +49,61 @@
     <section class="story">
       <h3>Pin a live demo without leaving the board</h3>
       <p>Add a LiveView of DAX Studio, SSMS, or a browser. When the query result is the thing you want to keep talking about, copy the LiveView and paste. The paste is a still bitmap of the last frame, a screenshot that stays on the board while you keep drawing.</p>
-      <p><span class="ui">Freeze</span> the original LiveView if you want that same container to stay put and resume later. <span class="ui">Disconnect</span> if you want the last frame with no live controls; only <span class="ui">Reconnect</span> brings a feed back. <span class="ui">Reconnect</span> after you reload a board: Windows cannot save the capture permission, so the saved frame appears immediately and <span class="ui">Reconnect</span> restores the live feed.</p>
+      <p><span class="ui">Freeze</span> the original LiveView if you want that same container to stay put and resume later. <span class="ui">Disconnect</span> if you want the last frame with no live controls; only <span class="ui">Reconnect</span> brings a feed back. <span class="ui">Reconnect</span> after you reload a board: Windows cannot save the capture permission, so the saved frame appears immediately and <span class="ui">Reconnect</span> restores the live feed. The <a href="#liveview">states are drawn below</a>.</p>
     </section>
 
     <section class="story">
       <h3>Keep ink on the slide you are discussing</h3>
       <p>A finished stroke that touches only one container (an image, a text block, or a LiveView) travels with that container when you move or resize it. A stroke that crosses two containers stays on the canvas. Delete the container and its linked ink goes with it. Undo treats the whole operation as one step.</p>
+
+      <figure class="fig">
+        <div class="figbox">
+          <svg viewBox="0 0 700 290" role="img" aria-label="A stroke drawn inside one container moves with it, while a stroke crossing two containers stays behind on the canvas.">
+            <title>Ink linked to a container</title>
+            <defs>
+              <radialGradient id="f1fade" cx="0.42" cy="0.4" r="0.8"><stop offset="0.25" stop-color="#fff"/><stop offset="1" stop-color="#000"/></radialGradient>
+              <mask id="f1mask"><rect width="700" height="290" fill="url(#f1fade)"/></mask>
+              <pattern id="f1grid" width="34" height="34" patternUnits="userSpaceOnUse"><path d="M34 0H0v34" fill="none" stroke="var(--fig-grid)" stroke-width="1"/></pattern>
+            </defs>
+            <rect width="700" height="290" rx="10" fill="var(--fig-ground)"/>
+            <rect width="700" height="290" fill="url(#f1grid)" mask="url(#f1mask)"/>
+            <rect class="f1-ghost" x="66" y="52" width="232" height="146" rx="12" fill="none" stroke="var(--fig-muted)" stroke-width="1.4" stroke-dasharray="6 5"/>
+            <g transform="translate(414 68)">
+              <rect width="212" height="126" rx="12" fill="var(--fig-surface)" stroke="var(--fig-line)"/>
+              <path d="M0 12A12 12 0 0 1 12 0h188a12 12 0 0 1 12 12v20H0Z" fill="var(--fig-surface-2)"/>
+              <text x="15" y="22" font-size="13" font-weight="620" fill="var(--fig-ink)">Filter context</text>
+              <text x="15" y="60" font-size="13" fill="var(--fig-muted)">The year is already in</text>
+              <text x="15" y="81" font-size="13" fill="var(--fig-muted)">the filter. Do not wrap</text>
+              <text x="15" y="102" font-size="13" fill="var(--fig-muted)">this in CALCULATE.</text>
+            </g>
+            <g class="f1-carry">
+              <g transform="translate(66 52)">
+                <rect width="232" height="146" rx="12" fill="var(--fig-surface)" stroke="var(--fig-line)"/>
+                <path d="M0 12A12 12 0 0 1 12 0h208a12 12 0 0 1 12 12v20H0Z" fill="var(--fig-surface-2)"/>
+                <text x="15" y="22" font-size="13" font-weight="620" fill="var(--fig-ink)">Margin by category</text>
+                <g fill="var(--fig-muted)" opacity=".32">
+                  <rect x="30" y="88" width="22" height="38" rx="3"/>
+                  <rect x="94" y="100" width="22" height="26" rx="3"/>
+                  <rect x="126" y="82" width="22" height="44" rx="3"/>
+                  <rect x="158" y="64" width="22" height="62" rx="3"/>
+                </g>
+                <rect x="62" y="74" width="22" height="52" rx="3" fill="var(--brand)" opacity=".85"/>
+                <path d="M26 126h180" stroke="var(--fig-line)" stroke-width="1.5"/>
+              </g>
+              <path d="M120 116c26-13 52 1 49 36-3 33-37 48-56 30-17-16-11-53 7-66" fill="none" stroke="var(--brand)" stroke-width="4.6" stroke-linecap="round" stroke-linejoin="round"/>
+              <circle cx="272" cy="176" r="11" fill="var(--brand)"/>
+              <text x="272" y="180.5" font-size="12.5" font-weight="620" fill="#fff" text-anchor="middle">1</text>
+            </g>
+            <g fill="none" stroke="var(--brand)" stroke-width="4.2" stroke-linecap="round" stroke-linejoin="round" opacity=".9">
+              <path d="M258 128c56 22 122 14 172-20"/>
+              <path d="M412 100l18 4-4 18"/>
+            </g>
+            <circle cx="334" cy="88" r="11" fill="var(--fig-muted)"/>
+            <text x="334" y="92.5" font-size="12.5" font-weight="620" fill="var(--fig-ground)" text-anchor="middle">2</text>
+          </svg>
+        </div>
+        <figcaption><span class="swatch" style="background:var(--brand)"></span><b>1</b> sits wholly inside the chart container, so it travels with it &mdash; the dashed outline is where the container was. <span class="swatch" style="background:var(--fig-muted)"></span><b>2</b> crosses into the notes container, so it stays on the canvas.</figcaption>
+      </figure>
     </section>
 
     <section class="story">
@@ -66,17 +115,177 @@
     <section class="story">
       <h3>Talk to the room</h3>
       <p>The laser pointer is for the projector, not for the file. The trail length and fade live in <span class="ui">Preferences</span>. A pen in the air shows a small high-contrast hover dot; the dot disappears on contact so it never sits under the nib. A physical mouse keeps a normal arrow.</p>
+
+      <figure class="fig">
+        <div class="figbox">
+          <svg viewBox="0 0 700 300" role="img" aria-label="A laser trail sweeping across a chart and fading behind the pointer, with a pen shown hovering above the glass carrying a dot, and touching it without one.">
+            <title>The laser trail and the pen hover dot</title>
+            <defs>
+              <radialGradient id="f2fade" cx="0.45" cy="0.42" r="0.8"><stop offset="0.25" stop-color="#fff"/><stop offset="1" stop-color="#000"/></radialGradient>
+              <mask id="f2mask"><rect width="700" height="200" fill="url(#f2fade)"/></mask>
+              <pattern id="f2grid" width="34" height="34" patternUnits="userSpaceOnUse"><path d="M34 0H0v34" fill="none" stroke="var(--fig-grid)" stroke-width="1"/></pattern>
+              <linearGradient id="f2trail" x1="92" y1="190" x2="620" y2="118" gradientUnits="userSpaceOnUse">
+                <stop offset="0" stop-color="var(--brand)" stop-opacity="0"/>
+                <stop offset="0.5" stop-color="var(--brand)" stop-opacity=".3"/>
+                <stop offset="1" stop-color="var(--brand)" stop-opacity="1"/>
+              </linearGradient>
+            </defs>
+            <rect width="700" height="300" rx="10" fill="var(--fig-ground)"/>
+            <rect width="700" height="200" fill="url(#f2grid)" mask="url(#f2mask)"/>
+            <g transform="translate(286 44)">
+              <rect width="204" height="112" rx="12" fill="var(--fig-surface)" stroke="var(--fig-line)"/>
+              <path d="M0 12A12 12 0 0 1 12 0h180a12 12 0 0 1 12 12v18H0Z" fill="var(--fig-surface-2)"/>
+              <text x="14" y="21" font-size="12.5" font-weight="620" fill="var(--fig-ink)">Revenue by month</text>
+              <path d="M20 92l30-18 30 8 30-26 30 6 30-24" fill="none" stroke="var(--fig-muted)" stroke-width="2.4" opacity=".5" stroke-linecap="round" stroke-linejoin="round"/>
+            </g>
+            <path class="f2-trail" d="M92 190Q240 66 400 140T620 118" fill="none" stroke="url(#f2trail)" stroke-width="6" stroke-linecap="round"/>
+            <circle class="f2-head" cx="620" cy="118" r="15" fill="var(--brand)" opacity=".2"/>
+            <circle class="f2-head" cx="620" cy="118" r="8" fill="var(--brand)"/>
+            <g fill="var(--fig-surface)" stroke="var(--fig-line)">
+              <rect x="14" y="206" width="330" height="84" rx="12"/>
+              <rect x="356" y="206" width="330" height="84" rx="12"/>
+            </g>
+            <g stroke="var(--fig-line)" stroke-width="2" stroke-linecap="round">
+              <path d="M40 268h92"/>
+              <path d="M382 268h92"/>
+            </g>
+            <g stroke="var(--fig-ink)" stroke-width="9" stroke-linecap="round" opacity=".85">
+              <path d="M62 224l40 32"/>
+              <path d="M404 224l42 34"/>
+            </g>
+            <circle cx="110" cy="268" r="5.5" fill="#E11D48"/>
+            <path d="M448 268c-20-5-40-2-54 1" fill="none" stroke="var(--brand)" stroke-width="4" stroke-linecap="round"/>
+            <text x="152" y="242" font-size="13" font-weight="620" fill="var(--fig-ink)">In the air</text>
+            <text x="152" y="262" font-size="12.5" fill="var(--fig-muted)">the dot marks the nib</text>
+            <text x="494" y="242" font-size="13" font-weight="620" fill="var(--fig-ink)">On contact</text>
+            <text x="494" y="262" font-size="12.5" fill="var(--fig-muted)">the dot disappears</text>
+          </svg>
+        </div>
+        <figcaption>The laser fades behind the pointer and never touches the file. The pen carries a hover dot only while it is off the glass, so the marker never sits under the nib.</figcaption>
+      </figure>
     </section>
 
     <section class="story">
       <h3>Fit what you are talking about</h3>
       <p>Double-click a container to center it and fill the view. Double-click empty canvas to frame everything on the board, or to reset an empty board. The canvas is unbounded: one finger pans, two fingers pinch-zoom, the mouse wheel zooms at the pointer. Finger drawing, when turned on in Preferences, makes one finger use the current tool instead; two fingers still navigate.</p>
+
+      <figure class="fig">
+        <div class="figbox">
+          <svg viewBox="0 0 700 252" role="img" aria-label="Double-clicking a container centers it and scales it up until it fills the view.">
+            <title>Double-click to frame a container</title>
+            <defs>
+              <radialGradient id="f3fade" cx="0.5" cy="0.45" r="0.8"><stop offset="0.3" stop-color="#fff"/><stop offset="1" stop-color="#000"/></radialGradient>
+              <mask id="f3mask"><rect x="14" y="14" width="672" height="224" fill="url(#f3fade)"/></mask>
+              <pattern id="f3grid" width="34" height="34" patternUnits="userSpaceOnUse"><path d="M34 0H0v34" fill="none" stroke="var(--fig-grid)" stroke-width="1"/></pattern>
+              <clipPath id="f3clip"><rect x="14" y="14" width="672" height="224" rx="14"/></clipPath>
+            </defs>
+            <rect width="700" height="252" rx="10" fill="var(--fig-ground)"/>
+            <g clip-path="url(#f3clip)">
+              <rect x="14" y="14" width="672" height="224" fill="var(--fig-surface)"/>
+              <rect x="14" y="14" width="672" height="224" fill="url(#f3grid)" mask="url(#f3mask)"/>
+              <g class="f3-zoom">
+                <g fill="var(--fig-surface)" stroke="var(--fig-line)" opacity=".85">
+                  <rect x="56" y="46" width="130" height="80" rx="10"/>
+                  <rect x="444" y="50" width="132" height="84" rx="10"/>
+                  <rect x="150" y="178" width="240" height="46" rx="10"/>
+                </g>
+                <g fill="var(--fig-muted)" opacity=".3">
+                  <rect x="70" y="80" width="70" height="7" rx="3.5"/>
+                  <rect x="70" y="95" width="100" height="7" rx="3.5"/>
+                  <rect x="458" y="84" width="80" height="7" rx="3.5"/>
+                  <rect x="458" y="99" width="104" height="7" rx="3.5"/>
+                  <rect x="164" y="196" width="140" height="8" rx="4"/>
+                </g>
+                <g>
+                  <rect x="240" y="60" width="160" height="96" rx="10" fill="var(--fig-surface)" stroke="var(--fig-line)"/>
+                  <path d="M240 70a10 10 0 0 1 10-10h140a10 10 0 0 1 10 10v14H240Z" fill="var(--fig-surface-2)"/>
+                  <text x="250" y="76" font-size="10" font-weight="620" fill="var(--fig-ink)">Total Sales</text>
+                  <text x="371" y="76" font-size="8.5" fill="var(--fig-muted)" text-anchor="end">DAX</text>
+                  <g font-family="Cascadia Mono, Consolas, monospace" font-size="10">
+                    <text x="250" y="106" fill="var(--brand-deep)">Total Sales</text>
+                    <text x="316" y="106" fill="var(--fig-ink)">:=</text>
+                    <text x="250" y="124" fill="#0B6FB8">SUM</text>
+                    <text x="272" y="124" fill="var(--fig-ink)">( Sales[Amount] )</text>
+                  </g>
+                  <path d="M248 134c34 5 72 2 110-5" fill="none" stroke="var(--brand)" stroke-width="2.4" stroke-linecap="round"/>
+                </g>
+              </g>
+              <g class="f3-tap" fill="none" stroke="var(--brand)" stroke-width="2.5">
+                <circle cx="470" cy="180" r="20"/>
+                <circle cx="470" cy="180" r="34" opacity=".45"/>
+              </g>
+              <path d="M470 180l0 26 7-7 5 11 6-3-5-10 10-1z" fill="var(--fig-ink)" stroke="var(--fig-surface)" stroke-width="1.6" stroke-linejoin="round"/>
+            </g>
+            <rect x="14" y="14" width="672" height="224" rx="14" fill="none" stroke="var(--fig-line)"/>
+          </svg>
+        </div>
+        <figcaption>Double-click a container and it centers and scales until it fills the view. Double-click empty canvas instead and the frame widens until the whole board fits.</figcaption>
+      </figure>
     </section>
 
     <section class="story">
       <h3>Bring a workshop in</h3>
-      <p>A <code>.wimport</code> file is Markdown that builds image and text containers. Drop it on an open board to add them under the pointer. The toolbar <span class="ui">Import</span> button does the same at the top-left of the view. <span class="ui">File → Open</span>, or a double-click in the released install, starts a new untitled board from the recipe. Save always writes a <code>.wboard</code>.</p>
+      <p>A <code>.wimport</code> file is Markdown that builds image and text containers. Drop it on an open board to add them under the pointer. <span class="ui">File → Open</span>, or a double-click in the released install, starts a new untitled board from the recipe. Save always writes a <code>.wboard</code>.</p>
       <p>Missing pictures or scripts are skipped and listed in a dialog you can copy. The <a href="wimport.html">import format</a> is the contract for that file.</p>
+
+      <figure class="fig">
+        <div class="figbox">
+          <svg viewBox="0 0 700 290" role="img" aria-label="Markdown in a dot-wimport file on the left builds image and text containers on the board to the right.">
+            <title>A .wimport recipe building containers</title>
+            <defs>
+              <radialGradient id="f4fade" cx="0.62" cy="0.45" r="0.7"><stop offset="0.3" stop-color="#fff"/><stop offset="1" stop-color="#000"/></radialGradient>
+              <mask id="f4mask"><rect width="700" height="290" fill="url(#f4fade)"/></mask>
+              <pattern id="f4grid" width="34" height="34" patternUnits="userSpaceOnUse"><path d="M34 0H0v34" fill="none" stroke="var(--fig-grid)" stroke-width="1"/></pattern>
+            </defs>
+            <rect width="700" height="290" rx="10" fill="var(--fig-ground)"/>
+            <rect width="700" height="290" fill="url(#f4grid)" mask="url(#f4mask)"/>
+            <g transform="translate(14 22)">
+              <rect width="250" height="226" rx="12" fill="var(--fig-surface)" stroke="var(--fig-line)"/>
+              <path d="M0 12A12 12 0 0 1 12 0h226a12 12 0 0 1 12 12v20H0Z" fill="var(--fig-surface-2)"/>
+              <text x="15" y="22" font-size="12.5" font-weight="620" fill="var(--fig-ink)">contoso.wimport</text>
+              <g font-family="Cascadia Mono, Consolas, monospace" font-size="12.5">
+                <text x="15" y="62" fill="var(--brand-deep)"># Contoso margin</text>
+                <text x="15" y="88" fill="var(--fig-muted)">![](margin.png)</text>
+                <text x="15" y="122" fill="var(--brand-deep)">## Filter context</text>
+                <text x="15" y="148" fill="var(--fig-muted)">The year is already</text>
+                <text x="15" y="170" fill="var(--fig-muted)">in the filter.</text>
+                <text x="15" y="204" fill="var(--brand-deep)">## Next step</text>
+              </g>
+            </g>
+            <g stroke="var(--fig-muted)" stroke-width="2.2" fill="none" stroke-linecap="round" stroke-linejoin="round" opacity=".7">
+              <path d="M274 136h20"/>
+              <path d="M288 130l7 6-7 6"/>
+            </g>
+            <g class="f4-a">
+              <rect x="306" y="44" width="170" height="106" rx="12" fill="var(--fig-surface)" stroke="var(--fig-line)"/>
+              <path d="M306 56a12 12 0 0 1 12-12h146a12 12 0 0 1 12 12v18H306Z" fill="var(--fig-surface-2)"/>
+              <text x="320" y="63" font-size="12" font-weight="620" fill="var(--fig-ink)">Contoso margin</text>
+              <g fill="var(--fig-muted)" opacity=".33">
+                <rect x="322" y="112" width="20" height="26" rx="3"/>
+                <rect x="350" y="98" width="20" height="40" rx="3"/>
+                <rect x="406" y="104" width="20" height="34" rx="3"/>
+                <rect x="434" y="90" width="20" height="48" rx="3"/>
+              </g>
+              <rect x="378" y="86" width="20" height="52" rx="3" fill="var(--brand)" opacity=".8"/>
+            </g>
+            <g class="f4-b">
+              <rect x="500" y="60" width="172" height="90" rx="12" fill="var(--fig-surface)" stroke="var(--fig-line)"/>
+              <path d="M500 72a12 12 0 0 1 12-12h148a12 12 0 0 1 12 12v18H500Z" fill="var(--fig-surface-2)"/>
+              <text x="514" y="79" font-size="12" font-weight="620" fill="var(--fig-ink)">Filter context</text>
+              <text x="514" y="112" font-size="12.5" fill="var(--fig-muted)">The year is already</text>
+              <text x="514" y="132" font-size="12.5" fill="var(--fig-muted)">in the filter.</text>
+            </g>
+            <g class="f4-c">
+              <rect x="330" y="178" width="246" height="70" rx="12" fill="var(--fig-surface)" stroke="var(--fig-line)"/>
+              <path d="M330 190a12 12 0 0 1 12-12h222a12 12 0 0 1 12 12v18H330Z" fill="var(--fig-surface-2)"/>
+              <text x="344" y="197" font-size="12" font-weight="620" fill="var(--fig-ink)">Next step</text>
+              <rect x="344" y="220" width="150" height="8" rx="4" fill="var(--fig-muted)" opacity=".3"/>
+              <rect x="344" y="234" width="96" height="8" rx="4" fill="var(--fig-muted)" opacity=".3"/>
+            </g>
+          </svg>
+        </div>
+        <figcaption>Each heading, picture, and paragraph in the recipe becomes a container. Drop the file on an open board and they arrive under the pointer.</figcaption>
+      </figure>
     </section>
 
     <section class="story">
@@ -87,26 +296,224 @@
     <h2>The board</h2>
 
     <h3>Ink and tools</h3>
-    <p>The session starts on the <span class="ui">Pen</span> tool. Pressure is recorded. <span class="ui">Highlighter</span> is a translucent stroke for marking a line of DAX or a region of a chart without covering it. <span class="ui">Calligraphy</span> is a nib that responds to direction, for labels and arrows that need to read from the back of the room. <span class="ui">Laser</span> is the pointer for the projector; it does not write to the file. The rear eraser on a Wacom pen removes whole strokes. Without a pen, turn on Finger drawing and use the toolbar <span class="ui">Eraser</span>. Palm rejection suspends touch while the pen is down so a resting hand does not pan the board.</p>
-    <p>The toolbar stays small on purpose. <span class="ui">Preferences</span> control whether it sits in a corner or follows a layout you prefer.</p>
+    <p>The session starts on the <span class="ui">Pen</span>. Each tool keeps its own colour and thickness, so switching back returns you to the stroke you were using.</p>
+
+    <div class="toolrows">
+      <div class="toolrow">
+        <svg class="glyph" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M4.5 2.75a.75.75 0 0 0-1.5 0v3.5C3 7.22 3.78 8 4.75 8h.27l4.03 8.97c.2.45.59.79 1.04.94a5.79 5.79 0 0 0 .27 3.01c.3.6.83 1.08 1.64 1.08.8 0 1.35-.48 1.64-1.08a5.79 5.79 0 0 0 .27-3.01c.45-.15.83-.49 1.04-.94L18.98 8h.27C20.22 8 21 7.22 21 6.25v-3.5a.75.75 0 0 0-1.5 0v3.5c0 .14-.11.25-.25.25H4.75a.25.25 0 0 1-.25-.25v-3.5ZM6.66 8h10.68l-3.76 8.35a.25.25 0 0 1-.23.15h-2.7a.25.25 0 0 1-.23-.15L6.66 8Zm4.95 10h.78c.07.26.11.6.11 1 0 .57-.08 1-.21 1.26-.1.22-.2.24-.29.24-.1 0-.18-.02-.29-.24A3.03 3.03 0 0 1 11.5 19c0-.4.04-.74.11-1Z"/></svg>
+        <span class="name">Pen<span class="chip" style="background:#E64B3D"></span></span>
+        <span class="role">Records pressure. Where the session starts.</span>
+      </div>
+      <div class="toolrow">
+        <svg class="glyph" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M20.26 2c.38 0 .7.29.74.65v4.6c0 1.16-.87 2.11-2 2.24v2.26c0 1.19-.92 2.16-2.1 2.24h-.4v2.8c0 .81-.44 1.56-1.14 1.96l-.15.08-6.64 3.1a.75.75 0 0 1-1.06-.58V14h-.26c-1.2 0-2.17-.93-2.24-2.1L5 11.75V9.49A2.25 2.25 0 0 1 3 7.4V2.75a.75.75 0 0 1 1.5-.1v4.6c0 .38.28.7.65.74l.1.01h13.5c.38 0 .7-.28.75-.65v-4.6c0-.41.34-.75.76-.75ZM15 14H9v6.07l5.57-2.6c.23-.11.39-.33.42-.57l.01-.11v-2.8Zm2.5-4.5h-11v2.25c0 .38.28.69.65.74h9.6c.38 0 .7-.28.75-.64V9.5Z"/></svg>
+        <span class="name">Highlighter<span class="chip" style="background:#FACC15"></span></span>
+        <span class="role">A translucent stroke for marking a line of DAX or a region of a chart without covering it.</span>
+      </div>
+      <div class="toolrow">
+        <svg class="glyph" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M7.5 2.75a.75.75 0 0 0-1.5 0v3c0 .9.67 1.64 1.54 1.74l-1.01 2.5c-.41 1-.37 2.19.12 3.15l3.99 7.95c.28.56.8.91 1.36.91s1.08-.35 1.36-.91l4-7.95c.48-.96.52-2.14.11-3.15l-1.01-2.5c.87-.1 1.54-.84 1.54-1.74v-3a.75.75 0 0 0-1.5 0v3c0 .14-.11.25-.25.25h-8.5a.25.25 0 0 1-.25-.25v-3Zm7.34 4.75 1.24 3.06c.25.6.22 1.33-.07 1.9l-3.26 6.5V12.3a1.5 1.5 0 1 0-1.5 0v6.67l-3.26-6.5a2.37 2.37 0 0 1-.07-1.91L9.16 7.5h5.68Z"/></svg>
+        <span class="name">Calligraphy<span class="chip" style="background:#1F2937"></span></span>
+        <span class="role">A nib that responds to direction, for labels and arrows that need to read from the back of the room.</span>
+      </div>
+      <div class="toolrow">
+        <svg class="glyph" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 18a6 6 0 1 0 0-12 6 6 0 0 0 0 12Zm0-16a10 10 0 1 0 0 20 10 10 0 0 0 0-20ZM3.5 12a8.5 8.5 0 1 1 17 0 8.5 8.5 0 0 1-17 0Z"/></svg>
+        <span class="name">Laser</span>
+        <span class="role">The pointer for the projector. It does not write to the file.</span>
+      </div>
+      <div class="toolrow">
+        <svg class="glyph" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="m15.87 2.67 4.97 4.97c.88.88.88 2.3 0 3.18l-8.68 8.68h6.1c.37 0 .69.28.74.65v.1c0 .38-.28.7-.64.74l-.1.01H9.83a2.24 2.24 0 0 1-1.71-.65l-4.97-4.97a2.25 2.25 0 0 1 0-3.18l9.53-9.53c.88-.88 2.3-.88 3.18 0Zm-10.16 9.1-1.49 1.49c-.3.29-.3.76 0 1.06l4.97 4.96c.15.15.34.22.53.22h.07a.75.75 0 0 0 .46-.22l1.49-1.48-6.03-6.03Zm8.04-8.04L6.77 10.7l6.03 6.03 6.98-6.98c.29-.3.29-.77 0-1.06L14.8 3.73a.75.75 0 0 0-1.06 0Z"/></svg>
+        <span class="name">Eraser</span>
+        <span class="role">Removes whole strokes. The rear eraser on a Wacom pen does the same without switching tools.</span>
+      </div>
+      <div class="toolrow">
+        <svg class="glyph" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M15.28 6.03c-.3.3-.77.3-1.06 0l-1.47-1.47v3.69a.75.75 0 0 1-1.5 0V4.56L9.78 6.03a.75.75 0 0 1-1.06-1.06l2.75-2.75a.75.75 0 0 1 1.06 0l2.75 2.75c.3.3.3.77 0 1.06Zm-9.25 8.19a.75.75 0 1 1-1.06 1.06l-2.75-2.75a.75.75 0 0 1 0-1.06l2.75-2.75a.75.75 0 0 1 1.06 1.06l-1.47 1.47h3.69a.75.75 0 0 1 0 1.5H4.56l1.47 1.47Zm11.94 1.06a.75.75 0 0 1 0-1.06l1.47-1.47h-3.69a.75.75 0 0 1 0-1.5h3.69l-1.47-1.47a.75.75 0 0 1 1.06-1.06l2.75 2.75a.75.75 0 0 1 0 1.06l-2.75 2.75c-.3.3-.77.3-1.06 0Zm-2.69 2.69a.75.75 0 0 0-1.06 0l-1.47 1.47v-3.69a.75.75 0 0 0-1.5 0v3.69l-1.47-1.47a.75.75 0 0 0-1.06 1.06l2.75 2.75a.75.75 0 0 0 1.06 0l2.75-2.75c.3-.3.3-.77 0-1.06Z"/></svg>
+        <span class="name">Pan</span>
+        <span class="role">Appears with Finger drawing on, so one finger can still move the board.</span>
+      </div>
+    </div>
+
+    <p>Palm rejection suspends touch while the pen is down, so a resting hand does not pan the board. Without a pen, turn on Finger drawing to reach <span class="ui">Eraser</span> and <span class="ui">Pan</span> on the palette. The toolbar stays small on purpose; <span class="ui">Preferences</span> control whether it sits in a corner or follows a layout you prefer, and right-clicking it hides it altogether.</p>
 
     <h3>Navigation</h3>
-    <p>Touch pans. Two fingers pinch-zoom. The mouse wheel zooms at the pointer. Middle mouse, right mouse (held), or <kbd>Space</kbd> temporarily pans. With Finger drawing on, one finger follows the current tool and <span class="ui">Pan</span> is on the toolbar. The window can sit in a narrow strip beside another app. <kbd>F11</kbd> fills the monitor and hides the title and tabs. <kbd>Ctrl</kbd><span class="plus">+</span><kbd>F11</kbd> hides the same chrome and keeps the window where it is. <kbd>Escape</kbd> leaves either unless a text container is being edited.</p>
+    <p>The canvas is unbounded. Finger drawing changes what a single finger does and nothing else.</p>
+
+    <table class="navtable">
+      <thead>
+        <tr><th>Input</th><th>Does</th><th>With Finger drawing on</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>One finger</td><td>Pans the board</td><td>Uses the current tool</td></tr>
+        <tr><td>Two fingers</td><td>Pinch-zooms</td><td>Unchanged</td></tr>
+        <tr><td>Mouse wheel</td><td>Zooms at the pointer</td><td>Unchanged</td></tr>
+        <tr><td>Middle mouse, right mouse held, or <kbd>Space</kbd></td><td>Pans while held</td><td>Unchanged</td></tr>
+        <tr><td>Double-click a container</td><td>Centers it and fills the view</td><td>Unchanged</td></tr>
+        <tr><td>Double-click empty canvas</td><td>Frames the whole board, or resets an empty one</td><td>Unchanged</td></tr>
+      </tbody>
+    </table>
+
+    <p>The window can sit in a narrow strip beside another app. <kbd>F11</kbd> fills the monitor and hides the title and tabs. <kbd>Ctrl</kbd><span class="plus">+</span><kbd>F11</kbd> hides the same chrome and keeps the window where it is. <kbd>Escape</kbd> leaves either unless a text container is being edited.</p>
 
     <h3>Containers</h3>
-    <p>Images, LiveViews, and text blocks are containers. With a mouse, click to move, drag the circular handle to resize while keeping aspect ratio. Releasing the mouse returns to the drawing tool you had. <span class="ui">View → Bring to front</span> and <span class="ui">View → Send to back</span> reorder the selected container and its linked strokes. Strokes cannot be reordered on their own. Imported images accept PNG, JPEG, BMP, and GIF, including clipboard paste and Explorer drag-and-drop.</p>
+    <p>Images, LiveViews, and text blocks are containers. With a mouse, click to move, drag the circular handle to resize while keeping aspect ratio. Releasing the mouse returns to the drawing tool you had. Imported images accept PNG, JPEG, BMP, and GIF, including clipboard paste and Explorer drag-and-drop.</p>
+    <p><span class="ui">View → Bring to front</span> and <span class="ui">View → Send to back</span> reorder the selected container and its linked strokes. Strokes cannot be reordered on their own.</p>
 
     <h3>Text, DAX, and SQL</h3>
-    <p>Paste prefers an image when the clipboard has one, including a file SnagIt or another capture tool left on the clipboard. Paste plain text to create a selected text container. <span class="ui">Help → Preferences</span> sets Snippet format order: paste tries those languages from top to bottom. Plain text always matches, so putting it first keeps paste as plain text. Use the title-bar chip to choose Plain text, DAX, or SQL Server afterwards. <kbd>F2</kbd> edits the selected container. Double-click still centers the container and fits it to the canvas. <kbd>F6</kbd> formats DAX or SQL locally. SQL Server mode targets SQL Server 2025 T-SQL, keeps <code>GO</code> batch separators, and leaves an invalid script unchanged. <kbd>Ctrl</kbd><span class="plus">+</span><kbd>Enter</kbd> commits; <kbd>Escape</kbd> restores the previous text, language, and size.</p>
+    <p>Paste prefers an image when the clipboard has one, including a file SnagIt or another capture tool left on the clipboard. Paste plain text to create a selected text container.</p>
+    <p><span class="ui">Help → Preferences</span> sets Snippet format order: paste tries those languages from top to bottom. Plain text always matches, so putting it first keeps paste as plain text. Use the title-bar chip to choose Plain text, DAX, or SQL Server afterwards.</p>
+    <p><kbd>F2</kbd> edits the selected container, and double-click still centers it and fits it to the canvas. <kbd>F6</kbd> formats DAX or SQL locally. SQL Server mode targets SQL Server 2025 T-SQL, keeps <code>GO</code> batch separators, and leaves an invalid script unchanged. <kbd>Ctrl</kbd><span class="plus">+</span><kbd>Enter</kbd> commits; <kbd>Escape</kbd> restores the previous text, language, and size.</p>
 
-    <h3>LiveView</h3>
-    <p><span class="ui">View → LiveView</span> captures a window or a display. The container behaves like an image: move, resize, frame, delete, undo. <span class="ui">View → Freeze</span> stops capture on the last frame and can resume the same target. <span class="ui">View → Disconnect</span> releases the target, keeps the last frame, and hides the on-frame controls; <span class="ui">View → Reconnect</span> is then the only way back to a live feed.</p>
+    <h3 id="liveview">LiveView</h3>
+    <p><span class="ui">View → LiveView</span> captures a window or a display. The container behaves like an image: move, resize, frame, delete, undo.</p>
+
+    <figure class="fig">
+      <div class="figbox">
+        <svg viewBox="0 0 740 260" role="img" aria-label="A LiveView is live, can be frozen and resumed, or disconnected with Reconnect as the only way back; copying and pasting one produces an ordinary still image.">
+          <title>What a LiveView can be</title>
+          <g font-size="13" font-weight="620">
+            <g class="f6-2">
+              <rect x="40" y="40" width="150" height="64" rx="12" fill="var(--fig-surface)" stroke="var(--fig-line)"/>
+              <g transform="translate(56 63) scale(0.75)" fill="var(--fig-muted)"><path d="M6.25 3C5.01 3 4 4 4 5.25v13.5C4 19.99 5 21 6.25 21h2.5C9.99 21 11 20 11 18.75V5.25C11 4.01 10 3 8.75 3h-2.5ZM5.5 5.25c0-.41.34-.75.75-.75h2.5c.41 0 .75.34.75.75v13.5c0 .41-.34.75-.75.75h-2.5a.75.75 0 0 1-.75-.75V5.25ZM15.25 3C14.01 3 13 4 13 5.25v13.5c0 1.24 1 2.25 2.25 2.25h2.5c1.24 0 2.25-1 2.25-2.25V5.25C20 4.01 19 3 17.75 3h-2.5Zm-.75 2.25c0-.41.34-.75.75-.75h2.5c.41 0 .75.34.75.75v13.5c0 .41-.34.75-.75.75h-2.5a.75.75 0 0 1-.75-.75V5.25Z"/></g>
+              <text x="86" y="68" fill="var(--fig-ink)">Frozen</text>
+              <text x="86" y="86" font-size="11.5" font-weight="400" fill="var(--fig-muted)">last frame</text>
+            </g>
+            <g class="f6-1">
+              <rect x="295" y="40" width="150" height="64" rx="12" fill="var(--fig-surface)" stroke="var(--fig-accent)" stroke-width="1.6"/>
+              <g transform="translate(311 63) scale(0.75)" fill="var(--fig-accent)"><path d="M5.99 4.93c.3.3.3.77 0 1.06a8.5 8.5 0 0 0 0 12.02.75.75 0 0 1-1.06 1.06 10 10 0 0 1 0-14.14c.3-.3.77-.3 1.06 0Zm13.08 0a10 10 0 0 1 0 14.14.75.75 0 0 1-1.06-1.06 8.5 8.5 0 0 0 0-12.02.75.75 0 1 1 1.06-1.06ZM8.82 7.76c.3.29.3.76 0 1.06a4.5 4.5 0 0 0 0 6.36.75.75 0 0 1-1.06 1.06 6 6 0 0 1 0-8.48c.29-.3.77-.3 1.06 0Zm7.42 0a6 6 0 0 1 0 8.48.75.75 0 1 1-1.06-1.06 4.5 4.5 0 0 0 0-6.36.75.75 0 0 1 1.06-1.06ZM12 10.5a1.5 1.5 0 1 1 0 3 1.5 1.5 0 0 1 0-3Z"/></g>
+              <text x="341" y="68" fill="var(--fig-ink)">Live</text>
+              <text x="341" y="86" font-size="11.5" font-weight="400" fill="var(--fig-muted)">capturing</text>
+            </g>
+            <g class="f6-3">
+              <rect x="550" y="40" width="150" height="64" rx="12" fill="var(--fig-surface)" stroke="var(--fig-line)"/>
+              <g transform="translate(566 63) scale(0.75)" fill="var(--fig-danger)"><path d="M21.78 3.28a.75.75 0 0 0-1.06-1.06l-2.01 2.01a4.25 4.25 0 0 0-5.47.46l-1.06 1.07c-.69.69-.69 1.8 0 2.48l3.58 3.58c.69.69 1.8.69 2.48 0l1.07-1.06a4.25 4.25 0 0 0 .46-5.47l2.01-2.01Zm-3.59 2.48.03.02.02.03a2.75 2.75 0 0 1 0 3.88l-1.06 1.07c-.1.1-.26.1-.36 0l-3.58-3.58a.25.25 0 0 1 0-.36l1.07-1.06a2.75 2.75 0 0 1 3.88 0Zm-7.41 5.52a.75.75 0 1 0-1.06-1.06L8 11.94l-.47-.47a.75.75 0 0 0-1.06 0l-1.78 1.77a4.25 4.25 0 0 0-.46 5.47l-2.01 2.01a.75.75 0 1 0 1.06 1.06l2.01-2.01a4.25 4.25 0 0 0 5.47-.46l1.77-1.78c.3-.3.3-.77 0-1.06l-.47-.47 1.72-1.72a.75.75 0 1 0-1.06-1.06L11 14.94 9.06 13l1.72-1.72Zm-3.31 2.25 3 3 .47.47-1.25 1.24a2.75 2.75 0 0 1-3.88 0l-.05-.05a2.75 2.75 0 0 1 0-3.88L7 13.06l.47.47Z"/></g>
+              <text x="596" y="68" fill="var(--fig-ink)">Disconnected</text>
+              <text x="596" y="86" font-size="11.5" font-weight="400" fill="var(--fig-muted)">target released</text>
+            </g>
+            <g class="f6-4">
+              <rect x="295" y="170" width="150" height="64" rx="12" fill="var(--fig-surface)" stroke="var(--fig-line)" stroke-dasharray="5 4"/>
+              <g transform="translate(311 193) scale(0.75)" fill="var(--fig-muted)"><path d="M11 2.75a.75.75 0 0 0-.75-.75h-5A3.25 3.25 0 0 0 2 5.25v5a.75.75 0 0 0 1.5 0v-5c0-.97.78-1.75 1.75-1.75h5c.41 0 .75-.34.75-.75ZM13.75 2a.75.75 0 0 0 0 1.5h5c.97 0 1.75.78 1.75 1.75v5a.75.75 0 0 0 1.5 0v-5C22 3.45 20.54 2 18.75 2h-5Zm0 20a.75.75 0 0 1 0-1.5h5c.97 0 1.75-.78 1.75-1.75v-5a.75.75 0 0 1 1.5 0v5c0 1.8-1.46 3.25-3.25 3.25h-5ZM4 12a3 3 0 0 0-3 3v5c0 .56.15 1.08.42 1.52l3.49-3.49c.88-.88 2.3-.88 3.18 0l3.5 3.5c.26-.45.41-.97.41-1.53v-5a3 3 0 0 0-3-3H4Zm0 11c-.56 0-1.08-.15-1.52-.42l3.49-3.49c.3-.3.77-.3 1.06 0l3.5 3.5c-.45.26-.97.41-1.53.41H4Zm5-7a1 1 0 1 1 0-2 1 1 0 0 1 0 2Z"/></g>
+              <text x="341" y="198" fill="var(--fig-ink)">Still bitmap</text>
+              <text x="341" y="216" font-size="11.5" font-weight="400" fill="var(--fig-muted)">an ordinary image</text>
+            </g>
+          </g>
+          <g class="f6-2" fill="none" stroke="var(--fig-muted)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M293 64H192"/>
+            <path d="M199 58l-7 6 7 6"/>
+            <path d="M192 88h101"/>
+            <path d="M286 82l7 6-7 6"/>
+          </g>
+          <g class="f6-2" font-size="12" text-anchor="middle">
+            <text x="242" y="54" fill="var(--fig-muted)">Freeze</text>
+            <text x="242" y="110" fill="var(--fig-muted)">Resume</text>
+          </g>
+          <g class="f6-3" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <g stroke="var(--fig-danger)"><path d="M447 64h101"/><path d="M541 58l7 6-7 6"/></g>
+            <g stroke="var(--fig-accent)"><path d="M548 88H447"/><path d="M454 82l-7 6 7 6"/></g>
+          </g>
+          <g class="f6-3" font-size="12" text-anchor="middle">
+            <text x="497" y="54" fill="var(--fig-danger)">Disconnect</text>
+            <text x="497" y="110" fill="var(--fig-accent)">Reconnect</text>
+          </g>
+          <g class="f6-4" fill="none" stroke="var(--fig-muted)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" stroke-dasharray="5 4">
+            <path d="M370 106v56"/>
+          </g>
+          <g class="f6-4">
+            <path d="M364 156l6 8 6-8" fill="none" stroke="var(--fig-muted)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+            <text x="384" y="138" font-size="12" fill="var(--fig-muted)">Copy, then Paste</text>
+          </g>
+        </svg>
+      </div>
+      <figcaption><span class="ui">Freeze</span> stops capture on the last frame and can resume the same target. <span class="ui">Disconnect</span> releases the target, keeps the last frame, and hides the on-frame controls &mdash; <span class="ui">Reconnect</span> is then the only way back to a live feed. Copying a LiveView and pasting gives a still bitmap that was never connected to anything.</figcaption>
+    </figure>
 
     <h3>Files</h3>
     <p><kbd>Ctrl</kbd><span class="plus">+</span><kbd>S</kbd> and <kbd>Ctrl</kbd><span class="plus">+</span><kbd>O</kbd> save and open a <code>.wboard</code>. The released installer registers that type and <code>.wimport</code>. The pre-release (Dev) channel does not, so it can sit beside a released copy without stealing the file association.</p>
 
+    <h3>The command strip</h3>
+    <p>File, Edit, View, and Help sit on a thin tab strip. Click a tab for a one-row command strip over the canvas; click the canvas to hide it. Edit and Help stay open after a command so you can run several; File and View close. Drawing tools stay on the floating palette, which never moves out from under your hand.</p>
+
+    <figure class="fig">
+      <div class="figbox">
+        <svg viewBox="0 0 740 320" role="img" aria-label="The File, Edit, View and Help tab strip with the View command row open over the canvas, and the floating tool palette in its default top-right placement.">
+          <title>The tab strip, the command strip, and the floating palette</title>
+          <defs>
+            <radialGradient id="f5fade" cx="0.5" cy="0.45" r="0.8"><stop offset="0.3" stop-color="#fff"/><stop offset="1" stop-color="#000"/></radialGradient>
+            <mask id="f5mask"><rect x="6" y="102" width="728" height="204" fill="url(#f5fade)"/></mask>
+            <pattern id="f5grid" width="34" height="34" patternUnits="userSpaceOnUse"><path d="M34 0H0v34" fill="none" stroke="rgba(21,23,28,.055)" stroke-width="1"/></pattern>
+            <clipPath id="f5clip"><rect x="6" y="6" width="728" height="300" rx="14"/></clipPath>
+          </defs>
+          <rect width="740" height="320" rx="10" fill="var(--fig-ground)"/>
+          <g clip-path="url(#f5clip)">
+            <rect x="6" y="6" width="728" height="300" fill="#FFFFFF"/>
+            <rect x="6" y="102" width="728" height="204" fill="url(#f5grid)" mask="url(#f5mask)"/>
+            <rect x="6" y="6" width="728" height="32" fill="#F9F9F9"/>
+            <g class="f5-tab">
+              <rect x="112" y="10" width="50" height="24" rx="6" fill="rgba(37,99,235,.10)"/>
+              <rect x="112" y="33" width="50" height="2.5" fill="#2563EB"/>
+            </g>
+            <g font-size="13" fill="#374151" text-anchor="middle">
+              <text x="41" y="27">File</text><text x="88" y="27">Edit</text><text x="137" y="27" font-weight="600">View</text><text x="186" y="27">Help</text>
+            </g>
+            <g class="f5-strip">
+              <rect x="6" y="38" width="728" height="64" fill="#F9F9F9"/>
+              <rect x="6" y="101" width="728" height="1" fill="rgba(0,0,0,.14)"/>
+              <rect x="193" y="52" width="1" height="36" fill="rgba(0,0,0,.13)"/>
+              <rect x="371" y="52" width="1" height="36" fill="rgba(0,0,0,.13)"/>
+              <g fill="#374151">
+                <g transform="translate(54 48) scale(0.75)"><path d="M4.5 5.75c0-.69.56-1.25 1.25-1.25h2a.75.75 0 0 0 0-1.5h-2A2.75 2.75 0 0 0 3 5.75v2a.75.75 0 0 0 1.5 0v-2Zm0 12.5c0 .69.56 1.25 1.25 1.25h2a.75.75 0 0 1 0 1.5h-2A2.75 2.75 0 0 1 3 18.25v-2a.75.75 0 0 1 1.5 0v2ZM18.25 4.5c.69 0 1.25.56 1.25 1.25v2a.75.75 0 0 0 1.5 0v-2A2.75 2.75 0 0 0 18.25 3h-2a.75.75 0 0 0 0 1.5h2Zm1.25 13.75c0 .69-.56 1.25-1.25 1.25h-2a.75.75 0 0 0 0 1.5h2A2.75 2.75 0 0 0 21 18.25v-2a.75.75 0 0 0-1.5 0v2Z"/></g>
+                <g transform="translate(136 48) scale(0.75)"><path d="M6.25 3A3.25 3.25 0 0 0 3 6.25v11.5C3 19.55 4.46 21 6.25 21h11.5c1.8 0 3.25-1.46 3.25-3.25V6.25C21 4.45 19.54 3 17.75 3H6.25ZM19.5 7h-15v-.75c0-.97.78-1.75 1.75-1.75h11.5c.97 0 1.75.78 1.75 1.75V7Zm-15 1.5h15v9.25c0 .97-.78 1.75-1.75 1.75H6.25c-.97 0-1.75-.78-1.75-1.75V8.5Z"/></g>
+                <g transform="translate(232 48) scale(0.75)"><path d="M6.25 3A3.25 3.25 0 0 0 3 6.25v6.5C3 14.55 4.46 16 6.25 16H7v1.75C7 19.55 8.46 21 10.25 21h7.5c1.8 0 3.25-1.46 3.25-3.25v-7.5C21 8.45 19.54 7 17.75 7H16V6.25C16 4.45 14.54 3 12.75 3h-6.5ZM16 8.5h1.75c.97 0 1.75.78 1.75 1.75v7.5c0 .97-.78 1.75-1.75 1.75h-7.5c-.97 0-1.75-.78-1.75-1.75V16h4.75c1.8 0 3.25-1.46 3.25-3.25V8.5ZM4.5 6.25c0-.97.78-1.75 1.75-1.75h6.5c.97 0 1.75.78 1.75 1.75v6.5c0 .97-.78 1.75-1.75 1.75h-6.5c-.97 0-1.75-.78-1.75-1.75v-6.5Z"/></g>
+                <g transform="translate(314 48) scale(0.75)"><path d="M17.75 8A3.25 3.25 0 0 1 21 11.25v6.5C21 19.55 19.54 21 17.75 21h-6.5A3.25 3.25 0 0 1 8 17.75V16H6.25A3.25 3.25 0 0 1 3 12.75v-6.5C3 4.45 4.46 3 6.25 3h6.5C14.55 3 16 4.46 16 6.25V8h1.75ZM8 11.25c0-.97.78-1.75 1.75-1.75h6.5c.97 0 1.75.78 1.75 1.75v6.5c0 .97-.78 1.75-1.75 1.75h-6.5c-.97 0-1.75-.78-1.75-1.75v-6.5ZM14.5 6.25c0-.97-.78-1.75-1.75-1.75h-6.5c-.97 0-1.75.78-1.75 1.75v6.5c0 .97.78 1.75 1.75 1.75H8v-2.5A3.25 3.25 0 0 1 11.25 8H14.5V6.25Z"/></g>
+                <g transform="translate(410 48) scale(0.75)"><path d="M5.99 4.93c.3.3.3.77 0 1.06a8.5 8.5 0 0 0 0 12.02.75.75 0 0 1-1.06 1.06 10 10 0 0 1 0-14.14c.3-.3.77-.3 1.06 0Zm13.08 0a10 10 0 0 1 0 14.14.75.75 0 0 1-1.06-1.06 8.5 8.5 0 0 0 0-12.02.75.75 0 1 1 1.06-1.06ZM8.82 7.76c.3.29.3.76 0 1.06a4.5 4.5 0 0 0 0 6.36.75.75 0 0 1-1.06 1.06 6 6 0 0 1 0-8.48c.29-.3.77-.3 1.06 0Zm7.42 0a6 6 0 0 1 0 8.48.75.75 0 1 1-1.06-1.06 4.5 4.5 0 0 0 0-6.36.75.75 0 0 1 1.06-1.06ZM12 10.5a1.5 1.5 0 1 1 0 3 1.5 1.5 0 0 1 0-3Z"/></g>
+                <g transform="translate(492 48) scale(0.75)"><path d="M6.25 3C5.01 3 4 4 4 5.25v13.5C4 19.99 5 21 6.25 21h2.5C9.99 21 11 20 11 18.75V5.25C11 4.01 10 3 8.75 3h-2.5ZM5.5 5.25c0-.41.34-.75.75-.75h2.5c.41 0 .75.34.75.75v13.5c0 .41-.34.75-.75.75h-2.5a.75.75 0 0 1-.75-.75V5.25ZM15.25 3C14.01 3 13 4 13 5.25v13.5c0 1.24 1 2.25 2.25 2.25h2.5c1.24 0 2.25-1 2.25-2.25V5.25C20 4.01 19 3 17.75 3h-2.5Zm-.75 2.25c0-.41.34-.75.75-.75h2.5c.41 0 .75.34.75.75v13.5c0 .41-.34.75-.75.75h-2.5a.75.75 0 0 1-.75-.75V5.25Z"/></g>
+              </g>
+              <g transform="translate(574 48) scale(0.75)" fill="#C24141"><path d="M21.78 3.28a.75.75 0 0 0-1.06-1.06l-2.01 2.01a4.25 4.25 0 0 0-5.47.46l-1.06 1.07c-.69.69-.69 1.8 0 2.48l3.58 3.58c.69.69 1.8.69 2.48 0l1.07-1.06a4.25 4.25 0 0 0 .46-5.47l2.01-2.01Zm-3.59 2.48.03.02.02.03a2.75 2.75 0 0 1 0 3.88l-1.06 1.07c-.1.1-.26.1-.36 0l-3.58-3.58a.25.25 0 0 1 0-.36l1.07-1.06a2.75 2.75 0 0 1 3.88 0Zm-7.41 5.52a.75.75 0 1 0-1.06-1.06L8 11.94l-.47-.47a.75.75 0 0 0-1.06 0l-1.78 1.77a4.25 4.25 0 0 0-.46 5.47l-2.01 2.01a.75.75 0 1 0 1.06 1.06l2.01-2.01a4.25 4.25 0 0 0 5.47-.46l1.77-1.78c.3-.3.3-.77 0-1.06l-.47-.47 1.72-1.72a.75.75 0 1 0-1.06-1.06L11 14.94 9.06 13l1.72-1.72Zm-3.31 2.25 3 3 .47.47-1.25 1.24a2.75 2.75 0 0 1-3.88 0l-.05-.05a2.75 2.75 0 0 1 0-3.88L7 13.06l.47.47Z"/></g>
+              <g transform="translate(656 48) scale(0.75)" fill="#2563EB"><path d="M16.25 5.18c-.25.33-.19.8.14 1.05a7.24 7.24 0 0 1-3.6 12.98l.68-.68a.75.75 0 0 0-.98-1.13l-.08.07-2 2a.75.75 0 0 0-.07.98l.07.08 2 2a.75.75 0 0 0 1.13-.98l-.07-.08-.75-.75A8.75 8.75 0 0 0 17.3 5.04a.75.75 0 0 0-1.05.14Zm-5.72-3.71c-.3.3-.3.77 0 1.06l.75.75a8.75 8.75 0 0 0-4.85 15.47.75.75 0 1 0 .96-1.16A7.23 7.23 0 0 1 11.2 4.8l-.68.68a.75.75 0 1 0 1.06 1.06l2-2c.3-.3.3-.77 0-1.06l-2-2a.75.75 0 0 0-1.06 0Z"/></g>
+              <g font-size="12" fill="#374151" text-anchor="middle">
+                <text x="63" y="82">Full screen</text><text x="145" y="82">Canvas only</text>
+                <text x="241" y="82">Bring to front</text><text x="323" y="82">Send to back</text>
+                <text x="419" y="82">LiveView</text><text x="501" y="82">Freeze</text>
+                <text x="583" y="82" fill="#C24141">Disconnect</text><text x="665" y="82" fill="#2563EB">Reconnect</text>
+              </g>
+              <g font-size="10.5" fill="#8B93A1" text-anchor="middle">
+                <text x="63" y="95">F11</text><text x="145" y="95">Ctrl+F11</text>
+                <text x="241" y="95">B</text><text x="323" y="95">S</text>
+              </g>
+            </g>
+            <g transform="translate(34 126)">
+              <rect width="290" height="126" rx="12" fill="#FAFAFB" stroke="#E2E4E9"/>
+              <path d="M0 12A12 12 0 0 1 12 0h266a12 12 0 0 1 12 12v22H0Z" fill="#F2F3F7"/>
+              <text x="15" y="23" font-size="13" font-weight="620" fill="#15171C">Total Sales</text>
+              <rect x="240" y="8" width="36" height="18" rx="9" fill="#FFFFFF" stroke="#E2E4E9"/>
+              <text x="258" y="21" font-size="11.5" fill="#5C6371" text-anchor="middle">DAX</text>
+              <g font-family="Cascadia Mono, Consolas, monospace" font-size="13.5">
+                <text x="18" y="64" fill="#B71D1D">Total Sales</text><text x="110" y="64" fill="#15171C">:=</text>
+                <text x="18" y="90" fill="#0B6FB8">SUM</text><text x="50" y="90" fill="#15171C">( Sales[Amount] )</text>
+              </g>
+              <path d="M16 100c48 7 100 3 154-6" fill="none" stroke="#E64B3D" stroke-width="3.6" stroke-linecap="round"/>
+            </g>
+            <g transform="translate(546 118)">
+              <rect width="172" height="56" rx="12" fill="#F9F9F9" stroke="rgba(0,0,0,.14)"/>
+              <rect x="8" y="7" width="42" height="42" rx="9" fill="rgba(37,99,235,.10)"/>
+              <g fill="#374151">
+                <g transform="translate(20 17) scale(0.75)"><path d="M4.5 2.75a.75.75 0 0 0-1.5 0v3.5C3 7.22 3.78 8 4.75 8h.27l4.03 8.97c.2.45.59.79 1.04.94a5.79 5.79 0 0 0 .27 3.01c.3.6.83 1.08 1.64 1.08.8 0 1.35-.48 1.64-1.08a5.79 5.79 0 0 0 .27-3.01c.45-.15.83-.49 1.04-.94L18.98 8h.27C20.22 8 21 7.22 21 6.25v-3.5a.75.75 0 0 0-1.5 0v3.5c0 .14-.11.25-.25.25H4.75a.25.25 0 0 1-.25-.25v-3.5ZM6.66 8h10.68l-3.76 8.35a.25.25 0 0 1-.23.15h-2.7a.25.25 0 0 1-.23-.15L6.66 8Zm4.95 10h.78c.07.26.11.6.11 1 0 .57-.08 1-.21 1.26-.1.22-.2.24-.29.24-.1 0-.18-.02-.29-.24A3.03 3.03 0 0 1 11.5 19c0-.4.04-.74.11-1Z"/></g>
+                <g transform="translate(54 24) scale(0.75)"><path d="M3.08 5.42a.75.75 0 0 1 1.06.02L8 9.2l3.86-3.76a.75.75 0 1 1 1.04 1.08l-4.38 4.26a.75.75 0 0 1-1.04 0L3.06 6.52a.75.75 0 0 1 .02-1.1Z"/></g>
+                <g transform="translate(87 17) scale(0.75)"><path d="M20.26 2c.38 0 .7.29.74.65v4.6c0 1.16-.87 2.11-2 2.24v2.26c0 1.19-.92 2.16-2.1 2.24h-.4v2.8c0 .81-.44 1.56-1.14 1.96l-.15.08-6.64 3.1a.75.75 0 0 1-1.06-.58V14h-.26c-1.2 0-2.17-.93-2.24-2.1L5 11.75V9.49A2.25 2.25 0 0 1 3 7.4V2.75a.75.75 0 0 1 1.5-.1v4.6c0 .38.28.7.65.74l.1.01h13.5c.38 0 .7-.28.75-.65v-4.6c0-.41.34-.75.76-.75ZM15 14H9v6.07l5.57-2.6c.23-.11.39-.33.42-.57l.01-.11v-2.8Zm2.5-4.5h-11v2.25c0 .38.28.69.65.74h9.6c.38 0 .7-.28.75-.64V9.5Z"/></g>
+                <g transform="translate(127 17) scale(0.75)"><path d="M11 2.75a.75.75 0 0 0-.75-.75h-5A3.25 3.25 0 0 0 2 5.25v5a.75.75 0 0 0 1.5 0v-5c0-.97.78-1.75 1.75-1.75h5c.41 0 .75-.34.75-.75ZM13.75 2a.75.75 0 0 0 0 1.5h5c.97 0 1.75.78 1.75 1.75v5a.75.75 0 0 0 1.5 0v-5C22 3.45 20.54 2 18.75 2h-5Zm0 20a.75.75 0 0 1 0-1.5h5c.97 0 1.75-.78 1.75-1.75v-5a.75.75 0 0 1 1.5 0v5c0 1.8-1.46 3.25-3.25 3.25h-5ZM4 12a3 3 0 0 0-3 3v5c0 .56.15 1.08.42 1.52l3.49-3.49c.88-.88 2.3-.88 3.18 0l3.5 3.5c.26-.45.41-.97.41-1.53v-5a3 3 0 0 0-3-3H4Zm0 11c-.56 0-1.08-.15-1.52-.42l3.49-3.49c.3-.3.77-.3 1.06 0l3.5 3.5c-.45.26-.97.41-1.53.41H4Zm5-7a1 1 0 1 1 0-2 1 1 0 0 1 0 2Z"/></g>
+              </g>
+              <rect x="22" y="42" width="14" height="4" rx="2" fill="#E64B3D"/>
+              <rect x="89" y="42" width="14" height="4" rx="2" fill="#FACC15"/>
+            </g>
+            <g class="f5-cursor">
+              <path d="M137 34l0 17 5-5 4 7 4-2-4-6 6-1z" fill="#15171C" stroke="#FFFFFF" stroke-width="1.5" stroke-linejoin="round"/>
+            </g>
+          </g>
+          <rect x="6" y="6" width="728" height="300" rx="14" fill="none" stroke="var(--fig-line)"/>
+        </svg>
+      </div>
+      <figcaption>The <span class="ui">View</span> row, drawn from the application&rsquo;s own icons and colours. The floating palette keeps its default top-right placement, under a typical presenter picture-in-picture rather than over it.</figcaption>
+    </figure>
+
     <h3>Preferences</h3>
-    <p>File, Edit, View, and Help sit on a thin tab strip. Click a tab for a one-row command strip over the canvas; click the canvas to hide it. Drawing tools stay on the floating palette. <span class="ui">Help → Preferences</span> is a searchable list: which monitor to open on, start full screen, finger drawing, snippet format order, laser trail timing, and toolbar placement. <span class="ui">Help → About</span> shows the version. New settings are more rows in Preferences, not a new dialog.</p>
+    <p><span class="ui">Help → Preferences</span> is a searchable list: which monitor to open on, start full screen, finger drawing, snippet format order, laser trail timing, and toolbar placement. <span class="ui">Help → About</span> shows the version. New settings are more rows in Preferences, not a new dialog.</p>
   </article>
 
   <nav class="pagenav" aria-label="More documentation">
@@ -145,6 +552,31 @@
     </span>
   </div>
 </footer>
+
+<script>
+  (function () {
+    var figures = document.querySelectorAll('.fig');
+    var i;
+
+    // Without an observer every figure simply shows its resting state, which is
+    // the whole point of the figure. Nothing is lost by never animating.
+    if (!('IntersectionObserver' in window)) {
+      for (i = 0; i < figures.length; i++) figures[i].classList.add('is-visible');
+      return;
+    }
+
+    // A figure loops while it is on screen and stops when it leaves, so the
+    // reader can watch a step again without reloading and nothing off screen
+    // keeps animating. The class is toggled, never unobserved.
+    var watcher = new IntersectionObserver(function (entries) {
+      for (var e = 0; e < entries.length; e++) {
+        entries[e].target.classList.toggle('is-visible', entries[e].isIntersecting);
+      }
+    }, { threshold: 0.25 });
+
+    for (i = 0; i < figures.length; i++) watcher.observe(figures[i]);
+  })();
+</script>
 
 </body>
 </html>
