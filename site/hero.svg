@@ -53,7 +53,7 @@
     <path d="M744 322c40 36 88 44 140 18" stroke-width="4.5" opacity=".9"/>
   </g>
 
-  <!-- Small floating toolbar, bottom center — the real chrome, not a left rail. -->
+  <!-- Small floating toolbar, bottom center. The real chrome, not a left rail. -->
   <g transform="translate(430 556)">
     <rect width="340" height="64" rx="16" fill="#FFFFFF" stroke="#E2E4E9"/>
     <g fill="none" stroke="#5C6371" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">

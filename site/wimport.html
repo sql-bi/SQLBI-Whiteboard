@@ -3,13 +3,13 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>.wimport format — SQLBI Whiteboard</title>
+<title>.wimport format · SQLBI Whiteboard</title>
 <meta name="description" content="The .wimport Markdown recipe format for building image and text containers in SQLBI Whiteboard.">
 <link rel="icon" href="favicon.ico" sizes="any">
 <link rel="icon" href="favicon-32.png" type="image/png" sizes="32x32">
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
 <meta property="og:type" content="website">
-<meta property="og:title" content=".wimport format — SQLBI Whiteboard">
+<meta property="og:title" content=".wimport format · SQLBI Whiteboard">
 <meta property="og:description" content="Markdown recipes that build image and text containers on a whiteboard.">
 <meta property="og:url" content="https://whiteboard.sqlbi.com/wimport.html">
 <meta property="og:image" content="https://whiteboard.sqlbi.com/og-image.png">
@@ -72,12 +72,12 @@
     <h2>How the body becomes a container</h2>
     <p>Recognizers run in this order. The first match wins. Extra material after the match is ignored.</p>
     <ol>
-      <li><strong>Markdown image</strong> — <code>![optional alt](relative/path.png)</code>. Image container. Title is the <code>##</code> heading, then the alt text, then the file name. Allowed extensions: <code>.png</code>, <code>.jpg</code>, <code>.jpeg</code>, <code>.bmp</code>, <code>.gif</code>.</li>
+      <li><strong>Markdown image</strong>: <code>![optional alt](relative/path.png)</code>. Image container. Title is the <code>##</code> heading, then the alt text, then the file name. Allowed extensions: <code>.png</code>, <code>.jpg</code>, <code>.jpeg</code>, <code>.bmp</code>, <code>.gif</code>.</li>
       <li><strong>Fenced code</strong> whose info-string is a registered language. Text container. Contents of the fence. Language from the tag.</li>
-      <li><strong>Markdown link</strong> to an image extension — same as an image.</li>
-      <li><strong>Markdown link</strong> to a registered language extension — <code>[label](relative/path.dax)</code>. Text container. File contents. Language from the extension.</li>
-      <li><strong>Any remaining text</strong> — text container. The Markdown source is stored as plain text. Whiteboard does not render Markdown.</li>
-      <li><strong>Empty body</strong> — the heading is skipped.</li>
+      <li><strong>Markdown link</strong> to an image extension: same as an image.</li>
+      <li><strong>Markdown link</strong> to a registered language extension: <code>[label](relative/path.dax)</code>. Text container. File contents. Language from the extension.</li>
+      <li><strong>Any remaining text</strong>: text container. The Markdown source is stored as plain text. Whiteboard does not render Markdown.</li>
+      <li><strong>Empty body</strong>: the heading is skipped.</li>
     </ol>
     <p>Do not put an image and a measure under the same <code>##</code>. Use two headings.</p>
     <p>A fenced block whose tag is unknown (for example <code>python</code> today) is not a language container. The whole body, fence included, becomes plain text.</p>

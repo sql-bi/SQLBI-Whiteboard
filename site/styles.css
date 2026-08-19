@@ -198,8 +198,8 @@ footer .ico-inline { vertical-align: -2px; margin-right: 5px; }
     grid-template-columns: minmax(0, 1fr);
     grid-template-areas:
       "copy"
-      "teaser"
-      "art";
+      "art"
+      "teaser";
     gap: 28px;
   }
   .hero-copy,
