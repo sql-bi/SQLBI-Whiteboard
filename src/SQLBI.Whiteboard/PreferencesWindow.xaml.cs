@@ -3,6 +3,7 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Controls.Primitives;
 using System.Windows.Input;
+using SQLBI.Whiteboard.Core.Model;
 using SQLBI.Whiteboard.Core.Settings;
 
 namespace SQLBI.Whiteboard;
@@ -171,6 +172,15 @@ public partial class PreferencesWindow : Window
             body.Children.Add(value);
             body.Children.Add(slider);
         }
+        else if (setting.Editor == SettingEditorKind.OrderedList)
+        {
+            body.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+            body.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+            Grid.SetRow(editor, 1);
+            editor.Margin = new Thickness(0, 8, 0, 0);
+            body.Children.Add(copy);
+            body.Children.Add(editor);
+        }
         else
         {
             body.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
@@ -195,8 +205,97 @@ public partial class PreferencesWindow : Window
             SettingEditorKind.BooleanSwitch => CreateSwitch(setting),
             SettingEditorKind.DoubleRange => CreateSlider(setting),
             SettingEditorKind.MonitorChoice => CreateMonitorCombo(),
+            SettingEditorKind.OrderedList => CreateOrderedList(setting),
             _ => CreateEnumCombo(setting),
         };
+
+    private FrameworkElement CreateOrderedList(SettingDescriptor setting)
+    {
+        var host = new StackPanel();
+        RebuildSnippetFormatOrder(host);
+        host.Tag = setting;
+        return host;
+    }
+
+    private void RebuildSnippetFormatOrder(StackPanel host)
+    {
+        host.Children.Clear();
+        var order = _settings.SnippetFormatOrder;
+        for (var index = 0; index < order.Count; index++)
+        {
+            var languageId = order[index];
+            var row = new Grid { Margin = new Thickness(0, 0, 0, 4) };
+            row.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+            row.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+            row.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+            var label = new TextBlock
+            {
+                Style = (Style)FindResource("SettingsTitle"),
+                Text = TextLanguageRegistry.Resolve(languageId).DisplayName,
+                VerticalAlignment = VerticalAlignment.Center,
+            };
+            var from = index;
+            var up = CreateOrderButton(
+                "ChevronUpGeometry",
+                "Move up",
+                enabled: from > 0,
+                () => MoveSnippetFormat(from, from - 1, host));
+            var down = CreateOrderButton(
+                "ChevronDownGeometry",
+                "Move down",
+                enabled: from < order.Count - 1,
+                () => MoveSnippetFormat(from, from + 1, host));
+            Grid.SetColumn(up, 1);
+            Grid.SetColumn(down, 2);
+            row.Children.Add(label);
+            row.Children.Add(up);
+            row.Children.Add(down);
+            host.Children.Add(row);
+        }
+    }
+
+    private Button CreateOrderButton(string geometryKey, string toolTip, bool enabled, Action move)
+    {
+        var button = new Button
+        {
+            Style = (Style)FindResource("SettingsOrderButton"),
+            ToolTip = toolTip,
+            IsEnabled = enabled,
+            Content = new System.Windows.Shapes.Path
+            {
+                Width = 12,
+                Height = 12,
+                Stretch = System.Windows.Media.Stretch.Uniform,
+                Fill = (System.Windows.Media.Brush)FindResource("ToolbarIconBrush"),
+                Data = (System.Windows.Media.Geometry)FindResource(geometryKey),
+            },
+        };
+        button.Click += (_, _) =>
+        {
+            if (!_suppressChange)
+            {
+                move();
+            }
+        };
+        return button;
+    }
+
+    private void MoveSnippetFormat(int from, int to, StackPanel host)
+    {
+        if (from < 0 || to < 0 ||
+            from >= _settings.SnippetFormatOrder.Count ||
+            to >= _settings.SnippetFormatOrder.Count)
+        {
+            return;
+        }
+
+        var item = _settings.SnippetFormatOrder[from];
+        _settings.SnippetFormatOrder.RemoveAt(from);
+        _settings.SnippetFormatOrder.Insert(to, item);
+        _settings.SnippetFormatOrder = [.. TextLanguageIds.NormalizeOrder(_settings.SnippetFormatOrder)];
+        RebuildSnippetFormatOrder(host);
+        NotifyApplied();
+    }
 
     private ToggleButton CreateSwitch(SettingDescriptor setting)
     {

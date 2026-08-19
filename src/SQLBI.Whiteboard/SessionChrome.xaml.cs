@@ -20,6 +20,8 @@ public enum SessionCommand
     Paste,
     FullScreen,
     CanvasOnly,
+    BringToFront,
+    SendToBack,
     AddLiveView,
     FreezeLiveView,
     DisconnectLiveView,
@@ -37,6 +39,7 @@ public partial class SessionChrome : UserControl
         InitializeComponent();
         SetEditEnabled(canUndo: false, canRedo: false);
         SetLiveViewCommands(selected: false, hasTarget: false, frozen: false);
+        SetZOrderEnabled(canBringToFront: false, canSendToBack: false);
     }
 
     public event Action<SessionCommand>? CommandRequested;
@@ -69,6 +72,17 @@ public partial class SessionChrome : UserControl
 
         UndoButton.IsEnabled = canUndo;
         RedoButton.IsEnabled = canRedo;
+    }
+
+    public void SetZOrderEnabled(bool canBringToFront, bool canSendToBack)
+    {
+        if (BringToFrontButton is null)
+        {
+            return;
+        }
+
+        BringToFrontButton.IsEnabled = canBringToFront;
+        SendToBackButton.IsEnabled = canSendToBack;
     }
 
     public void SetLiveViewCommands(bool selected, bool hasTarget, bool frozen)
@@ -277,6 +291,8 @@ public partial class SessionChrome : UserControl
             'V' when EditRow.Visibility == Visibility.Visible => SessionCommand.Paste,
             'F' when ViewRow.Visibility == Visibility.Visible => SessionCommand.FullScreen,
             'C' when ViewRow.Visibility == Visibility.Visible => SessionCommand.CanvasOnly,
+            'B' when ViewRow.Visibility == Visibility.Visible => SessionCommand.BringToFront,
+            'S' when ViewRow.Visibility == Visibility.Visible => SessionCommand.SendToBack,
             'L' when ViewRow.Visibility == Visibility.Visible => SessionCommand.AddLiveView,
             'Z' when ViewRow.Visibility == Visibility.Visible => SessionCommand.FreezeLiveView,
             'D' when ViewRow.Visibility == Visibility.Visible => SessionCommand.DisconnectLiveView,

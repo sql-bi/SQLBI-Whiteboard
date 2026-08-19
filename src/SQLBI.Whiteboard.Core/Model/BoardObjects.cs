@@ -253,6 +253,34 @@ public static class TextLanguageIds
             SqlServer => SqlServer,
             _ => Plain,
         };
+
+    public static IReadOnlyList<string> All { get; } = [Plain, Dax, SqlServer];
+
+    public static IReadOnlyList<string> NormalizeOrder(IEnumerable<string>? languageIds)
+    {
+        var ordered = new List<string>();
+        if (languageIds is not null)
+        {
+            foreach (var languageId in languageIds)
+            {
+                var normalized = Normalize(languageId);
+                if (!ordered.Contains(normalized, StringComparer.Ordinal))
+                {
+                    ordered.Add(normalized);
+                }
+            }
+        }
+
+        foreach (var languageId in All)
+        {
+            if (!ordered.Contains(languageId, StringComparer.Ordinal))
+            {
+                ordered.Add(languageId);
+            }
+        }
+
+        return ordered;
+    }
 }
 
 public record TextBoardObject(

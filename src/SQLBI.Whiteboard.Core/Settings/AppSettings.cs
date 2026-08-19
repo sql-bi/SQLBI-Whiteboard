@@ -83,6 +83,8 @@ public sealed class AppSettings
 
     public FingerMode FingerMode { get; set; } = FingerMode.WhenNoPen;
 
+    public List<string> SnippetFormatOrder { get; set; } = [.. TextLanguageIds.All];
+
     public InkToolSettings Pen { get; set; } = InkToolSettings.From(InkPalettes.DefaultPen);
 
     public InkToolSettings Highlighter { get; set; } =
@@ -96,7 +98,7 @@ public sealed class AppSettings
 
 public static class AppSettingsSerializer
 {
-    public const int CurrentVersion = 8;
+    public const int CurrentVersion = 9;
 
     private static readonly JsonSerializerOptions JsonOptions = new()
     {
@@ -195,6 +197,7 @@ public static class AppSettingsSerializer
         settings.Highlighter = InkPalettes.Normalize(settings.Highlighter, PenKind.Highlighter);
         settings.Calligraphy = InkPalettes.Normalize(settings.Calligraphy, PenKind.Calligraphy);
         settings.Laser = LaserSettings.Normalize(settings.Laser);
+        settings.SnippetFormatOrder = [.. TextLanguageIds.NormalizeOrder(settings.SnippetFormatOrder)];
         settings.Version = CurrentVersion;
         return settings;
     }

@@ -1447,6 +1447,103 @@ public partial class MainWindow : Window
         _ => throw new NotSupportedException($"Unsupported container type {item.GetType().Name}."),
     };
 
+    private static BoardObject WithZIndex(BoardObject item, int zIndex) => item switch
+    {
+        ImageBoardObject image => image with { ZIndex = zIndex },
+        TextBoardObject text => text with { ZIndex = zIndex },
+        LiveViewBoardObject liveView => liveView with { ZIndex = zIndex },
+        InkStrokeObject stroke => stroke with { ZIndex = zIndex },
+        _ => throw new NotSupportedException($"Unsupported object type {item.GetType().Name}."),
+    };
+
+    private BoardObject? GetSelectedContainer()
+    {
+        if (_selectedObjectId is not Guid selectedId)
+        {
+            return null;
+        }
+
+        BoardObject? item = _document.Objects.FirstOrDefault(candidate => candidate.Id == selectedId);
+        return item is IBoardContainer ? item : null;
+    }
+
+    private void UpdateZOrderCommands()
+    {
+        if (_textEditBefore is not null || GetSelectedContainer() is not { } container)
+        {
+            SessionBar.SetZOrderEnabled(canBringToFront: false, canSendToBack: false);
+            return;
+        }
+
+        BoardObject[] group = _document.GetDeletionGroup(container.Id)
+            .OrderBy(item => item.ZIndex)
+            .ToArray();
+        SessionBar.SetZOrderEnabled(
+            canBringToFront: !IsZGroupAtFront(group),
+            canSendToBack: !IsZGroupAtBack(group));
+    }
+
+    private bool IsZGroupAtFront(IReadOnlyList<BoardObject> group)
+    {
+        HashSet<Guid> ids = group.Select(item => item.Id).ToHashSet();
+        int maxGroup = group.Max(item => item.ZIndex);
+        return _document.Objects.Where(item => !ids.Contains(item.Id))
+            .All(item => item.ZIndex < maxGroup);
+    }
+
+    private bool IsZGroupAtBack(IReadOnlyList<BoardObject> group)
+    {
+        HashSet<Guid> ids = group.Select(item => item.Id).ToHashSet();
+        int minGroup = group.Min(item => item.ZIndex);
+        return _document.Objects.Where(item => !ids.Contains(item.Id))
+            .All(item => item.ZIndex > minGroup);
+    }
+
+    private void BringSelectedContainerToFront()
+    {
+        ReorderSelectedContainer(toFront: true);
+    }
+
+    private void SendSelectedContainerToBack()
+    {
+        ReorderSelectedContainer(toFront: false);
+    }
+
+    private void ReorderSelectedContainer(bool toFront)
+    {
+        if (GetSelectedContainer() is not { } container)
+        {
+            return;
+        }
+
+        BoardObject[] before = _document.GetDeletionGroup(container.Id)
+            .OrderBy(item => item.ZIndex)
+            .ToArray();
+        if (before.Length == 0 ||
+            (toFront ? IsZGroupAtFront(before) : IsZGroupAtBack(before)))
+        {
+            return;
+        }
+
+        HashSet<Guid> ids = before.Select(item => item.Id).ToHashSet();
+        IEnumerable<int> otherZ = _document.Objects
+            .Where(item => !ids.Contains(item.Id))
+            .Select(item => item.ZIndex);
+        int start = toFront
+            ? otherZ.DefaultIfEmpty(-1).Max() + 1
+            : otherZ.DefaultIfEmpty(0).Min() - before.Length;
+        BoardObject[] after = before
+            .Select((item, index) => WithZIndex(item, start + index))
+            .ToArray();
+        if (before.SequenceEqual(after))
+        {
+            return;
+        }
+
+        _history.Execute(new ReplaceObjectsCommand(before, after), _document);
+        UpdateZOrderCommands();
+    }
+
     private void BeginTextEdit(TextBoardObject textObject)
     {
         if (_textEditBefore?.Id == textObject.Id)
@@ -2651,6 +2748,12 @@ public partial class MainWindow : Window
                         ? SessionChromeMode.Windowed
                         : SessionChromeMode.CanvasOnly);
                 break;
+            case SessionCommand.BringToFront:
+                BringSelectedContainerToFront();
+                break;
+            case SessionCommand.SendToBack:
+                SendSelectedContainerToBack();
+                break;
             case SessionCommand.AddLiveView:
                 AddLiveViewMenuItem_Click(this, new RoutedEventArgs());
                 break;
@@ -3019,7 +3122,8 @@ public partial class MainWindow : Window
 
             if (Clipboard.ContainsText(TextDataFormat.UnicodeText))
             {
-                AddText(Clipboard.GetText(TextDataFormat.UnicodeText));
+                string text = Clipboard.GetText(TextDataFormat.UnicodeText);
+                AddText(text, languageId: ResolveSnippetLanguage(text));
             }
         }
         catch (Exception exception)
@@ -3080,11 +3184,13 @@ public partial class MainWindow : Window
         double width = Math.Min(
             TextContainerVisual.DefaultWidth,
             Math.Max(320, visibleWidth * 0.7));
+        string resolvedLanguageId = TextLanguageIds.Normalize(languageId);
         double height = TextContainerVisual.MeasureDesiredHeight(
             text,
             width,
             1,
-            VisualTreeHelper.GetDpi(SceneSurface).PixelsPerDip);
+            VisualTreeHelper.GetDpi(SceneSurface).PixelsPerDip,
+            resolvedLanguageId);
         PointD center = worldCenter ?? _camera.Center;
         var textObject = new TextBoardObject(
             Guid.NewGuid(),
@@ -3096,7 +3202,7 @@ public partial class MainWindow : Window
                 height),
             string.IsNullOrWhiteSpace(title) ? "Text" : title,
             text,
-            LanguageId: TextLanguageIds.Normalize(languageId));
+            LanguageId: resolvedLanguageId);
 
         _history.Execute(new AddObjectCommand(textObject), _document);
         _selectedObjectId = textObject.Id;
@@ -3110,6 +3216,9 @@ public partial class MainWindow : Window
 
         UpdateLiveViewActionOverlay();
     }
+
+    private string ResolveSnippetLanguage(string text) =>
+        TextLanguageRegistry.ResolveFromOrder(text, _settings.SnippetFormatOrder);
 
     private async Task AddLiveViewAsync()
     {
@@ -3346,6 +3455,7 @@ public partial class MainWindow : Window
         {
             LiveViewActionsBorder.Visibility = Visibility.Collapsed;
             UpdateLanguageChipOverlay();
+            UpdateZOrderCommands();
             return;
         }
 
@@ -3369,6 +3479,7 @@ public partial class MainWindow : Window
         PlayLiveViewButton.IsEnabled = !isRunning;
         LiveViewActionsBorder.Visibility = Visibility.Visible;
         UpdateLanguageChipOverlay();
+        UpdateZOrderCommands();
     }
 
     private TextBoardObject? GetSelectedText() =>
@@ -3814,12 +3925,22 @@ public partial class MainWindow : Window
                             continue;
                         }
 
+                        byte[] bytes = await File.ReadAllBytesAsync(path);
+                        if (!DroppedFileImport.LooksLikeText(bytes))
+                        {
+                            continue;
+                        }
+
+                        string droppedText = System.Text.Encoding.UTF8.GetString(bytes);
+                        string droppedLanguage = DroppedFileImport.HasRecognizedLanguageExtension(path)
+                            ? DroppedFileImport.LanguageIdFor(path)
+                            : ResolveSnippetLanguage(droppedText);
                         AddText(
-                            await File.ReadAllTextAsync(path),
+                            droppedText,
                             center,
                             beginEdit: false,
                             title: Path.GetFileNameWithoutExtension(path),
-                            languageId: DroppedFileImport.LanguageIdFor(path));
+                            languageId: droppedLanguage);
                         break;
                 }
 

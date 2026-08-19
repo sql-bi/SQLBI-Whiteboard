@@ -32,6 +32,7 @@ internal interface ITextLanguageService
 
     TextLanguageAnalysis Analyze(string source, string fallbackTitle);
     bool TryFormat(string source, out string formatted);
+    bool TryAccept(string source);
 }
 
 internal static class TextLanguageRegistry
@@ -48,6 +49,20 @@ internal static class TextLanguageRegistry
         return All.FirstOrDefault(language =>
                    language.Id.Equals(normalized, StringComparison.OrdinalIgnoreCase))
                ?? Plain;
+    }
+
+    public static string ResolveFromOrder(string source, IEnumerable<string>? languageIds)
+    {
+        foreach (string languageId in TextLanguageIds.NormalizeOrder(languageIds))
+        {
+            ITextLanguageService language = Resolve(languageId);
+            if (language.TryAccept(source))
+            {
+                return language.Id;
+            }
+        }
+
+        return TextLanguageIds.Plain;
     }
 
     private sealed class PlainTextLanguageService : ITextLanguageService
@@ -69,6 +84,8 @@ internal static class TextLanguageRegistry
             formatted = source;
             return false;
         }
+
+        public bool TryAccept(string source) => true;
 
         public override string ToString() => DisplayName;
     }
@@ -114,6 +131,18 @@ internal static class TextLanguageRegistry
                 source,
                 DaxLanguageEngine.DefaultMaximumLineLength,
                 out formatted);
+
+        public bool TryAccept(string source)
+        {
+            try
+            {
+                return TryFormat(source, out _);
+            }
+            catch (Exception)
+            {
+                return false;
+            }
+        }
 
         public override string ToString() => DisplayName;
 
@@ -202,6 +231,18 @@ internal static class TextLanguageRegistry
 
         public bool TryFormat(string source, out string formatted) =>
             SqlServerLanguageEngine.TryFormat(source, out formatted);
+
+        public bool TryAccept(string source)
+        {
+            try
+            {
+                return TryFormat(source, out _);
+            }
+            catch (Exception)
+            {
+                return false;
+            }
+        }
 
         public override string ToString() => DisplayName;
 

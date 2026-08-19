@@ -7,7 +7,7 @@
         Icon="Assets/SQLBI.Whiteboard.ico"
         Width="1400"
         Height="900"
-        MinWidth="800"
+        MinWidth="360"
         MinHeight="520"
         WindowStartupLocation="Manual"
         Background="White"

@@ -55,19 +55,32 @@ Assert(
     DroppedFileImport.Classify("query.sql") == DroppedFileKind.Text &&
     DroppedFileImport.Classify("lesson.wimport") == DroppedFileKind.Import &&
     DroppedFileImport.Classify("board.wboard") == DroppedFileKind.Unsupported &&
-    DroppedFileImport.Classify("notes.md") == DroppedFileKind.Unsupported,
-    "Drop import should accept images, text, and .wimport, and leave markdown and boards for later.");
+    DroppedFileImport.Classify("notes.md") == DroppedFileKind.Text,
+    "Drop import should accept images, text, .wimport, and unrecognized text extensions.");
 Assert(
     DroppedFileImport.CanImportAny(["skip.bin", "photo.jpg"]),
     "A mixed drop should be accepted when any file can be imported.");
 Assert(
-    !DroppedFileImport.CanImportAny(["notes.md", "board.wboard"]),
-    "A drop of only later formats should not show a copy cursor yet.");
+    DroppedFileImport.CanImport("notes.md") &&
+    !DroppedFileImport.HasRecognizedLanguageExtension("notes.md"),
+    "Unrecognized extensions should still drop as text so language order can choose.");
+Assert(
+    !DroppedFileImport.CanImport("board.wboard"),
+    "A .wboard is opened, not dropped as a snippet.");
 Assert(
     DroppedFileImport.LanguageIdFor("measure.dax") == TextLanguageIds.Dax &&
     DroppedFileImport.LanguageIdFor("query.sql") == TextLanguageIds.SqlServer &&
     DroppedFileImport.LanguageIdFor("notes.txt") == TextLanguageIds.Plain,
     "Dropped text files should pick a language from the extension.");
+Assert(
+    DroppedFileImport.HasRecognizedLanguageExtension("measure.dax") &&
+    DroppedFileImport.HasRecognizedLanguageExtension("notes.txt") &&
+    !DroppedFileImport.HasRecognizedLanguageExtension("notes.md"),
+    "Recognized language extensions should skip the paste heuristic.");
+Assert(
+    DroppedFileImport.LooksLikeText("DEFINE MEASURE Sales[X] = 1"u8.ToArray()) &&
+    !DroppedFileImport.LooksLikeText([0x4D, 0x5A, 0x00, 0x00]),
+    "Text drops should reject files with a NUL in the header.");
 
 var parsedImport = ImportDocument.Parse(
     """
@@ -692,6 +705,24 @@ var fingerModeRoundTrip = AppSettingsSerializer.Parse(
 Assert(
     fingerModeRoundTrip.FingerMode == FingerMode.WhenNoPen,
     "Settings JSON should round-trip when-no-pen finger drawing.");
+Assert(
+    defaultSettings.SnippetFormatOrder is ["plain", "dax", "sqlserver"],
+    "Missing settings should keep Plain text first so paste stays plain text.");
+Assert(
+    TextLanguageIds.NormalizeOrder(["sqlserver", "plain", "dax", "plain", "python"]) is
+        ["sqlserver", "plain", "dax"],
+    "Snippet format order should drop unknowns, keep first-seen order, and fill missing languages.");
+var snippetOrderRoundTrip = AppSettingsSerializer.Parse(
+    AppSettingsSerializer.Format(new AppSettings
+    {
+        SnippetFormatOrder = ["dax", "sqlserver", "plain"],
+    }));
+Assert(
+    snippetOrderRoundTrip.SnippetFormatOrder is ["dax", "sqlserver", "plain"],
+    "Settings JSON should round-trip snippet format order.");
+Assert(
+    AppSettingsSerializer.Parse("{ }").SnippetFormatOrder is ["plain", "dax", "sqlserver"],
+    "Partial settings should fill the default snippet format order.");
 
 var daxSource = """
 Tricky :=

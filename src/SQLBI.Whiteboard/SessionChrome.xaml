@@ -221,6 +221,44 @@
                                            Text="Ctrl+F11" />
                             </StackPanel>
                         </Button>
+                        <Border Style="{StaticResource SessionCommandSeparator}" />
+                        <Button x:Name="BringToFrontButton"
+                                Style="{StaticResource SessionCommandButton}"
+                                ToolTip="Bring the selected container to the front"
+                                Tag="BringToFront"
+                                Click="Command_Click">
+                            <StackPanel HorizontalAlignment="Center">
+                                <Path Width="18"
+                                      Height="18"
+                                      Stretch="Uniform"
+                                      Fill="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"
+                                      Data="{StaticResource BringToFrontGeometry}" />
+                                <TextBlock Margin="0,4,0,0"
+                                           HorizontalAlignment="Center"
+                                           Text="Bring to front" />
+                                <TextBlock Style="{StaticResource SessionShortcutHint}"
+                                           Text="B" />
+                            </StackPanel>
+                        </Button>
+                        <Button x:Name="SendToBackButton"
+                                Style="{StaticResource SessionCommandButton}"
+                                ToolTip="Send the selected container to the back"
+                                Tag="SendToBack"
+                                Click="Command_Click">
+                            <StackPanel HorizontalAlignment="Center">
+                                <Path Width="18"
+                                      Height="18"
+                                      Stretch="Uniform"
+                                      Fill="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"
+                                      Data="{StaticResource SendToBackGeometry}" />
+                                <TextBlock Margin="0,4,0,0"
+                                           HorizontalAlignment="Center"
+                                           Text="Send to back" />
+                                <TextBlock Style="{StaticResource SessionShortcutHint}"
+                                           Text="S" />
+                            </StackPanel>
+                        </Button>
+                        <Border Style="{StaticResource SessionCommandSeparator}" />
                         <Button Style="{StaticResource SessionCommandButton}"
                                 ToolTip="Add LiveView"
                                 Tag="AddLiveView"
