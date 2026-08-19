@@ -144,7 +144,7 @@ powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\run.ps1
 
 ## LiveView
 
-Choose **Tools > Add LiveView...** and select an application window or display in the Windows capture picker. A LiveView behaves like an imported-image container: it can be selected, moved, resized while preserving its aspect ratio, framed by double-clicking, deleted with its linked strokes, and manipulated through undo/redo.
+Choose **View → LiveView** and select an application window or display in the Windows capture picker. A LiveView behaves like an imported-image container: it can be selected, moved, resized while preserving its aspect ratio, framed by double-clicking, deleted with its linked strokes, and manipulated through undo/redo.
 
 Use **View > Freeze** to stop capture while retaining the last frame. The same command resumes a target that is still available. **View > Disconnect** releases the target, keeps the last frame, and hides the on-frame freeze/play controls; **View > Reconnect** is then the only way back to a live feed.
 
@@ -217,7 +217,7 @@ A `.wimport` file is Markdown that builds containers on a board. It is import-on
 - A thematic break (`---`) starts a new row. Items otherwise flow left to right and wrap.
 - Paths are local and relative to the `.wimport` file. Missing files are skipped and listed in a dialog.
 
-Drop a `.wimport` onto an open board to add its containers, with the pointer as the group’s top-left. **File → Import…** does the same at the top-left of the view. **File → Open** or double-click (released installer) starts a new untitled board from the recipe.
+Drop a `.wimport` onto an open board to add its containers, with the pointer as the group’s top-left. **File → Open** or double-click (released installer) starts a new untitled board from the recipe.
 
 The full contract for authors and agents is [docs/wimport.md](docs/wimport.md). A sample lives at `docs/samples/contoso-workshop.wimport`. In VS Code, associate the extension with Markdown to use the built-in preview:
 
