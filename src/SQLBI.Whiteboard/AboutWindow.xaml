@@ -1,0 +1,59 @@
+<Window x:Class="SQLBI.Whiteboard.AboutWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="About SQLBI Whiteboard"
+        Width="420"
+        Height="320"
+        ResizeMode="NoResize"
+        WindowStartupLocation="CenterOwner"
+        ShowInTaskbar="False"
+        Background="{DynamicResource ToolbarBackgroundBrush}"
+        PreviewKeyDown="Window_PreviewKeyDown">
+    <StackPanel Margin="28,24">
+        <StackPanel Orientation="Horizontal">
+            <Image Width="48"
+                   Height="48"
+                   SnapsToDevicePixels="True"
+                   RenderOptions.BitmapScalingMode="HighQuality"
+                   Source="pack://application:,,,/Assets/SQLBI.Whiteboard.png" />
+            <StackPanel Margin="16,0,0,0"
+                        VerticalAlignment="Center">
+                <TextBlock x:Name="ProductTitle"
+                           FontFamily="Segoe UI"
+                           FontSize="18"
+                           FontWeight="SemiBold"
+                           Foreground="#FF1F2937"
+                           Text="SQLBI Whiteboard" />
+                <TextBlock x:Name="VersionLabel"
+                           Margin="0,4,0,0"
+                           FontFamily="Segoe UI"
+                           FontSize="13"
+                           Foreground="#FF4B5563" />
+            </StackPanel>
+        </StackPanel>
+        <TextBlock Margin="0,20,0,0"
+                   FontFamily="Segoe UI"
+                   FontSize="13"
+                   Foreground="#FF1F2937"
+                   Text="© 2026 SQLBI Corp." />
+        <TextBlock Margin="0,4,0,0"
+                   FontFamily="Segoe UI"
+                   FontSize="13"
+                   Foreground="#FF4B5563"
+                   Text="MIT License" />
+        <TextBlock Margin="0,16,0,0"
+                   FontFamily="Segoe UI"
+                   FontSize="13">
+            <Hyperlink NavigateUri="https://whiteboard.sqlbi.com"
+                       RequestNavigate="SiteLink_RequestNavigate">
+                whiteboard.sqlbi.com
+            </Hyperlink>
+        </TextBlock>
+        <Button Width="88"
+                Height="32"
+                Margin="0,28,0,0"
+                HorizontalAlignment="Left"
+                Click="CloseButton_Click"
+                Content="Close" />
+    </StackPanel>
+</Window>

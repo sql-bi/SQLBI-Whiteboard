@@ -14,6 +14,10 @@
                      Color="#FF2563EB" />
     <SolidColorBrush x:Key="ToolbarSeparatorBrush"
                      Color="#22000000" />
+    <SolidColorBrush x:Key="LiveViewResumeBrush"
+                     Color="#FF16A34A" />
+    <SolidColorBrush x:Key="LiveViewDisconnectBrush"
+                     Color="#FFC24141" />
 
     <!-- Fluent UI System Icons 1.1.308, MIT. See Assets/FluentSystemIcons-LICENSE.txt. -->
     <Geometry x:Key="InkingToolGeometry">M4.5 2.75a.75.75 0 0 0-1.5 0v3.5C3 7.22 3.78 8 4.75 8h.27l4.03 8.97c.2.45.59.79 1.04.94a5.79 5.79 0 0 0 .27 3.01c.3.6.83 1.08 1.64 1.08.8 0 1.35-.48 1.64-1.08a5.79 5.79 0 0 0 .27-3.01c.45-.15.83-.49 1.04-.94L18.98 8h.27C20.22 8 21 7.22 21 6.25v-3.5a.75.75 0 0 0-1.5 0v3.5c0 .14-.11.25-.25.25H4.75a.25.25 0 0 1-.25-.25v-3.5ZM6.66 8h10.68l-3.76 8.35a.25.25 0 0 1-.23.15h-2.7a.25.25 0 0 1-.23-.15L6.66 8Zm4.95 10h.78c.07.26.11.6.11 1 0 .57-.08 1-.21 1.26-.1.22-.2.24-.29.24-.1 0-.18-.02-.29-.24A3.03 3.03 0 0 1 11.5 19c0-.4.04-.74.11-1Z</Geometry>
@@ -24,6 +28,40 @@
     <Geometry x:Key="LaserPointerGeometry">M12 18a6 6 0 1 0 0-12 6 6 0 0 0 0 12Zm0-16a10 10 0 1 0 0 20 10 10 0 0 0 0-20ZM3.5 12a8.5 8.5 0 1 1 17 0 8.5 8.5 0 0 1-17 0Z</Geometry>
     <Geometry x:Key="EraserGeometry">m15.87 2.67 4.97 4.97c.88.88.88 2.3 0 3.18l-8.68 8.68h6.1c.37 0 .69.28.74.65v.1c0 .38-.28.7-.64.74l-.1.01H9.83a2.24 2.24 0 0 1-1.71-.65l-4.97-4.97a2.25 2.25 0 0 1 0-3.18l9.53-9.53c.88-.88 2.3-.88 3.18 0Zm-10.16 9.1-1.49 1.49c-.3.29-.3.76 0 1.06l4.97 4.96c.15.15.34.22.53.22h.07a.75.75 0 0 0 .46-.22l1.49-1.48-6.03-6.03Zm8.04-8.04L6.77 10.7l6.03 6.03 6.98-6.98c.29-.3.29-.77 0-1.06L14.8 3.73a.75.75 0 0 0-1.06 0Z</Geometry>
     <Geometry x:Key="PanGeometry">M15.28 6.03c-.3.3-.77.3-1.06 0l-1.47-1.47v3.69a.75.75 0 0 1-1.5 0V4.56L9.78 6.03a.75.75 0 0 1-1.06-1.06l2.75-2.75a.75.75 0 0 1 1.06 0l2.75 2.75c.3.3.3.77 0 1.06Zm-9.25 8.19a.75.75 0 1 1-1.06 1.06l-2.75-2.75a.75.75 0 0 1 0-1.06l2.75-2.75a.75.75 0 0 1 1.06 1.06l-1.47 1.47h3.69a.75.75 0 0 1 0 1.5H4.56l1.47 1.47Zm11.94 1.06a.75.75 0 0 1 0-1.06l1.47-1.47h-3.69a.75.75 0 0 1 0-1.5h3.69l-1.47-1.47a.75.75 0 0 1 1.06-1.06l2.75 2.75a.75.75 0 0 1 0 1.06l-2.75 2.75c-.3.3-.77.3-1.06 0Zm-2.69 2.69a.75.75 0 0 0-1.06 0l-1.47 1.47v-3.69a.75.75 0 0 0-1.5 0v3.69l-1.47-1.47a.75.75 0 0 0-1.06 1.06l2.75 2.75a.75.75 0 0 0 1.06 0l2.75-2.75c.3-.3.3-.77 0-1.06Z</Geometry>
+    <Geometry x:Key="DocumentGeometry">M6 2a2 2 0 0 0-2 2v16c0 1.1.9 2 2 2h12a2 2 0 0 0 2-2V9.83a2 2 0 0 0-.59-1.42L13.6 2.6A2 2 0 0 0 12.17 2H6Zm-.5 2c0-.28.22-.5.5-.5h6V8c0 1.1.9 2 2 2h4.5v10a.5.5 0 0 1-.5.5H6a.5.5 0 0 1-.5-.5V4Zm11.88 4.5H14a.5.5 0 0 1-.5-.5V4.62l3.88 3.88Z</Geometry>
+    <Geometry x:Key="FolderOpenGeometry">M3.5 6.25c0-.97.78-1.75 1.75-1.75h2.88c.2 0 .39.08.53.22l2.06 2.06c.14.14.33.22.53.22h5.5c.97 0 1.75.78 1.75 1.75 0 .09.01.17.04.25H8.72c-1.34 0-2.58.71-3.25 1.87L3.5 14.28V6.25ZM2 17.79A3.25 3.25 0 0 0 5.25 21h11.04c1.33 0 2.57-.72 3.24-1.88l3.03-5.25A3.25 3.25 0 0 0 19.96 9a.75.75 0 0 0 .04-.25c0-1.8-1.45-3.25-3.25-3.25h-5.19L9.72 3.66c-.42-.42-1-.66-1.6-.66H5.26A3.25 3.25 0 0 0 2 6.25V17.79Zm6.72-7.3h11.03a1.75 1.75 0 0 1 1.51 2.63l-3.03 5.25c-.4.7-1.14 1.13-1.95 1.13H5.25a1.75 1.75 0 0 1-1.51-2.63l3.03-5.25c.4-.7 1.14-1.12 1.95-1.12Z</Geometry>
+    <Geometry x:Key="SaveGeometry">M3 5.75A2.75 2.75 0 0 1 5.75 3h9.96c.87 0 1.7.34 2.3.95L20.05 6c.6.6.95 1.43.95 2.3v9.96A2.75 2.75 0 0 1 18.25 21H5.75A2.75 2.75 0 0 1 3 18.25V5.75ZM5.75 4.5c-.69 0-1.25.56-1.25 1.25v12.5c0 .69.56 1.25 1.25 1.25H6v-5.25C6 13.01 7 12 8.25 12h7.5c1.24 0 2.25 1 2.25 2.25v5.25h.25c.69 0 1.25-.56 1.25-1.25V8.29c0-.47-.18-.91-.51-1.24L16.95 5c-.26-.26-.6-.43-.95-.49v2.73c0 1.24-1 2.25-2.25 2.25h-4.5C8.01 9.5 7 8.5 7 7.25V4.5H5.75Zm10.75 15v-5.25a.75.75 0 0 0-.75-.75h-7.5a.75.75 0 0 0-.75.75v5.25h9Zm-8-15v2.75c0 .41.34.75.75.75h4.5c.41 0 .75-.34.75-.75V4.5h-6Z</Geometry>
+    <Geometry x:Key="UndoGeometry">M4.75 2c.38 0 .7.28.74.65l.01.1v5.69l4.57-4.56a6.41 6.41 0 0 1 8.88-.18l.19.18a6.4 6.4 0 0 1 0 9.06l-8.85 8.84a.75.75 0 0 1-1.06-1.06l8.85-8.84a4.9 4.9 0 0 0-6.77-7.1l-.18.16L6.56 9.5h5.69c.38 0 .7.28.74.65l.01.1c0 .38-.28.7-.65.74l-.1.01h-7.5a.75.75 0 0 1-.74-.65l-.01-.1v-7.5c0-.41.34-.75.75-.75Z</Geometry>
+    <Geometry x:Key="RedoGeometry">M19.25 2c-.38 0-.7.28-.74.65l-.01.1v5.69l-4.57-4.56a6.41 6.41 0 0 0-8.88-.18l-.19.18a6.4 6.4 0 0 0 0 9.06l8.85 8.84a.75.75 0 0 0 1.06-1.06l-8.85-8.84a4.9 4.9 0 0 1 6.77-7.1l.18.16 4.57 4.56h-5.69c-.38 0-.7.28-.74.65l-.01.1c0 .38.28.7.65.74l.1.01h7.5c.38 0 .7-.28.74-.65l.01-.1v-7.5a.75.75 0 0 0-.75-.75Z</Geometry>
+    <Geometry x:Key="CopyGeometry">M5.5 4.63V17.25c0 1.8 1.46 3.25 3.25 3.25h8.62c-.31.88-1.15 1.5-2.13 1.5H8.75A4.75 4.75 0 0 1 4 17.25V6.75c0-.98.63-1.81 1.5-2.12ZM17.75 2C18.99 2 20 3 20 4.25v13c0 1.24-1 2.25-2.25 2.25h-9c-1.24 0-2.25-1-2.25-2.25v-13C6.5 3.01 7.5 2 8.75 2h9Zm0 1.5h-9a.75.75 0 0 0-.75.75v13c0 .41.34.75.75.75h9c.41 0 .75-.34.75-.75v-13a.75.75 0 0 0-.75-.75Z</Geometry>
+    <Geometry x:Key="PasteGeometry">M12.75 2c1.16 0 2.11.88 2.24 2h1.76c1.2 0 2.17.93 2.24 2.1l.01.15c0 .38-.28.7-.65.74h-.1a.75.75 0 0 1-.74-.64l-.01-.1c0-.38-.28-.7-.65-.74l-.1-.01h-2.13c-.4.6-1.09 1-1.87 1h-3.5c-.78 0-1.46-.4-1.87-1H5.25c-.38 0-.7.28-.74.65l-.01.1v13.5c0 .38.28.7.65.75h3.1c.38 0 .7.29.74.65l.01.1c0 .42-.34.75-.75.75h-3c-1.2 0-2.17-.92-2.24-2.1L3 19.76V6.25c0-1.2.93-2.17 2.1-2.24L5.25 4h1.76c.13-1.12 1.08-2 2.24-2h3.5Zm6 6c1.2 0 2.17.93 2.24 2.1l.01.15v9.5c0 1.2-.93 2.17-2.1 2.24l-.15.01h-6.5c-1.2 0-2.17-.93-2.24-2.1l-.01-.15v-9.5c0-1.2.93-2.17 2.1-2.24l.15-.01h6.5Zm0 1.5h-6.5c-.38 0-.7.28-.74.65l-.01.1v9.5c0 .38.28.7.65.74l.1.01h6.5c.38 0 .7-.28.74-.65l.01-.1v-9.5c0-.38-.28-.7-.65-.74l-.1-.01Zm-6-6h-3.5a.75.75 0 0 0 0 1.5h3.5a.75.75 0 1 0 0-1.5Z</Geometry>
+    <Geometry x:Key="FullScreenGeometry">M4.5 5.75c0-.69.56-1.25 1.25-1.25h2a.75.75 0 0 0 0-1.5h-2A2.75 2.75 0 0 0 3 5.75v2a.75.75 0 0 0 1.5 0v-2Zm0 12.5c0 .69.56 1.25 1.25 1.25h2a.75.75 0 0 1 0 1.5h-2A2.75 2.75 0 0 1 3 18.25v-2a.75.75 0 0 1 1.5 0v2ZM18.25 4.5c.69 0 1.25.56 1.25 1.25v2a.75.75 0 0 0 1.5 0v-2A2.75 2.75 0 0 0 18.25 3h-2a.75.75 0 0 0 0 1.5h2Zm1.25 13.75c0 .69-.56 1.25-1.25 1.25h-2a.75.75 0 0 0 0 1.5h2A2.75 2.75 0 0 0 21 18.25v-2a.75.75 0 0 0-1.5 0v2Z</Geometry>
+    <Geometry x:Key="WindowGeometry">M6.25 3A3.25 3.25 0 0 0 3 6.25v11.5C3 19.55 4.46 21 6.25 21h11.5c1.8 0 3.25-1.46 3.25-3.25V6.25C21 4.45 19.54 3 17.75 3H6.25ZM19.5 7h-15v-.75c0-.97.78-1.75 1.75-1.75h11.5c.97 0 1.75.78 1.75 1.75V7Zm-15 1.5h15v9.25c0 .97-.78 1.75-1.75 1.75H6.25c-.97 0-1.75-.78-1.75-1.75V8.5Z</Geometry>
+    <Geometry x:Key="LiveGeometry">M5.99 4.93c.3.3.3.77 0 1.06a8.5 8.5 0 0 0 0 12.02.75.75 0 0 1-1.06 1.06 10 10 0 0 1 0-14.14c.3-.3.77-.3 1.06 0Zm13.08 0a10 10 0 0 1 0 14.14.75.75 0 0 1-1.06-1.06 8.5 8.5 0 0 0 0-12.02.75.75 0 1 1 1.06-1.06ZM8.82 7.76c.3.29.3.76 0 1.06a4.5 4.5 0 0 0 0 6.36.75.75 0 0 1-1.06 1.06 6 6 0 0 1 0-8.48c.29-.3.77-.3 1.06 0Zm7.42 0a6 6 0 0 1 0 8.48.75.75 0 1 1-1.06-1.06 4.5 4.5 0 0 0 0-6.36.75.75 0 0 1 1.06-1.06ZM12 10.5a1.5 1.5 0 1 1 0 3 1.5 1.5 0 0 1 0-3Z</Geometry>
+    <Geometry x:Key="SyncGeometry">M16.25 5.18c-.25.33-.19.8.14 1.05a7.24 7.24 0 0 1-3.6 12.98l.68-.68a.75.75 0 0 0-.98-1.13l-.08.07-2 2a.75.75 0 0 0-.07.98l.07.08 2 2a.75.75 0 0 0 1.13-.98l-.07-.08-.75-.75A8.75 8.75 0 0 0 17.3 5.04a.75.75 0 0 0-1.05.14Zm-5.72-3.71c-.3.3-.3.77 0 1.06l.75.75a8.75 8.75 0 0 0-4.85 15.47.75.75 0 1 0 .96-1.16A7.23 7.23 0 0 1 11.2 4.8l-.68.68a.75.75 0 1 0 1.06 1.06l2-2c.3-.3.3-.77 0-1.06l-2-2a.75.75 0 0 0-1.06 0Z</Geometry>
+    <Geometry x:Key="SettingsGeometry">M12.01 2.25c.74 0 1.47.1 2.18.25.32.07.55.33.59.65l.17 1.53a1.38 1.38 0 0 0 1.92 1.11l1.4-.61c.3-.13.64-.06.85.17a9.8 9.8 0 0 1 2.2 3.8c.1.3 0 .63-.26.82l-1.25.92a1.38 1.38 0 0 0 0 2.22l1.25.92c.26.19.36.52.27.82a9.8 9.8 0 0 1-2.2 3.8.75.75 0 0 1-.85.17l-1.4-.62a1.38 1.38 0 0 0-1.93 1.12l-.17 1.52a.75.75 0 0 1-.58.65 9.52 9.52 0 0 1-4.4 0 .75.75 0 0 1-.57-.65l-.17-1.52a1.38 1.38 0 0 0-1.93-1.11l-1.4.62a.75.75 0 0 1-.85-.18 9.8 9.8 0 0 1-2.2-3.8c-.1-.3 0-.63.26-.82l1.25-.92a1.38 1.38 0 0 0 0-2.22l-1.24-.92a.75.75 0 0 1-.28-.82 9.8 9.8 0 0 1 2.2-3.8c.23-.23.57-.3.86-.17l1.4.62c.4.17.86.15 1.25-.08.38-.22.63-.6.68-1.04l.17-1.53a.75.75 0 0 1 .58-.65c.72-.16 1.45-.24 2.2-.25Zm0 1.5c-.45 0-.9.04-1.35.12l-.11.97a2.89 2.89 0 0 1-4.03 2.33l-.9-.4A8.3 8.3 0 0 0 4.29 9.1l.8.59a2.88 2.88 0 0 1 0 4.64l-.8.59a8.3 8.3 0 0 0 1.35 2.32l.9-.4a2.88 2.88 0 0 1 4.02 2.32l.1.99c.9.15 1.8.15 2.7 0l.1-.99a2.88 2.88 0 0 1 4.02-2.32l.9.4a8.3 8.3 0 0 0 1.35-2.32l-.8-.59a2.88 2.88 0 0 1 0-4.64l.8-.59a8.3 8.3 0 0 0-1.35-2.32l-.9.4a2.88 2.88 0 0 1-4.02-2.32l-.1-.98c-.45-.08-.9-.11-1.34-.12ZM12 8.25a3.75 3.75 0 1 1 0 7.5 3.75 3.75 0 0 1 0-7.5Zm0 1.5a2.25 2.25 0 1 0 0 4.5 2.25 2.25 0 0 0 0-4.5Z</Geometry>
+    <Geometry x:Key="InfoGeometry">M12 2a10 10 0 1 1 0 20 10 10 0 0 1 0-20Zm0 1.5a8.5 8.5 0 1 0 0 17 8.5 8.5 0 0 0 0-17Zm0 7c.41 0 .75.34.75.75v5a.75.75 0 0 1-1.5 0v-5c0-.41.34-.75.75-.75ZM12 9a1 1 0 1 0 0-2 1 1 0 0 0 0 2Z</Geometry>
+    <Geometry x:Key="DismissGeometry">m4.4 4.55.07-.08a.75.75 0 0 1 .98-.07l.08.07L12 10.94l6.47-6.47a.75.75 0 1 1 1.06 1.06L13.06 12l6.47 6.47c.27.27.3.68.07.98l-.07.08a.75.75 0 0 1-.98.07l-.08-.07L12 13.06l-6.47 6.47a.75.75 0 0 1-1.06-1.06L10.94 12 4.47 5.53a.75.75 0 0 1-.07-.98l.07-.08-.07.08Z</Geometry>
+    <Geometry x:Key="PauseGeometry">M6.25 3C5.01 3 4 4 4 5.25v13.5C4 19.99 5 21 6.25 21h2.5C9.99 21 11 20 11 18.75V5.25C11 4.01 10 3 8.75 3h-2.5ZM5.5 5.25c0-.41.34-.75.75-.75h2.5c.41 0 .75.34.75.75v13.5c0 .41-.34.75-.75.75h-2.5a.75.75 0 0 1-.75-.75V5.25ZM15.25 3C14.01 3 13 4 13 5.25v13.5c0 1.24 1 2.25 2.25 2.25h2.5c1.24 0 2.25-1 2.25-2.25V5.25C20 4.01 19 3 17.75 3h-2.5Zm-.75 2.25c0-.41.34-.75.75-.75h2.5c.41 0 .75.34.75.75v13.5c0 .41-.34.75-.75.75h-2.5a.75.75 0 0 1-.75-.75V5.25Z</Geometry>
+    <Geometry x:Key="PlayGeometry">M7.6 4.61a.75.75 0 0 0-1.1.66v13.46c0 .56.6.93 1.1.65l12.37-6.72a.75.75 0 0 0 0-1.32L7.61 4.61ZM5 5.27c0-1.7 1.83-2.79 3.33-1.97l12.36 6.72a2.25 2.25 0 0 1 0 3.96L8.33 20.7A2.25 2.25 0 0 1 5 18.73V5.27Z</Geometry>
+    <Geometry x:Key="DisconnectGeometry">M21.78 3.28a.75.75 0 0 0-1.06-1.06l-2.01 2.01a4.25 4.25 0 0 0-5.47.46l-1.06 1.07c-.69.69-.69 1.8 0 2.48l3.58 3.58c.69.69 1.8.69 2.48 0l1.07-1.06a4.25 4.25 0 0 0 .46-5.47l2.01-2.01Zm-3.59 2.48.03.02.02.03a2.75 2.75 0 0 1 0 3.88l-1.06 1.07c-.1.1-.26.1-.36 0l-3.58-3.58a.25.25 0 0 1 0-.36l1.07-1.06a2.75 2.75 0 0 1 3.88 0Zm-7.41 5.52a.75.75 0 1 0-1.06-1.06L8 11.94l-.47-.47a.75.75 0 0 0-1.06 0l-1.78 1.77a4.25 4.25 0 0 0-.46 5.47l-2.01 2.01a.75.75 0 1 0 1.06 1.06l2.01-2.01a4.25 4.25 0 0 0 5.47-.46l1.77-1.78c.3-.3.3-.77 0-1.06l-.47-.47 1.72-1.72a.75.75 0 1 0-1.06-1.06L11 14.94 9.06 13l1.72-1.72Zm-3.31 2.25 3 3 .47.47-1.25 1.24a2.75 2.75 0 0 1-3.88 0l-.05-.05a2.75 2.75 0 0 1 0-3.88L7 13.06l.47.47Z</Geometry>
+    <Geometry x:Key="BringToFrontGeometry">M6.25 3A3.25 3.25 0 0 0 3 6.25v6.5C3 14.55 4.46 16 6.25 16H7v1.75C7 19.55 8.46 21 10.25 21h7.5c1.8 0 3.25-1.46 3.25-3.25v-7.5C21 8.45 19.54 7 17.75 7H16V6.25C16 4.45 14.54 3 12.75 3h-6.5ZM16 8.5h1.75c.97 0 1.75.78 1.75 1.75v7.5c0 .97-.78 1.75-1.75 1.75h-7.5c-.97 0-1.75-.78-1.75-1.75V16h4.75c1.8 0 3.25-1.46 3.25-3.25V8.5ZM4.5 6.25c0-.97.78-1.75 1.75-1.75h6.5c.97 0 1.75.78 1.75 1.75v6.5c0 .97-.78 1.75-1.75 1.75h-6.5c-.97 0-1.75-.78-1.75-1.75v-6.5Z</Geometry>
+    <Geometry x:Key="SendToBackGeometry">M17.75 8A3.25 3.25 0 0 1 21 11.25v6.5C21 19.55 19.54 21 17.75 21h-6.5A3.25 3.25 0 0 1 8 17.75V16H6.25A3.25 3.25 0 0 1 3 12.75v-6.5C3 4.45 4.46 3 6.25 3h6.5C14.55 3 16 4.46 16 6.25V8h1.75ZM8 11.25c0-.97.78-1.75 1.75-1.75h6.5c.97 0 1.75.78 1.75 1.75v6.5c0 .97-.78 1.75-1.75 1.75h-6.5c-.97 0-1.75-.78-1.75-1.75v-6.5ZM14.5 6.25c0-.97-.78-1.75-1.75-1.75h-6.5c-.97 0-1.75.78-1.75 1.75v6.5c0 .97.78 1.75 1.75 1.75H8v-2.5A3.25 3.25 0 0 1 11.25 8H14.5V6.25Z</Geometry>
+    <Geometry x:Key="ChevronUpGeometry">M3.06 10.48a.75.75 0 0 0 1.06 0L8 6.7l3.86 3.76a.75.75 0 1 0 1.04-1.08L8.52 5.12a.75.75 0 0 0-1.04 0L3.08 9.38a.75.75 0 0 0-.02 1.1Z</Geometry>
+
+    <Style x:Key="SessionCommandSeparator"
+           TargetType="Border">
+        <Setter Property="Width"
+                Value="1" />
+        <Setter Property="Height"
+                Value="48" />
+        <Setter Property="Margin"
+                Value="8,8" />
+        <Setter Property="VerticalAlignment"
+                Value="Center" />
+        <Setter Property="Background"
+                Value="{StaticResource ToolbarSeparatorBrush}" />
+    </Style>
 
     <Style x:Key="ToolbarIconButton"
            TargetType="{x:Type ToggleButton}">
@@ -176,6 +214,180 @@
                 </ControlTemplate>
             </Setter.Value>
         </Setter>
+    </Style>
+
+    <Style x:Key="SessionTabButton"
+           TargetType="{x:Type ToggleButton}">
+        <Setter Property="MinWidth"
+                Value="56" />
+        <Setter Property="Height"
+                Value="32" />
+        <Setter Property="Padding"
+                Value="14,0" />
+        <Setter Property="Margin"
+                Value="0" />
+        <Setter Property="Background"
+                Value="Transparent" />
+        <Setter Property="BorderThickness"
+                Value="0" />
+        <Setter Property="Focusable"
+                Value="False" />
+        <Setter Property="ClickMode"
+                Value="Press" />
+        <Setter Property="Foreground"
+                Value="{StaticResource ToolbarIconBrush}" />
+        <Setter Property="FontFamily"
+                Value="Segoe UI" />
+        <Setter Property="FontSize"
+                Value="13" />
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="{x:Type ToggleButton}">
+                    <Border x:Name="Root"
+                            Background="{TemplateBinding Background}"
+                            Padding="{TemplateBinding Padding}">
+                        <Grid>
+                            <ContentPresenter HorizontalAlignment="Center"
+                                              VerticalAlignment="Center" />
+                            <Rectangle x:Name="Underline"
+                                       Height="2"
+                                       VerticalAlignment="Bottom"
+                                       Fill="Transparent" />
+                        </Grid>
+                    </Border>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsMouseOver"
+                                 Value="True">
+                            <Setter TargetName="Root"
+                                    Property="Background"
+                                    Value="{StaticResource ToolbarHoverBrush}" />
+                        </Trigger>
+                        <Trigger Property="IsChecked"
+                                 Value="True">
+                            <Setter TargetName="Underline"
+                                    Property="Fill"
+                                    Value="{StaticResource ToolbarAccentBrush}" />
+                            <Setter Property="Foreground"
+                                    Value="{StaticResource ToolbarAccentBrush}" />
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+    <Style x:Key="SessionCommandButton"
+           TargetType="{x:Type Button}">
+        <Setter Property="Width"
+                Value="76" />
+        <Setter Property="Height"
+                Value="64" />
+        <Setter Property="Margin"
+                Value="2,0" />
+        <Setter Property="Background"
+                Value="Transparent" />
+        <Setter Property="BorderThickness"
+                Value="0" />
+        <Setter Property="Focusable"
+                Value="True" />
+        <Setter Property="ClickMode"
+                Value="Press" />
+        <Setter Property="Foreground"
+                Value="{StaticResource ToolbarIconBrush}" />
+        <Setter Property="FontFamily"
+                Value="Segoe UI" />
+        <Setter Property="FontSize"
+                Value="11" />
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="{x:Type Button}">
+                    <Border x:Name="Root"
+                            Background="{TemplateBinding Background}"
+                            BorderBrush="Transparent"
+                            BorderThickness="2"
+                            CornerRadius="8"
+                            Padding="4,6">
+                        <ContentPresenter HorizontalAlignment="Center"
+                                          VerticalAlignment="Center" />
+                    </Border>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsMouseOver"
+                                 Value="True">
+                            <Setter TargetName="Root"
+                                    Property="Background"
+                                    Value="{StaticResource ToolbarHoverBrush}" />
+                        </Trigger>
+                        <Trigger Property="IsKeyboardFocused"
+                                 Value="True">
+                            <Setter TargetName="Root"
+                                    Property="BorderBrush"
+                                    Value="{StaticResource ToolbarAccentBrush}" />
+                            <Setter TargetName="Root"
+                                    Property="Background"
+                                    Value="{StaticResource ToolbarSelectedBrush}" />
+                        </Trigger>
+                        <Trigger Property="IsEnabled"
+                                 Value="False">
+                            <Setter Property="Opacity"
+                                    Value="0.4" />
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+    <Style x:Key="LiveViewOverlayButton"
+           TargetType="{x:Type Button}">
+        <Setter Property="Background"
+                Value="Transparent" />
+        <Setter Property="BorderThickness"
+                Value="0" />
+        <Setter Property="Focusable"
+                Value="False" />
+        <Setter Property="ClickMode"
+                Value="Press" />
+        <Setter Property="Stylus.IsPressAndHoldEnabled"
+                Value="False" />
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="{x:Type Button}">
+                    <Border x:Name="Root"
+                            Background="{TemplateBinding Background}"
+                            CornerRadius="8">
+                        <ContentPresenter HorizontalAlignment="Center"
+                                          VerticalAlignment="Center" />
+                    </Border>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsMouseOver"
+                                 Value="True">
+                            <Setter TargetName="Root"
+                                    Property="Background"
+                                    Value="{StaticResource ToolbarHoverBrush}" />
+                        </Trigger>
+                        <Trigger Property="IsEnabled"
+                                 Value="False">
+                            <Setter Property="Opacity"
+                                    Value="0.35" />
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+    <Style x:Key="SessionShortcutHint"
+           TargetType="TextBlock">
+        <Setter Property="Margin"
+                Value="0,1,0,0" />
+        <Setter Property="HorizontalAlignment"
+                Value="Center" />
+        <Setter Property="FontFamily"
+                Value="Segoe UI" />
+        <Setter Property="FontSize"
+                Value="9" />
+        <Setter Property="Foreground"
+                Value="#FF9CA3AF" />
     </Style>
 
 </ResourceDictionary>

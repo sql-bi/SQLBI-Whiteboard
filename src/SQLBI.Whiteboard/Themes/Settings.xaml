@@ -354,6 +354,49 @@
         </Style.Triggers>
     </Style>
 
+    <Style x:Key="SettingsOrderButton"
+           TargetType="Button">
+        <Setter Property="Width"
+                Value="28" />
+        <Setter Property="Height"
+                Value="28" />
+        <Setter Property="Margin"
+                Value="4,0,0,0" />
+        <Setter Property="Background"
+                Value="Transparent" />
+        <Setter Property="BorderThickness"
+                Value="0" />
+        <Setter Property="Focusable"
+                Value="True" />
+        <Setter Property="Stylus.IsPressAndHoldEnabled"
+                Value="False" />
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="Button">
+                    <Border x:Name="Root"
+                            Background="{TemplateBinding Background}"
+                            CornerRadius="6">
+                        <ContentPresenter HorizontalAlignment="Center"
+                                          VerticalAlignment="Center" />
+                    </Border>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsMouseOver"
+                                 Value="True">
+                            <Setter TargetName="Root"
+                                    Property="Background"
+                                    Value="{DynamicResource ToolbarHoverBrush}" />
+                        </Trigger>
+                        <Trigger Property="IsEnabled"
+                                 Value="False">
+                            <Setter Property="Opacity"
+                                    Value="0.35" />
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
     <Style x:Key="SettingsComboBox"
            TargetType="ComboBox">
         <Setter Property="MinHeight"
@@ -460,6 +503,74 @@
                 </ControlTemplate>
             </Setter.Value>
         </Setter>
+    </Style>
+
+    <Style x:Key="LanguageComboBoxItem"
+           TargetType="ComboBoxItem">
+        <Setter Property="Padding"
+                Value="10,6" />
+        <Setter Property="FontFamily"
+                Value="Segoe UI" />
+        <Setter Property="FontSize"
+                Value="13" />
+        <Setter Property="Foreground"
+                Value="{DynamicResource SettingsTextBrush}" />
+        <Setter Property="HorizontalContentAlignment"
+                Value="Left" />
+        <Setter Property="Stylus.IsPressAndHoldEnabled"
+                Value="False" />
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="ComboBoxItem">
+                    <Border x:Name="Root"
+                            Margin="4,2"
+                            Padding="{TemplateBinding Padding}"
+                            CornerRadius="6"
+                            Background="Transparent">
+                        <ContentPresenter />
+                    </Border>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsHighlighted"
+                                 Value="True">
+                            <Setter TargetName="Root"
+                                    Property="Background"
+                                    Value="{DynamicResource ToolbarHoverBrush}" />
+                        </Trigger>
+                        <Trigger Property="IsSelected"
+                                 Value="True">
+                            <Setter TargetName="Root"
+                                    Property="Background"
+                                    Value="{DynamicResource ToolbarSelectedBrush}" />
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+    <Style x:Key="LanguageComboBox"
+           TargetType="ComboBox"
+           BasedOn="{StaticResource SettingsComboBox}">
+        <Setter Property="MinHeight"
+                Value="22" />
+        <Setter Property="MinWidth"
+                Value="88" />
+        <Setter Property="MaxWidth"
+                Value="10000" />
+        <Setter Property="Padding"
+                Value="8,2,24,2" />
+        <Setter Property="FontSize"
+                Value="12" />
+        <Setter Property="ItemTemplate">
+            <Setter.Value>
+                <DataTemplate>
+                    <TextBlock Text="{Binding DisplayName}"
+                               TextTrimming="CharacterEllipsis" />
+                </DataTemplate>
+            </Setter.Value>
+        </Setter>
+        <Setter Property="ItemContainerStyle"
+                Value="{StaticResource LanguageComboBoxItem}" />
     </Style>
 
     <Style x:Key="SettingsSlider"

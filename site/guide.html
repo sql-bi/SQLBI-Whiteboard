@@ -49,7 +49,7 @@
     <section class="story">
       <h3>Pin a live demo without leaving the board</h3>
       <p>Add a LiveView of DAX Studio, SSMS, or a browser. When the query result is the thing you want to keep talking about, copy the LiveView and paste. The paste is a still bitmap of the last frame, a screenshot that stays on the board while you keep drawing.</p>
-      <p><span class="ui">Freeze</span> the original LiveView if you want that same container to stay put and resume later. <span class="ui">Reconnect</span> after you reload a board: Windows cannot save the capture permission, so the saved frame appears immediately and <span class="ui">Reconnect</span> restores the live feed.</p>
+      <p><span class="ui">Freeze</span> the original LiveView if you want that same container to stay put and resume later. <span class="ui">Disconnect</span> if you want the last frame with no live controls; only <span class="ui">Reconnect</span> brings a feed back. <span class="ui">Reconnect</span> after you reload a board: Windows cannot save the capture permission, so the saved frame appears immediately and <span class="ui">Reconnect</span> restores the live feed.</p>
     </section>
 
     <section class="story">
@@ -59,7 +59,7 @@
 
     <section class="story">
       <h3>Explain a measure</h3>
-      <p>Paste DAX, or drop a <code>.dax</code> file. Switch the language selector to DAX, press <kbd>F6</kbd> to format it locally, then draw on the container. The same path works for SQL Server scripts with <code>.sql</code> files and <kbd>F6</kbd>.</p>
+      <p>Paste DAX, or drop a <code>.dax</code> file. Use the title-bar chip to switch to DAX, press <kbd>F2</kbd> then <kbd>F6</kbd> to format it locally, then draw on the container. The same path works for SQL Server scripts with <code>.sql</code> files and <kbd>F6</kbd>.</p>
       <p>In edit mode the text reflows as you change the width. In display mode a resize scales the whole visual, like a picture of the code, so the room still sees the layout you just formatted.</p>
     </section>
 
@@ -91,22 +91,22 @@
     <p>The toolbar stays small on purpose. <span class="ui">Preferences</span> control whether it sits in a corner or follows a layout you prefer.</p>
 
     <h3>Navigation</h3>
-    <p>Touch pans. Two fingers pinch-zoom. The mouse wheel zooms at the pointer. Middle mouse, right mouse (held), or <kbd>Space</kbd> temporarily pans. With Finger drawing on, one finger follows the current tool and <span class="ui">Pan</span> is on the toolbar. <kbd>F11</kbd> toggles full screen; <kbd>Escape</kbd> leaves it unless a text container is being edited.</p>
+    <p>Touch pans. Two fingers pinch-zoom. The mouse wheel zooms at the pointer. Middle mouse, right mouse (held), or <kbd>Space</kbd> temporarily pans. With Finger drawing on, one finger follows the current tool and <span class="ui">Pan</span> is on the toolbar. The window can sit in a narrow strip beside another app. <kbd>F11</kbd> fills the monitor and hides the title and tabs. <kbd>Ctrl</kbd><span class="plus">+</span><kbd>F11</kbd> hides the same chrome and keeps the window where it is. <kbd>Escape</kbd> leaves either unless a text container is being edited.</p>
 
     <h3>Containers</h3>
-    <p>Images, LiveViews, and text blocks are containers. With a mouse, click to move, drag the circular handle to resize while keeping aspect ratio. Releasing the mouse returns to the drawing tool you had. Imported images accept PNG, JPEG, BMP, and GIF, including clipboard paste and Explorer drag-and-drop.</p>
+    <p>Images, LiveViews, and text blocks are containers. With a mouse, click to move, drag the circular handle to resize while keeping aspect ratio. Releasing the mouse returns to the drawing tool you had. <span class="ui">View → Bring to front</span> and <span class="ui">View → Send to back</span> reorder the selected container and its linked strokes. Strokes cannot be reordered on their own. Imported images accept PNG, JPEG, BMP, and GIF, including clipboard paste and Explorer drag-and-drop.</p>
 
     <h3>Text, DAX, and SQL</h3>
-    <p>Paste plain text to create a text container and enter edit mode. <kbd>F2</kbd> edits the selected container. The language selector chooses Plain text, DAX, or SQL Server. <kbd>F6</kbd> formats DAX or SQL locally. SQL Server mode targets SQL Server 2025 T-SQL, keeps <code>GO</code> batch separators, and leaves an invalid script unchanged. <kbd>Ctrl</kbd><span class="plus">+</span><kbd>Enter</kbd> commits; <kbd>Escape</kbd> restores the previous text, language, and size.</p>
+    <p>Paste prefers an image when the clipboard has one, including a file SnagIt or another capture tool left on the clipboard. Paste plain text to create a selected text container. <span class="ui">Help → Preferences</span> sets Snippet format order: paste tries those languages from top to bottom. Plain text always matches, so putting it first keeps paste as plain text. Use the title-bar chip to choose Plain text, DAX, or SQL Server afterwards. <kbd>F2</kbd> edits the selected container. Double-click still centers the container and fits it to the canvas. <kbd>F6</kbd> formats DAX or SQL locally. SQL Server mode targets SQL Server 2025 T-SQL, keeps <code>GO</code> batch separators, and leaves an invalid script unchanged. <kbd>Ctrl</kbd><span class="plus">+</span><kbd>Enter</kbd> commits; <kbd>Escape</kbd> restores the previous text, language, and size.</p>
 
     <h3>LiveView</h3>
-    <p><span class="ui">Tools → Add LiveView</span> captures a window or a display. The container behaves like an image: move, resize, frame, delete, undo. <span class="ui">Tools → Freeze</span> stops capture on the last frame; the same command resumes if the target is still there. <span class="ui">Tools → Reconnect</span> picks a new target without losing the container or its ink.</p>
+    <p><span class="ui">View → LiveView</span> captures a window or a display. The container behaves like an image: move, resize, frame, delete, undo. <span class="ui">View → Freeze</span> stops capture on the last frame and can resume the same target. <span class="ui">View → Disconnect</span> releases the target, keeps the last frame, and hides the on-frame controls; <span class="ui">View → Reconnect</span> is then the only way back to a live feed.</p>
 
     <h3>Files</h3>
     <p><kbd>Ctrl</kbd><span class="plus">+</span><kbd>S</kbd> and <kbd>Ctrl</kbd><span class="plus">+</span><kbd>O</kbd> save and open a <code>.wboard</code>. The released installer registers that type and <code>.wimport</code>. The pre-release (Dev) channel does not, so it can sit beside a released copy without stealing the file association.</p>
 
     <h3>Preferences</h3>
-    <p><span class="ui">Tools → Preferences</span> is a searchable list: which monitor to open on, start full screen, finger drawing, laser trail timing, and toolbar placement. New settings are more rows in that list, not a new dialog.</p>
+    <p>File, Edit, View, and Help sit on a thin tab strip. Click a tab for a one-row command strip over the canvas; click the canvas to hide it. Drawing tools stay on the floating palette. <span class="ui">Help → Preferences</span> is a searchable list: which monitor to open on, start full screen, finger drawing, snippet format order, laser trail timing, and toolbar placement. <span class="ui">Help → About</span> shows the version. New settings are more rows in Preferences, not a new dialog.</p>
   </article>
 
   <nav class="pagenav" aria-label="More documentation">

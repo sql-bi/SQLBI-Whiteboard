@@ -76,7 +76,8 @@ internal sealed class BoardSurface : FrameworkElement
                         drawingContext,
                         text,
                         _camera,
-                        VisualTreeHelper.GetDpi(this).PixelsPerDip);
+                        VisualTreeHelper.GetDpi(this).PixelsPerDip,
+                        LanguageChipTitleReserve(text));
                     break;
             }
         }
@@ -172,6 +173,21 @@ internal sealed class BoardSurface : FrameworkElement
             topLeft.Y,
             Math.Max(1, bottomRight.X - topLeft.X),
             Math.Max(1, bottomRight.Y - topLeft.Y));
+    }
+
+    private double LanguageChipTitleReserve(TextBoardObject text)
+    {
+        if (_camera is null || text.Id != SelectedObjectId)
+        {
+            return 0;
+        }
+
+        Rect destination = ToScreenRectangle(text.Bounds, _camera);
+        return destination.Width >= TextContainerVisual.LanguageChipWidth +
+               (2 * TextContainerVisual.LanguageChipMargin) &&
+               destination.Height >= TextContainerVisual.LanguageChipHeight
+            ? TextContainerVisual.LanguageChipWidth + TextContainerVisual.LanguageChipMargin
+            : 0;
     }
 
     private bool TryGetBitmap(

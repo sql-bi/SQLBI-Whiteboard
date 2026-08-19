@@ -87,11 +87,19 @@ public partial class MainWindow : Window
     private InkStrokeObject[] _textEditLinkedBefore = [];
     private RectD _textEditBounds;
     private bool _updatingTextEditor;
+    private bool _updatingLanguageChip;
     private string _textEditLanguageId = TextLanguageIds.Plain;
     private readonly TextClassificationColorizer _textColorizer = new();
     private readonly DispatcherTimer _textHighlightTimer;
     private CancellationTokenSource? _textAnalysisCancellation;
-    private bool _isFullScreen;
+    private enum SessionChromeMode
+    {
+        Windowed,
+        CanvasOnly,
+        FullScreen,
+    }
+
+    private SessionChromeMode _chromeMode;
     private bool _isToolPaletteHidden;
     private bool _isInkOptionsOpen;
     private bool _isNibPickerOpen;
@@ -114,9 +122,12 @@ public partial class MainWindow : Window
     public MainWindow(string? initialBoardPath)
     {
         InitializeComponent();
+        SessionBar.CommandRequested += SessionChrome_CommandRequested;
+        SessionBar.ViewOpened += UpdateLiveViewMenuItems;
         Title += AppChannel.WindowTitleSuffix;
         _initialBoardPath = initialBoardPath;
         TextEditorLanguageCombo.ItemsSource = TextLanguageRegistry.All;
+        LanguageChipCombo.ItemsSource = TextLanguageRegistry.All;
         TextEditor.TextArea.TextView.LineTransformers.Add(_textColorizer);
         TextEditor.Options.ConvertTabsToSpaces = true;
         TextEditor.Options.IndentationSize = 4;
@@ -157,7 +168,7 @@ public partial class MainWindow : Window
             _settings.StartupMonitorName);
         if (_settings.StartFullScreen)
         {
-            EnterFullScreen();
+            SetChromeMode(SessionChromeMode.FullScreen);
         }
     }
 
@@ -204,8 +215,7 @@ public partial class MainWindow : Window
 
     private void History_Changed(object? sender, EventArgs e)
     {
-        UndoMenuItem.IsEnabled = _history.CanUndo;
-        RedoMenuItem.IsEnabled = _history.CanRedo;
+        SessionBar.SetEditEnabled(_history.CanUndo, _history.CanRedo);
     }
 
     private void InkSurface_StrokeCollected(object sender, InkCanvasStrokeCollectedEventArgs e)
@@ -255,6 +265,7 @@ public partial class MainWindow : Window
     private void InkSurface_PreviewStylusDown(object sender, StylusDownEventArgs e)
     {
         CommitTextEdit();
+        SessionBar.CollapseIfTransient();
 
         if (TryActivatePaletteFromStylus(e))
         {
@@ -532,6 +543,7 @@ public partial class MainWindow : Window
 
     private void ToolPalette_PreviewStylusDown(object sender, StylusDownEventArgs e)
     {
+        SessionBar.CollapseIfTransient();
         ReleaseBoardPointerCapture(e.StylusDevice);
         LaserTrail.Lift();
     }
@@ -782,6 +794,7 @@ public partial class MainWindow : Window
             return;
         }
 
+        SessionBar.CollapseIfTransient();
         CommitTextEdit();
         InkSurface.Focus();
         var screen = ToPointD(e.GetPosition(InkSurface));
@@ -1434,6 +1447,103 @@ public partial class MainWindow : Window
         _ => throw new NotSupportedException($"Unsupported container type {item.GetType().Name}."),
     };
 
+    private static BoardObject WithZIndex(BoardObject item, int zIndex) => item switch
+    {
+        ImageBoardObject image => image with { ZIndex = zIndex },
+        TextBoardObject text => text with { ZIndex = zIndex },
+        LiveViewBoardObject liveView => liveView with { ZIndex = zIndex },
+        InkStrokeObject stroke => stroke with { ZIndex = zIndex },
+        _ => throw new NotSupportedException($"Unsupported object type {item.GetType().Name}."),
+    };
+
+    private BoardObject? GetSelectedContainer()
+    {
+        if (_selectedObjectId is not Guid selectedId)
+        {
+            return null;
+        }
+
+        BoardObject? item = _document.Objects.FirstOrDefault(candidate => candidate.Id == selectedId);
+        return item is IBoardContainer ? item : null;
+    }
+
+    private void UpdateZOrderCommands()
+    {
+        if (_textEditBefore is not null || GetSelectedContainer() is not { } container)
+        {
+            SessionBar.SetZOrderEnabled(canBringToFront: false, canSendToBack: false);
+            return;
+        }
+
+        BoardObject[] group = _document.GetDeletionGroup(container.Id)
+            .OrderBy(item => item.ZIndex)
+            .ToArray();
+        SessionBar.SetZOrderEnabled(
+            canBringToFront: !IsZGroupAtFront(group),
+            canSendToBack: !IsZGroupAtBack(group));
+    }
+
+    private bool IsZGroupAtFront(IReadOnlyList<BoardObject> group)
+    {
+        HashSet<Guid> ids = group.Select(item => item.Id).ToHashSet();
+        int maxGroup = group.Max(item => item.ZIndex);
+        return _document.Objects.Where(item => !ids.Contains(item.Id))
+            .All(item => item.ZIndex < maxGroup);
+    }
+
+    private bool IsZGroupAtBack(IReadOnlyList<BoardObject> group)
+    {
+        HashSet<Guid> ids = group.Select(item => item.Id).ToHashSet();
+        int minGroup = group.Min(item => item.ZIndex);
+        return _document.Objects.Where(item => !ids.Contains(item.Id))
+            .All(item => item.ZIndex > minGroup);
+    }
+
+    private void BringSelectedContainerToFront()
+    {
+        ReorderSelectedContainer(toFront: true);
+    }
+
+    private void SendSelectedContainerToBack()
+    {
+        ReorderSelectedContainer(toFront: false);
+    }
+
+    private void ReorderSelectedContainer(bool toFront)
+    {
+        if (GetSelectedContainer() is not { } container)
+        {
+            return;
+        }
+
+        BoardObject[] before = _document.GetDeletionGroup(container.Id)
+            .OrderBy(item => item.ZIndex)
+            .ToArray();
+        if (before.Length == 0 ||
+            (toFront ? IsZGroupAtFront(before) : IsZGroupAtBack(before)))
+        {
+            return;
+        }
+
+        HashSet<Guid> ids = before.Select(item => item.Id).ToHashSet();
+        IEnumerable<int> otherZ = _document.Objects
+            .Where(item => !ids.Contains(item.Id))
+            .Select(item => item.ZIndex);
+        int start = toFront
+            ? otherZ.DefaultIfEmpty(-1).Max() + 1
+            : otherZ.DefaultIfEmpty(0).Min() - before.Length;
+        BoardObject[] after = before
+            .Select((item, index) => WithZIndex(item, start + index))
+            .ToArray();
+        if (before.SequenceEqual(after))
+        {
+            return;
+        }
+
+        _history.Execute(new ReplaceObjectsCommand(before, after), _document);
+        UpdateZOrderCommands();
+    }
+
     private void BeginTextEdit(TextBoardObject textObject)
     {
         if (_textEditBefore?.Id == textObject.Id)
@@ -1770,8 +1880,7 @@ public partial class MainWindow : Window
             return;
         }
 
-        UndoMenuItem.IsEnabled = TextEditor.CanUndo;
-        RedoMenuItem.IsEnabled = TextEditor.CanRedo;
+        SessionBar.SetEditEnabled(TextEditor.CanUndo, TextEditor.CanRedo);
     }
 
     private void PenToolButton_Click(object sender, RoutedEventArgs e)
@@ -1932,19 +2041,6 @@ public partial class MainWindow : Window
         }
 
         UpdateDualToolChecks();
-        PenToolMenuItem.IsChecked = tool == BoardTool.Pen;
-        HighlighterToolMenuItem.IsChecked = tool == BoardTool.Highlighter;
-        CalligraphyToolMenuItem.IsChecked = tool == BoardTool.Calligraphy;
-        LaserToolMenuItem.IsChecked = tool == BoardTool.Laser;
-        if (EraserToolMenuItem is not null)
-        {
-            EraserToolMenuItem.IsChecked = tool == BoardTool.Eraser;
-        }
-
-        if (PanToolMenuItem is not null)
-        {
-            PanToolMenuItem.IsChecked = tool == BoardTool.Pan;
-        }
         InkSurface.EditingMode =
             tool is BoardTool.Pen or BoardTool.Highlighter or BoardTool.Calligraphy or BoardTool.Laser
             ? InkCanvasEditingMode.Ink
@@ -2597,15 +2693,6 @@ public partial class MainWindow : Window
         return brush;
     }
 
-    private void ToolbarPlacementMenuItem_Click(object sender, RoutedEventArgs e)
-    {
-        if (sender is MenuItem { Tag: string name } &&
-            Enum.TryParse<ToolbarPlacement>(name, out var placement))
-        {
-            SetToolbarPlacement(placement);
-        }
-    }
-
     private void ApplyPreferences()
     {
         ApplyToolbarPlacement();
@@ -2615,12 +2702,87 @@ public partial class MainWindow : Window
         PersistSettings();
     }
 
-    private void PreferencesMenuItem_Click(object sender, RoutedEventArgs e)
+    private void PreferencesMenuItem_Click(object sender, RoutedEventArgs e) =>
+        ShowOwnedDialog(new PreferencesWindow(_settings, ApplyPreferences));
+
+    private void SessionChrome_CommandRequested(SessionCommand command)
     {
-        var dialog = new PreferencesWindow(_settings, ApplyPreferences)
+        switch (command)
         {
-            Owner = this,
-        };
+            case SessionCommand.New:
+                NewMenuItem_Click(this, new RoutedEventArgs());
+                break;
+            case SessionCommand.Open:
+                OpenButton_Click(this, new RoutedEventArgs());
+                break;
+            case SessionCommand.Save:
+                SaveButton_Click(this, new RoutedEventArgs());
+                break;
+            case SessionCommand.SaveAs:
+                SaveAsMenuItem_Click(this, new RoutedEventArgs());
+                break;
+            case SessionCommand.Close:
+                Close();
+                break;
+            case SessionCommand.Undo:
+                UndoButton_Click(this, new RoutedEventArgs());
+                break;
+            case SessionCommand.Redo:
+                RedoButton_Click(this, new RoutedEventArgs());
+                break;
+            case SessionCommand.Copy:
+                CopySelectionToClipboard();
+                break;
+            case SessionCommand.Paste:
+                PasteButton_Click(this, new RoutedEventArgs());
+                break;
+            case SessionCommand.FullScreen:
+                SetChromeMode(
+                    _chromeMode == SessionChromeMode.FullScreen
+                        ? SessionChromeMode.Windowed
+                        : SessionChromeMode.FullScreen);
+                break;
+            case SessionCommand.CanvasOnly:
+                SetChromeMode(
+                    _chromeMode == SessionChromeMode.CanvasOnly
+                        ? SessionChromeMode.Windowed
+                        : SessionChromeMode.CanvasOnly);
+                break;
+            case SessionCommand.BringToFront:
+                BringSelectedContainerToFront();
+                break;
+            case SessionCommand.SendToBack:
+                SendSelectedContainerToBack();
+                break;
+            case SessionCommand.AddLiveView:
+                AddLiveViewMenuItem_Click(this, new RoutedEventArgs());
+                break;
+            case SessionCommand.FreezeLiveView:
+                FreezeLiveViewMenuItem_Click(this, new RoutedEventArgs());
+                break;
+            case SessionCommand.DisconnectLiveView:
+                DisconnectSelectedLiveView();
+                break;
+            case SessionCommand.ReconnectLiveView:
+                ReconnectLiveViewMenuItem_Click(this, new RoutedEventArgs());
+                break;
+            case SessionCommand.Preferences:
+                PreferencesMenuItem_Click(this, new RoutedEventArgs());
+                break;
+            case SessionCommand.About:
+                ShowAbout();
+                break;
+        }
+    }
+
+    private void ShowAbout() => ShowOwnedDialog(new AboutWindow());
+
+    private void ShowOwnedDialog(Window dialog)
+    {
+        SessionBar.Collapse();
+        CloseLanguagePickers();
+        UpdateLayout();
+        dialog.Owner = this;
         dialog.ShowDialog();
         InkSurface.Focus();
     }
@@ -2652,12 +2814,6 @@ public partial class MainWindow : Window
             or ToolbarPlacement.BottomRight
             or ToolbarPlacement.BottomCenter;
         DockPanel.SetDock(ToolChrome, isBottom ? Dock.Bottom : Dock.Top);
-
-        ToolbarTopRightMenuItem.IsChecked = placement == ToolbarPlacement.TopRight;
-        ToolbarTopLeftMenuItem.IsChecked = placement == ToolbarPlacement.TopLeft;
-        ToolbarBottomRightMenuItem.IsChecked = placement == ToolbarPlacement.BottomRight;
-        ToolbarBottomLeftMenuItem.IsChecked = placement == ToolbarPlacement.BottomLeft;
-        ToolbarBottomCenterMenuItem.IsChecked = placement == ToolbarPlacement.BottomCenter;
     }
 
     private void ApplyToolPaletteChrome()
@@ -2747,8 +2903,31 @@ public partial class MainWindow : Window
         await ResumeLiveViewAsync(liveView);
     }
 
-    private void ToolsMenu_SubmenuOpened(object sender, RoutedEventArgs e) =>
-        UpdateLiveViewMenuItems();
+    private void DisconnectSelectedLiveView()
+    {
+        if (GetSelectedLiveView() is not { } liveView ||
+            !_liveViewPresenters.TryGetValue(liveView.Id, out LiveViewPresenter? presenter) ||
+            !presenter.HasTarget)
+        {
+            return;
+        }
+
+        try
+        {
+            LiveViewBoardObject updated = SaveLiveViewSnapshot(
+                liveView with { IsFrozen = true },
+                presenter);
+            presenter.ClearTarget();
+            DetachLiveViewSurface(presenter);
+            _document.ReplaceObject(updated);
+            UpdateLiveViewMenuItems();
+            UpdateLiveViewActionOverlay();
+        }
+        catch (Exception exception)
+        {
+            ShowError("Could not disconnect LiveView", exception);
+        }
+    }
 
     private void PauseLiveViewButton_Click(object sender, RoutedEventArgs e)
     {
@@ -2922,36 +3101,34 @@ public partial class MainWindow : Window
         }
     }
 
-    private Task PasteFromClipboardAsync()
+    private async Task PasteFromClipboardAsync()
     {
         try
         {
-            if (Clipboard.ContainsImage())
+            string[] files = ClipboardImage.GetImportableFiles();
+            if (files.Length > 0)
             {
-                var bitmap = Clipboard.GetImage();
-                if (bitmap is null)
-                {
-                    return Task.CompletedTask;
-                }
+                await ImportDroppedFilesAsync(files, _camera.Center);
+                return;
+            }
 
-                AddImage(
-                    WpfImageCodec.EncodePng(bitmap),
-                    "clipboard-image.png",
-                    "image/png");
-                return Task.CompletedTask;
+            byte[]? png = ClipboardImage.TryGetEncodedPng();
+            if (png is not null)
+            {
+                AddImage(png, "clipboard-image.png", "image/png");
+                return;
             }
 
             if (Clipboard.ContainsText(TextDataFormat.UnicodeText))
             {
-                AddText(Clipboard.GetText(TextDataFormat.UnicodeText));
+                string text = Clipboard.GetText(TextDataFormat.UnicodeText);
+                AddText(text, languageId: ResolveSnippetLanguage(text));
             }
         }
         catch (Exception exception)
         {
             ShowError("Could not paste clipboard content", exception);
         }
-
-        return Task.CompletedTask;
     }
 
     private void AddImage(
@@ -2991,7 +3168,7 @@ public partial class MainWindow : Window
     private void AddText(
         string text,
         PointD? worldCenter = null,
-        bool beginEdit = true,
+        bool beginEdit = false,
         string? title = null,
         string? languageId = null)
     {
@@ -3004,11 +3181,13 @@ public partial class MainWindow : Window
         double width = Math.Min(
             TextContainerVisual.DefaultWidth,
             Math.Max(320, visibleWidth * 0.7));
+        string resolvedLanguageId = TextLanguageIds.Normalize(languageId);
         double height = TextContainerVisual.MeasureDesiredHeight(
             text,
             width,
             1,
-            VisualTreeHelper.GetDpi(SceneSurface).PixelsPerDip);
+            VisualTreeHelper.GetDpi(SceneSurface).PixelsPerDip,
+            resolvedLanguageId);
         PointD center = worldCenter ?? _camera.Center;
         var textObject = new TextBoardObject(
             Guid.NewGuid(),
@@ -3020,7 +3199,7 @@ public partial class MainWindow : Window
                 height),
             string.IsNullOrWhiteSpace(title) ? "Text" : title,
             text,
-            LanguageId: TextLanguageIds.Normalize(languageId));
+            LanguageId: resolvedLanguageId);
 
         _history.Execute(new AddObjectCommand(textObject), _document);
         _selectedObjectId = textObject.Id;
@@ -3029,8 +3208,14 @@ public partial class MainWindow : Window
         if (beginEdit)
         {
             BeginTextEdit(textObject);
+            return;
         }
+
+        UpdateLiveViewActionOverlay();
     }
+
+    private string ResolveSnippetLanguage(string text) =>
+        TextLanguageRegistry.ResolveFromOrder(text, _settings.SnippetFormatOrder);
 
     private async Task AddLiveViewAsync()
     {
@@ -3244,25 +3429,30 @@ public partial class MainWindow : Window
     private void UpdateLiveViewMenuItems()
     {
         LiveViewBoardObject? liveView = GetSelectedLiveView();
-        bool selected = liveView is not null;
-        FreezeLiveViewMenuItem.IsEnabled = selected;
-        ReconnectLiveViewMenuItem.IsEnabled = selected;
+        if (liveView is null ||
+            !_liveViewPresenters.TryGetValue(liveView.Id, out LiveViewPresenter? presenter))
+        {
+            SessionBar.SetLiveViewCommands(selected: liveView is not null, hasTarget: false, frozen: false);
+            return;
+        }
 
-        bool canResume = liveView is not null &&
-            (!_liveViewPresenters.TryGetValue(liveView.Id, out LiveViewPresenter? presenter) ||
-             presenter.IsFrozen ||
-             !presenter.HasTarget);
-        FreezeLiveViewMenuItem.Header = canResume
-            ? "_Resume selected LiveView..."
-            : "_Freeze selected LiveView";
+        SessionBar.SetLiveViewCommands(
+            selected: true,
+            hasTarget: presenter.HasTarget,
+            frozen: presenter.IsFrozen);
     }
 
     private void UpdateLiveViewActionOverlay()
     {
+        UpdateLiveViewMenuItems();
         LiveViewBoardObject? liveView = GetSelectedLiveView();
-        if (liveView is null)
+        if (liveView is null ||
+            !_liveViewPresenters.TryGetValue(liveView.Id, out LiveViewPresenter? overlayPresenter) ||
+            !overlayPresenter.HasTarget)
         {
             LiveViewActionsBorder.Visibility = Visibility.Collapsed;
+            UpdateLanguageChipOverlay();
+            UpdateZOrderCommands();
             return;
         }
 
@@ -3271,8 +3461,8 @@ public partial class MainWindow : Window
         PointD bottomRight = _camera.WorldToScreen(
             new PointD(liveView.Bounds.Right, liveView.Bounds.Bottom));
 
-        const double overlayWidth = 132;
-        const double overlayHeight = 56;
+        const double overlayWidth = 104;
+        const double overlayHeight = 48;
         const double inset = 8;
         Canvas.SetLeft(
             LiveViewActionsBorder,
@@ -3285,6 +3475,146 @@ public partial class MainWindow : Window
         PauseLiveViewButton.IsEnabled = isRunning;
         PlayLiveViewButton.IsEnabled = !isRunning;
         LiveViewActionsBorder.Visibility = Visibility.Visible;
+        UpdateLanguageChipOverlay();
+        UpdateZOrderCommands();
+    }
+
+    private TextBoardObject? GetSelectedText() =>
+        _selectedObjectId is Guid selectedId
+            ? _document.Objects.FirstOrDefault(item => item.Id == selectedId) as TextBoardObject
+            : null;
+
+    private void UpdateLanguageChipOverlay()
+    {
+        TextBoardObject? textObject = GetSelectedText();
+        if (textObject is null || _textEditBefore is not null)
+        {
+            HideLanguageChip();
+            return;
+        }
+
+        PointD topLeft = _camera.WorldToScreen(
+            new PointD(textObject.Bounds.Left, textObject.Bounds.Top));
+        PointD bottomRight = _camera.WorldToScreen(
+            new PointD(textObject.Bounds.Right, textObject.Bounds.Bottom));
+        double width = Math.Max(1, bottomRight.X - topLeft.X);
+        double height = Math.Max(1, bottomRight.Y - topLeft.Y);
+        const double chipWidth = TextContainerVisual.LanguageChipWidth;
+        const double chipHeight = TextContainerVisual.LanguageChipHeight;
+        const double margin = TextContainerVisual.LanguageChipMargin;
+        if (width < chipWidth + (margin * 2) || height < chipHeight)
+        {
+            HideLanguageChip();
+            return;
+        }
+
+        double scale = Math.Max(0.01, textObject.VisualScale * _camera.Zoom);
+        double titleHeight = Math.Min(height, TextContainerVisual.TitleBarHeight * scale);
+        double left = bottomRight.X - margin - chipWidth;
+        double top = topLeft.Y + Math.Max(0, (titleHeight - chipHeight) / 2);
+        if (LanguageChipCombo.IsDropDownOpen &&
+            LanguageChipCombo.Visibility == Visibility.Visible &&
+            (Math.Abs(Canvas.GetLeft(LanguageChipCombo) - left) > 0.5 ||
+             Math.Abs(Canvas.GetTop(LanguageChipCombo) - top) > 0.5))
+        {
+            LanguageChipCombo.IsDropDownOpen = false;
+        }
+
+        Canvas.SetLeft(LanguageChipCombo, left);
+        Canvas.SetTop(LanguageChipCombo, top);
+
+        ITextLanguageService language = TextLanguageRegistry.Resolve(textObject.LanguageId);
+        if (!ReferenceEquals(LanguageChipCombo.SelectedItem, language))
+        {
+            _updatingLanguageChip = true;
+            try
+            {
+                LanguageChipCombo.SelectedItem = language;
+            }
+            finally
+            {
+                _updatingLanguageChip = false;
+            }
+        }
+
+        LanguageChipCombo.Visibility = Visibility.Visible;
+    }
+
+    private void HideLanguageChip()
+    {
+        LanguageChipCombo.IsDropDownOpen = false;
+        LanguageChipCombo.Visibility = Visibility.Collapsed;
+    }
+
+    private void CloseLanguagePickers()
+    {
+        LanguageChipCombo.IsDropDownOpen = false;
+        TextEditorLanguageCombo.IsDropDownOpen = false;
+    }
+
+    private void LanguageChipCombo_PreviewMouseDown(object sender, MouseButtonEventArgs e)
+    {
+        if (e.StylusDevice is not null)
+        {
+            return;
+        }
+
+        SessionBar.CollapseIfTransient();
+        if (e.ChangedButton != MouseButton.Left || e.ClickCount < 2)
+        {
+            return;
+        }
+
+        LanguageChipCombo.IsDropDownOpen = false;
+        FrameContentAt(ToPointD(e.GetPosition(InkSurface)));
+        e.Handled = true;
+    }
+
+    private void LanguageChipCombo_SelectionChanged(object sender, SelectionChangedEventArgs e)
+    {
+        if (_updatingLanguageChip ||
+            LanguageChipCombo.SelectedItem is not ITextLanguageService language ||
+            GetSelectedText() is not { } textObject)
+        {
+            return;
+        }
+
+        if (TextLanguageIds.Normalize(textObject.LanguageId) == language.Id)
+        {
+            return;
+        }
+
+        ApplyTextLanguage(textObject, language);
+        InkSurface.Focus();
+    }
+
+    private void ApplyTextLanguage(TextBoardObject textObject, ITextLanguageService language)
+    {
+        double desiredHeight = TextContainerVisual.MeasureDesiredHeight(
+            textObject.Text,
+            textObject.Bounds.Width,
+            textObject.VisualScale,
+            VisualTreeHelper.GetDpi(SceneSurface).PixelsPerDip,
+            language.Id);
+        RectD bounds = desiredHeight > textObject.Bounds.Height
+            ? textObject.Bounds.WithSize(textObject.Bounds.Width, desiredHeight)
+            : textObject.Bounds;
+        var after = textObject with
+        {
+            LanguageId = language.Id,
+            Bounds = bounds,
+        };
+        InkStrokeObject[] linkedBefore = _document.LinkedStrokes(textObject.Id).ToArray();
+        InkStrokeObject[] linkedAfter = textObject.Bounds == bounds
+            ? linkedBefore
+            : linkedBefore
+                .Select(stroke => stroke.TransformWithContainer(textObject.Bounds, bounds))
+                .ToArray();
+        _history.Execute(
+            new ReplaceObjectsCommand(
+                [textObject, .. linkedBefore],
+                [after, .. linkedAfter]),
+            _document);
     }
 
     private void DisposeLiveViewPresenter(Guid objectId)
@@ -3592,12 +3922,22 @@ public partial class MainWindow : Window
                             continue;
                         }
 
+                        byte[] bytes = await File.ReadAllBytesAsync(path);
+                        if (!DroppedFileImport.LooksLikeText(bytes))
+                        {
+                            continue;
+                        }
+
+                        string droppedText = System.Text.Encoding.UTF8.GetString(bytes);
+                        string droppedLanguage = DroppedFileImport.HasRecognizedLanguageExtension(path)
+                            ? DroppedFileImport.LanguageIdFor(path)
+                            : ResolveSnippetLanguage(droppedText);
                         AddText(
-                            await File.ReadAllTextAsync(path),
+                            droppedText,
                             center,
                             beginEdit: false,
                             title: Path.GetFileNameWithoutExtension(path),
-                            languageId: DroppedFileImport.LanguageIdFor(path));
+                            languageId: droppedLanguage);
                         break;
                 }
 
@@ -3761,20 +4101,56 @@ public partial class MainWindow : Window
 
     private void Window_PreviewKeyDown(object sender, KeyEventArgs e)
     {
-        if (e.Key == Key.F11)
+        var modifiers = Keyboard.Modifiers;
+        var controlDown = modifiers.HasFlag(ModifierKeys.Control);
+        var shiftDown = modifiers.HasFlag(ModifierKeys.Shift);
+        var altDown = modifiers.HasFlag(ModifierKeys.Alt) || e.Key == Key.System;
+
+        if (e.Key == Key.F11 || (e.Key == Key.System && e.SystemKey == Key.F11))
         {
             if (!e.IsRepeat)
             {
-                ToggleFullScreen();
+                SetChromeMode(
+                    controlDown
+                        ? (_chromeMode == SessionChromeMode.CanvasOnly
+                            ? SessionChromeMode.Windowed
+                            : SessionChromeMode.CanvasOnly)
+                        : (_chromeMode == SessionChromeMode.FullScreen
+                            ? SessionChromeMode.Windowed
+                            : SessionChromeMode.FullScreen));
             }
 
             e.Handled = true;
             return;
         }
 
-        var modifiers = Keyboard.Modifiers;
-        var controlDown = modifiers.HasFlag(ModifierKeys.Control);
-        var shiftDown = modifiers.HasFlag(ModifierKeys.Shift);
+        if (SessionBar.IsCommandRowOpen && e.Key == Key.Escape)
+        {
+            SessionBar.Collapse();
+            e.Handled = true;
+            return;
+        }
+
+        var mnemonicKey = e.Key == Key.System ? e.SystemKey : e.Key;
+        if (altDown &&
+            !controlDown &&
+            _chromeMode == SessionChromeMode.Windowed &&
+            !e.IsRepeat &&
+            SessionBar.TryHandleAltKey(mnemonicKey))
+        {
+            e.Handled = true;
+            return;
+        }
+
+        if (SessionBar.IsCommandRowOpen && !controlDown && !altDown)
+        {
+            var isMove = mnemonicKey is Key.Left or Key.Right or Key.Home or Key.End;
+            if ((isMove || !e.IsRepeat) && SessionBar.TryHandleCommandKey(mnemonicKey))
+            {
+                e.Handled = true;
+                return;
+            }
+        }
         if (_textEditBefore is not null)
         {
             if (e.Key == Key.F6 && !e.IsRepeat)
@@ -3814,9 +4190,9 @@ public partial class MainWindow : Window
             return;
         }
 
-        if (_isFullScreen && e.Key == Key.Escape)
+        if (_chromeMode != SessionChromeMode.Windowed && e.Key == Key.Escape)
         {
-            ExitFullScreen();
+            SetChromeMode(SessionChromeMode.Windowed);
             e.Handled = true;
             return;
         }
@@ -3897,40 +4273,62 @@ public partial class MainWindow : Window
         }
     }
 
-    private void ToggleFullScreen()
+    private void SetChromeMode(SessionChromeMode mode)
     {
-        if (_isFullScreen)
+        if (_chromeMode == mode)
         {
-            ExitFullScreen();
+            return;
         }
-        else
+
+        SessionBar.Collapse();
+        if (mode == SessionChromeMode.Windowed)
         {
-            EnterFullScreen();
+            RestoreWindowedChrome();
+            _chromeMode = SessionChromeMode.Windowed;
+            return;
         }
+
+        if (_chromeMode == SessionChromeMode.Windowed)
+        {
+            SnapshotWindowedChrome();
+        }
+
+        WindowState = WindowState.Normal;
+        SessionBar.Visibility = Visibility.Collapsed;
+        WindowStyle = WindowStyle.None;
+        ResizeMode = ResizeMode.NoResize;
+        if (mode == SessionChromeMode.FullScreen)
+        {
+            MonitorStartupPlacement.FillCurrentMonitor(this);
+        }
+        else if (_chromeMode == SessionChromeMode.FullScreen)
+        {
+            RestoreWindowedBounds();
+        }
+
+        _chromeMode = mode;
     }
 
-    private void EnterFullScreen()
+    private void SnapshotWindowedChrome()
     {
         _windowStateBeforeFullScreen = WindowState;
         _windowStyleBeforeFullScreen = WindowStyle;
         _resizeModeBeforeFullScreen = ResizeMode;
         _windowBoundsBeforeFullScreen = new Rect(Left, Top, Width, Height);
-
-        WindowState = WindowState.Normal;
-        MainMenu.Visibility = Visibility.Collapsed;
-        WindowStyle = WindowStyle.None;
-        ResizeMode = ResizeMode.NoResize;
-        MonitorStartupPlacement.FillCurrentMonitor(this);
-        _isFullScreen = true;
     }
 
-    private void ExitFullScreen()
+    private void RestoreWindowedChrome()
     {
         WindowState = WindowState.Normal;
-        MainMenu.Visibility = Visibility.Visible;
+        SessionBar.Visibility = Visibility.Visible;
         WindowStyle = _windowStyleBeforeFullScreen;
         ResizeMode = _resizeModeBeforeFullScreen;
+        RestoreWindowedBounds();
+        WindowState = _windowStateBeforeFullScreen;
+    }
 
+    private void RestoreWindowedBounds()
+    {
         if (_windowStateBeforeFullScreen == WindowState.Normal)
         {
             Left = _windowBoundsBeforeFullScreen.Left;
@@ -3938,9 +4336,6 @@ public partial class MainWindow : Window
             Width = _windowBoundsBeforeFullScreen.Width;
             Height = _windowBoundsBeforeFullScreen.Height;
         }
-
-        WindowState = _windowStateBeforeFullScreen;
-        _isFullScreen = false;
     }
 
     private void Window_PreviewKeyUp(object sender, KeyEventArgs e)

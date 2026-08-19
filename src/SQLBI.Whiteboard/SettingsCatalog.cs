@@ -8,6 +8,7 @@ internal enum SettingEditorKind
     BooleanSwitch,
     DoubleRange,
     MonitorChoice,
+    OrderedList,
 }
 
 internal sealed class SettingChoice
@@ -54,6 +55,7 @@ internal static class SettingsCatalog
         public const string ToolbarPlacement = "toolbar.placement";
         public const string ToolbarLayout = "toolbar.layout";
         public const string FingerMode = "input.fingerMode";
+        public const string SnippetFormatOrder = "input.snippetFormatOrder";
     }
 
     public const string Startup = "Startup";
@@ -79,7 +81,7 @@ internal static class SettingsCatalog
             Id = Ids.StartFullScreen,
             Category = Startup,
             Title = "Start full screen",
-            Description = "Hide the menu and title bar the next time the application starts. F11 still toggles this session.",
+            Description = "Fill the current monitor and hide the title and tabs the next time the application starts. F11 still toggles this session. Ctrl+F11 hides chrome without filling the monitor.",
             Keywords = ["fullscreen", "full screen", "f11", "maximize"],
             Editor = SettingEditorKind.BooleanSwitch,
         },
@@ -97,6 +99,15 @@ internal static class SettingsCatalog
                 new() { Id = nameof(Core.Settings.FingerMode.Off), Title = "Off" },
                 new() { Id = nameof(Core.Settings.FingerMode.On), Title = "On" },
             ],
+        },
+        new()
+        {
+            Id = Ids.SnippetFormatOrder,
+            Category = Input,
+            Title = "Snippet format order",
+            Description = "Paste tries formats from top to bottom and uses the first that accepts the text. Plain text always accepts, so putting it first keeps every paste as plain text. Recognized file extensions (.dax, .sql, .txt) keep their language.",
+            Keywords = ["snippet", "language", "dax", "sql", "paste", "format", "text", "order"],
+            Editor = SettingEditorKind.OrderedList,
         },
         new()
         {

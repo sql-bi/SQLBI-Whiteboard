@@ -27,7 +27,9 @@ How the project is developed and shipped is documented separately:
 - Versioned ZIP-based `.wboard` documents with an embedded `preview.png`. Explorer shows that picture as the file thumbnail in the released install; older boards keep the document icon. The VS Code extension in `vscode/sqlbi-whiteboard` opens the same picture instead of the ZIP.
 - Markdown `.wimport` recipes that build image and text containers from headings
 - An intentionally small floating toolbar
+- A File / Edit / View / Help tab strip. Click a tab for a one-row command strip over the canvas
 - Preferences for the startup monitor, full-screen start, finger drawing, laser trail, and toolbar layout
+- About, with version and channel
 
 ## Build and run
 
@@ -144,7 +146,7 @@ powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\run.ps1
 
 Choose **Tools > Add LiveView...** and select an application window or display in the Windows capture picker. A LiveView behaves like an imported-image container: it can be selected, moved, resized while preserving its aspect ratio, framed by double-clicking, deleted with its linked strokes, and manipulated through undo/redo.
 
-Use **Tools > Freeze selected LiveView** to stop capture while retaining the last frame. The same command resumes a target that is still available. **Reconnect selected LiveView...** selects a new target while preserving the container, snapshot, and linked strokes.
+Use **View > Freeze** to stop capture while retaining the last frame. The same command resumes a target that is still available. **View > Disconnect** releases the target, keeps the last frame, and hides the on-frame freeze/play controls; **View > Reconnect** is then the only way back to a live feed.
 
 Saving a board captures the latest LiveView bitmap and stores it with the source label, frame-rate setting, cursor setting, frozen state, and container geometry. Loading a board displays that bitmap immediately. Windows capture permission objects cannot be serialized, so use **Reconnect** to restore the live feed after loading.
 
@@ -167,37 +169,43 @@ Use **Copy settings** after finding a useful combination so the exact values can
 | Pen contact | Hide both the pointer dot and arrow |
 | Physical mouse movement | Show the normal arrow |
 | Left mouse | Temporarily select/move/resize a container; return to the previous drawing tool on release |
-| Double-click container | Center and fit the image or LiveView to the canvas |
+| Double-click container | Center and fit the image, text, or LiveView to the canvas |
 | Double-click empty canvas | Center and fit all board content, or reset an empty board |
 | Pen eraser | Erase complete strokes |
+| Pen barrel | Hold the lower barrel button for the laser; release returns to the previous tool |
 | One finger | Pan. With Finger drawing on, uses the current tool instead |
 | Two fingers | Pan and pinch zoom. Cancels an in-progress finger stroke when Finger drawing is on |
-| Mouse wheel | Zoom at the pointer |
+| Mouse wheel | Zoom at the pointer. Shift+wheel zooms more slowly |
 | Middle mouse | Pan |
-| Right mouse | Pan while held; return to Pen on release |
+| Right mouse | Pan while held on the canvas; return to Pen on release. Right-click the palette to hide or show it |
 | Space | Temporarily switch to Pan |
 | Ctrl+Z / Ctrl+Y | Undo / redo |
-| Ctrl+V | Paste an image, or create a text container from plain text |
+| Ctrl+C | Copy the selection. Copying a LiveView copies its last frame as a bitmap |
+| Ctrl+V | Paste prefers an image (including a file on the clipboard) over text. Otherwise create a text container from plain text |
 | F2 | Edit the selected text container |
-| Language selector | Choose Plain text, DAX, or SQL Server while a text container is in edit mode |
+| Language chip | Choose Plain text, DAX, or SQL Server on a selected text container |
 | F6 | Format DAX or SQL Server code while its text container is in edit mode |
 | Ctrl+Enter | Commit the active text edit and return to display mode |
-| Escape | Cancel the active text edit |
+| Escape | Cancel the active text edit, close the command strip, or leave full screen or canvas only |
 | Ctrl+S / Ctrl+O | Save / open a board |
+| Shift+F12 | Save As |
 | Delete | Delete the selected container and its linked strokes |
-| Tools > Preferences... | Searchable settings: startup monitor, full screen, finger drawing, laser trail, toolbar |
-| Tools > Add LiveView | Capture an application window or display as a container |
-| Tools > Freeze selected LiveView | Freeze or resume the selected live feed |
-| Tools > Reconnect selected LiveView | Select a new capture target for the existing container |
-| F11 | Toggle full screen; Escape leaves it when a text container is not being edited |
+| Alt+L | Laser pointer |
+| File / Edit / View / Help | Tab strip. Click a tab for a one-row command strip over the canvas. Click the canvas to hide it |
+| Help > Preferences | Searchable settings: startup monitor, full screen, finger drawing, snippet format order, laser trail, toolbar |
+| View > Bring to front / Send to back | Reorder the selected image, text, or LiveView (and its linked strokes) |
+| Help > About | Version, channel, license, and the product site |
+| View > LiveView | Capture, freeze, disconnect, or reconnect a window or display |
+| F11 | Fill the current monitor and hide title and tabs. Escape leaves it when a text container is not being edited |
+| Ctrl+F11 | Hide title and tabs but keep this window’s size and place |
 
 With the mouse, selection is automatic: click a container to move it, or drag the circular bottom-right handle to resize it while preserving its aspect ratio. Double-click a container to center it and fit it to the canvas. Releasing the mouse returns to the previously selected drawing tool.
 
-Imported images, LiveViews, and text objects act as containers. A completed stroke is linked when it touches exactly one container, including crossing its edge; a stroke touching multiple containers remains independent. Moving or resizing a container transforms its linked strokes with it. Deleting a container also deletes all of its linked strokes. Undo/redo treats each complete container operation as one action.
+Imported images, LiveViews, and text objects act as containers. A completed stroke is linked when it touches exactly one container, including crossing its edge; a stroke touching multiple containers remains independent. Moving or resizing a container transforms its linked strokes with it. **View → Bring to front** and **View → Send to back** reorder the selected container and those linked strokes. Deleting a container also deletes all of its linked strokes. Undo/redo treats each complete container operation as one action.
 
-Paste plain text to create a text container and enter edit mode immediately. Text reflows while its edit-mode resize grip changes the width, and the height grows automatically when necessary. Choose **DAX** or **SQL Server** in the title-bar language selector for syntax highlighting in both edit and display modes. A language-aware title identifies a defined DAX or SQL object when possible. Press **F6** to apply the corresponding local formatter. SQL Server mode targets SQL Server 2025 T-SQL, preserves `GO` batch separators, and leaves invalid scripts unchanged. Press **Ctrl+Enter** to commit or **Escape** to restore the previous text, language, and dimensions. In display mode, resizing preserves the aspect ratio and scales the complete text visual without reflowing it.
+Paste plain text to create a selected text container in display mode. **Help → Preferences** has Snippet format order: paste tries those languages from top to bottom and uses the first that accepts the text. Plain text always accepts, so leaving it first keeps every paste as plain text. Recognized extensions (`.dax`, `.sql`, `.txt`) keep their language; other dropped text files use the same order. Choose **Plain text**, **DAX**, or **SQL Server** from the title-bar chip afterwards. Press **F2** to edit the body; the same list is in the title bar while editing. Text reflows while its edit-mode resize grip changes the width, and the height grows automatically when necessary. Double-click still centers and fits the container. Syntax highlighting applies in both edit and display modes. A language-aware title identifies a defined DAX or SQL object when possible. Press **F6** to apply the corresponding local formatter. SQL Server mode targets SQL Server 2025 T-SQL, preserves `GO` batch separators, and leaves invalid scripts unchanged. Press **Ctrl+Enter** to commit or **Escape** to restore the previous text, language, and dimensions. In display mode, resizing preserves the aspect ratio and scales the complete text visual without reflowing it.
 
-Image files, and `.txt`, `.dax`, and `.sql` files, can be dropped directly from File Explorer. Their initial center is the board position at which they were dropped. DAX and SQL files open in the matching language mode.
+Image files, and `.txt`, `.dax`, and `.sql` files, can be dropped directly from File Explorer. Their initial center is the board position at which they were dropped. DAX and SQL files open in the matching language mode. Other dropped text files use Snippet format order.
 
 ### `.wimport` recipes
 

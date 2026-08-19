@@ -164,6 +164,17 @@ internal sealed class LiveViewCaptureSession : IDisposable
         }
     }
 
+    public void ClearTarget()
+    {
+        lock (_gate)
+        {
+            StopCaptureCore();
+            UnsubscribeFromCurrentItem();
+            _captureItem = null;
+            _isFrozen = true;
+        }
+    }
+
     public bool TryPresent(ID3D11DeviceContext1 context, ID3D11Texture2D destinationTexture)
     {
         Direct3D11CaptureFrame? frame;
