@@ -99,11 +99,11 @@ the primary route rather than a fallback (decision 10).
 
 ### 10. Finger mode
 
-Touch input as an alternative to the pen, for machines without one. Last because it is the only
-item here that may reasonably ship after 1.0: the interaction model assumes a pen and a separate
-pointing device, and finger drawing has to answer what pan and zoom do instead. That is a design
-question rather than an implementation one, and answering it badly under launch pressure is
-worse than shipping 1.0 as pen-first and adding touch in 1.1.
+Shipped as a preference (`FingerMode`: Off, On, When no pen is detected), default Off.
+When effective, one finger uses the current tool and two fingers still pan and pinch-zoom;
+a second finger cancels an in-progress finger stroke. Eraser and Pan appear on the toolbar
+because there is no inverted tip. "When no pen is detected" looks at `TabletDeviceType.Stylus`,
+which is a digitizer, not a pen in the room.
 
 ## Distribution plumbing
 

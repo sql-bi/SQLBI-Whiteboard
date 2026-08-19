@@ -38,6 +38,9 @@ public sealed class PenOnlyInkCanvas : InkCanvas
     public void SetLaserMode(bool laser) =>
         _penOnlyRenderer.SetLaserMode(laser);
 
+    public void SetAllowTouchInk(bool allow) =>
+        _penOnlyRenderer.SetAllowTouchInk(allow);
+
     public void AbortWetInk()
     {
         _penOnlyRenderer.AbortWetInk();
@@ -165,6 +168,7 @@ internal sealed class PenOnlyDynamicRenderer : DynamicRenderer
     private readonly ConcurrentDictionary<int, byte> _touchTabletIds = new();
     private volatile PenKind _penKind;
     private volatile bool _laserMode;
+    private volatile bool _allowTouchInk;
     private PenKind _strokeKind;
     private StylusPoint? _lastCalligraphyPoint;
     private int _lastPacketTimestamp;
@@ -187,6 +191,15 @@ internal sealed class PenOnlyDynamicRenderer : DynamicRenderer
     {
         _laserMode = laser;
         if (laser)
+        {
+            AbortWetInk();
+        }
+    }
+
+    public void SetAllowTouchInk(bool allow)
+    {
+        _allowTouchInk = allow;
+        if (!allow)
         {
             AbortWetInk();
         }
@@ -303,5 +316,5 @@ internal sealed class PenOnlyDynamicRenderer : DynamicRenderer
     }
 
     private bool IsTouch(RawStylusInput rawStylusInput) =>
-        _touchTabletIds.ContainsKey(rawStylusInput.TabletDeviceId);
+        !_allowTouchInk && _touchTabletIds.ContainsKey(rawStylusInput.TabletDeviceId);
 }

@@ -47,6 +47,25 @@ public enum StartupMonitorKind
     Named = 2,
 }
 
+public enum FingerMode
+{
+    /// <summary>
+    /// Default: one finger pans, two fingers pinch-zoom. Ink stays on the pen.
+    /// </summary>
+    Off = 0,
+
+    /// <summary>
+    /// One finger uses the current tool. Two fingers still pan and pinch-zoom.
+    /// </summary>
+    On = 1,
+
+    /// <summary>
+    /// Treat as On only when Windows reports no stylus digitizer.
+    /// A Surface often reports one even when the pen is elsewhere.
+    /// </summary>
+    WhenNoPen = 2,
+}
+
 public sealed class AppSettings
 {
     public int Version { get; set; } = AppSettingsSerializer.CurrentVersion;
@@ -61,6 +80,8 @@ public sealed class AppSettings
 
     public bool StartFullScreen { get; set; }
 
+    public FingerMode FingerMode { get; set; } = FingerMode.Off;
+
     public InkToolSettings Pen { get; set; } = InkToolSettings.From(InkPalettes.DefaultPen);
 
     public InkToolSettings Highlighter { get; set; } =
@@ -74,7 +95,7 @@ public sealed class AppSettings
 
 public static class AppSettingsSerializer
 {
-    public const int CurrentVersion = 7;
+    public const int CurrentVersion = 8;
 
     private static readonly JsonSerializerOptions JsonOptions = new()
     {
@@ -145,6 +166,11 @@ public static class AppSettingsSerializer
         if (!Enum.IsDefined(settings.StartupMonitor))
         {
             settings.StartupMonitor = StartupMonitorKind.WacomIfPresent;
+        }
+
+        if (!Enum.IsDefined(settings.FingerMode))
+        {
+            settings.FingerMode = FingerMode.Off;
         }
 
         if (settings.StartupMonitor == StartupMonitorKind.Named)

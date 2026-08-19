@@ -361,6 +361,7 @@ public partial class PreferencesWindow : Window
             SettingsCatalog.Ids.LaserHoldMode => _settings.Laser.HoldMode.ToString(),
             SettingsCatalog.Ids.ToolbarPlacement => _settings.ToolbarPlacement.ToString(),
             SettingsCatalog.Ids.ToolbarLayout => _settings.CalligraphyAccess.ToString(),
+            SettingsCatalog.Ids.FingerMode => _settings.FingerMode.ToString(),
             _ => string.Empty,
         };
 
@@ -415,6 +416,10 @@ public partial class PreferencesWindow : Window
             case SettingsCatalog.Ids.ToolbarLayout
                 when Enum.TryParse<CalligraphyAccess>(id, out var access):
                 _settings.CalligraphyAccess = access;
+                break;
+            case SettingsCatalog.Ids.FingerMode
+                when Enum.TryParse<FingerMode>(id, out var fingerMode):
+                _settings.FingerMode = fingerMode;
                 break;
             default:
                 return;
