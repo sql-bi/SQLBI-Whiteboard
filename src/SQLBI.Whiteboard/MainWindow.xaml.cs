@@ -256,6 +256,11 @@ public partial class MainWindow : Window
     {
         CommitTextEdit();
 
+        if (TryActivatePaletteFromStylus(e))
+        {
+            return;
+        }
+
         if (IsTouchStylus(e))
         {
             if (!TryBeginFingerTool(e))
@@ -265,11 +270,7 @@ public partial class MainWindow : Window
         }
         else
         {
-            if (TryForwardCapturedStylusToPalette(e))
-            {
-                return;
-            }
-
+            _discardInkStroke = false;
             _penInContact = true;
             CancelFingerTool();
             ClearTouchNavigation();
@@ -526,15 +527,7 @@ public partial class MainWindow : Window
 
     private void Window_PreviewStylusDown(object sender, StylusDownEventArgs e)
     {
-        if (IsTouchStylus(e) || !ShouldRouteStylusToPalette())
-        {
-            return;
-        }
-
-        if (TryActivatePaletteAt(e.GetPosition(ToolPalette), e.StylusDevice))
-        {
-            e.Handled = true;
-        }
+        TryActivatePaletteFromStylus(e);
     }
 
     private void ToolPalette_PreviewStylusDown(object sender, StylusDownEventArgs e)
@@ -543,20 +536,16 @@ public partial class MainWindow : Window
         LaserTrail.Lift();
     }
 
-    private bool ShouldRouteStylusToPalette() =>
-        EffectiveTool == BoardTool.Laser ||
-        _stylusAction == PointerAction.Laser ||
-        InkSurface.IsStylusCaptured ||
-        Stylus.Captured is not null;
-
-    private bool TryForwardCapturedStylusToPalette(StylusDownEventArgs e)
+    private bool TryActivatePaletteFromStylus(StylusDownEventArgs e)
     {
-        if (!ShouldRouteStylusToPalette())
+        if (!TryActivatePaletteAt(e.GetPosition(ToolPalette), e.StylusDevice))
         {
             return false;
         }
 
-        return TryActivatePaletteAt(e.GetPosition(ToolPalette), e.StylusDevice);
+        CancelFingerTool();
+        e.Handled = true;
+        return true;
     }
 
     private bool TryActivatePaletteAt(Point palettePoint, StylusDevice? device)
@@ -782,6 +771,14 @@ public partial class MainWindow : Window
     {
         if (e.StylusDevice is not null)
         {
+            // Touch is owned by the stylus handlers. If this promotion is left
+            // unhandled, InkCanvas treats the tap as mouse ink: a leftover
+            // pen dot or highlighter square, then the stylus path pans.
+            if (IsTouchDevice(e.StylusDevice))
+            {
+                e.Handled = true;
+            }
+
             return;
         }
 
@@ -842,6 +839,11 @@ public partial class MainWindow : Window
         // those events, so only a physical mouse can restore the arrow.
         if (e.StylusDevice is not null)
         {
+            if (IsTouchDevice(e.StylusDevice))
+            {
+                e.Handled = true;
+            }
+
             return;
         }
 
@@ -895,7 +897,17 @@ public partial class MainWindow : Window
 
     private void InkSurface_PreviewMouseUp(object sender, MouseButtonEventArgs e)
     {
-        if (e.StylusDevice is not null || _mouseAction == PointerAction.None)
+        if (e.StylusDevice is not null)
+        {
+            if (IsTouchDevice(e.StylusDevice))
+            {
+                e.Handled = true;
+            }
+
+            return;
+        }
+
+        if (_mouseAction == PointerAction.None)
         {
             return;
         }
@@ -1050,6 +1062,7 @@ public partial class MainWindow : Window
 
         if (!IsFingerModeEffective)
         {
+            InkSurface.AbortWetInk();
             e.StylusDevice.Capture(InkSurface);
             e.Handled = true;
             return false;
@@ -4095,7 +4108,10 @@ public partial class MainWindow : Window
     }
 
     private static bool IsTouchStylus(StylusEventArgs e) =>
-        e.StylusDevice.TabletDevice.Type == TabletDeviceType.Touch;
+        IsTouchDevice(e.StylusDevice);
+
+    private static bool IsTouchDevice(StylusDevice? device) =>
+        device?.TabletDevice?.Type == TabletDeviceType.Touch;
 
     private static string ContentTypeFor(string path) =>
         Path.GetExtension(path).ToLowerInvariant() switch
