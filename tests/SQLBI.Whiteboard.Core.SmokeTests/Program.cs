@@ -644,8 +644,8 @@ Assert(
     defaultSettings.StartupMonitor == StartupMonitorKind.WacomIfPresent &&
     defaultSettings.StartupMonitorName is null &&
     !defaultSettings.StartFullScreen &&
-    defaultSettings.FingerMode == FingerMode.Off,
-    "Missing settings should default to Wacom-if-present, a windowed start, and finger drawing off.");
+    defaultSettings.FingerMode == FingerMode.WhenNoPen,
+    "Missing settings should default to Wacom-if-present, a windowed start, and finger drawing when no pen is detected.");
 Assert(
     AppSettingsSerializer.Parse("{ \"startupMonitor\": \"Sideways\" }").StartupMonitor ==
     StartupMonitorKind.WacomIfPresent,
@@ -676,8 +676,11 @@ Assert(
     namedStartup.StartFullScreen,
     "Settings JSON should round-trip a named startup monitor and full-screen start.");
 Assert(
-    AppSettingsSerializer.Parse("{ \"fingerMode\": \"Sideways\" }").FingerMode == FingerMode.Off,
-    "Unknown finger-mode values should fall back to off.");
+    AppSettingsSerializer.Parse("{ \"fingerMode\": \"Sideways\" }").FingerMode == FingerMode.WhenNoPen,
+    "Unknown finger-mode values should fall back to when-no-pen.");
+Assert(
+    AppSettingsSerializer.Parse("{ \"fingerMode\": \"Off\" }").FingerMode == FingerMode.Off,
+    "Saved finger drawing Off should still load.");
 Assert(
     AppSettingsSerializer.Parse("{ \"fingerMode\": \"On\" }").FingerMode == FingerMode.On,
     "Saved finger drawing On should still load.");

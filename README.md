@@ -12,7 +12,7 @@ How the project is developed and shipped is documented separately:
 - Low-latency, pressure-aware WPF wet ink, including Wacom rear-eraser detection
 - A normal cursor for physical mouse input and a high-contrast pen-hover dot that disappears on contact
 - Touch panning and two-finger pinch zoom
-- Optional finger drawing (off by default): one finger uses the current tool, two fingers still pan and pinch-zoom, and Eraser and Pan appear on the toolbar
+- Optional finger drawing (default when no pen is detected): one finger uses the current tool, two fingers still pan and pinch-zoom, and Eraser and Pan appear on the toolbar
 - Basic palm rejection: touch navigation is suspended when the pen makes contact
 - Mouse-wheel zoom and middle-button or temporary Space-key panning
 - Whole-stroke erasing

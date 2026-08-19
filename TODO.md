@@ -87,7 +87,7 @@ contract; `site/wimport.html` is the same grammar for the public site.
 
 Packaging is in the repo. `scripts/build-installer.ps1` writes an unsigned
 `SQLBI.Whiteboard.<version>.x64.msix` for the released channel. Identity version is
-`VersionPrefix.0` (0.6.0 → `0.6.0.0`). The package declares `.wboard` / `.wimport` and the
+`VersionPrefix.0` (0.9.0 → `0.9.0.0`). The package declares `.wboard` / `.wimport` and the
 thumbnail handler in the Appx manifest. Listing, screenshots, age rating, and the first
 Partner Center upload are still manual — see `installer/msix/STORE-LISTING.md`. Do not
 automate submission until that first upload has succeeded. Certification must never gate
@@ -99,7 +99,7 @@ the primary route rather than a fallback (decision 10).
 
 ### 10. Finger mode
 
-Shipped as a preference (`FingerMode`: Off, On, When no pen is detected), default Off.
+Shipped as a preference (`FingerMode`: Off, On, When no pen is detected), default When no pen is detected.
 When effective, one finger uses the current tool and two fingers still pan and pinch-zoom;
 a second finger cancels an in-progress finger stroke. Eraser and Pan appear on the toolbar
 because there is no inverted tip. "When no pen is detected" looks at `TabletDeviceType.Stylus`,

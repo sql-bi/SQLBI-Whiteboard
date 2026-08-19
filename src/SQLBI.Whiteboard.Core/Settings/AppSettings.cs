@@ -50,7 +50,7 @@ public enum StartupMonitorKind
 public enum FingerMode
 {
     /// <summary>
-    /// Default: one finger pans, two fingers pinch-zoom. Ink stays on the pen.
+    /// One finger pans, two fingers pinch-zoom. Ink stays on the pen.
     /// </summary>
     Off = 0,
 
@@ -60,8 +60,9 @@ public enum FingerMode
     On = 1,
 
     /// <summary>
-    /// Treat as On only when Windows reports no stylus digitizer.
-    /// A Surface often reports one even when the pen is elsewhere.
+    /// Default for a new setup: treat as On only when Windows reports no
+    /// stylus digitizer. A Surface often reports one even when the pen is
+    /// elsewhere.
     /// </summary>
     WhenNoPen = 2,
 }
@@ -80,7 +81,7 @@ public sealed class AppSettings
 
     public bool StartFullScreen { get; set; }
 
-    public FingerMode FingerMode { get; set; } = FingerMode.Off;
+    public FingerMode FingerMode { get; set; } = FingerMode.WhenNoPen;
 
     public InkToolSettings Pen { get; set; } = InkToolSettings.From(InkPalettes.DefaultPen);
 
@@ -170,7 +171,7 @@ public static class AppSettingsSerializer
 
         if (!Enum.IsDefined(settings.FingerMode))
         {
-            settings.FingerMode = FingerMode.Off;
+            settings.FingerMode = FingerMode.WhenNoPen;
         }
 
         if (settings.StartupMonitor == StartupMonitorKind.Named)

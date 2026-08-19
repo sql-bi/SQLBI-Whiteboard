@@ -88,14 +88,14 @@ internal static class SettingsCatalog
             Id = Ids.FingerMode,
             Category = Input,
             Title = "Finger drawing",
-            Description = "Off keeps one-finger pan. On makes one finger use the current tool; two fingers still pan and pinch-zoom, and Eraser and Pan appear on the toolbar. \"When no pen is detected\" uses the digitizer list Windows reports, which is not the same as a pen being in the room.",
+            Description = "New installs default to When no pen is detected. Off keeps one-finger pan. On makes one finger use the current tool; two fingers still pan and pinch-zoom, and Eraser and Pan appear on the toolbar. \"When no pen is detected\" uses the digitizer list Windows reports, which is not the same as a pen being in the room.",
             Keywords = ["finger", "touch", "pen", "draw", "tablet", "stylus", "digitizer"],
             Editor = SettingEditorKind.EnumChoice,
             Choices =
             [
+                new() { Id = nameof(Core.Settings.FingerMode.WhenNoPen), Title = "When no pen is detected" },
                 new() { Id = nameof(Core.Settings.FingerMode.Off), Title = "Off" },
                 new() { Id = nameof(Core.Settings.FingerMode.On), Title = "On" },
-                new() { Id = nameof(Core.Settings.FingerMode.WhenNoPen), Title = "When no pen is detected" },
             ],
         },
         new()
