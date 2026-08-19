@@ -16,7 +16,7 @@ until the listing assets below exist.
 
 1. **Reserve the name** “SQLBI Whiteboard” (Windows desktop).
 2. **Read the Store identity** (Package/Identity Name and Publisher `CN=…`) and,
-   if they differ from `SQLBI.Whiteboard` / `CN=SQLBI Corp`, pack again:
+   if they differ from `SQLBI.Whiteboard` / `CN=SQLBI Corporation`, pack again:
 
    ```powershell
    ./scripts/build-msix.ps1 -Publisher "CN=…from Partner Center…" -PackageName "…from Partner Center…"
@@ -59,6 +59,6 @@ are talking about.
 
 Requires Windows 10 version 2004 or later, 64-bit.
 
-**Copyright:** © SQLBI Corp.
+**Copyright:** © SQLBI Corporation
 
 **Website:** https://whiteboard.sqlbi.com
