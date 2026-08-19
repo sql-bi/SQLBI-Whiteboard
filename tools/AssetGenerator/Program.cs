@@ -36,8 +36,6 @@ internal static class Program
     private static readonly Color DialogGround = Color.FromRgb(0xF7, 0xF7, 0xF8);
     private static readonly Color PageEdge = Color.FromRgb(0xD3, 0xD7, 0xDE);
     private static readonly Color PageFold = Color.FromRgb(0xE8, 0xEA, 0xEE);
-    private static readonly Color Ink = Color.FromRgb(0x15, 0x17, 0x1C);
-    private static readonly Color InkMuted = Color.FromRgb(0x64, 0x6B, 0x78);
 
     /// <summary>Frame sizes of the application icon, matching the set already shipped.</summary>
     private static readonly int[] IconSizes = [16, 20, 24, 32, 40, 48, 64, 128, 256];
@@ -58,10 +56,14 @@ internal static class Program
         var appAssets = Path.Combine(root, "src", "SQLBI.Whiteboard", "Assets");
         var installerAssets = Path.Combine(root, "installer", "wix", "assets");
         var msixAssets = Path.Combine(root, "installer", "msix", "Assets");
+        // Listing artwork is uploaded to Partner Center by hand and must not reach the
+        // package: build-msix.ps1 copies installer/msix/Assets wholesale into the MSIX.
+        var listingAssets = Path.Combine(root, "installer", "msix", "listing");
         // Generated beside the landing page so site/ is one deployable folder.
         var webAssets = Path.Combine(root, "site");
         Directory.CreateDirectory(installerAssets);
         Directory.CreateDirectory(msixAssets);
+        Directory.CreateDirectory(listingAssets);
         Directory.CreateDirectory(webAssets);
 
         Console.WriteLine("Application");
@@ -79,7 +81,9 @@ internal static class Program
         Write(Path.Combine(webAssets, "favicon-32.png"), EncodePng(RenderTile(32)));
         // iOS rounds the corners itself and composites over black, so this one is full bleed.
         Write(Path.Combine(webAssets, "apple-touch-icon.png"), EncodePng(RenderFullBleed(180)));
-        Write(Path.Combine(webAssets, "og-image.png"), EncodePng(RenderSocialCard()));
+        // The social cards are not here. tools/render-cards.ps1 rasterises them from the SVGs
+        // beside the page with the same engine the site uses, so its output matches the page
+        // preview and this generator must not write over it.
 
         Console.WriteLine("Store");
         Write(Path.Combine(msixAssets, "StoreLogo.png"), EncodePng(RenderTile(50)));
@@ -88,6 +92,10 @@ internal static class Program
         Write(Path.Combine(msixAssets, "Wide310x150Logo.png"), EncodePng(RenderWideTile(310, 150)));
         Write(Path.Combine(msixAssets, "SplashScreen.png"), EncodePng(RenderWideTile(620, 300)));
         Write(Path.Combine(msixAssets, "DocumentLogo.png"), EncodePng(RenderDocument(256)));
+
+        Console.WriteLine("Store listing");
+        Write(Path.Combine(listingAssets, "PosterArt-720x1080.png"), EncodePng(RenderPosterArt()));
+        Write(Path.Combine(listingAssets, "BoxArt-1080x1080.png"), EncodePng(RenderBoxArt()));
 
         return 0;
     }
@@ -190,59 +198,60 @@ internal static class Program
         DrawGlyph(context, 32 * s, 32 * s, 192 * s, Brushes.White);
     });
 
-    private static BitmapSource RenderSocialCard() => Render(1200, 630, context =>
+    /// <summary>Composition the Store listing images share: the mark reversed out of the brand
+    /// gradient, over the product name. Full bleed, because the Store applies its own corners,
+    /// and titled, because these are the main logo on surfaces that do not print the name
+    /// beside them.</summary>
+    private static void DrawListingArt(DrawingContext context, double width, double height, double glyph, double titleSize)
     {
-        const double width = 1200;
-        const double height = 630;
-        const double textLeft = 372;
-        const double iconSize = 224;
+        context.DrawRectangle(
+            new LinearGradientBrush(BrandRed, BrandRedDeep, new Point(0, 0), new Point(width, height))
+            {
+                MappingMode = BrushMappingMode.Absolute,
+            },
+            null,
+            new Rect(0, 0, width, height));
 
-        context.DrawRectangle(Brushes.White, null, new Rect(0, 0, width, height));
-        context.DrawRectangle(new SolidColorBrush(BrandRed), null, new Rect(0, 0, width, 10));
-
-        DrawTile(context, 100, (height - iconSize) / 2, iconSize);
-
-        var semibold = new Typeface(
-            new FontFamily("Segoe UI"),
-            FontStyles.Normal,
-            FontWeights.SemiBold,
-            FontStretches.Normal);
-        var regular = new Typeface(
-            new FontFamily("Segoe UI"),
-            FontStyles.Normal,
-            FontWeights.Normal,
-            FontStretches.Normal);
-
-        var title = Text("SQLBI Whiteboard", semibold, 68, Ink);
+        var title = Text("SQLBI Whiteboard", Segoe(FontWeights.SemiBold), titleSize, Colors.White);
         var tagline = Text(
-            "A native Windows 11 whiteboard for pen, touch, and live capture.",
-            regular,
-            27,
-            InkMuted);
-        // Wrapped rather than set on one line, which keeps a comfortable right margin
-        // and gives the block enough height to sit well in a 1200x630 frame.
-        tagline.MaxTextWidth = width - textLeft - 148;
-        var address = Text("whiteboard.sqlbi.com", regular, 22, BrandRed);
+            "Pen, touch, and live capture",
+            Segoe(FontWeights.Normal),
+            titleSize * 0.48,
+            Color.FromArgb(0xD0, 0xFF, 0xFF, 0xFF));
 
-        const double titleGap = 12;
-        const double taglineGap = 16;
-        var block = title.Height + titleGap + tagline.Height + taglineGap + address.Height;
+        // The glyph occupies the middle 18 of its 24-unit box, so only that part is measured
+        // into the block; centring on the nominal square would sit the artwork low.
+        var glyphInk = glyph * 18.0 / 24.0;
+        var titleGap = glyph * 0.2;
+        var taglineGap = titleSize * 0.3;
+        // Measured rather than positioned by hand, so the block stays centred at either size.
+        var block = glyphInk + titleGap + title.Height + taglineGap + tagline.Height;
 
-        // Measured rather than positioned by hand, so the block stays centred if the copy changes.
         var y = (height - block) / 2;
-        context.DrawText(title, new Point(textLeft, y));
-        y += title.Height + titleGap;
-        context.DrawText(tagline, new Point(textLeft, y));
-        y += tagline.Height + taglineGap;
-        context.DrawText(address, new Point(textLeft, y));
+        DrawGlyph(context, (width - glyph) / 2, y - (glyph * 3.0 / 24.0), glyph, Brushes.White);
+        y += glyphInk + titleGap;
+        context.DrawText(title, new Point((width - title.Width) / 2, y));
+        y += title.Height + taglineGap;
+        context.DrawText(tagline, new Point((width - tagline.Width) / 2, y));
 
-        var overflow = textLeft + tagline.Width;
-        if (overflow > width - 64)
+        if (title.Width > width * 0.88)
         {
             Console.Error.WriteLine(
-                $"  warning: social card tagline reaches {overflow:F0}px of {width:F0}px");
+                $"  warning: listing title reaches {title.Width:F0}px of {width * 0.88:F0}px");
         }
-    });
+    }
+
+    /// <summary>9:16 poster art, which Windows 10 and 11 use as the main listing logo.</summary>
+    private static BitmapSource RenderPosterArt() =>
+        Render(720, 1080, context => DrawListingArt(context, 720, 1080, 320, 62));
+
+    /// <summary>1:1 box art, which the Store substitutes into layouts the poster does not fit,
+    /// and falls back to as the main logo when no poster art is supplied.</summary>
+    private static BitmapSource RenderBoxArt() =>
+        Render(1080, 1080, context => DrawListingArt(context, 1080, 1080, 420, 84));
+
+    private static Typeface Segoe(FontWeight weight) =>
+        new(new FontFamily("Segoe UI"), FontStyles.Normal, weight, FontStretches.Normal);
 
     private static FormattedText Text(string value, Typeface typeface, double size, Color color) =>
         new(
