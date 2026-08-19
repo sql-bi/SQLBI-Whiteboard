@@ -11,8 +11,11 @@
   <!--
     Version is major.minor.patch.0 from VersionPrefix. The Store requires the last
     part to be 0; the desktop assembly version uses a different four-part stamp.
-    Publisher and Name are replaced at pack time. Partner Center overwrites
-    Publisher with the Store identity after association.
+
+    Name and Publisher are replaced at pack time by scripts/build-msix.ps1 and must
+    already match the identity reserved in Partner Center, which validates the
+    uploaded package rather than rewriting it. The package family name is derived
+    from those two values and is never declared here.
   -->
   <Identity
     Name="__PACKAGE_NAME__"

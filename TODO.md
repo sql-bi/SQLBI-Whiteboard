@@ -16,7 +16,7 @@ The delivery chain works end to end: a merge to `main` builds, signs, and publis
 pre-release to GitHub Releases, and one approval promotes that same build to a release.
 <https://whiteboard.sqlbi.com> resolves its download links at load time and needs no edit
 per release. The current product version is `VersionPrefix` in `Directory.Build.props`
-(0.9.1). Identity version for the Store package is `VersionPrefix.0` (`0.9.1.0`).
+(0.9.2). Identity version for the Store package is `VersionPrefix.0` (`0.9.2.0`).
 
 What 1.0 was waiting on is in the product: Preferences, `.wimport`, Explorer and VS Code
 previews, the public documentation site, and Finger drawing (default when no pen is
@@ -44,10 +44,12 @@ Packaging is in the repo. `scripts/build-installer.ps1` writes an unsigned
 the SQLBI certificate is not involved.
 
 Listing, screenshots, age rating, and the first Partner Center upload are still manual.
-Follow [installer/msix/STORE-LISTING.md](installer/msix/STORE-LISTING.md). Publisher
-display name and the default `CN=` are `SQLBI Corp` (no period). Copyright elsewhere is
-`SQLBI Corp.` Do not automate submission until that first upload has succeeded.
-Certification must never gate the GitHub MSI release.
+Follow [installer/msix/STORE-LISTING.md](installer/msix/STORE-LISTING.md), which records
+the reserved package identity. `PublisherDisplayName` is `SQLBI Corp` (no period) and
+copyright elsewhere is `SQLBI Corp.`, but the manifest `Publisher` is the Store identity
+`CN=<GUID>`, not a readable name — the two are unrelated fields. Do not automate
+submission until that first upload has succeeded. Certification must never gate the
+GitHub MSI release.
 
 Store availability is uneven on managed corporate machines, which is why the MSI channel
 stays the primary route rather than a fallback (decision 10). The teaser can wait; the
