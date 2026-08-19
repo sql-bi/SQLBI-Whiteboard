@@ -2,7 +2,7 @@
 
 The pipeline and `scripts/build-installer.ps1` produce
 `SQLBI.Whiteboard.<version>.x64.msix`. Identity version is `VersionPrefix.0`
-(so 0.9.0 becomes `0.9.0.0`). The Store re-signs the package. Do not upload
+(so 0.9.1 becomes `0.9.1.0`). The Store re-signs the package. Do not upload
 until the listing assets below exist.
 
 ## What the repo already produces
@@ -32,14 +32,14 @@ until the listing assets below exist.
    Center will ask why; answer that it is a full-trust desktop whiteboard that
    uses Windows Graphics Capture and an Explorer thumbnail handler.
 9. **Screenshots** — at least one, 1366×768 or 1920×1080, of the real UI
-   (ink, a text container, a LiveView). The teaser (TODO 7) can wait; the
+   (ink, a text container, a LiveView). The teaser in TODO.md can wait; the
    listing cannot ship without stills.
 10. **Description** — draft below. Edit freely in Partner Center.
 
 Do **not** start certification. Upload the MSIX only when you are ready to
 submit. Certification must never gate the MSI / GitHub release.
 
-## Draft listing copy (0.9.0)
+## Draft listing copy (0.9.1)
 
 **Title:** SQLBI Whiteboard
 

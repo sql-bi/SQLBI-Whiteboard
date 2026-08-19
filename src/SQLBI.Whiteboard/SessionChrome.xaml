@@ -5,7 +5,7 @@
              BorderBrush="{StaticResource ToolbarBorderBrush}"
              BorderThickness="0,0,0,1"
              PreviewKeyDown="UserControl_PreviewKeyDown">
-    <Grid x:Name="Root">
+    <StackPanel x:Name="Root">
         <StackPanel x:Name="TabBar"
                     Height="32"
                     Orientation="Horizontal">
@@ -31,17 +31,12 @@
             </ToggleButton>
         </StackPanel>
 
-        <Popup x:Name="CommandPopup"
-               Placement="Bottom"
-               PlacementTarget="{Binding ElementName=Root}"
-               AllowsTransparency="True"
-               StaysOpen="True"
-               Closed="CommandPopup_Closed">
-            <Border Width="{Binding ActualWidth, ElementName=Root}"
-                    Background="{StaticResource ToolbarBackgroundBrush}"
-                    BorderBrush="{StaticResource ToolbarBorderBrush}"
-                    BorderThickness="0,0,0,1"
-                    Padding="8,4,8,6">
+        <Border x:Name="CommandHost"
+                Background="{StaticResource ToolbarBackgroundBrush}"
+                BorderBrush="{StaticResource ToolbarBorderBrush}"
+                BorderThickness="0,0,0,1"
+                Padding="8,4,8,6"
+                Visibility="Collapsed">
                 <Grid>
                     <StackPanel x:Name="FileRow"
                                 Orientation="Horizontal"
@@ -59,6 +54,8 @@
                                 <TextBlock Margin="0,4,0,0"
                                            HorizontalAlignment="Center"
                                            Text="New" />
+                                <TextBlock Style="{StaticResource SessionShortcutHint}"
+                                           Text="N" />
                             </StackPanel>
                         </Button>
                         <Button Style="{StaticResource SessionCommandButton}"
@@ -327,7 +324,6 @@
                         </Button>
                     </StackPanel>
                 </Grid>
-            </Border>
-        </Popup>
-    </Grid>
+        </Border>
+    </StackPanel>
 </UserControl>

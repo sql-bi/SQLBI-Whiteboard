@@ -3,6 +3,7 @@ using System.Windows.Controls;
 using System.Windows.Controls.Primitives;
 using System.Windows.Input;
 using System.Windows.Media;
+using System.Windows.Threading;
 
 namespace SQLBI.Whiteboard;
 
@@ -42,11 +43,11 @@ public partial class SessionChrome : UserControl
 
     public event Action? ViewOpened;
 
-    public bool IsCommandRowOpen => CommandPopup.IsOpen;
+    public bool IsCommandRowOpen => CommandHost.Visibility == Visibility.Visible;
 
     public void Collapse()
     {
-        CommandPopup.IsOpen = false;
+        CommandHost.Visibility = Visibility.Collapsed;
         ClearTabChecks();
         _openTab = null;
     }
@@ -119,7 +120,7 @@ public partial class SessionChrome : UserControl
             return;
         }
 
-        if (ReferenceEquals(_openTab, tab) && CommandPopup.IsOpen)
+        if (ReferenceEquals(_openTab, tab) && IsCommandRowOpen)
         {
             Collapse();
             return;
@@ -154,11 +155,13 @@ public partial class SessionChrome : UserControl
         ClearTabChecks();
         tab.IsChecked = true;
         _openTab = tab;
-        CommandPopup.IsOpen = true;
+        CommandHost.Visibility = Visibility.Visible;
         if (ReferenceEquals(tab, ViewTab))
         {
             ViewOpened?.Invoke();
         }
+
+        Dispatcher.BeginInvoke(FocusFirstCommand, DispatcherPriority.Input);
     }
 
     private void Command_Click(object sender, RoutedEventArgs e)
@@ -180,12 +183,6 @@ public partial class SessionChrome : UserControl
     private bool IsStickyTab(ToggleButton? tab) =>
         ReferenceEquals(tab, EditTab) || ReferenceEquals(tab, HelpTab);
 
-    private void CommandPopup_Closed(object? sender, EventArgs e)
-    {
-        ClearTabChecks();
-        _openTab = null;
-    }
-
     private void ClearTabChecks()
     {
         FileTab.IsChecked = false;
@@ -194,11 +191,127 @@ public partial class SessionChrome : UserControl
         HelpTab.IsChecked = false;
     }
 
+    public bool TryHandleCommandKey(Key key)
+    {
+        if (!IsCommandRowOpen)
+        {
+            return false;
+        }
+
+        if (key is Key.Left or Key.Right or Key.Home or Key.End)
+        {
+            MoveCommandFocus(key);
+            return true;
+        }
+
+        if (TryInvokeAccessKey(key))
+        {
+            return true;
+        }
+
+        return false;
+    }
+
+    private void FocusFirstCommand()
+    {
+        var first = VisibleCommands().FirstOrDefault(button => button.IsEnabled);
+        first?.Focus();
+    }
+
+    private void MoveCommandFocus(Key key)
+    {
+        var buttons = VisibleCommands().Where(button => button.IsEnabled).ToArray();
+        if (buttons.Length == 0)
+        {
+            return;
+        }
+
+        var current = Array.FindIndex(buttons, button => button.IsKeyboardFocusWithin);
+        var next = key switch
+        {
+            Key.Home => 0,
+            Key.End => buttons.Length - 1,
+            Key.Left => current <= 0 ? buttons.Length - 1 : current - 1,
+            _ => current < 0 || current == buttons.Length - 1 ? 0 : current + 1,
+        };
+        buttons[next].Focus();
+    }
+
+    private bool TryInvokeAccessKey(Key key)
+    {
+        var letter = key.ToString();
+        if (letter.Length != 1)
+        {
+            return false;
+        }
+
+        var command = AccessCommandFor(letter[0]);
+        if (command is null)
+        {
+            return false;
+        }
+
+        var button = VisibleCommands().FirstOrDefault(item =>
+            item.IsEnabled &&
+            item.Tag is string name &&
+            name == command.Value.ToString());
+        if (button is null)
+        {
+            return false;
+        }
+
+        button.RaiseEvent(new RoutedEventArgs(ButtonBase.ClickEvent));
+        return true;
+    }
+
+    private SessionCommand? AccessCommandFor(char letter) =>
+        char.ToUpperInvariant(letter) switch
+        {
+            'N' when FileRow.Visibility == Visibility.Visible => SessionCommand.New,
+            'O' when FileRow.Visibility == Visibility.Visible => SessionCommand.Open,
+            'S' when FileRow.Visibility == Visibility.Visible => SessionCommand.Save,
+            'A' when FileRow.Visibility == Visibility.Visible => SessionCommand.SaveAs,
+            'Z' when EditRow.Visibility == Visibility.Visible => SessionCommand.Undo,
+            'Y' when EditRow.Visibility == Visibility.Visible => SessionCommand.Redo,
+            'C' when EditRow.Visibility == Visibility.Visible => SessionCommand.Copy,
+            'V' when EditRow.Visibility == Visibility.Visible => SessionCommand.Paste,
+            'F' when ViewRow.Visibility == Visibility.Visible => SessionCommand.FullScreen,
+            'C' when ViewRow.Visibility == Visibility.Visible => SessionCommand.CanvasOnly,
+            'L' when ViewRow.Visibility == Visibility.Visible => SessionCommand.AddLiveView,
+            'Z' when ViewRow.Visibility == Visibility.Visible => SessionCommand.FreezeLiveView,
+            'D' when ViewRow.Visibility == Visibility.Visible => SessionCommand.DisconnectLiveView,
+            'R' when ViewRow.Visibility == Visibility.Visible => SessionCommand.ReconnectLiveView,
+            'P' when HelpRow.Visibility == Visibility.Visible => SessionCommand.Preferences,
+            'A' when HelpRow.Visibility == Visibility.Visible => SessionCommand.About,
+            _ => null,
+        };
+
+    private IEnumerable<Button> VisibleCommands()
+    {
+        var row = FileRow.Visibility == Visibility.Visible ? FileRow
+            : EditRow.Visibility == Visibility.Visible ? EditRow
+            : ViewRow.Visibility == Visibility.Visible ? ViewRow
+            : HelpRow.Visibility == Visibility.Visible ? HelpRow
+            : null;
+        return row?.Children.OfType<Button>() ?? [];
+    }
+
     private void UserControl_PreviewKeyDown(object sender, KeyEventArgs e)
     {
-        if (e.Key == Key.Escape && CommandPopup.IsOpen)
+        if (e.Key == Key.Escape && IsCommandRowOpen)
         {
             Collapse();
+            e.Handled = true;
+            return;
+        }
+
+        if (Keyboard.Modifiers.HasFlag(ModifierKeys.Alt))
+        {
+            return;
+        }
+
+        if (TryHandleCommandKey(e.Key))
+        {
             e.Handled = true;
         }
     }

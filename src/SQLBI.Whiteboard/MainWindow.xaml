@@ -24,12 +24,14 @@
         PreviewStylusInAirMove="Window_PreviewStylusInAirMove">
     <Grid x:Name="RootGrid">
         <Grid.RowDefinitions>
-            <RowDefinition Height="Auto" />
+            <RowDefinition Height="32" />
             <RowDefinition Height="*" />
         </Grid.RowDefinitions>
 
         <local:SessionChrome x:Name="SessionBar"
                              Grid.Row="0"
+                             Grid.RowSpan="2"
+                             VerticalAlignment="Top"
                              Panel.ZIndex="30" />
 
         <Grid x:Name="BoardViewport"
@@ -78,38 +80,42 @@
                     ClipToBounds="True"
                     IsHitTestVisible="True">
                 <Border x:Name="LiveViewActionsBorder"
-                        Width="132"
-                        Height="56"
-                        Padding="6"
+                        Width="104"
+                        Height="48"
+                        Padding="4"
                         Visibility="Collapsed"
-                        Background="#D9F9FAFB"
-                        BorderBrush="#809CA3AF"
+                        Background="{StaticResource ToolbarBackgroundBrush}"
+                        BorderBrush="{StaticResource ToolbarBorderBrush}"
                         BorderThickness="1"
                         CornerRadius="9">
                     <Grid>
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="*" />
-                            <ColumnDefinition Width="6" />
+                            <ColumnDefinition Width="4" />
                             <ColumnDefinition Width="*" />
                         </Grid.ColumnDefinitions>
                         <Button x:Name="PauseLiveViewButton"
                                 Grid.Column="0"
-                                Focusable="False"
-                                FontFamily="Segoe UI Symbol"
-                                FontSize="21"
-                                Content="⏸"
+                                Style="{StaticResource LiveViewOverlayButton}"
                                 ToolTip="Freeze LiveView"
-                                Stylus.IsPressAndHoldEnabled="False"
-                                Click="PauseLiveViewButton_Click" />
+                                Click="PauseLiveViewButton_Click">
+                            <Path Width="20"
+                                  Height="20"
+                                  Stretch="Uniform"
+                                  Fill="{StaticResource ToolbarIconBrush}"
+                                  Data="{StaticResource PauseGeometry}" />
+                        </Button>
                         <Button x:Name="PlayLiveViewButton"
                                 Grid.Column="2"
-                                Focusable="False"
-                                FontFamily="Segoe UI Symbol"
-                                FontSize="21"
-                                Content="▶"
+                                Style="{StaticResource LiveViewOverlayButton}"
                                 ToolTip="Resume LiveView"
-                                Stylus.IsPressAndHoldEnabled="False"
-                                Click="PlayLiveViewButton_Click" />
+                                Click="PlayLiveViewButton_Click">
+                            <Path Width="20"
+                                  Height="20"
+                                  Stretch="Uniform"
+                                  Fill="{StaticResource LiveViewResumeBrush}"
+                                  Data="{StaticResource PlayGeometry}" />
+                        </Button>
                     </Grid>
                 </Border>
             </Canvas>

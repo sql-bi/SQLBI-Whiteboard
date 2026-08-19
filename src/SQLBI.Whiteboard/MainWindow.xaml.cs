@@ -3347,8 +3347,8 @@ public partial class MainWindow : Window
         PointD bottomRight = _camera.WorldToScreen(
             new PointD(liveView.Bounds.Right, liveView.Bounds.Bottom));
 
-        const double overlayWidth = 132;
-        const double overlayHeight = 56;
+        const double overlayWidth = 104;
+        const double overlayHeight = 48;
         const double inset = 8;
         Canvas.SetLeft(
             LiveViewActionsBorder,
@@ -3867,13 +3867,25 @@ public partial class MainWindow : Window
             return;
         }
 
+        var mnemonicKey = e.Key == Key.System ? e.SystemKey : e.Key;
         if (altDown &&
+            !controlDown &&
             _chromeMode == SessionChromeMode.Windowed &&
             !e.IsRepeat &&
-            SessionBar.TryHandleAltKey(e.Key == Key.System ? e.SystemKey : e.Key))
+            SessionBar.TryHandleAltKey(mnemonicKey))
         {
             e.Handled = true;
             return;
+        }
+
+        if (SessionBar.IsCommandRowOpen && !controlDown && !altDown)
+        {
+            var isMove = mnemonicKey is Key.Left or Key.Right or Key.Home or Key.End;
+            if ((isMove || !e.IsRepeat) && SessionBar.TryHandleCommandKey(mnemonicKey))
+            {
+                e.Handled = true;
+                return;
+            }
         }
         if (_textEditBefore is not null)
         {

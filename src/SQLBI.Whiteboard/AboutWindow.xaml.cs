@@ -46,6 +46,6 @@ public partial class AboutWindow : Window
             return plus < 0 ? informational : informational[..plus];
         }
 
-        return typeof(AboutWindow).Assembly.GetName().Version?.ToString(3) ?? "0.9.0";
+        return typeof(AboutWindow).Assembly.GetName().Version?.ToString(3) ?? "0.9.1";
     }
 }

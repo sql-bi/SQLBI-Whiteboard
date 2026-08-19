@@ -4,7 +4,7 @@
     Packs the published Whiteboard binaries into an unsigned MSIX for the Store.
 
 .DESCRIPTION
-    Store Identity Version is VersionPrefix with a trailing .0 (0.9.0.0). That is
+    Store Identity Version is VersionPrefix with a trailing .0 (0.9.1.0). That is
     not the four-part assembly stamp the MSI uses. The Store re-signs the package,
     so this script does not apply the EV certificate.
 
