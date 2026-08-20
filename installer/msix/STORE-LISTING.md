@@ -62,10 +62,11 @@ Partner Center does not show it on **Account settings > Identifiers**; that
 page carries the Windows publisher ID, which is the `CN=<GUID>` above. The
 dependable way to read it is to let the CLI resolve it - run `msstore
 reconfigure` without `--sellerId`, which retrieves it from the enrollment
-accounts API, then `msstore info` to print what it stored. The numeric prefix
-of the package identity name is built from the same value, so `17351SQLBICorp.…`
-and the Seller ID should agree; if they do not, the account is not the one you
-think it is.
+accounts API, then `msstore info` to print what it stored.
+
+The `17351` in the package identity name is **not** the Seller ID. Both are
+numbers Microsoft assigned to this account and it is tempting to read one as
+the other, but they do not match and neither can be derived from the other.
 
 Give the pipeline the number explicitly even though the argument is optional.
 When auto-retrieval fails the CLI falls through to an interactive prompt, which
