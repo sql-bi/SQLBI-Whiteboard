@@ -3,6 +3,14 @@
 # Requires Settings -> Pages -> Build and deployment -> Source: GitHub Actions. With the
 # default "Deploy from a branch" this workflow runs and deploys nothing.
 #
+# It also requires a deployment policy on the github-pages environment that allows the
+# release tags, under Settings -> Environments -> github-pages -> Deployment branches and
+# tags: a branch rule for main, and a tag rule for v*. A release event runs on the tag
+# rather than on a branch, so without the tag rule every release-triggered run is rejected
+# in a couple of seconds with "Tag ... is not allowed to deploy to github-pages due to
+# environment protection rules" - and the manifests silently stop tracking releases while
+# ordinary pushes to main keep deploying fine.
+#
 # site/CNAME carries the custom domain, so it survives every deployment rather than
 # depending on the setting alone.
 #
