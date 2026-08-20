@@ -19,6 +19,7 @@ using SQLBI.Whiteboard.Core.Import;
 using SQLBI.Whiteboard.Core.Model;
 using SQLBI.Whiteboard.Core.Persistence;
 using SQLBI.Whiteboard.Core.Settings;
+using SQLBI.Whiteboard.Core.Updates;
 using SQLBI.Whiteboard.Core.Viewport;
 using SQLBI.Whiteboard.LiveView;
 using Windows.Graphics.Capture;
@@ -127,6 +128,8 @@ public partial class MainWindow : Window
         InitializeComponent();
         SessionBar.CommandRequested += SessionChrome_CommandRequested;
         SessionBar.ViewOpened += UpdateLiveViewMenuItems;
+        SessionBar.UpdateDownloadRequested += _ => OpenUpdateDownload();
+        SessionBar.UpdateDismissed += SessionBar_UpdateDismissed;
         Title += AppChannel.WindowTitleSuffix;
         _initialBoardPath = initialBoardPath;
         TextEditorLanguageCombo.ItemsSource = TextLanguageRegistry.All;
@@ -178,6 +181,7 @@ public partial class MainWindow : Window
     private async void MainWindow_Loaded(object sender, RoutedEventArgs e)
     {
         Loaded -= MainWindow_Loaded;
+        _ = CheckForUpdatesAsync();
         if (_initialBoardPath is not null)
         {
             await OpenPathAsync(_initialBoardPath, confirmDiscard: false);
@@ -2702,7 +2706,89 @@ public partial class MainWindow : Window
         ApplyCalligraphyAccess();
         ApplyLaserSettings();
         ApplyFingerMode();
+        if (!_settings.CheckForUpdates)
+        {
+            SessionBar.HideUpdateNotice();
+        }
+
         PersistSettings();
+        _ = CheckForUpdatesAsync();
+    }
+
+    private async Task CheckForUpdatesAsync()
+    {
+        if (StorePackage.IsStoreInstall || !_settings.CheckForUpdates)
+        {
+            return;
+        }
+
+        OfferKnownUpdate();
+        if (_settings.LastUpdateCheckUtc is { } last &&
+            DateTimeOffset.UtcNow - last < TimeSpan.FromHours(24))
+        {
+            return;
+        }
+
+        try
+        {
+            var result = await UpdateCheckClient.CheckAsync(
+                _settings.UpdateCheckETag,
+                CancellationToken.None);
+            if (result is null)
+            {
+                return;
+            }
+
+            _settings.LastUpdateCheckUtc = DateTimeOffset.UtcNow;
+            if (!result.NotModified)
+            {
+                if (result.ETag is not null)
+                {
+                    _settings.UpdateCheckETag = result.ETag;
+                }
+
+                if (result.Version is not null)
+                {
+                    _settings.LatestKnownVersion = result.Version;
+                }
+            }
+
+            PersistSettings();
+            OfferKnownUpdate();
+        }
+        catch (Exception exception)
+        {
+            Debug.WriteLine("[Update] " + exception.Message);
+        }
+    }
+
+    private void OfferKnownUpdate()
+    {
+        if (!_settings.CheckForUpdates ||
+            !UpdateVersion.IsNewer(AppVersion.Informational, _settings.LatestKnownVersion) ||
+            string.Equals(
+                _settings.LastDismissedVersion,
+                _settings.LatestKnownVersion,
+                StringComparison.Ordinal))
+        {
+            return;
+        }
+
+        SessionBar.ShowUpdateNotice(_settings.LatestKnownVersion!);
+    }
+
+    private void SessionBar_UpdateDismissed(string version)
+    {
+        _settings.LastDismissedVersion = version;
+        PersistSettings();
+    }
+
+    private static void OpenUpdateDownload()
+    {
+        Process.Start(new ProcessStartInfo(UpdateCheckClient.DownloadUrl)
+        {
+            UseShellExecute = true,
+        });
     }
 
     private void PreferencesMenuItem_Click(object sender, RoutedEventArgs e) =>

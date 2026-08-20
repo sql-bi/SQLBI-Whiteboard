@@ -37,7 +37,7 @@
   <div class="wrap narrow">
     <span class="eyebrow">Project</span>
     <h1>Privacy</h1>
-    <p class="lede">The application does not phone home. This page is what the website and the installer actually do.</p>
+    <p class="lede">The application does not create an account or send telemetry. A Microsoft Store install never phones home. Any other copy may ask GitHub once a day whether a newer released build exists; that check can be turned off.</p>
   </div>
 </header>
 
@@ -46,6 +46,8 @@
 <article>
     <h2>The application</h2>
     <p>SQLBI Whiteboard does not create an account, does not join a tenant, and does not send telemetry. There is no Application Insights, no crash reporter, and no outbound product analytics in the source.</p>
+    <p>A copy that did not come from the Microsoft Store, with <span class="ui">Check for new versions</span> on (the default), makes at most one GET a day to <code>whiteboard.sqlbi.com</code> for <code>stable.json</code>, the same short file this site publishes for its own download links. A pre-release copy reads <code>dev.json</code> instead. If that request fails, it makes one to <code>github.com</code> to read the tag of the newest release. Either way it reads a version number and nothing else.</p>
+    <p>The request identifies the product version in the User-Agent; it does not send a machine identifier, a board, or preferences. A Microsoft Store install never makes that request; the Store updates it. Turn the check off under <span class="ui">Help → Preferences → Updates</span>.</p>
     <p>Boards are local <code>.wboard</code> files. Preferences live under <code>%APPDATA%\SQLBI\Whiteboard</code> (or <code>Whiteboard Dev</code> for the pre-release channel).</p>
     <p>LiveView uses Windows Graphics Capture on this machine. The capture permission cannot be saved with the file. After you reload a board, the last frame is shown from the file; <span class="ui">Reconnect</span> asks Windows again.</p>
 

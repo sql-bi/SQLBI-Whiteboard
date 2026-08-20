@@ -41,6 +41,8 @@ internal sealed class SettingDescriptor
     public double Minimum { get; init; }
 
     public double Maximum { get; init; }
+
+    public bool HideInStore { get; init; }
 }
 
 internal static class SettingsCatalog
@@ -56,14 +58,17 @@ internal static class SettingsCatalog
         public const string ToolbarLayout = "toolbar.layout";
         public const string FingerMode = "input.fingerMode";
         public const string SnippetFormatOrder = "input.snippetFormatOrder";
+        public const string CheckForUpdates = "updates.check";
     }
 
     public const string Startup = "Startup";
     public const string Input = "Input";
     public const string Laser = "Laser pointer";
     public const string Toolbar = "Toolbar";
+    public const string Updates = "Updates";
 
-    public static IReadOnlyList<string> Categories { get; } = [Startup, Input, Laser, Toolbar];
+    public static IReadOnlyList<string> Categories { get; } =
+        [Startup, Input, Laser, Toolbar, Updates];
 
     public static IReadOnlyList<SettingDescriptor> All { get; } =
     [
@@ -177,11 +182,26 @@ internal static class SettingsCatalog
                 new() { Id = nameof(CalligraphyAccess.SizeRow), Title = "Icons beside the size chips" },
             ],
         },
+        new()
+        {
+            Id = Ids.CheckForUpdates,
+            Category = Updates,
+            Title = "Check for new versions",
+            Description = "Once a day the application asks GitHub whether a newer released build exists. It does not send a machine identifier. Microsoft Store installs are updated by the Store and never make this request.",
+            Keywords = ["update", "version", "github", "download", "release"],
+            Editor = SettingEditorKind.BooleanSwitch,
+            HideInStore = true,
+        },
     ];
 
     public static IReadOnlyList<SettingDescriptor> Filter(string? query, string? category)
     {
         IEnumerable<SettingDescriptor> items = All;
+        if (StorePackage.IsStoreInstall)
+        {
+            items = items.Where(setting => !setting.HideInStore);
+        }
+
         if (!string.IsNullOrWhiteSpace(category))
         {
             items = items.Where(setting => setting.Category == category);
