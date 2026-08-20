@@ -1814,6 +1814,48 @@ public partial class MainWindow : Window
         RequestTextEditorAnalysis();
     }
 
+    private void FormatSelectedText()
+    {
+        if (GetSelectedText() is not { } textObject)
+        {
+            return;
+        }
+
+        ITextLanguageService language = TextLanguageRegistry.Resolve(textObject.LanguageId);
+        if (!language.CanFormat ||
+            !language.TryFormat(textObject.Text, out string formatted) ||
+            string.Equals(textObject.Text, formatted, StringComparison.Ordinal))
+        {
+            return;
+        }
+
+        double desiredHeight = TextContainerVisual.MeasureDesiredHeight(
+            formatted,
+            textObject.Bounds.Width,
+            textObject.VisualScale,
+            VisualTreeHelper.GetDpi(SceneSurface).PixelsPerDip,
+            language.Id);
+        RectD bounds = desiredHeight > textObject.Bounds.Height
+            ? textObject.Bounds.WithSize(textObject.Bounds.Width, desiredHeight)
+            : textObject.Bounds;
+        var after = textObject with
+        {
+            Text = formatted,
+            Bounds = bounds,
+        };
+        InkStrokeObject[] linkedBefore = _document.LinkedStrokes(textObject.Id).ToArray();
+        InkStrokeObject[] linkedAfter = textObject.Bounds == bounds
+            ? linkedBefore
+            : linkedBefore
+                .Select(stroke => stroke.TransformWithContainer(textObject.Bounds, bounds))
+                .ToArray();
+        _history.Execute(
+            new ReplaceObjectsCommand(
+                [textObject, .. linkedBefore],
+                [after, .. linkedAfter]),
+            _document);
+    }
+
     private void TextEditorResizeThumb_DragDelta(object sender, DragDeltaEventArgs e)
     {
         if (_textEditBefore is not { } textObject)
@@ -4215,7 +4257,12 @@ public partial class MainWindow : Window
             return;
         }
 
-        if (e.Key == Key.F2 &&
+        if (e.Key == Key.F6 && !e.IsRepeat)
+        {
+            FormatSelectedText();
+            e.Handled = true;
+        }
+        else if (e.Key == Key.F2 &&
             _selectedObjectId is Guid textObjectId &&
             _document.Objects.FirstOrDefault(item => item.Id == textObjectId) is TextBoardObject textObject)
         {

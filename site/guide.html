@@ -252,7 +252,7 @@
 
     <section class="story">
       <h3>Explain code</h3>
-      <p>Paste SQL or DAX, or drop a <code>.sql</code> or <code>.dax</code> file. Use the title-bar chip to set the language, press <kbd>F2</kbd> then <kbd>F6</kbd> to format it locally, then draw on the container.</p>
+      <p>Paste SQL or DAX, or drop a <code>.sql</code> or <code>.dax</code> file. Use the title-bar chip to set the language, press <kbd>F6</kbd> to format it locally, then draw on the container. Formatting no longer needs edit mode: <kbd>F6</kbd> works on the container as soon as it is selected.</p>
       <p><kbd>F2</kbd> moves the container into edit mode. <kbd>Ctrl</kbd><span class="plus">+</span><kbd>Enter</kbd> goes back to display mode and keeps the changes. <kbd>Escape</kbd> also goes back to display mode, but cancels the changes and restores the text, language, and size the container had before.</p>
       <p>The two modes resize differently. In edit mode the text reflows as you change the width, so a long line wraps onto more lines at the same size. In display mode a resize scales the whole visual, like a picture of the code, so the room still sees the layout you just formatted.</p>
 
@@ -692,7 +692,7 @@
     <h3>Text, SQL, and DAX</h3>
     <p>Paste prefers an image when the clipboard has one, including a file SnagIt or another capture tool left on the clipboard. Paste plain text to create a selected text container.</p>
     <p><span class="ui">Help → Preferences</span> sets Snippet format order: paste tries those languages from top to bottom. Plain text always matches, so putting it first keeps paste as plain text. Use the title-bar chip to choose Plain text, SQL Server, or DAX afterward.</p>
-    <p><kbd>F2</kbd> edits the selected container, and double-click still centers it and fits it to the canvas. <kbd>F6</kbd> formats SQL or DAX locally. SQL Server mode targets SQL Server 2025 T-SQL, keeps <code>GO</code> batch separators, and leaves an invalid script unchanged. <kbd>Ctrl</kbd><span class="plus">+</span><kbd>Enter</kbd> commits; <kbd>Escape</kbd> restores the previous text, language, and size.</p>
+    <p><kbd>F6</kbd> formats SQL or DAX on the selected container, without entering edit mode. <kbd>F2</kbd> edits the container, and double-click still centers it and fits it to the canvas; inside an edit <kbd>F6</kbd> formats in place and <kbd>Ctrl</kbd><span class="plus">+</span><kbd>Enter</kbd> commits that format with the rest of the edit. SQL Server mode targets SQL Server 2025 T-SQL, keeps <code>GO</code> batch separators, and leaves an invalid script unchanged. <kbd>Escape</kbd> restores the previous text, language, and size.</p>
 
     <h3 id="liveview">LiveView</h3>
     <p><span class="ui">View → LiveView</span> captures a window or a display. The container behaves like an image: move, resize, frame, delete, undo.</p>
