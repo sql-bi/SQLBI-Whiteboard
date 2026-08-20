@@ -870,14 +870,16 @@ public partial class MainWindow : Window
         var screen = ToPointD(e.GetPosition(InkSurface));
         if (EffectiveTool == BoardTool.Laser)
         {
-            HidePointerDot();
-            InkSurface.Cursor = Cursors.None;
+            // The laser hides the cursor for pen input. A physical mouse still
+            // gets the arrow, matching pen, highlighter, and calligraphy. Hide
+            // it only while the mouse is drawing a trail.
             if (_mouseAction == PointerAction.Laser)
             {
-                UpdateLaser(e.GetPosition(LaserTrail), leaveTrail: true, MouseLaserPressure);
+                InkSurface.Cursor = Cursors.None;
             }
             else
             {
+                InkSurface.Cursor = Cursors.Arrow;
                 LaserTrail.HideHead();
             }
         }
@@ -941,11 +943,20 @@ public partial class MainWindow : Window
         {
             CompleteContainerGesture();
         }
+        else if (_mouseAction == PointerAction.Laser)
+        {
+            StopLaserSampling();
+            LaserTrail.Lift();
+        }
 
         _mouseAction = PointerAction.None;
         if (hadMouseAction && EffectiveTool != BoardTool.Laser)
         {
             SetActiveTool(_lastDrawingTool);
+        }
+        else if (hadMouseAction)
+        {
+            InkSurface.Cursor = Cursors.Arrow;
         }
     }
 
@@ -979,6 +990,10 @@ public partial class MainWindow : Window
         if (EffectiveTool != BoardTool.Laser)
         {
             SetActiveTool(_lastDrawingTool);
+        }
+        else
+        {
+            InkSurface.Cursor = Cursors.Arrow;
         }
     }
 
@@ -2023,7 +2038,6 @@ public partial class MainWindow : Window
         else
         {
             InkSurface.SetLaserMode(true);
-            InkSurface.Cursor = Cursors.None;
         }
 
         var penFamilyActive = tool is BoardTool.Pen or BoardTool.Calligraphy;
