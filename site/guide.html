@@ -47,9 +47,150 @@
     <h2>In a session</h2>
 
     <section class="story">
+      <h3>Pick up the pen</h3>
+      <p>There is nothing to set up. A new board opens on the <span class="ui">Pen</span>, and a stroke lands wherever you put it: on the canvas, or over a chart, a screenshot, or a block of code already sitting there. The stroke records pressure, so it keeps the weight you gave it.</p>
+      <p>The <span class="ui">Highlighter</span> is translucent. It marks the one line you are about to talk about without covering it, which a solid stroke cannot do. Each tool remembers its own color and thickness, so moving between them never costs you a setting. While the pen is down, touch is suspended, and a hand resting on the glass does not pan the board.</p>
+      <p><a href="#ink">Ink and tools</a> has the rest of the palette.</p>
+
+      <figure class="fig">
+        <div class="figbox">
+          <svg viewBox="0 0 700 262" role="img" aria-label="A query on the board with a pen loop drawn around a clause and a translucent highlighter band laid over one line, next to a legend naming the two tools.">
+            <title>The pen and the highlighter</title>
+            <defs>
+              <radialGradient id="f11fade" cx="0.4" cy="0.45" r="0.8"><stop offset="0.25" stop-color="#fff"/><stop offset="1" stop-color="#000"/></radialGradient>
+              <mask id="f11mask"><rect width="700" height="262" fill="url(#f11fade)"/></mask>
+              <pattern id="f11grid" width="34" height="34" patternUnits="userSpaceOnUse"><path d="M34 0H0v34" fill="none" stroke="var(--fig-grid)" stroke-width="1"/></pattern>
+            </defs>
+            <rect width="700" height="262" rx="10" fill="var(--fig-ground)"/>
+            <rect width="700" height="262" fill="url(#f11grid)" mask="url(#f11mask)"/>
+
+            <g transform="translate(40 44)">
+              <rect width="360" height="188" rx="12" fill="var(--fig-surface)" stroke="var(--fig-line)"/>
+              <path d="M0 12A12 12 0 0 1 12 0h336a12 12 0 0 1 12 12v22H0Z" fill="var(--fig-surface-2)"/>
+              <text x="14" y="22" font-size="12.5" font-weight="620" fill="var(--fig-ink)">Margin by category</text>
+              <rect x="306" y="7" width="40" height="19" rx="9.5" fill="var(--fig-surface)" stroke="var(--fig-line)"/>
+              <text x="326" y="21" font-size="11" fill="var(--fig-muted)" text-anchor="middle">SQL</text>
+              <path class="f11-hi" pathLength="100" d="M70 83h195" fill="none" stroke="#FACC15" stroke-opacity=".42" stroke-width="18" stroke-linecap="round"/>
+              <g font-family="Cascadia Mono, Consolas, monospace" font-size="12.5">
+                <text x="14" y="64" fill="#0B6FB8">SELECT</text>
+                <text x="66" y="64" fill="var(--fig-ink)">c.Category,</text>
+                <text x="66" y="88" fill="#0B6FB8">SUM</text>
+                <text x="89" y="88" fill="var(--fig-ink)">(s.Amount) -</text>
+                <text x="186" y="88" fill="#0B6FB8">SUM</text>
+                <text x="209" y="88" fill="var(--fig-ink)">(s.Cost)</text>
+                <text x="14" y="112" fill="#0B6FB8">FROM</text>
+                <text x="52" y="112" fill="var(--fig-ink)">Sales s</text>
+                <text x="14" y="136" fill="#0B6FB8">JOIN</text>
+                <text x="52" y="136" fill="var(--fig-ink)">Category c ON c.Id = s.CatId</text>
+                <text x="14" y="160" fill="#0B6FB8">GROUP BY</text>
+                <text x="82" y="160" fill="var(--fig-ink)">c.Category</text>
+              </g>
+              <path class="f11-ink" pathLength="100" d="M6 160c0-9 18-15 80-15 62 0 80 6 80 14 0 8-18 14-80 14-62 0-80-6-80-13z" fill="none" stroke="var(--brand)" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"/>
+            </g>
+
+            <g transform="translate(440 66)" fill="var(--fig-muted)"><path d="M4.5 2.75a.75.75 0 0 0-1.5 0v3.5C3 7.22 3.78 8 4.75 8h.27l4.03 8.97c.2.45.59.79 1.04.94a5.79 5.79 0 0 0 .27 3.01c.3.6.83 1.08 1.64 1.08.8 0 1.35-.48 1.64-1.08a5.79 5.79 0 0 0 .27-3.01c.45-.15.83-.49 1.04-.94L18.98 8h.27C20.22 8 21 7.22 21 6.25v-3.5a.75.75 0 0 0-1.5 0v3.5c0 .14-.11.25-.25.25H4.75a.25.25 0 0 1-.25-.25v-3.5ZM6.66 8h10.68l-3.76 8.35a.25.25 0 0 1-.23.15h-2.7a.25.25 0 0 1-.23-.15L6.66 8Zm4.95 10h.78c.07.26.11.6.11 1 0 .57-.08 1-.21 1.26-.1.22-.2.24-.29.24-.1 0-.18-.02-.29-.24A3.03 3.03 0 0 1 11.5 19c0-.4.04-.74.11-1Z"/></g>
+            <text x="476" y="82" font-size="13" font-weight="620" fill="var(--fig-ink)">Pen</text>
+            <rect x="510" y="72" width="11" height="11" rx="3" fill="#E64B3D"/>
+            <text x="440" y="106" font-size="11.5" fill="var(--fig-muted)">pressure, and its own color</text>
+
+            <g transform="translate(440 150)" fill="var(--fig-muted)"><path d="M20.26 2c.38 0 .7.29.74.65v4.6c0 1.16-.87 2.11-2 2.24v2.26c0 1.19-.92 2.16-2.1 2.24h-.4v2.8c0 .81-.44 1.56-1.14 1.96l-.15.08-6.64 3.1a.75.75 0 0 1-1.06-.58V14h-.26c-1.2 0-2.17-.93-2.24-2.1L5 11.75V9.49A2.25 2.25 0 0 1 3 7.4V2.75a.75.75 0 0 1 1.5-.1v4.6c0 .38.28.7.65.74l.1.01h13.5c.38 0 .7-.28.75-.65v-4.6c0-.41.34-.75.76-.75ZM15 14H9v6.07l5.57-2.6c.23-.11.39-.33.42-.57l.01-.11v-2.8Zm2.5-4.5h-11v2.25c0 .38.28.69.65.74h9.6c.38 0 .7-.28.75-.64V9.5Z"/></g>
+            <text x="476" y="166" font-size="13" font-weight="620" fill="var(--fig-ink)">Highlighter</text>
+            <rect x="556" y="156" width="11" height="11" rx="3" fill="#FACC15"/>
+            <text x="440" y="190" font-size="11.5" fill="var(--fig-muted)">marks a line without hiding it</text>
+          </svg>
+        </div>
+        <figcaption>
+          <p>The pen loop is an ordinary stroke on the board, drawn straight over the code.</p>
+          <p>The highlighter band is translucent, so the line it marks is still the line everyone reads.</p>
+        </figcaption>
+      </figure>
+    </section>
+
+    <section class="story">
       <h3>Pin a live demo without leaving the board</h3>
       <p>Add a LiveView of DAX Studio, SSMS, or a browser. When the query result is the thing you want to keep talking about, copy the LiveView and paste. The paste is a still bitmap of the last frame, a screenshot that stays on the board while you keep drawing.</p>
       <p><span class="ui">Freeze</span> the original LiveView if you want that same container to stay put and resume later. <span class="ui">Disconnect</span> if you want the last frame with no live controls; only <span class="ui">Reconnect</span> brings a feed back. <span class="ui">Reconnect</span> after you reload a board: Windows cannot save the capture permission, so the saved frame appears immediately and <span class="ui">Reconnect</span> restores the live feed. The <a href="#liveview">states are drawn below</a>.</p>
+
+      <figure class="fig">
+        <div class="figbox">
+          <svg viewBox="0 0 700 260" role="img" aria-label="A LiveView of Power BI whose numbers keep changing, and beside it the pasted copy, a still image of the frame that was copied, with ink drawn over it.">
+            <title>Copying a LiveView gives a still frame</title>
+            <defs>
+              <radialGradient id="f12fade" cx="0.5" cy="0.45" r="0.85"><stop offset="0.25" stop-color="#fff"/><stop offset="1" stop-color="#000"/></radialGradient>
+              <mask id="f12mask"><rect width="700" height="260" fill="url(#f12fade)"/></mask>
+              <pattern id="f12grid" width="34" height="34" patternUnits="userSpaceOnUse"><path d="M34 0H0v34" fill="none" stroke="var(--fig-grid)" stroke-width="1"/></pattern>
+            </defs>
+            <rect width="700" height="260" rx="10" fill="var(--fig-ground)"/>
+            <rect width="700" height="260" fill="url(#f12grid)" mask="url(#f12mask)"/>
+
+            <g transform="translate(20 48)">
+              <rect width="280" height="180" rx="12" fill="var(--fig-surface)" stroke="var(--fig-accent)" stroke-width="1.6"/>
+              <path d="M0 12A12 12 0 0 1 12 0h256a12 12 0 0 1 12 12v22H0Z" fill="var(--fig-surface-2)"/>
+              <text x="14" y="22" font-size="12.5" font-weight="620" fill="var(--fig-ink)">Power BI</text>
+              <rect x="212" y="7" width="54" height="19" rx="9.5" fill="var(--fig-surface)" stroke="var(--fig-accent)"/>
+              <circle cx="224" cy="16.5" r="3.5" fill="var(--fig-accent)"/>
+              <text x="234" y="21" font-size="11" fill="var(--fig-accent)">Live</text>
+              <text x="16" y="58" font-size="11" fill="var(--fig-muted)">Category</text>
+              <text x="264" y="58" font-size="11" fill="var(--fig-muted)" text-anchor="end">Margin</text>
+              <path d="M16 66h248" stroke="var(--fig-line)" stroke-width="1"/>
+              <g font-size="12" fill="var(--fig-ink)">
+                <text x="16" y="90">Audio</text>
+                <text x="16" y="112">Cameras</text>
+                <text x="16" y="134">Computers</text>
+                <text x="16" y="156">TV and Video</text>
+              </g>
+              <g class="f12-a" font-size="12" fill="var(--fig-ink)" text-anchor="end" font-family="Cascadia Mono, Consolas, monospace">
+                <text x="264" y="90">18.4%</text>
+                <text x="264" y="112">22.1%</text>
+                <text x="264" y="134">15.9%</text>
+                <text x="264" y="156">27.3%</text>
+              </g>
+              <g class="f12-b" font-size="12" fill="var(--fig-ink)" text-anchor="end" font-family="Cascadia Mono, Consolas, monospace">
+                <text x="264" y="90">18.9%</text>
+                <text x="264" y="112">21.6%</text>
+                <text x="264" y="134">16.4%</text>
+                <text x="264" y="156">26.8%</text>
+              </g>
+            </g>
+
+            <g fill="none" stroke="var(--fig-muted)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" opacity=".75">
+              <path d="M318 152h44"/><path d="M356 146l7 6-7 6"/>
+            </g>
+            <g font-size="11.5" fill="var(--fig-muted)" text-anchor="middle">
+              <text x="340" y="122">Copy,</text>
+              <text x="340" y="137">then Paste</text>
+            </g>
+
+            <g transform="translate(380 48)">
+              <rect width="280" height="180" rx="12" fill="var(--fig-surface)" stroke="var(--fig-line)"/>
+              <path d="M0 12A12 12 0 0 1 12 0h256a12 12 0 0 1 12 12v22H0Z" fill="var(--fig-surface-2)"/>
+              <text x="14" y="22" font-size="12.5" font-weight="620" fill="var(--fig-ink)">Power BI</text>
+              <rect x="196" y="7" width="70" height="19" rx="9.5" fill="var(--fig-surface)" stroke="var(--fig-line)"/>
+              <text x="231" y="21" font-size="11" fill="var(--fig-muted)" text-anchor="middle">Still image</text>
+              <text x="16" y="58" font-size="11" fill="var(--fig-muted)">Category</text>
+              <text x="264" y="58" font-size="11" fill="var(--fig-muted)" text-anchor="end">Margin</text>
+              <path d="M16 66h248" stroke="var(--fig-line)" stroke-width="1"/>
+              <g font-size="12" fill="var(--fig-ink)">
+                <text x="16" y="90">Audio</text>
+                <text x="16" y="112">Cameras</text>
+                <text x="16" y="134">Computers</text>
+                <text x="16" y="156">TV and Video</text>
+              </g>
+              <g font-size="12" fill="var(--fig-ink)" text-anchor="end" font-family="Cascadia Mono, Consolas, monospace">
+                <text x="264" y="90">18.4%</text>
+                <text x="264" y="112">22.1%</text>
+                <text x="264" y="134">15.9%</text>
+                <text x="264" y="156">27.3%</text>
+              </g>
+              <path class="f12-ink" pathLength="100" d="M220 155c-2-11 12-16 28-16 16 0 26 5 25 13-1 8-13 13-28 13-13 0-24-4-25-10z" fill="none" stroke="var(--brand)" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"/>
+            </g>
+          </svg>
+        </div>
+        <figcaption>
+          <p>The LiveView keeps following its window, so its numbers move on without you.</p>
+          <p>The paste is a bitmap of the frame you copied. It holds that result still, and takes ink like any other picture.</p>
+        </figcaption>
+      </figure>
     </section>
 
     <section class="story">
@@ -260,7 +401,10 @@
             <text x="494" y="262" font-size="12.5" fill="var(--fig-muted)">the dot disappears</text>
           </svg>
         </div>
-        <figcaption>The laser fades behind the pointer and never touches the file. The pen carries a hover dot only while it is off the glass, so the marker never sits under the nib.</figcaption>
+        <figcaption>
+          <p>The laser fades behind the pointer and never touches the file.</p>
+          <p>The pen carries a hover dot only while it is off the glass, so the marker never sits under the nib.</p>
+        </figcaption>
       </figure>
     </section>
 
@@ -302,7 +446,7 @@
                   <text x="371" y="76" font-size="8.5" fill="var(--fig-muted)" text-anchor="end">DAX</text>
                   <g font-family="Cascadia Mono, Consolas, monospace" font-size="10">
                     <text x="250" y="106" fill="var(--brand-deep)">Total Sales</text>
-                    <text x="316" y="106" fill="var(--fig-ink)">:=</text>
+                    <text x="316" y="106" fill="var(--fig-ink)">=</text>
                     <text x="250" y="124" fill="#0B6FB8">SUM</text>
                     <text x="272" y="124" fill="var(--fig-ink)">( Sales[Amount] )</text>
                   </g>
@@ -378,11 +522,11 @@
               <text x="514" y="132" font-size="12.5" fill="var(--fig-muted)">in the filter.</text>
             </g>
             <g class="f4-c">
-              <rect x="330" y="178" width="246" height="70" rx="12" fill="var(--fig-surface)" stroke="var(--fig-line)"/>
-              <path d="M330 190a12 12 0 0 1 12-12h222a12 12 0 0 1 12 12v18H330Z" fill="var(--fig-surface-2)"/>
-              <text x="344" y="197" font-size="12" font-weight="620" fill="var(--fig-ink)">Next step</text>
-              <rect x="344" y="220" width="150" height="8" rx="4" fill="var(--fig-muted)" opacity=".3"/>
-              <rect x="344" y="234" width="96" height="8" rx="4" fill="var(--fig-muted)" opacity=".3"/>
+              <rect x="306" y="178" width="246" height="70" rx="12" fill="var(--fig-surface)" stroke="var(--fig-line)"/>
+              <path d="M306 190a12 12 0 0 1 12-12h222a12 12 0 0 1 12 12v18H306Z" fill="var(--fig-surface-2)"/>
+              <text x="320" y="197" font-size="12" font-weight="620" fill="var(--fig-ink)">Next step</text>
+              <rect x="320" y="220" width="150" height="8" rx="4" fill="var(--fig-muted)" opacity=".3"/>
+              <rect x="320" y="234" width="96" height="8" rx="4" fill="var(--fig-muted)" opacity=".3"/>
             </g>
           </svg>
         </div>
@@ -478,13 +622,13 @@
             </g>
           </svg>
         </div>
-        <figcaption>A folder of boards reads like a contact sheet: the tile is the board itself, so you pick the right one before opening anything.</figcaption>
+        <figcaption>A folder of boards reads like a contact sheet: the tile is the board, so you pick the right one without opening it.</figcaption>
       </figure>
     </section>
 
     <h2>The board</h2>
 
-    <h3>Ink and tools</h3>
+    <h3 id="ink">Ink and tools</h3>
     <p>The session starts on the <span class="ui">Pen</span>. Each tool keeps its own color and thickness, so switching back returns you to the stroke you were using.</p>
 
     <div class="toolrows">
@@ -729,7 +873,7 @@
               <rect x="240" y="8" width="36" height="18" rx="9" fill="#FFFFFF" stroke="#E2E4E9"/>
               <text x="258" y="21" font-size="11.5" fill="#5C6371" text-anchor="middle">DAX</text>
               <g font-family="Cascadia Mono, Consolas, monospace" font-size="13.5">
-                <text x="18" y="64" fill="#B71D1D">Total Sales</text><text x="110" y="64" fill="#15171C">:=</text>
+                <text x="18" y="64" fill="#B71D1D">Total Sales</text><text x="110" y="64" fill="#15171C">=</text>
                 <text x="18" y="90" fill="#0B6FB8">SUM</text><text x="50" y="90" fill="#15171C">( Sales[Amount] )</text>
               </g>
               <path d="M16 100c48 7 100 3 154-6" fill="none" stroke="#E64B3D" stroke-width="3.6" stroke-linecap="round"/>
@@ -818,7 +962,7 @@
           </g>
         </svg>
       </div>
-      <figcaption>One list, searched by name. A new setting is another row in a category here, which is why there is no second dialog to go looking in.</figcaption>
+      <figcaption>One list, searched by name. A new setting is another row in a category here, never a second dialog.</figcaption>
     </figure>
   </article>
 
