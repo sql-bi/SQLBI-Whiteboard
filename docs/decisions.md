@@ -194,7 +194,7 @@ later touches no installer plumbing.
 
 ## 13. Microsoft Store is a later, separate piece of work
 
-**Implemented** for packaging and for the listing. Submission is still manual.
+**Implemented.**
 
 Three constraints shape it:
 
@@ -203,15 +203,28 @@ Three constraints shape it:
   followed (full-trust desktop package, file-type associations in the manifest).
 - Store version numbers must end in `.0`. The MSIX Identity Version is `VersionPrefix.0`,
   not the four-part assembly stamp the MSI uses.
-- Certification takes hours to days, so submission must run in parallel with the web
-  release and must never gate it.
+- Certification takes hours to days, so submission must never gate the web release. The
+  Store stage runs after Release rather than beside it: the GitHub release already exists
+  by the time it starts, so a failed or slow submission changes nothing that shipped, and
+  a build that was never promoted is never submitted.
 
 The first submission was manual, and was made on 20 August 2026 for 0.9.2: listing,
 screenshots, and age rating are one-time work no pipeline performs.
-`installer/msix/STORE-LISTING.md` records every field that was entered, which is what a
-later automated submission reproduces. Automating the upload was deliberately held until
-that first submission had succeeded, so an API failure could never be confused with an
+`installer/msix/STORE-LISTING.md` records every field that was entered, which is what the
+automated submission reproduces. Automating the upload was deliberately held until that
+first submission had succeeded, so an API failure could never be confused with an
 incomplete listing.
+
+Everything after it is the Store stage's job. It submits packages only — listing text,
+screenshots, and **What's new** carry over from the last published submission untouched.
+Changing them stays a deliberate act in Partner Center, recorded in `STORE-LISTING.md`, for
+the same reason the pipeline does not delete a pending submission to make room for its own:
+an in-flight submission may be a person's listing edit, and a pipeline must not discard it.
+
+The submission identity is not the signing one. The Partner Center account is associated
+with a different Microsoft Entra tenant than the one the pipeline signs in, so the two
+cannot be the same principal even if sharing one were desirable — which it is not, since a
+single leaked secret would then both sign as SQLBI and publish as SQLBI.
 
 ## 14. Bravo's telemetry was not ported
 

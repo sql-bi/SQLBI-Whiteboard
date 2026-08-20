@@ -45,6 +45,12 @@ trusting a copy-paste.
 A Store rejection reports Name, Publisher, and PFN as three separate errors.
 It is one problem: fix the first two and the rest follow.
 
+Three fields that look like the same name and are not: `PublisherDisplayName`
+is `SQLBI Corp` with no period, the copyright string elsewhere in the product
+is `SQLBI Corp.` with one, and the manifest `Publisher` is the Store identity
+`CN=<GUID>` rather than anything readable. Changing one to match another is a
+rejection.
+
 Partner Center validates the identity in the package you upload and rejects a
 mismatch. It does not rewrite your manifest — "associating" an app in Visual
 Studio rewrites a *local* manifest, which is the source of the opposite belief.
@@ -90,10 +96,14 @@ repeat.
    freely in Partner Center.
 
 Certification must never gate the MSI / GitHub release, which is why the
-submission is a separate act from the pipeline run that produced the package
-(decision 13). Automating it is the remaining work, tracked in TODO.md: the
-first submission had to be manual, and now that it has happened the pipeline
-has a listing to submit against.
+submission is a separate stage from the one that publishes the download
+(decision 13). That stage now exists: the pipeline submits the MSIX after a
+release is promoted, so nothing above repeats per version except a screenshot
+when the UI moves on.
+
+What it submits is packages only. Listing text, screenshots, and **What's new**
+carry over from the last published submission untouched, so this page stays the
+record of them and a change here means a change made by hand in Partner Center.
 
 ## Once the listing is live
 
