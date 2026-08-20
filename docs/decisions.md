@@ -231,8 +231,17 @@ like `SQLBI.Whiteboard.0.1.0.x64-frameworkdependent-dev-userinstaller.msi`, whic
 visitor to decode four dimensions before downloading anything.
 
 The self-contained installer is roughly 73 MB against 11 MB, and needs no .NET runtime
-installed. That trade favours the visitor. The framework-dependent build is still produced
+installed. That trade favors the visitor. The framework-dependent build is still produced
 and kept as a pipeline artifact.
+
+## 16. SQLBI Whiteboard is MIT-licensed open source
+
+**Implemented.**
+
+The repository is public and carries the MIT license, the same as Bravo, and the installer
+presents the same terms. This was confirmed deliberately rather than inherited: the license
+text was copied from Bravo early on, and shipping it unexamined would have granted rights
+nobody had decided to grant.
 
 ## 17. Published builds are ReadyToRun-compiled
 
@@ -247,15 +256,6 @@ It costs about 22% on disk — the self-contained publish folder measured 207 MB
 and 252 MB with it — which compresses down to a few MB in the installer. It applies only to
 `dotnet publish`, and only when a runtime identifier is given; both publish paths pass one,
 so a plain `dotnet build` is unaffected and local iteration does not slow down.
-
-## 16. SQLBI Whiteboard is MIT-licensed open source
-
-**Implemented.**
-
-The repository is public and carries the MIT license, the same as Bravo, and the installer
-presents the same terms. This was confirmed deliberately rather than inherited: the license
-text was copied from Bravo early on, and shipping it unexamined would have granted rights
-nobody had decided to grant.
 
 ## 18. Pull request validation packages less than it ships
 
@@ -287,8 +287,8 @@ ships can inherit it by accident.
 
 ## Open questions
 
-- Whether the first public release is `0.2.0` or `1.0.0`. `VersionPrefix` in
-  `Directory.Build.props` reads `0.2.0`, bumped for the .NET 10 upgrade but still a
-  development number.
+- What the first stable release is numbered. `VersionPrefix` in `Directory.Build.props`
+  reads `0.9.3`; every build published so far is a pre-release, and 0.9.2 is the version
+  submitted to the Store.
 - arm64 is not built; add it if Surface devices matter for a pen application.
 - The brand mark is placeholder-grade (decision 12).

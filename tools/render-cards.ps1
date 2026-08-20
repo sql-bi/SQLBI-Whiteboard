@@ -1,6 +1,6 @@
 <#
     Renders the card artwork from SVG to PNG with Chrome, which is already on any
-    machine that builds this project and rasterises the same way the site does:
+    machine that builds this project and rasterizes the same way the site does:
     same engine, same Segoe fonts, so an export matches the page preview.
 
     Usage:  pwsh tools/render-cards.ps1

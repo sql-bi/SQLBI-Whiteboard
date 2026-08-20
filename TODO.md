@@ -20,8 +20,12 @@ per release. The current product version is `VersionPrefix` in `Directory.Build.
 
 What 1.0 was waiting on is in the product: Preferences, `.wimport`, Explorer and VS Code
 previews, the public documentation site, and Finger drawing (default when no pen is
-detected). The Store listing was submitted by hand on 20 August 2026 for 0.9.2. One launch
-asset remains, and one piece of automation follows from the submission.
+detected). The Store listing was submitted by hand on 20 August 2026 for 0.9.2.
+
+Four items remain. Item 1 is a launch asset; items 2 to 4 are the distribution automation
+[docs/release-management.md](docs/release-management.md) also lists. Take 3 before 4, since
+winget should read the manifests rather than parse release assets. Item 2 depends on
+neither and can be picked up at any time.
 
 ## 1. Video teaser
 
@@ -46,7 +50,7 @@ so an automated submission has an exact target rather than a guess. That page is
 a listing change belongs, so the record does not drift from what the Store shows.
 
 What remains is publishing the next version without visiting Partner Center, through the
-Microsoft Store submission API. It needs an Azure AD application authorised for the Partner
+Microsoft Store submission API. It needs an Azure AD application authorized for the Partner
 Center account; its tenant, client id, and secret are infrastructure, so they belong in the
 pipeline's variable group and never in this repository (CONTRIBUTING.md).
 
@@ -69,3 +73,25 @@ Store identity `CN=<GUID>` rather than a readable name. The three are unrelated 
 Store availability is uneven on managed corporate machines, which is why the MSI channel
 stays the primary route rather than a fallback (decision 10). Nothing links to the Store
 until certification completes.
+
+## 3. Release manifests
+
+Publish `stable.json` and `dev.json` alongside the binaries on each release. Neither exists
+yet.
+
+Three consumers want the same answer to "what is the newest build, and where is it": the
+download page, which currently resolves links by calling the GitHub releases API from the
+browser on every visit; a future in-app update check; and winget automation. Each one
+inventing its own source is how they drift apart.
+
+This comes first because item 4 depends on it. The page's API fallback stays regardless, so
+a manifest that fails to publish cannot take the downloads down with it.
+
+## 4. winget submission
+
+Add a winget manifest and submit it from a published release, the same way the Store
+submission runs beside the release rather than gating it (decision 13).
+
+winget reaches the developer audience that will not visit a landing page, and unlike the
+Store it is usually available on managed corporate machines, where Store access is uneven
+(decision 10). It should read the manifests from item 3 rather than parse release assets.

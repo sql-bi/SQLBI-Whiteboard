@@ -1,5 +1,5 @@
 // Generated from the DAX Formatter reference grammar (daxformatter/DaxFormatter/DaxGrammar.cs).
-// These are the names the formatter is allowed to normalise to upper case. Any identifier that
+// These are the names the formatter is allowed to normalize to upper case. Any identifier that
 // is not in this set keeps the casing the author wrote, so a variable named "Year" stays "Year".
 
 namespace SQLBI.Whiteboard.Dax.Engine;

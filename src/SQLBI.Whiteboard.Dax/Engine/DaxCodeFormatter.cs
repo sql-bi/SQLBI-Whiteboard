@@ -71,7 +71,7 @@ internal static class DaxCodeFormatter
         {
             if (token.Kind == DaxTokenKind.EndOfFile || token.Text.Length == 0) continue;
 
-            // Identifiers and keywords are compared without case, because normalising their case is
+            // Identifiers and keywords are compared without case, because normalizing their case is
             // the one change the formatter is allowed to make. Literals are compared exactly.
             var text = token.Kind == DaxTokenKind.Identifier ? token.Text.ToUpperInvariant() : token.Text;
             signature.Add(token.Kind + "|" + text);

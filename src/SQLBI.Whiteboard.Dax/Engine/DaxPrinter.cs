@@ -47,7 +47,7 @@ internal static class DaxPrinter
         Doc.Concat(Comments(token), Doc.Text(token.Text), Trailing(token));
 
     /// <summary>
-    /// Emits a word the parser identified as a keyword, upper-cased. Case is only normalised here,
+    /// Emits a word the parser identified as a keyword, upper-cased. Case is only normalized here,
     /// where the position is known, so an identifier that happens to spell a keyword is left alone.
     /// </summary>
     private static Doc Keyword(DaxToken token) =>

@@ -149,7 +149,7 @@ Parameters:
 | `verbosity` | `normal` | MSBuild verbosity |
 | `sign` | on | Code sign binaries and MSIs |
 
-Two variable groups must be authorised for the pipeline. Their contents stay in Azure
+Two variable groups must be authorized for the pipeline. Their contents stay in Azure
 DevOps, not in this repository:
 
 - **SQLBI-CodeSigning** — vault URL, tenant, client, secret, certificate name (decision 1).

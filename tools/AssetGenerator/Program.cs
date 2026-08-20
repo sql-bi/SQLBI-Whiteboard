@@ -81,7 +81,7 @@ internal static class Program
         Write(Path.Combine(webAssets, "favicon-32.png"), EncodePng(RenderTile(32)));
         // iOS rounds the corners itself and composites over black, so this one is full bleed.
         Write(Path.Combine(webAssets, "apple-touch-icon.png"), EncodePng(RenderFullBleed(180)));
-        // The social cards are not here. tools/render-cards.ps1 rasterises them from the SVGs
+        // The social cards are not here. tools/render-cards.ps1 rasterizes them from the SVGs
         // beside the page with the same engine the site uses, so its output matches the page
         // preview and this generator must not write over it.
 
