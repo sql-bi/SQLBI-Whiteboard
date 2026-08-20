@@ -1,0 +1,38 @@
+# yaml-language-server: $schema=https://aka.ms/winget-manifest.installer.1.6.0.schema.json
+#
+# Only the released channel is offered through winget. The pre-release channel exists so a
+# tester can run it beside a released copy (decision 7); a package manager that installed
+# it on `winget install SQLBI.Whiteboard` would defeat the point.
+#
+# Both scopes are listed, so `--scope user` installs without elevation. They are two
+# distinct products with different UpgradeCodes, which is why each needs its own entry
+# rather than one installer with a scope switch.
+#
+# InstallerType is wix rather than msi: the packages are WiX v5 output, and declaring it
+# lets winget use the WiX silent switches instead of guessing at generic MSI ones.
+#
+# ProductCode is deliberately absent. WiX generates a new one per build because Version
+# binds to the executable's file version, so a value written here would be wrong for every
+# release except the one it was copied from. `wingetcreate update` reads it out of the
+# downloaded MSI at submission time, which is the only way it can be right.
+PackageIdentifier: SQLBI.Whiteboard
+PackageVersion: 0.9.2
+MinimumOSVersion: 10.0.19041.0
+InstallerType: wix
+InstallModes:
+- interactive
+- silent
+- silentWithProgress
+UpgradeBehavior: install
+ReleaseDate: '2026-08-19'
+Installers:
+- Architecture: x64
+  Scope: machine
+  InstallerUrl: https://github.com/sql-bi/SQLBI-Whiteboard/releases/download/v0.9.2/SQLBI.Whiteboard.0.9.2.x64.msi
+  InstallerSha256: CF7AC4C5F4AED82382811CE00B606D13E99BA08AB9804FD05E68D23E0689CBE9
+- Architecture: x64
+  Scope: user
+  InstallerUrl: https://github.com/sql-bi/SQLBI-Whiteboard/releases/download/v0.9.2/SQLBI.Whiteboard.0.9.2.x64-userinstaller.msi
+  InstallerSha256: 9885733D3E0AAEBC39ABC0F142C7461EEA7DE0B5F20CD184A50EACAE19D5BE9B
+ManifestType: installer
+ManifestVersion: 1.6.0

@@ -198,16 +198,60 @@ The agreed shape, now in use for the pre-release path:
    submission follows the same way once it exists. Neither gates the download being
    available.
 
+### Release manifests
+
+`stable.json` and `dev.json` describe the newest release on each channel: version, tag,
+publication date, and for each installer its name, URL, size, and SHA-256.
+
+They are served from the site, at <https://whiteboard.sqlbi.com/stable.json> and
+`/dev.json`, and generated into each Pages deployment by
+`scripts/build-release-manifests.ps1` rather than committed. Publishing a release
+redeploys the page, which is what keeps them current.
+
+Two things decided that shape:
+
+- The manifests are built from the GitHub releases API, which reports a SHA-256 digest for
+  every asset. Nothing has to be downloaded or re-hashed, and the manifests describe
+  releases published before the script existed rather than only later ones.
+- They are served from the site rather than attached to a release because
+  `github.com` release-asset URLs send no `Access-Control-Allow-Origin` header. A browser
+  cannot read a manifest published as a release asset; `api.github.com` does allow it,
+  which is why the download page's fallback still works.
+
+A channel with no published release produces no file. The contract is that the file
+existing means a release exists, so a consumer that gets a 404 knows to fall back rather
+than having to interpret an empty manifest.
+
+The download page reads `stable.json` first and falls back to the API, so it makes no API
+call at all on an ordinary visit.
+
+### winget
+
+`.github/workflows/publish-winget.yml` submits a released version to
+microsoft/winget-pkgs when a release is published, and can be re-run by hand for a release
+whose first attempt failed. Pre-releases are skipped: the Dev channel is a separate product
+so it can sit beside a released copy (decision 7), and a package manager that installed it
+on `winget install SQLBI.Whiteboard` would defeat that.
+
+`wingetcreate` downloads each installer, computes its own SHA-256, and reads the
+`ProductCode` out of the MSI, so those values are derived from the bytes being submitted
+rather than copied. `installer/winget/` holds the seed manifests for the first submission
+and stays as the reviewable record of what was sent.
+
+It runs beside the release rather than inside it, for the reason the Store submission does
+(decision 13): a submission is a pull request against someone else's repository, reviewed
+by people, and it can sit for days. Nothing about the download being available depends on
+it.
+
+Two one-time steps are outstanding, and until both are done the workflow fails on every
+release. They are listed in [TODO.md](../TODO.md): the first submission by hand, and a
+`WINGET_TOKEN` secret.
+
 ### Still to build
 
-Roughly in dependency order:
-
-1. Publish `stable.json` and `dev.json` manifests alongside the binaries, for the download
-   page, a future in-app update check, and winget automation to share one source.
-2. Add winget submission triggered by a published release.
-3. Automate Store submission from the published release (decision 13). The listing and
-   the first submission were done by hand on 20 August 2026, which was the precondition;
-   `installer/msix/STORE-LISTING.md` records what an automated submission must reproduce.
+Automate Store submission from the published release (decision 13). The listing and the
+first submission were done by hand on 20 August 2026, which was the precondition;
+`installer/msix/STORE-LISTING.md` records what an automated submission must reproduce.
 
 ### Verification before a public release
 

@@ -5,6 +5,11 @@
 #
 # site/CNAME carries the custom domain, so it survives every deployment rather than
 # depending on the setting alone.
+#
+# The deployment also carries stable.json and dev.json, generated here rather than
+# committed. They are served from the same origin as the page, which is the only way the
+# page can read them: github.com release-asset URLs send no Access-Control-Allow-Origin
+# header, so a manifest published as a release asset is unreadable from a browser.
 name: Publish site
 
 on:
@@ -12,7 +17,12 @@ on:
     branches: [main]
     paths:
       - 'site/**'
+      - 'scripts/build-release-manifests.ps1'
       - '.github/workflows/publish-site.yml'
+  # A release changes what the manifests say without changing anything in site/, so it has
+  # to redeploy the page as well. This is what keeps the download links current.
+  release:
+    types: [published]
   workflow_dispatch:
 
 permissions:
@@ -35,6 +45,14 @@ jobs:
       url: ${{ steps.deployment.outputs.page_url }}
     steps:
       - uses: actions/checkout@v5
+
+      # Generated into the checkout, so the manifests ship with the page in one
+      # deployment. Both files are gitignored: this is the only thing that writes them.
+      - name: Generate the release manifests
+        shell: pwsh
+        run: ./scripts/build-release-manifests.ps1 -Repository "$env:GITHUB_REPOSITORY" -OutputFolder site -Token "$env:GH_TOKEN"
+        env:
+          GH_TOKEN: ${{ github.token }}
 
       - uses: actions/configure-pages@v5
 

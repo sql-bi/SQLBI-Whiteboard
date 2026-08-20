@@ -287,8 +287,9 @@ ships can inherit it by accident.
 
 ## Open questions
 
-- What the first stable release is numbered. `VersionPrefix` in `Directory.Build.props`
-  reads `0.9.3`; every build published so far is a pre-release, and 0.9.2 is the version
-  submitted to the Store.
+- Whether 1.0.0 is declared, and on what. `VersionPrefix` in `Directory.Build.props`
+  reads `0.9.3`, the released channel has been published since `0.9.0`, and `0.9.2` is
+  the version submitted to the Store. Nothing is blocked on the number; what is open is
+  what has to be true before it stops being 0.x.
 - arm64 is not built; add it if Surface devices matter for a pen application.
 - The brand mark is placeholder-grade (decision 12).

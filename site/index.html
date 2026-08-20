@@ -221,7 +221,40 @@
 
     function megabytes(bytes) { return (bytes / 1048576).toFixed(0) + ' MB'; }
 
-    fetch('https://api.github.com/repos/' + REPO + '/releases?per_page=20')
+    function apply(version, published, perMachine, perUser, portable) {
+      if (perMachine) {
+        document.getElementById('download').href = perMachine.url;
+        document.getElementById('meta').innerHTML =
+          '<strong>' + version + '</strong> &middot; ' +
+          megabytes(perMachine.size) + ' &middot; ' +
+          new Date(published).toLocaleDateString(undefined, {
+            year: 'numeric', month: 'long', day: 'numeric'
+          });
+      }
+      if (perUser) document.getElementById('user-installer').href = perUser.url;
+      if (portable) document.getElementById('portable').href = portable.url;
+    }
+
+    // stable.json is generated into this deployment by the Publish site workflow, so it
+    // is same-origin and needs no API call. It exists only when a stable release does,
+    // which is exactly when the fallback below would have found one.
+    function fromManifest() {
+      return fetch('stable.json', { cache: 'no-cache' })
+        .then(function (response) {
+          if (!response.ok) throw new Error(response.status);
+          return response.json();
+        })
+        .then(function (manifest) {
+          var i = manifest.installers || {};
+          if (!i.perMachine) throw new Error('no installer in manifest');
+          apply(manifest.version, manifest.published, i.perMachine, i.perUser, i.portable);
+        });
+    }
+
+    // Reached when no stable release is published yet, or the manifest is unavailable.
+    // The API is the only source that can also describe a pre-release to a browser.
+    function fromApi() {
+      return fetch('https://api.github.com/repos/' + REPO + '/releases?per_page=20')
       .then(function (response) {
         if (!response.ok) throw new Error(response.status);
         return response.json();
@@ -245,18 +278,13 @@
           return /portable\.zip$/.test(n) && n.indexOf('frameworkdependent') === -1;
         });
 
-        if (main) {
-          var button = document.getElementById('download');
-          button.href = main.browser_download_url;
-          document.getElementById('meta').innerHTML =
-            '<strong>' + release.tag_name.replace(/^v/, '') + '</strong> &middot; ' +
-            megabytes(main.size) + ' &middot; ' +
-            new Date(release.published_at).toLocaleDateString(undefined, {
-              year: 'numeric', month: 'long', day: 'numeric'
-            });
+        function asInstaller(asset) {
+          return asset ? { url: asset.browser_download_url, size: asset.size } : null;
         }
-        if (perUser) document.getElementById('user-installer').href = perUser.browser_download_url;
-        if (portable) document.getElementById('portable').href = portable.browser_download_url;
+        apply(
+          release.tag_name.replace(/^v/, ''),
+          release.published_at,
+          asInstaller(main), asInstaller(perUser), asInstaller(portable));
 
         if (!stable) {
           var notice = document.getElementById('notice');
@@ -266,10 +294,14 @@
             'alongside a released copy once one exists.';
           notice.hidden = false;
         }
-      })
-      .catch(function () {
-        // Leave every link pointing at the releases page, which needs no scripting.
       });
+    }
+
+    // Every link already points at the releases page, so a failure of both paths leaves a
+    // page that still works without scripting.
+    fromManifest().catch(function () {
+      return fromApi().catch(function () {});
+    });
   })();
 </script>
 </body>
