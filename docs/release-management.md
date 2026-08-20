@@ -299,7 +299,14 @@ already published. Certification takes hours to days and gates nothing (decision
 
 `UseMSStoreCLI@0` installs the [Microsoft Store Developer CLI][msstore]; `msstore
 reconfigure` authenticates with the `SQLBI-StoreSubmission` group, and `msstore publish`
-uploads the package against Store product `9NN5N0L2TMTF`. Credentials are passed through
+uploads the package against Store product `9NN5N0L2TMTF`.
+
+**`--uploadTimeout` is not optional.** Left unset, the CLI passes zero to the blob
+client's `Retry.NetworkTimeout`, so every upload attempt is cancelled the instant it
+starts and the publish fails with `Retry failed after 6 tries` and a configured timeout of
+`0:00:00` — which reads like a network fault and is not one. The Learn documentation does
+not mention the option; `msstore publish --help` does. It is per attempt, so
+`storeUploadTimeoutSeconds` is set generously rather than tightly. Credentials are passed through
 the environment rather than the command line, because the agent echoes a native command
 line and log masking is a safety net rather than a guarantee.
 
@@ -317,9 +324,12 @@ Three things about it are deliberate:
   from the last published submission untouched. Changing them is `msstore submission
   updateMetadata` and stays a deliberate act in Partner Center, recorded in
   `installer/msix/STORE-LISTING.md`.
-- **It does not clear a pending submission.** If one is already in flight `msstore publish`
-  fails, which is correct: that submission may be a person's listing edit, and a pipeline
-  must not discard it. Resolve it in Partner Center and re-run the stage.
+- **It clears an abandoned submission, and only that.** A failed upload leaves a created
+  but empty submission behind, which would block every later attempt — one failure would
+  wedge the automation until someone visited Partner Center. Status `PendingCommit` means
+  exactly that case: created, never committed, nothing in certification. The stage deletes
+  it and continues. Every other status is left alone and fails the stage, because an
+  in-flight submission may be a person's listing edit and a pipeline must not discard it.
 
 The first submission was manual, on 20 August 2026 for 0.9.2, because the listing,
 screenshots, and age rating are one-time work no API performs — and holding the automation

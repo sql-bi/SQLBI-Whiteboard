@@ -55,14 +55,16 @@ visible and gates nothing.
 
 ## Waiting on the first automated Store submission
 
-Also not work. The pipeline's Store stage has never run. The only submission so far is the
-manual one for 0.9.2, and the stage was written against the documented behaviour of the
-Microsoft Store Developer CLI rather than against a run of it. The first promoted release
-after this lands is the one that proves it.
+Also not work. The stage ran for the first time on 0.9.4 and failed: it authenticated,
+created the submission, and then could not upload the package, because `msstore publish`
+defaults its blob upload timeout to zero when `--uploadTimeout` is not given. That is
+fixed, but the fix has not been exercised — a pipeline run uses the YAML on `main` at the
+time it runs, and 0.9.4 cannot be released twice, so the next promoted release is the one
+that proves it.
 
-0.9.4 is that release. `VersionPrefix` was bumped for it, because the Release stage
-refuses to reuse an existing tag and 0.9.3 could not be released a second time to carry
-the test.
+0.9.4 was not submitted to the Store. Nothing depends on the Store carrying every version,
+and the alternative was submitting it by hand, which is the thing this stage exists to
+avoid.
 
 Watch two things on that run. The stage has to pick the MSIX out of `drop-x64-true`, since
 both matrix jobs pack an identically named package and only one of them is self-contained.

@@ -217,9 +217,10 @@ incomplete listing.
 
 Everything after it is the Store stage's job. It submits packages only — listing text,
 screenshots, and **What's new** carry over from the last published submission untouched.
-Changing them stays a deliberate act in Partner Center, recorded in `STORE-LISTING.md`, for
-the same reason the pipeline does not delete a pending submission to make room for its own:
-an in-flight submission may be a person's listing edit, and a pipeline must not discard it.
+Changing them stays a deliberate act in Partner Center, recorded in `STORE-LISTING.md`.
+The stage is equally careful with submissions it did not create: it deletes only one left
+`PendingCommit` by its own failed upload, because any other pending submission may be a
+person's listing edit and a pipeline must not discard it.
 
 The submission identity is not the signing one. The Partner Center account is associated
 with a different Microsoft Entra tenant than the one the pipeline signs in, so the two
