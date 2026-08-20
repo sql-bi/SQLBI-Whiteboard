@@ -1,10 +1,7 @@
 # Development and release
 
 How the project is built, packaged, and shipped. The reasoning behind these choices is in
-[decisions.md](decisions.md).
-
-Sections marked **Not yet built** describe an agreed design that does not exist in the
-repository yet.
+[decisions.md](decisions.md). Everything described here is built and in use.
 
 ## What to run
 
@@ -21,7 +18,7 @@ itself. Do not run it to “release” anything.
 | Update whiteboard.sqlbi.com | Merge a change under `site/`. The **Publish site** Action deploys. To retry: Actions → **Publish site** → **Run workflow**. |
 | Rebuild brand assets | Run `scripts/build-assets.ps1` locally. Only when the artwork changes. |
 | Build a Store MSIX | `scripts/build-installer.ps1` already writes `SQLBI.Whiteboard.<version>.x64.msix`. To pack only: `scripts/build-msix.ps1`. Identity version is `VersionPrefix.0`. |
-| Submit to the Store | By hand in Partner Center, from the MSIX the release run produced. The listing exists (0.9.2, submitted 20 August 2026); `installer/msix/STORE-LISTING.md` is what to enter. The pipeline does not submit. |
+| Submit to the Store | Nothing. Approving the **Release** stage also runs the **Store** stage, which submits that run's MSIX. To skip it for one run, clear **Submit the released MSIX to the Microsoft Store** in **Run pipeline**. Listing text is still by hand: `installer/msix/STORE-LISTING.md`. |
 
 The three GitHub Actions live under **Actions** in this repository. Their names are
 **Pull request**, **Publish VS Code extension**, and **Publish site**. The signed
@@ -149,11 +146,20 @@ Parameters:
 | `verbosity` | `normal` | MSBuild verbosity |
 | `sign` | on | Code sign binaries and MSIs |
 
-Two variable groups must be authorized for the pipeline. Their contents stay in Azure
+Three variable groups must be authorized for the pipeline. Their contents stay in Azure
 DevOps, not in this repository:
 
 - **SQLBI-CodeSigning** — vault URL, tenant, client, secret, certificate name (decision 1).
 - **SQLBI.Whiteboard** — product settings. The version is not among them.
+- **SQLBI-StoreSubmission** — Partner Center tenant, client, secret, and seller id. Declared
+  on the Store stage rather than at pipeline level, so the build and signing stages cannot
+  read it.
+
+> **The Store tenant is not the signing tenant.** The Partner Center account is associated
+> with a different Microsoft Entra tenant than the one this pipeline signs in, so the two
+> credentials are different principals in different directories. That is also why every
+> variable in the Store group carries a `Store` prefix: two groups defining a bare
+> `TenantId` would collide, and Azure DevOps resolves a collision between groups silently.
 
 Signing uses `AzureSignTool` against the certificate in Azure Key Vault.
 
@@ -165,9 +171,8 @@ Signing uses `AzureSignTool` against the certificate in Azure Key Vault.
 Stages: **Build** produces every installer variant plus an unsigned released-channel
 MSIX, **PreRelease** publishes the pre-release channel to GitHub, **Release** is gated
 by approvals on the `whiteboard-release` environment and uploads the released-channel
-installers **that the same run already produced** (decision 9). The MSIX is an artifact
-the pipeline publishes but does not submit; uploading it to Partner Center is still a
-manual act.
+installers **that the same run already produced** (decision 9), and **Store** submits that
+run's MSIX to Partner Center.
 
 Creating a GitHub Release uses the `sql-bi write assets` service connection
 (`contents: write`).
@@ -194,9 +199,9 @@ The agreed shape, now in use for the pre-release path:
    prerelease.
 3. Promotion is an approval on the Release stage of **that** run. It publishes the
    already-built released-channel artifacts — nothing is rebuilt.
-4. The Store submission follows from the published release, by hand for now. winget
-   submission follows the same way once it exists. Neither gates the download being
-   available.
+4. The Store submission and the winget submission both follow from the published release,
+   the first as a pipeline stage and the second as a GitHub Action. Neither gates the
+   download being available.
 
 ### Release manifests
 
@@ -274,11 +279,44 @@ Locally, `wingetcreate` needs no token at all: run it without `--token` and it u
 browser OAuth flow, which is what its own documentation recommends, because a token on the
 command line ends up in shell history.
 
-### Still to build
+### Microsoft Store
 
-Automate Store submission from the published release (decision 13). The listing and the
-first submission were done by hand on 20 August 2026, which was the precondition;
-`installer/msix/STORE-LISTING.md` records what an automated submission must reproduce.
+The **Store** stage of the Azure pipeline submits the released MSIX to Partner Center. It
+depends on **Release**, so it runs only for a build that was actually promoted, and only
+after the GitHub release exists — by the time a submission can fail, every download is
+already published. Certification takes hours to days and gates nothing (decision 13).
+
+`UseMSStoreCLI@0` installs the [Microsoft Store Developer CLI][msstore]; `msstore
+reconfigure` authenticates with the `SQLBI-StoreSubmission` group, and `msstore publish`
+uploads the package against Store product `9NN5N0L2TMTF`. Credentials are passed through
+the environment rather than the command line, because the agent echoes a native command
+line and log masking is a safety net rather than a guarantee.
+
+[msstore]: https://learn.microsoft.com/windows/apps/publish/msstore-dev-cli/overview
+
+Three things about it are deliberate:
+
+- **It takes the MSIX from the `drop-x64-true` artifact by name.** Both matrix jobs pack a
+  released-channel MSIX and `build-msix.ps1` names them identically —
+  `SQLBI.Whiteboard.<version>.x64.msix` carries no flavour — so a recursive search of the
+  workspace could just as easily submit the framework-dependent package, which needs a .NET
+  runtime the Store cannot assume. Naming the artifact makes that unreachable, and the stage
+  fails rather than guessing if the count is not exactly one.
+- **It submits packages only.** Listing text, screenshots, and **What's new** carry over
+  from the last published submission untouched. Changing them is `msstore submission
+  updateMetadata` and stays a deliberate act in Partner Center, recorded in
+  `installer/msix/STORE-LISTING.md`.
+- **It does not clear a pending submission.** If one is already in flight `msstore publish`
+  fails, which is correct: that submission may be a person's listing edit, and a pipeline
+  must not discard it. Resolve it in Partner Center and re-run the stage.
+
+The first submission was manual, on 20 August 2026 for 0.9.2, because the listing,
+screenshots, and age rating are one-time work no API performs — and holding the automation
+until it had succeeded meant an API failure could never be confused with an incomplete
+listing. The same reasoning as winget, arrived at independently.
+
+Clearing **Submit the released MSIX to the Microsoft Store** in **Run pipeline** promotes a
+release without touching the Store.
 
 ### Verification before a public release
 

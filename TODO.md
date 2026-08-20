@@ -22,9 +22,10 @@ What 1.0 was waiting on is in the product: Preferences, `.wimport`, Explorer and
 previews, the public documentation site, and Finger drawing (default when no pen is
 detected). The Store listing was submitted by hand on 20 August 2026 for 0.9.2.
 
-Two items remain. The release manifests and winget are done: the manifests are live at
-<https://whiteboard.sqlbi.com/stable.json>, and the first winget submission is in review.
-Both are described in [docs/release-management.md](docs/release-management.md).
+One item remains. The release manifests, winget, and Store submission are done: the
+manifests are live at <https://whiteboard.sqlbi.com/stable.json>, the first winget
+submission is in review, and the pipeline's Store stage submits each promoted release.
+All three are described in [docs/release-management.md](docs/release-management.md).
 
 ## 1. Video teaser
 
@@ -40,39 +41,6 @@ Record against the current UI: Preferences, Finger drawing, the tab strip, LiveV
 freeze/disconnect/reconnect, and a `.wimport` drop. The campaign hero on the home page
 stays through 14 September 2026; the teaser is independent of that art.
 
-## 2. Automatic Store submission
-
-The one-time work is done: 0.9.2 was submitted by hand on 20 August 2026, with the listing,
-screenshots, age rating, and package upload entered in Partner Center. Every field that was
-entered is recorded in [installer/msix/STORE-LISTING.md](installer/msix/STORE-LISTING.md),
-so an automated submission has an exact target rather than a guess. That page is also where
-a listing change belongs, so the record does not drift from what the Store shows.
-
-What remains is publishing the next version without visiting Partner Center, through the
-Microsoft Store submission API. It needs an Azure AD application authorized for the Partner
-Center account; its tenant, client id, and secret are infrastructure, so they belong in the
-pipeline's variable group and never in this repository (CONTRIBUTING.md).
-
-Two constraints shape where it can sit in the pipeline:
-
-- Certification takes hours to days, so submission runs beside the GitHub release and never
-  gates it (decision 13). A failed or slow submission must leave the MSI download unaffected.
-- Only the released channel is submittable, and only from a run that already produced the
-  MSIX it uploads (decision 9). Do not rebuild for the Store.
-
-Packaging itself needs no work. `scripts/build-installer.ps1` writes an unsigned
-`SQLBI.Whiteboard.<version>.x64.msix` for the released channel, the package declares
-`.wboard` / `.wimport` and the thumbnail handler, and the Store re-signs it, so the SQLBI
-certificate is not involved.
-
-Watch the identity fields when touching any of this: `PublisherDisplayName` is `SQLBI Corp`
-(no period) and copyright elsewhere is `SQLBI Corp.`, while the manifest `Publisher` is the
-Store identity `CN=<GUID>` rather than a readable name. The three are unrelated fields.
-
-Store availability is uneven on managed corporate machines, which is why the MSI channel
-stays the primary route rather than a fallback (decision 10). Nothing links to the Store
-until certification completes.
-
 ## Waiting on the first winget submission
 
 Not work, but the reason winget is not finished yet.
@@ -84,3 +52,22 @@ token it needs is set.
 Until that pull request merges, `.github/workflows/publish-winget.yml` fails on every
 release, because `wingetcreate update` has no previous version to read. That failure is
 visible and gates nothing.
+
+## Waiting on the first automated Store submission
+
+Also not work. The pipeline's Store stage has never run. The only submission so far is the
+manual one for 0.9.2, and the stage was written against the documented behaviour of the
+Microsoft Store Developer CLI rather than against a run of it. The first promoted release
+after this lands is the one that proves it.
+
+It needs a version the Store has not seen. The Release stage refuses to reuse an existing
+tag, so exercising this at all means bumping `VersionPrefix` — 0.9.3 cannot be released a
+second time to carry the test.
+
+Watch two things on that run. The stage has to pick the MSIX out of `drop-x64-true`, since
+both matrix jobs pack an identically named package and only one of them is self-contained.
+And a submission already pending in Partner Center makes `msstore publish` fail by design —
+the stage does not delete someone else's in-flight submission to make room for its own.
+
+Nothing gates on it. The stage runs after the GitHub release exists, so a failure leaves
+every download in place and is visible as a failed stage.
