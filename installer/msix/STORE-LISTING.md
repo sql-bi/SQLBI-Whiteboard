@@ -51,6 +51,16 @@ is `SQLBI Corp.` with one, and the manifest `Publisher` is the Store identity
 `CN=<GUID>` rather than anything readable. Changing one to match another is a
 rejection.
 
+A fourth identifier belongs to the account rather than the package, and is the
+one that gets confused with `Publisher`: the **Seller ID** is a plain number,
+shown under **Account settings > Identifiers**, and it is what the Store
+Developer CLI wants for `--sellerId`. Passing the `CN=<GUID>` publisher there
+fails inside the CLI with an unhandled `System.FormatException` from a numeric
+parse, which names neither the argument nor the expected shape. The numeric
+prefix of the package identity name is built from it, so `17351SQLBICorp.…`
+and the Seller ID should agree - if they do not, the account is not the one
+you think it is.
+
 Partner Center validates the identity in the package you upload and rejects a
 mismatch. It does not rewrite your manifest — "associating" an app in Visual
 Studio rewrites a *local* manifest, which is the source of the opposite belief.
