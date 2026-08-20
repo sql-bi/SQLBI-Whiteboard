@@ -106,6 +106,7 @@ public partial class MainWindow : Window
     private AppSettings _settings = new();
 
     private const double ChevronInkOptionsWidth = 240;
+    private const double SessionTabHeight = 32;
     private WindowState _windowStateBeforeFullScreen;
     private WindowStyle _windowStyleBeforeFullScreen;
     private ResizeMode _resizeModeBeforeFullScreen;
@@ -4283,8 +4284,9 @@ public partial class MainWindow : Window
         SessionBar.Collapse();
         if (mode == SessionChromeMode.Windowed)
         {
-            RestoreWindowedChrome();
             _chromeMode = SessionChromeMode.Windowed;
+            ApplySessionTabRow();
+            RestoreWindowedChrome();
             return;
         }
 
@@ -4307,6 +4309,14 @@ public partial class MainWindow : Window
         }
 
         _chromeMode = mode;
+        ApplySessionTabRow();
+    }
+
+    private void ApplySessionTabRow()
+    {
+        SessionTabRow.Height = _chromeMode == SessionChromeMode.Windowed
+            ? new GridLength(SessionTabHeight)
+            : new GridLength(0);
     }
 
     private void SnapshotWindowedChrome()

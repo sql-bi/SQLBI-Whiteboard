@@ -24,7 +24,10 @@
         PreviewStylusInAirMove="Window_PreviewStylusInAirMove">
     <Grid x:Name="RootGrid">
         <Grid.RowDefinitions>
-            <RowDefinition Height="32" />
+            <!-- Matches SessionChrome tab height. Collapsed in full screen
+                 and canvas-only so the toolbar keeps its 16px inset from the
+                 top of the screen rather than from a blank tab strip. -->
+            <RowDefinition x:Name="SessionTabRow" Height="32" />
             <RowDefinition Height="*" />
         </Grid.RowDefinitions>
 
