@@ -10,20 +10,33 @@
 # the download being available may depend on it. A failure here is visible as a failed run
 # and changes nothing that has already shipped.
 #
-# One-time setup, in this order:
+# Setup was done on 20 August 2026 and is recorded here because it has to be repeated if
+# the token is ever rotated or the account changes.
 #
-#   1. Submit installer/winget/ to microsoft/winget-pkgs by hand, once. `wingetcreate
-#      update` below needs a previous version to read, so it cannot make the first
-#      submission. From a Windows machine with the manifests checked out:
+#   1. The first submission was made by hand. `wingetcreate update` below reads the
+#      previous version's manifests out of winget-pkgs, so it cannot make the first one.
+#      From a Windows machine with this repository checked out:
 #
 #          winget install Microsoft.WingetCreate
-#          wingetcreate submit --token <pat> installer/winget
+#          winget validate installer\winget
+#          wingetcreate submit installer\winget
 #
-#   2. Add a WINGET_TOKEN repository secret: a classic PAT with the public_repo scope,
-#      owned by the account that will carry the fork of microsoft/winget-pkgs.
-#      wingetcreate forks that repository and opens the pull request as this account, so
-#      the token is an identity, not just a permission. It is not GITHUB_TOKEN: that has
-#      no rights outside this repository.
+#      With no --token, wingetcreate runs a browser OAuth flow, which is what the tool's
+#      own documentation recommends locally: a token passed on the command line ends up in
+#      shell history and in any transcript of the session.
+#
+#   2. WINGET_TOKEN is a repository secret holding a GitHub personal access token. A
+#      workflow has no browser, so this is the one place a token is unavoidable.
+#
+#      It must be a **classic** token - wingetcreate does not support fine-grained tokens,
+#      which is now what GitHub offers first. The scope is public_repo, not full repo;
+#      winget-pkgs and the fork are both public. delete_repo is worth adding as well: it
+#      lets wingetcreate remove the fork it created when a submission fails, instead of
+#      leaving one behind on every failure.
+#
+#      wingetcreate forks winget-pkgs and opens the pull request as whoever owns the
+#      token, so it is an identity rather than only a permission. GITHUB_TOKEN cannot
+#      stand in: it has no rights outside this repository.
 name: Publish to winget
 
 on:
