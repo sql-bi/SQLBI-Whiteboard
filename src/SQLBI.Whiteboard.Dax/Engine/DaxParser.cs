@@ -1,8 +1,8 @@
 namespace SQLBI.Whiteboard.Dax.Engine;
 
 /// <summary>
-/// A recursive-descent parser with precedence climbing for expressions. It recognises enough DAX
-/// structure to lay code out well and treats anything it does not recognise as a plain token, so
+/// A recursive-descent parser with precedence climbing for expressions. It recognizes enough DAX
+/// structure to lay code out well and treats anything it does not recognize as a plain token, so
 /// unfamiliar syntax degrades to neutral formatting instead of being lost.
 /// </summary>
 internal sealed class DaxParser(IReadOnlyList<DaxToken> tokens, string source)
@@ -69,7 +69,7 @@ internal sealed class DaxParser(IReadOnlyList<DaxToken> tokens, string source)
     }
 
     /// <summary>
-    /// Recognises a bare definition such as "Sales Amount % Year Total := ..." or
+    /// Recognizes a bare definition such as "Sales Amount % Year Total := ..." or
     /// "Product Rank = ...". A measure name may contain punctuation, so every token on the first
     /// line up to the assignment belongs to the name. Requiring the assignment on that same line
     /// prevents a later equality inside the expression from being mistaken for the definition.

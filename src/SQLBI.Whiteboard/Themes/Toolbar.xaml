@@ -122,7 +122,7 @@
 
     <!--
         These sizes set the width of the whole tool palette. Six pen swatches drive the shared
-        colour column, and the highlighter row - that column plus three tool buttons - is the
+        color column, and the highlighter row - that column plus three tool buttons - is the
         widest thing in the palette. At 32 with a 3 margin the palette overflowed a presenter
         picture-in-picture in the top-right corner, which is the placement the default toolbar
         position exists to hide under. Enlarging these again brings that back.
@@ -148,7 +148,7 @@
                                  StrokeThickness="2" />
                         <!--
                             Inset from 4 to 3 alongside the smaller button, so the visible
-                            colour only loses 2 units rather than 4.
+                            color only loses 2 units rather than 4.
                         -->
                         <Ellipse Margin="3"
                                  Fill="{TemplateBinding Background}"

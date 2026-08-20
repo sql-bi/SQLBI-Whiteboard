@@ -252,8 +252,8 @@ so a plain `dotnet build` is unaffected and local iteration does not slow down.
 
 **Implemented.**
 
-The repository is public and carries the MIT licence, the same as Bravo, and the installer
-presents the same terms. This was confirmed deliberately rather than inherited: the licence
+The repository is public and carries the MIT license, the same as Bravo, and the installer
+presents the same terms. This was confirmed deliberately rather than inherited: the license
 text was copied from Bravo early on, and shipping it unexamined would have granted rights
 nobody had decided to grant.
 

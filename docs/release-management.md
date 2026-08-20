@@ -94,7 +94,7 @@ not be hand-edited.
 powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\build-assets.ps1
 ```
 
-Colours live in two places that must be changed together: the SVG, and
+Colors live in two places that must be changed together: the SVG, and
 `tools/AssetGenerator/Program.cs`.
 
 ---

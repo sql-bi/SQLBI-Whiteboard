@@ -206,7 +206,7 @@ Assert(
     placed[1].X == 10 + 400 + ImportLayout.Gap && placed[1].Y == 20 &&
     placed[2].X == 10 && placed[2].Y > placed[0].Bottom &&
     placed[4].Y > placed[3].Y,
-    "Flow layout should pack left to right, honour a forced row, and wrap on max width.");
+    "Flow layout should pack left to right, honor a forced row, and wrap on max width.");
 Assert(
     ImportLayout.ImageSize(1800, 1400) is { Width: 900, Height: 700 },
     "Imported images should use the same 900 by 700 cap as a dropped image.");

@@ -23,7 +23,7 @@ internal enum DaxTokenKind
 }
 
 /// <summary>A comment. Block comments written on a single line can stay inline; the rest cannot.</summary>
-/// <param name="Start">Offset in the source, so the code can be coloured without a second scan.</param>
+/// <param name="Start">Offset in the source, so the code can be colored without a second scan.</param>
 internal sealed record DaxComment(string Text, bool IsBlock, int Start);
 
 internal sealed class DaxToken
