@@ -14,18 +14,17 @@ Background reading, in this order:
 
 The delivery chain works end to end: a merge to `main` builds, signs, and publishes a
 pre-release to GitHub Releases, and one approval promotes that same build to a release.
-<https://whiteboard.sqlbi.com> resolves its download links at load time and needs no edit
-per release. The current product version is `VersionPrefix` in `Directory.Build.props`
+<https://whiteboard.sqlbi.com> reads its download links from the release manifest
+deployed beside it and needs no edit per release. The current product version is `VersionPrefix` in `Directory.Build.props`
 (0.9.3). Identity version for the Store package is `VersionPrefix.0` (`0.9.3.0`).
 
 What 1.0 was waiting on is in the product: Preferences, `.wimport`, Explorer and VS Code
 previews, the public documentation site, and Finger drawing (default when no pen is
 detected). The Store listing was submitted by hand on 20 August 2026 for 0.9.2.
 
-Four items remain. Item 1 is a launch asset; items 2 to 4 are the distribution automation
-[docs/release-management.md](docs/release-management.md) also lists. Take 3 before 4, since
-winget should read the manifests rather than parse release assets. Item 2 depends on
-neither and can be picked up at any time.
+Three items remain. The release manifests and the winget workflow are built and
+described in [docs/release-management.md](docs/release-management.md); what is left of
+winget is account setup nothing in a repository can do for itself.
 
 ## 1. Video teaser
 
@@ -74,24 +73,20 @@ Store availability is uneven on managed corporate machines, which is why the MSI
 stays the primary route rather than a fallback (decision 10). Nothing links to the Store
 until certification completes.
 
-## 3. Release manifests
+## 3. winget account setup
 
-Publish `stable.json` and `dev.json` alongside the binaries on each release. Neither exists
-yet.
+`scripts/build-release-manifests.ps1` and `.github/workflows/publish-winget.yml` are
+built and need no further work. Two things have to be done once, by hand, before the
+workflow can succeed:
 
-Three consumers want the same answer to "what is the newest build, and where is it": the
-download page, which currently resolves links by calling the GitHub releases API from the
-browser on every visit; a future in-app update check; and winget automation. Each one
-inventing its own source is how they drift apart.
+1. Submit `installer/winget/` to microsoft/winget-pkgs once. `wingetcreate update` reads
+   the previous version's manifests from that repository, so it cannot make the first
+   submission. `PackageIdentifier` is `SQLBI.Whiteboard`, which the first accepted pull
+   request reserves.
+2. Add a `WINGET_TOKEN` repository secret: a classic PAT with `public_repo`, owned by the
+   account that will carry the fork of microsoft/winget-pkgs. `wingetcreate` opens the pull
+   request as that account, so the token is an identity rather than only a permission.
+   `GITHUB_TOKEN` cannot stand in: it has no rights outside this repository.
 
-This comes first because item 4 depends on it. The page's API fallback stays regardless, so
-a manifest that fails to publish cannot take the downloads down with it.
-
-## 4. winget submission
-
-Add a winget manifest and submit it from a published release, the same way the Store
-submission runs beside the release rather than gating it (decision 13).
-
-winget reaches the developer audience that will not visit a landing page, and unlike the
-Store it is usually available on managed corporate machines, where Store access is uneven
-(decision 10). It should read the manifests from item 3 rather than parse release assets.
+Until both are done the workflow fails on every release, which is visible and harmless -
+it runs beside the release and gates nothing.

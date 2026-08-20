@@ -125,10 +125,18 @@ HTML, not generated from this README.
 `main`. `site/CNAME` carries the custom domain so it survives each deployment. Asset paths
 are relative, so the page also works from the project-site URL before the domain resolves.
 
-Download links are resolved in the browser from the GitHub releases API, because the
-installer file name carries the version and cannot be hard-coded. Without scripting, or if
-the API is unreachable, every link falls back to the releases page. Until a stable release
-exists the page offers the newest pre-release and says so.
+Download links are resolved at load time, because the installer file name carries the
+version and cannot be hard-coded. The page reads `stable.json`, a release manifest
+generated into the same deployment by `scripts/build-release-manifests.ps1`, so an
+ordinary visit makes no API call. It falls back to the GitHub releases API when no stable
+release is published, which is also the only source that can describe a pre-release to a
+browser: `github.com` release-asset URLs send no CORS header, so a manifest attached to a
+release cannot be read from a page. Without scripting, or if both fail, every link stays
+pointing at the releases page.
+
+`stable.json` and `dev.json` are the same manifests the winget submission and any future
+in-app update check read. They are generated per deployment, not committed. The schema is
+in [docs/release-management.md](docs/release-management.md).
 
 ## Application
 

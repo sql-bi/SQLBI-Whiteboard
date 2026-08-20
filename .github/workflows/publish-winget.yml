@@ -1,0 +1,153 @@
+# Submits a released version to the Windows Package Manager repository.
+#
+# winget reaches the audience that never visits a landing page, and unlike the Microsoft
+# Store it is normally available on managed corporate machines, where Store access is
+# uneven (decision 10).
+#
+# This runs beside the release rather than inside it, for the same reason the Store
+# submission does (decision 13): a submission is a pull request against
+# microsoft/winget-pkgs, it is reviewed by people, and it can sit for days. Nothing about
+# the download being available may depend on it. A failure here is visible as a failed run
+# and changes nothing that has already shipped.
+#
+# One-time setup, in this order:
+#
+#   1. Submit installer/winget/ to microsoft/winget-pkgs by hand, once. `wingetcreate
+#      update` below needs a previous version to read, so it cannot make the first
+#      submission. From a Windows machine with the manifests checked out:
+#
+#          winget install Microsoft.WingetCreate
+#          wingetcreate submit --token <pat> installer/winget
+#
+#   2. Add a WINGET_TOKEN repository secret: a classic PAT with the public_repo scope,
+#      owned by the account that will carry the fork of microsoft/winget-pkgs.
+#      wingetcreate forks that repository and opens the pull request as this account, so
+#      the token is an identity, not just a permission. It is not GITHUB_TOKEN: that has
+#      no rights outside this repository.
+name: Publish to winget
+
+on:
+  release:
+    types: [published]
+  # Re-submitting a release whose first attempt failed, or catching one published before
+  # this workflow existed, without cutting a new release to do it.
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Release tag to submit (default: the latest released version)'
+        required: false
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: winget
+  cancel-in-progress: false
+
+jobs:
+  submit:
+    name: Submit to winget-pkgs
+    # Pre-releases are the Dev channel, which installs as a separate product so a tester
+    # can run it beside a released copy. Only the released channel belongs in a package
+    # manager. github.event.release is absent on workflow_dispatch, so the guard has to
+    # allow that case through explicitly.
+    if: github.event_name == 'workflow_dispatch' || github.event.release.prerelease == false
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Resolve the release
+        id: release
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+          EVENT_TAG: ${{ github.event.release.tag_name }}
+          INPUT_TAG: ${{ inputs.tag }}
+        run: |
+          $ErrorActionPreference = 'Stop'
+          Set-StrictMode -Version Latest
+
+          $tag = if ($env:INPUT_TAG) { $env:INPUT_TAG } elseif ($env:EVENT_TAG) { $env:EVENT_TAG } else { '' }
+          if ($tag) {
+              $release = gh release view $tag --json tagName,isPrerelease,assets | ConvertFrom-Json
+          }
+          else {
+              # --exclude-pre-releases is what makes "latest" mean the released channel.
+              $tag = (gh release list --limit 1 --exclude-pre-releases --json tagName |
+                  ConvertFrom-Json).tagName
+              if (-not $tag) { throw 'No released version has been published yet.' }
+              $release = gh release view $tag --json tagName,isPrerelease,assets | ConvertFrom-Json
+          }
+
+          if ($release.isPrerelease) {
+              throw "$tag is a pre-release. Only the released channel is submitted to winget."
+          }
+
+          $version = $release.tagName -replace '^v', ''
+          if ($version -notmatch '^\d+\.\d+\.\d+$') {
+              throw "Expected a major.minor.patch tag, but '$($release.tagName)' gives '$version'."
+          }
+
+          # The two installers winget offers, machine scope first so the order matches the
+          # manifest. Anything framework-dependent is a pipeline artifact, not a download.
+          $perMachine = $release.assets |
+              Where-Object { $_.name -like '*.msi' -and $_.name -notlike '*userinstaller*' -and $_.name -notlike '*frameworkdependent*' -and $_.name -notlike '*-dev*' } |
+              Select-Object -First 1
+          $perUser = $release.assets |
+              Where-Object { $_.name -like '*userinstaller.msi' -and $_.name -notlike '*frameworkdependent*' -and $_.name -notlike '*-dev*' } |
+              Select-Object -First 1
+
+          if (-not $perMachine) { throw "$tag has no per-machine installer." }
+          if (-not $perUser) { throw "$tag has no per-user installer." }
+
+          # wingetcreate reads metadata appended to a URL as <url>|<architecture>|<scope>.
+          # Both are given rather than letting it infer: with one trailing field it has to
+          # guess which of the two was meant, and the two installers here differ only by
+          # scope.
+          $base = "https://github.com/$env:GITHUB_REPOSITORY/releases/download/$tag"
+          "version=$version" >> $env:GITHUB_OUTPUT
+          "tag=$tag" >> $env:GITHUB_OUTPUT
+          "urls=$base/$($perMachine.name)|x64|machine $base/$($perUser.name)|x64|user" >> $env:GITHUB_OUTPUT
+
+          Write-Host "Submitting $version from $tag"
+          Write-Host "  $($perMachine.name)"
+          Write-Host "  $($perUser.name)"
+
+      - name: Check the submission token is present
+        shell: pwsh
+        env:
+          WINGET_TOKEN: ${{ secrets.WINGET_TOKEN }}
+        run: |
+          if (-not $env:WINGET_TOKEN) {
+              throw 'WINGET_TOKEN is not set. See the setup notes at the top of this workflow.'
+          }
+
+      # wingetcreate downloads each installer, computes its own SHA256, and reads the
+      # ProductCode out of the MSI. The hashes in installer/winget/ are the seed for the
+      # first submission only; from here they are derived from the bytes being submitted,
+      # so a mismatch is impossible rather than merely unlikely.
+      - name: Submit the update
+        shell: pwsh
+        env:
+          WINGET_TOKEN: ${{ secrets.WINGET_TOKEN }}
+          VERSION: ${{ steps.release.outputs.version }}
+          URLS: ${{ steps.release.outputs.urls }}
+        run: |
+          $ErrorActionPreference = 'Stop'
+          Set-StrictMode -Version Latest
+
+          $exe = Join-Path $env:RUNNER_TEMP 'wingetcreate.exe'
+          Invoke-WebRequest -Uri 'https://aka.ms/wingetcreate/latest' -OutFile $exe
+
+          # $urls, not @urls: the @ prefix is splatting, which applies to cmdlets. A plain
+          # array passed to a native command already expands to one argument per element.
+          $urls = $env:URLS -split ' '
+          & $exe update SQLBI.Whiteboard `
+              --version $env:VERSION `
+              --urls $urls `
+              --submit `
+              --token $env:WINGET_TOKEN
+          if ($LASTEXITCODE -ne 0) {
+              throw "wingetcreate exited with $LASTEXITCODE. If this is the first submission, installer/winget/ has to be submitted by hand once before update can work."
+          }

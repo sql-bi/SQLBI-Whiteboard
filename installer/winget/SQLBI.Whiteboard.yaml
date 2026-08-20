@@ -1,0 +1,14 @@
+# yaml-language-server: $schema=https://aka.ms/winget-manifest.version.1.6.0.schema.json
+#
+# The seed manifests for the first submission to microsoft/winget-pkgs. After that first
+# PR is merged, .github/workflows/publish-winget.yml keeps the package current with
+# `wingetcreate update`, which reads the previous version's manifests from winget-pkgs
+# rather than these files.
+#
+# They are kept here anyway: a submission is a pull request against someone else's
+# repository, and the version of it that was sent needs to be reviewable in this one.
+PackageIdentifier: SQLBI.Whiteboard
+PackageVersion: 0.9.2
+DefaultLocale: en-US
+ManifestType: version
+ManifestVersion: 1.6.0
