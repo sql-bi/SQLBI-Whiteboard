@@ -243,9 +243,24 @@ It runs beside the release rather than inside it, for the reason the Store submi
 by people, and it can sit for days. Nothing about the download being available depends on
 it.
 
-Two one-time steps are outstanding, and until both are done the workflow fails on every
-release. They are listed in [TODO.md](../TODO.md): the first submission by hand, and a
-`WINGET_TOKEN` secret.
+The first submission was made by hand on 20 August 2026, which reserved the
+`SQLBI.Whiteboard` identifier. Everything after it is the workflow's job.
+
+`WINGET_TOKEN` is a repository secret holding a GitHub personal access token, and the
+workflow cannot succeed without it. Two constraints on that token are easy to get wrong:
+
+- It must be a **classic** token. `wingetcreate` does not support fine-grained tokens, and
+  fine-grained is what GitHub offers first now.
+- The scope is `public_repo`, not full `repo` - winget-pkgs and the fork are both public.
+  Adding `delete_repo` lets `wingetcreate` clean up the fork it created when a submission
+  fails, rather than leaving one behind each time.
+
+`wingetcreate` forks winget-pkgs and opens the pull request as whoever owns the token, so
+it is an identity rather than only a permission, and `GITHUB_TOKEN` cannot stand in.
+
+Locally, `wingetcreate` needs no token at all: run it without `--token` and it uses a
+browser OAuth flow, which is what its own documentation recommends, because a token on the
+command line ends up in shell history.
 
 ### Still to build
 

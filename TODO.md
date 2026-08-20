@@ -22,9 +22,9 @@ What 1.0 was waiting on is in the product: Preferences, `.wimport`, Explorer and
 previews, the public documentation site, and Finger drawing (default when no pen is
 detected). The Store listing was submitted by hand on 20 August 2026 for 0.9.2.
 
-Three items remain. The release manifests and the winget workflow are built and
-described in [docs/release-management.md](docs/release-management.md); what is left of
-winget is account setup nothing in a repository can do for itself.
+Two items remain. The release manifests and winget are done: the manifests are live at
+<https://whiteboard.sqlbi.com/stable.json>, and the first winget submission is in review.
+Both are described in [docs/release-management.md](docs/release-management.md).
 
 ## 1. Video teaser
 
@@ -73,20 +73,14 @@ Store availability is uneven on managed corporate machines, which is why the MSI
 stays the primary route rather than a fallback (decision 10). Nothing links to the Store
 until certification completes.
 
-## 3. winget account setup
+## Waiting on the first winget submission
 
-`scripts/build-release-manifests.ps1` and `.github/workflows/publish-winget.yml` are
-built and need no further work. Two things have to be done once, by hand, before the
-workflow can succeed:
+Not work, but the reason winget is not finished yet.
+[microsoft/winget-pkgs#421386](https://github.com/microsoft/winget-pkgs/pull/421386)
+submits `SQLBI.Whiteboard` 0.9.2 and is in review. Nothing in this repository depends on
+it: the workflow that keeps the package current afterwards is already in place, and the
+token it needs is set.
 
-1. Submit `installer/winget/` to microsoft/winget-pkgs once. `wingetcreate update` reads
-   the previous version's manifests from that repository, so it cannot make the first
-   submission. `PackageIdentifier` is `SQLBI.Whiteboard`, which the first accepted pull
-   request reserves.
-2. Add a `WINGET_TOKEN` repository secret: a classic PAT with `public_repo`, owned by the
-   account that will carry the fork of microsoft/winget-pkgs. `wingetcreate` opens the pull
-   request as that account, so the token is an identity rather than only a permission.
-   `GITHUB_TOKEN` cannot stand in: it has no rights outside this repository.
-
-Until both are done the workflow fails on every release, which is visible and harmless -
-it runs beside the release and gates nothing.
+Until that pull request merges, `.github/workflows/publish-winget.yml` fails on every
+release, because `wingetcreate update` has no previous version to read. That failure is
+visible and gates nothing.
