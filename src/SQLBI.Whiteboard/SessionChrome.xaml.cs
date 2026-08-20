@@ -46,6 +46,14 @@ public partial class SessionChrome : UserControl
 
     public event Action? ViewOpened;
 
+    public event Action<string>? UpdateDownloadRequested;
+
+    public event Action<string>? UpdateDismissed;
+
+    public bool IsUpdateNoticeVisible => UpdateNotice.Visibility == Visibility.Visible;
+
+    private string? _offeredUpdateVersion;
+
     public bool IsCommandRowOpen => CommandHost.Visibility == Visibility.Visible;
 
     public void Collapse()
@@ -301,6 +309,37 @@ public partial class SessionChrome : UserControl
             'A' when HelpRow.Visibility == Visibility.Visible => SessionCommand.About,
             _ => null,
         };
+
+    public void ShowUpdateNotice(string version)
+    {
+        _offeredUpdateVersion = version;
+        UpdateNoticeText.Text = "SQLBI Whiteboard " + version + " is available.";
+        UpdateNotice.Visibility = Visibility.Visible;
+    }
+
+    public void HideUpdateNotice()
+    {
+        _offeredUpdateVersion = null;
+        UpdateNotice.Visibility = Visibility.Collapsed;
+    }
+
+    private void UpdateDownloadButton_Click(object sender, RoutedEventArgs e)
+    {
+        if (_offeredUpdateVersion is { } version)
+        {
+            UpdateDownloadRequested?.Invoke(version);
+        }
+    }
+
+    private void UpdateDismissButton_Click(object sender, RoutedEventArgs e)
+    {
+        var version = _offeredUpdateVersion;
+        HideUpdateNotice();
+        if (version is not null)
+        {
+            UpdateDismissed?.Invoke(version);
+        }
+    }
 
     private IEnumerable<Button> VisibleCommands()
     {

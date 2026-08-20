@@ -3,7 +3,7 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         Title="About SQLBI Whiteboard"
         Width="420"
-        Height="320"
+        Height="348"
         ResizeMode="NoResize"
         WindowStartupLocation="CenterOwner"
         ShowInTaskbar="False"
@@ -47,6 +47,17 @@
             <Hyperlink NavigateUri="https://whiteboard.sqlbi.com"
                        RequestNavigate="SiteLink_RequestNavigate">
                 whiteboard.sqlbi.com
+            </Hyperlink>
+        </TextBlock>
+        <TextBlock x:Name="UpdateAvailable"
+                   Margin="0,8,0,0"
+                   FontFamily="Segoe UI"
+                   FontSize="13"
+                   Foreground="#FF1F2937"
+                   Visibility="Collapsed">
+            <Hyperlink NavigateUri="https://whiteboard.sqlbi.com/#get"
+                       RequestNavigate="SiteLink_RequestNavigate">
+                <Run x:Name="UpdateAvailableRun" />
             </Hyperlink>
         </TextBlock>
         <Button Width="88"

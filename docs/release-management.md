@@ -225,6 +225,18 @@ than having to interpret an empty manifest.
 The download page reads `stable.json` first and falls back to the API, so it makes no API
 call at all on an ordinary visit.
 
+The in-app update check reads the same files, one a day at most, and picks the file by
+channel: a released copy asks `stable.json`, a pre-release copy asks `dev.json`. That
+second half is the reason these are published beside the site rather than attached to a
+release - `releases/latest/download/` resolves only to the newest full release, so a
+manifest published that way cannot describe the pre-release channel at all. If the site
+cannot be reached the check falls back to reading the newest release tag from GitHub,
+which is a floor rather than an answer but never reports a stale "up to date".
+
+Versions in the manifest are compared on `major.minor.patch` only; the `-dev.<build>`
+suffix is deliberately ignored, so a pre-release copy is told about the next version
+rather than about every rebuild of its own.
+
 ### winget
 
 `.github/workflows/publish-winget.yml` submits a released version to

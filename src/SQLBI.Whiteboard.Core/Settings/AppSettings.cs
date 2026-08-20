@@ -1,6 +1,7 @@
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using SQLBI.Whiteboard.Core.Model;
+using SQLBI.Whiteboard.Core.Updates;
 
 namespace SQLBI.Whiteboard.Core.Settings;
 
@@ -94,11 +95,21 @@ public sealed class AppSettings
         InkToolSettings.From(InkPalettes.DefaultCalligraphy);
 
     public LaserSettings Laser { get; set; } = new();
+
+    public bool CheckForUpdates { get; set; } = true;
+
+    public DateTimeOffset? LastUpdateCheckUtc { get; set; }
+
+    public string? LatestKnownVersion { get; set; }
+
+    public string? LastDismissedVersion { get; set; }
+
+    public string? UpdateCheckETag { get; set; }
 }
 
 public static class AppSettingsSerializer
 {
-    public const int CurrentVersion = 9;
+    public const int CurrentVersion = 10;
 
     private static readonly JsonSerializerOptions JsonOptions = new()
     {
@@ -198,7 +209,24 @@ public static class AppSettingsSerializer
         settings.Calligraphy = InkPalettes.Normalize(settings.Calligraphy, PenKind.Calligraphy);
         settings.Laser = LaserSettings.Normalize(settings.Laser);
         settings.SnippetFormatOrder = [.. TextLanguageIds.NormalizeOrder(settings.SnippetFormatOrder)];
+        settings.LatestKnownVersion = NormalizeVersionId(settings.LatestKnownVersion);
+        settings.LastDismissedVersion = NormalizeVersionId(settings.LastDismissedVersion);
+        if (string.IsNullOrWhiteSpace(settings.UpdateCheckETag))
+        {
+            settings.UpdateCheckETag = null;
+        }
+
         settings.Version = CurrentVersion;
         return settings;
+    }
+
+    private static string? NormalizeVersionId(string? value)
+    {
+        if (!UpdateVersion.TryParse(value, out var version))
+        {
+            return null;
+        }
+
+        return UpdateVersion.Format(version);
     }
 }

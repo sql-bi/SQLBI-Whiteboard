@@ -1,8 +1,8 @@
 using System.Diagnostics;
-using System.Reflection;
 using System.Windows;
 using System.Windows.Input;
 using System.Windows.Navigation;
+using SQLBI.Whiteboard.Core.Updates;
 
 namespace SQLBI.Whiteboard;
 
@@ -12,7 +12,9 @@ public partial class AboutWindow : Window
     {
         InitializeComponent();
         ProductTitle.Text = "SQLBI Whiteboard" + AppChannel.WindowTitleSuffix;
-        VersionLabel.Text = "Version " + ReadVersion();
+        var version = AppVersion.Informational;
+        VersionLabel.Text = "Version " + version;
+        ShowUpdateLink(version);
     }
 
     private void CloseButton_Click(object sender, RoutedEventArgs e) => Close();
@@ -35,17 +37,25 @@ public partial class AboutWindow : Window
         e.Handled = true;
     }
 
-    private static string ReadVersion()
+    private void ShowUpdateLink(string current)
     {
-        var informational = typeof(AboutWindow).Assembly
-            .GetCustomAttribute<AssemblyInformationalVersionAttribute>()
-            ?.InformationalVersion;
-        if (!string.IsNullOrWhiteSpace(informational))
+        if (StorePackage.IsStoreInstall)
         {
-            var plus = informational.IndexOf('+', StringComparison.Ordinal);
-            return plus < 0 ? informational : informational[..plus];
+            return;
         }
 
-        return typeof(AboutWindow).Assembly.GetName().Version?.ToString(3) ?? "0.9.1";
+        var settings = AppSettingsStore.Load();
+        if (!settings.CheckForUpdates ||
+            !UpdateVersion.IsNewer(current, settings.LatestKnownVersion) ||
+            string.Equals(
+                settings.LastDismissedVersion,
+                settings.LatestKnownVersion,
+                StringComparison.Ordinal))
+        {
+            return;
+        }
+
+        UpdateAvailable.Visibility = Visibility.Visible;
+        UpdateAvailableRun.Text = "Version " + settings.LatestKnownVersion + " is available.";
     }
 }

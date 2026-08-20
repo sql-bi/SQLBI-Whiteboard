@@ -6,6 +6,7 @@ using SQLBI.Whiteboard.Core.Import;
 using SQLBI.Whiteboard.Core.Model;
 using SQLBI.Whiteboard.Core.Persistence;
 using SQLBI.Whiteboard.Core.Settings;
+using SQLBI.Whiteboard.Core.Updates;
 using SQLBI.Whiteboard.Core.Viewport;
 using SQLBI.Whiteboard.Dax;
 using SQLBI.Whiteboard.SqlServer;
@@ -657,8 +658,33 @@ Assert(
     defaultSettings.StartupMonitor == StartupMonitorKind.WacomIfPresent &&
     defaultSettings.StartupMonitorName is null &&
     !defaultSettings.StartFullScreen &&
-    defaultSettings.FingerMode == FingerMode.WhenNoPen,
-    "Missing settings should default to Wacom-if-present, a windowed start, and finger drawing when no pen is detected.");
+    defaultSettings.FingerMode == FingerMode.WhenNoPen &&
+    defaultSettings.CheckForUpdates,
+    "Missing settings should default to Wacom-if-present, a windowed start, finger drawing when no pen is detected, and update checks on.");
+Assert(
+    UpdateVersion.ReadManifestVersion("{ \"version\": \"v0.9.3\" }") == "0.9.3",
+    "stable.json should accept a leading v and keep three parts.");
+Assert(
+    UpdateVersion.ReadManifestVersion("{ \"version\": \"0.9.2-dev.3234\" }") == "0.9.2",
+    "Pre-release suffixes on a manifest version should be ignored.");
+Assert(
+    UpdateVersion.ReadManifestVersion("{ \"version\": \"nope\" }") is null &&
+    UpdateVersion.ReadManifestVersion("not json") is null,
+    "Unknown or malformed manifests should be ignored.");
+Assert(
+    UpdateVersion.IsNewer("0.9.2", "0.9.3") &&
+    !UpdateVersion.IsNewer("0.9.3", "0.9.3") &&
+    !UpdateVersion.IsNewer("0.9.3", "0.9.2") &&
+    !UpdateVersion.IsNewer("0.9.3+abc", "0.9.2"),
+    "A newer three-part version should notify; equal or older should not.");
+Assert(
+    AppSettingsSerializer.Parse("{ \"checkForUpdates\": false }") is
+    { CheckForUpdates: false },
+    "A saved opt-out of update checks should still load.");
+Assert(
+    AppSettingsSerializer.Parse("{ \"latestKnownVersion\": \"v1.2.3-dev\", \"lastDismissedVersion\": \"nope\" }") is
+    { LatestKnownVersion: "1.2.3", LastDismissedVersion: null },
+    "Stored update versions should normalize or drop.");
 Assert(
     AppSettingsSerializer.Parse("{ \"startupMonitor\": \"Sideways\" }").StartupMonitor ==
     StartupMonitorKind.WacomIfPresent,

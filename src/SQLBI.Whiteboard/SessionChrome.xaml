@@ -363,5 +363,46 @@
                     </StackPanel>
                 </Grid>
         </Border>
+
+        <Border x:Name="UpdateNotice"
+                Background="{StaticResource ToolbarBackgroundBrush}"
+                BorderBrush="{StaticResource ToolbarBorderBrush}"
+                BorderThickness="0,0,0,1"
+                Padding="12,6,8,6"
+                Visibility="Collapsed">
+            <DockPanel LastChildFill="True">
+                <StackPanel DockPanel.Dock="Right"
+                            Orientation="Horizontal"
+                            VerticalAlignment="Center">
+                    <Button x:Name="UpdateDownloadButton"
+                            Padding="10,4"
+                            Margin="8,0,0,0"
+                            Background="Transparent"
+                            BorderThickness="0"
+                            FontFamily="Segoe UI"
+                            FontSize="13"
+                            Foreground="{StaticResource ToolbarAccentBrush}"
+                            Cursor="Hand"
+                            Click="UpdateDownloadButton_Click"
+                            Content="Download" />
+                    <Button Padding="10,4"
+                            Margin="4,0,0,0"
+                            Background="Transparent"
+                            BorderThickness="0"
+                            FontFamily="Segoe UI"
+                            FontSize="13"
+                            Foreground="#FF4B5563"
+                            Cursor="Hand"
+                            Click="UpdateDismissButton_Click"
+                            Content="Not now" />
+                </StackPanel>
+                <TextBlock x:Name="UpdateNoticeText"
+                           VerticalAlignment="Center"
+                           FontFamily="Segoe UI"
+                           FontSize="13"
+                           Foreground="#FF1F2937"
+                           TextTrimming="CharacterEllipsis" />
+            </DockPanel>
+        </Border>
     </StackPanel>
 </UserControl>

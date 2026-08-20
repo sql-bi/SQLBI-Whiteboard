@@ -302,7 +302,12 @@ public partial class PreferencesWindow : Window
         var button = new ToggleButton
         {
             Style = (Style)FindResource("SettingsSwitch"),
-            IsChecked = setting.Id == SettingsCatalog.Ids.StartFullScreen && _settings.StartFullScreen,
+            IsChecked = setting.Id switch
+            {
+                SettingsCatalog.Ids.StartFullScreen => _settings.StartFullScreen,
+                SettingsCatalog.Ids.CheckForUpdates => _settings.CheckForUpdates,
+                _ => false,
+            },
         };
         button.Checked += (_, _) => SetBoolean(setting, true);
         button.Unchecked += (_, _) => SetBoolean(setting, false);
@@ -466,12 +471,24 @@ public partial class PreferencesWindow : Window
 
     private void SetBoolean(SettingDescriptor setting, bool value)
     {
-        if (_suppressChange || setting.Id != SettingsCatalog.Ids.StartFullScreen)
+        if (_suppressChange)
         {
             return;
         }
 
-        _settings.StartFullScreen = value;
+        if (setting.Id == SettingsCatalog.Ids.StartFullScreen)
+        {
+            _settings.StartFullScreen = value;
+        }
+        else if (setting.Id == SettingsCatalog.Ids.CheckForUpdates)
+        {
+            _settings.CheckForUpdates = value;
+        }
+        else
+        {
+            return;
+        }
+
         NotifyApplied();
     }
 
