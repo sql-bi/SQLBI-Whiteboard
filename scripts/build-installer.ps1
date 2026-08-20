@@ -167,7 +167,7 @@ foreach ($channel in ($Variants | ForEach-Object { $_.Split('/')[0] } | Sort-Obj
     # The released channel has no marker: its absence is what identifies it.
     $marker = Join-Path $assetsFolder "channel-$channel.txt"
     if (Test-Path $marker) {
-        # Staged and added afterwards rather than copied into the publish folder, which is
+        # Staged and added afterward rather than copied into the publish folder, which is
         # shared between channels and, in the pipeline, already signed.
         $staging = Join-Path $outputFolder ".marker-$channel"
         New-Item -ItemType Directory -Path $staging -Force | Out-Null

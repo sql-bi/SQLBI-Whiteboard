@@ -9,6 +9,7 @@ using System.Windows.Input;
 using System.Windows.Interop;
 using System.Windows.Media;
 using System.Windows.Media.Effects;
+using System.Windows.Shell;
 using System.Windows.Threading;
 using ICSharpCode.AvalonEdit.Document;
 using Microsoft.Win32;
@@ -106,6 +107,8 @@ public partial class MainWindow : Window
     private AppSettings _settings = new();
 
     private const double ChevronInkOptionsWidth = 240;
+    private const double SessionTabHeight = 32;
+    private const double ToolPaletteInset = 16;
     private WindowState _windowStateBeforeFullScreen;
     private WindowStyle _windowStyleBeforeFullScreen;
     private ResizeMode _resizeModeBeforeFullScreen;
@@ -2814,6 +2817,7 @@ public partial class MainWindow : Window
             or ToolbarPlacement.BottomRight
             or ToolbarPlacement.BottomCenter;
         DockPanel.SetDock(ToolChrome, isBottom ? Dock.Bottom : Dock.Top);
+        ApplySessionTabRow();
     }
 
     private void ApplyToolPaletteChrome()
@@ -4283,8 +4287,10 @@ public partial class MainWindow : Window
         SessionBar.Collapse();
         if (mode == SessionChromeMode.Windowed)
         {
-            RestoreWindowedChrome();
             _chromeMode = SessionChromeMode.Windowed;
+            WindowChrome.SetWindowChrome(this, null);
+            ApplySessionTabRow();
+            RestoreWindowedChrome();
             return;
         }
 
@@ -4297,6 +4303,14 @@ public partial class MainWindow : Window
         SessionBar.Visibility = Visibility.Collapsed;
         WindowStyle = WindowStyle.None;
         ResizeMode = ResizeMode.NoResize;
+        WindowChrome.SetWindowChrome(this, new WindowChrome
+        {
+            CaptionHeight = 0,
+            ResizeBorderThickness = new Thickness(0),
+            GlassFrameThickness = new Thickness(0),
+            CornerRadius = new CornerRadius(0),
+            UseAeroCaptionButtons = false,
+        });
         if (mode == SessionChromeMode.FullScreen)
         {
             MonitorStartupPlacement.FillCurrentMonitor(this);
@@ -4307,6 +4321,26 @@ public partial class MainWindow : Window
         }
 
         _chromeMode = mode;
+        ApplySessionTabRow();
+    }
+
+    private void ApplySessionTabRow()
+    {
+        var windowed = _chromeMode == SessionChromeMode.Windowed;
+        SessionTabRow.Height = windowed
+            ? new GridLength(SessionTabHeight)
+            : new GridLength(0);
+
+        // Measured from the window top so full screen keeps the same 16px
+        // inset the palette has from the tab strip in a windowed session.
+        var top = windowed && ToolPalette.VerticalAlignment == VerticalAlignment.Top
+            ? SessionTabHeight + ToolPaletteInset
+            : ToolPaletteInset;
+        ToolPalette.Margin = new Thickness(
+            ToolPaletteInset,
+            top,
+            ToolPaletteInset,
+            ToolPaletteInset);
     }
 
     private void SnapshotWindowedChrome()

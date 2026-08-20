@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Guide · SQLBI Whiteboard</title>
-<meta name="description" content="How to use SQLBI Whiteboard in a live session: ink, containers, LiveView, DAX and SQL, and board files.">
+<meta name="description" content="How to use SQLBI Whiteboard in a live session: ink, containers, LiveView, SQL and DAX, and board files.">
 <link rel="icon" href="favicon.ico" sizes="any">
 <link rel="icon" href="favicon-32.png" type="image/png" sizes="32x32">
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
@@ -47,9 +47,150 @@
     <h2>In a session</h2>
 
     <section class="story">
+      <h3>Pick up the pen</h3>
+      <p>There is nothing to set up. A new board opens on the <span class="ui">Pen</span>, and a stroke lands wherever you put it: on the canvas, or over a chart, a screenshot, or a block of code already sitting there. The stroke records pressure, so it keeps the weight you gave it.</p>
+      <p>The <span class="ui">Highlighter</span> is translucent. It marks the one line you are about to talk about without covering it, which a solid stroke cannot do. Each tool remembers its own color and thickness, so moving between them never costs you a setting. While the pen is down, touch is suspended, and a hand resting on the glass does not pan the board.</p>
+      <p><a href="#ink">Ink and tools</a> has the rest of the palette.</p>
+
+      <figure class="fig">
+        <div class="figbox">
+          <svg viewBox="0 0 700 262" role="img" aria-label="A query on the board with a pen loop drawn around a clause and a translucent highlighter band laid over one line, next to a legend naming the two tools.">
+            <title>The pen and the highlighter</title>
+            <defs>
+              <radialGradient id="f11fade" cx="0.4" cy="0.45" r="0.8"><stop offset="0.25" stop-color="#fff"/><stop offset="1" stop-color="#000"/></radialGradient>
+              <mask id="f11mask"><rect width="700" height="262" fill="url(#f11fade)"/></mask>
+              <pattern id="f11grid" width="34" height="34" patternUnits="userSpaceOnUse"><path d="M34 0H0v34" fill="none" stroke="var(--fig-grid)" stroke-width="1"/></pattern>
+            </defs>
+            <rect width="700" height="262" rx="10" fill="var(--fig-ground)"/>
+            <rect width="700" height="262" fill="url(#f11grid)" mask="url(#f11mask)"/>
+
+            <g transform="translate(40 44)">
+              <rect width="360" height="188" rx="12" fill="var(--fig-surface)" stroke="var(--fig-line)"/>
+              <path d="M0 12A12 12 0 0 1 12 0h336a12 12 0 0 1 12 12v22H0Z" fill="var(--fig-surface-2)"/>
+              <text x="14" y="22" font-size="12.5" font-weight="620" fill="var(--fig-ink)">Margin by category</text>
+              <rect x="306" y="7" width="40" height="19" rx="9.5" fill="var(--fig-surface)" stroke="var(--fig-line)"/>
+              <text x="326" y="21" font-size="11" fill="var(--fig-muted)" text-anchor="middle">SQL</text>
+              <path class="f11-hi" pathLength="100" d="M70 83h195" fill="none" stroke="#FACC15" stroke-opacity=".42" stroke-width="18" stroke-linecap="round"/>
+              <g font-family="Cascadia Mono, Consolas, monospace" font-size="12.5">
+                <text x="14" y="64" fill="#0B6FB8">SELECT</text>
+                <text x="66" y="64" fill="var(--fig-ink)">c.Category,</text>
+                <text x="66" y="88" fill="#0B6FB8">SUM</text>
+                <text x="89" y="88" fill="var(--fig-ink)">(s.Amount) -</text>
+                <text x="186" y="88" fill="#0B6FB8">SUM</text>
+                <text x="209" y="88" fill="var(--fig-ink)">(s.Cost)</text>
+                <text x="14" y="112" fill="#0B6FB8">FROM</text>
+                <text x="52" y="112" fill="var(--fig-ink)">Sales s</text>
+                <text x="14" y="136" fill="#0B6FB8">JOIN</text>
+                <text x="52" y="136" fill="var(--fig-ink)">Category c ON c.Id = s.CatId</text>
+                <text x="14" y="160" fill="#0B6FB8">GROUP BY</text>
+                <text x="82" y="160" fill="var(--fig-ink)">c.Category</text>
+              </g>
+              <path class="f11-ink" pathLength="100" d="M6 160c0-9 18-15 80-15 62 0 80 6 80 14 0 8-18 14-80 14-62 0-80-6-80-13z" fill="none" stroke="var(--brand)" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"/>
+            </g>
+
+            <g transform="translate(440 66)" fill="var(--fig-muted)"><path d="M4.5 2.75a.75.75 0 0 0-1.5 0v3.5C3 7.22 3.78 8 4.75 8h.27l4.03 8.97c.2.45.59.79 1.04.94a5.79 5.79 0 0 0 .27 3.01c.3.6.83 1.08 1.64 1.08.8 0 1.35-.48 1.64-1.08a5.79 5.79 0 0 0 .27-3.01c.45-.15.83-.49 1.04-.94L18.98 8h.27C20.22 8 21 7.22 21 6.25v-3.5a.75.75 0 0 0-1.5 0v3.5c0 .14-.11.25-.25.25H4.75a.25.25 0 0 1-.25-.25v-3.5ZM6.66 8h10.68l-3.76 8.35a.25.25 0 0 1-.23.15h-2.7a.25.25 0 0 1-.23-.15L6.66 8Zm4.95 10h.78c.07.26.11.6.11 1 0 .57-.08 1-.21 1.26-.1.22-.2.24-.29.24-.1 0-.18-.02-.29-.24A3.03 3.03 0 0 1 11.5 19c0-.4.04-.74.11-1Z"/></g>
+            <text x="476" y="82" font-size="13" font-weight="620" fill="var(--fig-ink)">Pen</text>
+            <rect x="510" y="72" width="11" height="11" rx="3" fill="#E64B3D"/>
+            <text x="440" y="106" font-size="11.5" fill="var(--fig-muted)">pressure, and its own color</text>
+
+            <g transform="translate(440 150)" fill="var(--fig-muted)"><path d="M20.26 2c.38 0 .7.29.74.65v4.6c0 1.16-.87 2.11-2 2.24v2.26c0 1.19-.92 2.16-2.1 2.24h-.4v2.8c0 .81-.44 1.56-1.14 1.96l-.15.08-6.64 3.1a.75.75 0 0 1-1.06-.58V14h-.26c-1.2 0-2.17-.93-2.24-2.1L5 11.75V9.49A2.25 2.25 0 0 1 3 7.4V2.75a.75.75 0 0 1 1.5-.1v4.6c0 .38.28.7.65.74l.1.01h13.5c.38 0 .7-.28.75-.65v-4.6c0-.41.34-.75.76-.75ZM15 14H9v6.07l5.57-2.6c.23-.11.39-.33.42-.57l.01-.11v-2.8Zm2.5-4.5h-11v2.25c0 .38.28.69.65.74h9.6c.38 0 .7-.28.75-.64V9.5Z"/></g>
+            <text x="476" y="166" font-size="13" font-weight="620" fill="var(--fig-ink)">Highlighter</text>
+            <rect x="556" y="156" width="11" height="11" rx="3" fill="#FACC15"/>
+            <text x="440" y="190" font-size="11.5" fill="var(--fig-muted)">marks a line without hiding it</text>
+          </svg>
+        </div>
+        <figcaption>
+          <p>The pen loop is an ordinary stroke on the board, drawn straight over the code.</p>
+          <p>The highlighter band is translucent, so the line it marks is still the line everyone reads.</p>
+        </figcaption>
+      </figure>
+    </section>
+
+    <section class="story">
       <h3>Pin a live demo without leaving the board</h3>
       <p>Add a LiveView of DAX Studio, SSMS, or a browser. When the query result is the thing you want to keep talking about, copy the LiveView and paste. The paste is a still bitmap of the last frame, a screenshot that stays on the board while you keep drawing.</p>
       <p><span class="ui">Freeze</span> the original LiveView if you want that same container to stay put and resume later. <span class="ui">Disconnect</span> if you want the last frame with no live controls; only <span class="ui">Reconnect</span> brings a feed back. <span class="ui">Reconnect</span> after you reload a board: Windows cannot save the capture permission, so the saved frame appears immediately and <span class="ui">Reconnect</span> restores the live feed. The <a href="#liveview">states are drawn below</a>.</p>
+
+      <figure class="fig">
+        <div class="figbox">
+          <svg viewBox="0 0 700 260" role="img" aria-label="A LiveView of Power BI whose numbers keep changing, and beside it the pasted copy, a still image of the frame that was copied, with ink drawn over it.">
+            <title>Copying a LiveView gives a still frame</title>
+            <defs>
+              <radialGradient id="f12fade" cx="0.5" cy="0.45" r="0.85"><stop offset="0.25" stop-color="#fff"/><stop offset="1" stop-color="#000"/></radialGradient>
+              <mask id="f12mask"><rect width="700" height="260" fill="url(#f12fade)"/></mask>
+              <pattern id="f12grid" width="34" height="34" patternUnits="userSpaceOnUse"><path d="M34 0H0v34" fill="none" stroke="var(--fig-grid)" stroke-width="1"/></pattern>
+            </defs>
+            <rect width="700" height="260" rx="10" fill="var(--fig-ground)"/>
+            <rect width="700" height="260" fill="url(#f12grid)" mask="url(#f12mask)"/>
+
+            <g transform="translate(20 48)">
+              <rect width="280" height="180" rx="12" fill="var(--fig-surface)" stroke="var(--fig-accent)" stroke-width="1.6"/>
+              <path d="M0 12A12 12 0 0 1 12 0h256a12 12 0 0 1 12 12v22H0Z" fill="var(--fig-surface-2)"/>
+              <text x="14" y="22" font-size="12.5" font-weight="620" fill="var(--fig-ink)">Power BI</text>
+              <rect x="212" y="7" width="54" height="19" rx="9.5" fill="var(--fig-surface)" stroke="var(--fig-accent)"/>
+              <circle cx="224" cy="16.5" r="3.5" fill="var(--fig-accent)"/>
+              <text x="234" y="21" font-size="11" fill="var(--fig-accent)">Live</text>
+              <text x="16" y="58" font-size="11" fill="var(--fig-muted)">Category</text>
+              <text x="264" y="58" font-size="11" fill="var(--fig-muted)" text-anchor="end">Margin</text>
+              <path d="M16 66h248" stroke="var(--fig-line)" stroke-width="1"/>
+              <g font-size="12" fill="var(--fig-ink)">
+                <text x="16" y="90">Audio</text>
+                <text x="16" y="112">Cameras</text>
+                <text x="16" y="134">Computers</text>
+                <text x="16" y="156">TV and Video</text>
+              </g>
+              <g class="f12-a" font-size="12" fill="var(--fig-ink)" text-anchor="end" font-family="Cascadia Mono, Consolas, monospace">
+                <text x="264" y="90">18.4%</text>
+                <text x="264" y="112">22.1%</text>
+                <text x="264" y="134">15.9%</text>
+                <text x="264" y="156">27.3%</text>
+              </g>
+              <g class="f12-b" font-size="12" fill="var(--fig-ink)" text-anchor="end" font-family="Cascadia Mono, Consolas, monospace">
+                <text x="264" y="90">18.9%</text>
+                <text x="264" y="112">21.6%</text>
+                <text x="264" y="134">16.4%</text>
+                <text x="264" y="156">26.8%</text>
+              </g>
+            </g>
+
+            <g fill="none" stroke="var(--fig-muted)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" opacity=".75">
+              <path d="M318 152h44"/><path d="M356 146l7 6-7 6"/>
+            </g>
+            <g font-size="11.5" fill="var(--fig-muted)" text-anchor="middle">
+              <text x="340" y="122">Copy,</text>
+              <text x="340" y="137">then Paste</text>
+            </g>
+
+            <g transform="translate(380 48)">
+              <rect width="280" height="180" rx="12" fill="var(--fig-surface)" stroke="var(--fig-line)"/>
+              <path d="M0 12A12 12 0 0 1 12 0h256a12 12 0 0 1 12 12v22H0Z" fill="var(--fig-surface-2)"/>
+              <text x="14" y="22" font-size="12.5" font-weight="620" fill="var(--fig-ink)">Power BI</text>
+              <rect x="196" y="7" width="70" height="19" rx="9.5" fill="var(--fig-surface)" stroke="var(--fig-line)"/>
+              <text x="231" y="21" font-size="11" fill="var(--fig-muted)" text-anchor="middle">Still image</text>
+              <text x="16" y="58" font-size="11" fill="var(--fig-muted)">Category</text>
+              <text x="264" y="58" font-size="11" fill="var(--fig-muted)" text-anchor="end">Margin</text>
+              <path d="M16 66h248" stroke="var(--fig-line)" stroke-width="1"/>
+              <g font-size="12" fill="var(--fig-ink)">
+                <text x="16" y="90">Audio</text>
+                <text x="16" y="112">Cameras</text>
+                <text x="16" y="134">Computers</text>
+                <text x="16" y="156">TV and Video</text>
+              </g>
+              <g font-size="12" fill="var(--fig-ink)" text-anchor="end" font-family="Cascadia Mono, Consolas, monospace">
+                <text x="264" y="90">18.4%</text>
+                <text x="264" y="112">22.1%</text>
+                <text x="264" y="134">15.9%</text>
+                <text x="264" y="156">27.3%</text>
+              </g>
+              <path class="f12-ink" pathLength="100" d="M220 155c-2-11 12-16 28-16 16 0 26 5 25 13-1 8-13 13-28 13-13 0-24-4-25-10z" fill="none" stroke="var(--brand)" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"/>
+            </g>
+          </svg>
+        </div>
+        <figcaption>
+          <p>The LiveView keeps following its window, so its numbers move on without you.</p>
+          <p>The paste is a bitmap of the frame you copied. It holds that result still, and takes ink like any other picture.</p>
+        </figcaption>
+      </figure>
     </section>
 
     <section class="story">
@@ -102,19 +243,118 @@
             <text x="334" y="92.5" font-size="12.5" font-weight="620" fill="var(--fig-ground)" text-anchor="middle">2</text>
           </svg>
         </div>
-        <figcaption><span class="swatch" style="background:var(--brand)"></span><b>1</b> sits wholly inside the chart container, so it travels with it &mdash; the dashed outline is where the container was. <span class="swatch" style="background:var(--fig-muted)"></span><b>2</b> crosses into the notes container, so it stays on the canvas.</figcaption>
+        <figcaption>
+          <p><span class="swatch" style="background:var(--brand)"></span><b>1</b> sits wholly inside the chart container, so it travels with it. The dashed outline is where the container was.</p>
+          <p><span class="swatch" style="background:var(--fig-muted)"></span><b>2</b> crosses into the notes container, so it stays on the canvas.</p>
+        </figcaption>
       </figure>
     </section>
 
     <section class="story">
-      <h3>Explain a measure</h3>
-      <p>Paste DAX, or drop a <code>.dax</code> file. Use the title-bar chip to switch to DAX, press <kbd>F2</kbd> then <kbd>F6</kbd> to format it locally, then draw on the container. The same path works for SQL Server scripts with <code>.sql</code> files and <kbd>F6</kbd>.</p>
-      <p>In edit mode the text reflows as you change the width. In display mode a resize scales the whole visual, like a picture of the code, so the room still sees the layout you just formatted.</p>
+      <h3>Explain code</h3>
+      <p>Paste SQL or DAX, or drop a <code>.sql</code> or <code>.dax</code> file. Use the title-bar chip to set the language, press <kbd>F2</kbd> then <kbd>F6</kbd> to format it locally, then draw on the container.</p>
+      <p><kbd>F2</kbd> moves the container into edit mode. <kbd>Ctrl</kbd><span class="plus">+</span><kbd>Enter</kbd> goes back to display mode and keeps the changes. <kbd>Escape</kbd> also goes back to display mode, but cancels the changes and restores the text, language, and size the container had before.</p>
+      <p>The two modes resize differently. In edit mode the text reflows as you change the width, so a long line wraps onto more lines at the same size. In display mode a resize scales the whole visual, like a picture of the code, so the room still sees the layout you just formatted.</p>
+
+      <figure class="fig">
+        <div class="figbox">
+          <svg viewBox="0 0 700 390" role="img" aria-label="The same SQL script narrowed twice: in edit mode the lines rewrap at the same text size, and in display mode the whole block is scaled down instead.">
+            <title>Reflow in edit mode, scaling in display mode</title>
+            <rect width="700" height="390" rx="10" fill="var(--fig-ground)"/>
+            <g fill="none" stroke="var(--fig-muted)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" opacity=".7">
+              <path d="M316 94h58"/><path d="M368 88l7 6-7 6"/>
+              <path d="M316 316h58"/><path d="M368 310l7 6-7 6"/>
+            </g>
+            <g font-size="11.5" fill="var(--fig-muted)" text-anchor="middle">
+              <text x="345" y="76">narrower</text>
+              <text x="345" y="298">narrower</text>
+            </g>
+            <text x="24" y="28" font-size="13" font-weight="620" fill="var(--fig-ink)">Edit mode</text>
+            <text x="106" y="28" font-size="12" fill="var(--fig-muted)">the lines rewrap, the text keeps its size</text>
+            <text x="24" y="250" font-size="13" font-weight="620" fill="var(--fig-ink)">Display mode</text>
+            <text x="118" y="250" font-size="12" fill="var(--fig-muted)">the block scales, the line breaks stay put</text>
+            <path d="M24 214h652" stroke="var(--fig-line)" stroke-width="1"/>
+
+            <g transform="translate(52 44)">
+              <rect width="252" height="100" rx="12" fill="var(--fig-surface)" stroke="var(--fig-line)"/>
+              <path d="M0 12A12 12 0 0 1 12 0h228a12 12 0 0 1 12 12v22H0Z" fill="var(--fig-surface-2)"/>
+              <text x="14" y="22" font-size="12" font-weight="620" fill="var(--fig-ink)">Top categories</text>
+              <rect x="198" y="7" width="40" height="19" rx="9.5" fill="var(--fig-surface)" stroke="var(--fig-line)"/>
+              <text x="218" y="21" font-size="11" fill="var(--fig-muted)" text-anchor="middle">SQL</text>
+              <g font-family="Cascadia Mono, Consolas, monospace" font-size="11.5">
+                <text x="14" y="60" fill="#0B6FB8">SELECT</text>
+                <text x="59" y="60" fill="var(--fig-ink)">Category, SUM(Amount)</text>
+                <text x="14" y="82" fill="#0B6FB8">FROM</text>
+                <text x="49" y="82" fill="var(--fig-ink)">Sales</text>
+                <text x="91" y="82" fill="#0B6FB8">GROUP BY</text>
+                <text x="154" y="82" fill="var(--fig-ink)">Category</text>
+              </g>
+            </g>
+
+            <g class="f7-b">
+              <g transform="translate(396 44)">
+                <rect width="170" height="144" rx="12" fill="var(--fig-surface)" stroke="var(--fig-line)"/>
+                <path d="M0 12A12 12 0 0 1 12 0h146a12 12 0 0 1 12 12v22H0Z" fill="var(--fig-surface-2)"/>
+                <text x="14" y="22" font-size="12" font-weight="620" fill="var(--fig-ink)">Top categories</text>
+                <rect x="116" y="7" width="40" height="19" rx="9.5" fill="var(--fig-surface)" stroke="var(--fig-line)"/>
+                <text x="136" y="21" font-size="11" fill="var(--fig-muted)" text-anchor="middle">SQL</text>
+                <g font-family="Cascadia Mono, Consolas, monospace" font-size="11.5">
+                  <text x="14" y="60" fill="#0B6FB8">SELECT</text>
+                  <text x="59" y="60" fill="var(--fig-ink)">Category,</text>
+                  <text x="28" y="82" fill="var(--fig-ink)">SUM(Amount)</text>
+                  <text x="14" y="104" fill="#0B6FB8">FROM</text>
+                  <text x="49" y="104" fill="var(--fig-ink)">Sales</text>
+                  <text x="28" y="126" fill="#0B6FB8">GROUP BY</text>
+                  <text x="91" y="126" fill="var(--fig-ink)">Category</text>
+                </g>
+              </g>
+            </g>
+
+            <g transform="translate(52 266)">
+              <rect width="252" height="100" rx="12" fill="var(--fig-surface)" stroke="var(--fig-line)"/>
+              <path d="M0 12A12 12 0 0 1 12 0h228a12 12 0 0 1 12 12v22H0Z" fill="var(--fig-surface-2)"/>
+              <text x="14" y="22" font-size="12" font-weight="620" fill="var(--fig-ink)">Top categories</text>
+              <rect x="198" y="7" width="40" height="19" rx="9.5" fill="var(--fig-surface)" stroke="var(--fig-line)"/>
+              <text x="218" y="21" font-size="11" fill="var(--fig-muted)" text-anchor="middle">SQL</text>
+              <g font-family="Cascadia Mono, Consolas, monospace" font-size="11.5">
+                <text x="14" y="60" fill="#0B6FB8">SELECT</text>
+                <text x="59" y="60" fill="var(--fig-ink)">Category, SUM(Amount)</text>
+                <text x="14" y="82" fill="#0B6FB8">FROM</text>
+                <text x="49" y="82" fill="var(--fig-ink)">Sales</text>
+                <text x="91" y="82" fill="#0B6FB8">GROUP BY</text>
+                <text x="154" y="82" fill="var(--fig-ink)">Category</text>
+              </g>
+            </g>
+
+            <g class="f7-d">
+              <g transform="translate(396 282) scale(0.68)">
+                <rect width="252" height="100" rx="12" fill="var(--fig-surface)" stroke="var(--fig-line)"/>
+                <path d="M0 12A12 12 0 0 1 12 0h228a12 12 0 0 1 12 12v22H0Z" fill="var(--fig-surface-2)"/>
+                <text x="14" y="22" font-size="12" font-weight="620" fill="var(--fig-ink)">Top categories</text>
+                <rect x="198" y="7" width="40" height="19" rx="9.5" fill="var(--fig-surface)" stroke="var(--fig-line)"/>
+                <text x="218" y="21" font-size="11" fill="var(--fig-muted)" text-anchor="middle">SQL</text>
+                <g font-family="Cascadia Mono, Consolas, monospace" font-size="11.5">
+                  <text x="14" y="60" fill="#0B6FB8">SELECT</text>
+                  <text x="59" y="60" fill="var(--fig-ink)">Category, SUM(Amount)</text>
+                  <text x="14" y="82" fill="#0B6FB8">FROM</text>
+                  <text x="49" y="82" fill="var(--fig-ink)">Sales</text>
+                  <text x="91" y="82" fill="#0B6FB8">GROUP BY</text>
+                  <text x="154" y="82" fill="var(--fig-ink)">Category</text>
+                </g>
+              </g>
+            </g>
+          </svg>
+        </div>
+        <figcaption>
+          <p>In edit mode the width decides where the lines break, and the code stays at reading size.</p>
+          <p>In display mode the same block is scaled as one picture, so the formatting you just applied survives the resize.</p>
+        </figcaption>
+      </figure>
     </section>
 
     <section class="story">
       <h3>Talk to the room</h3>
-      <p>The laser pointer is for the projector, not for the file. The trail length and fade live in <span class="ui">Preferences</span>. A pen in the air shows a small high-contrast hover dot; the dot disappears on contact so it never sits under the nib. A physical mouse keeps a normal arrow.</p>
+      <p>The laser pointer is for the projector, not for the file. <span class="ui">Preferences</span> control the timing, not the shape: how long the trail stays fully visible after you lift, and how long it then takes to fade away. A pen in the air shows a small high-contrast hover dot; the dot disappears on contact so it never sits under the nib. A physical mouse keeps a normal arrow.</p>
 
       <figure class="fig">
         <div class="figbox">
@@ -161,7 +401,10 @@
             <text x="494" y="262" font-size="12.5" fill="var(--fig-muted)">the dot disappears</text>
           </svg>
         </div>
-        <figcaption>The laser fades behind the pointer and never touches the file. The pen carries a hover dot only while it is off the glass, so the marker never sits under the nib.</figcaption>
+        <figcaption>
+          <p>The laser fades behind the pointer and never touches the file.</p>
+          <p>The pen carries a hover dot only while it is off the glass, so the marker never sits under the nib.</p>
+        </figcaption>
       </figure>
     </section>
 
@@ -203,7 +446,7 @@
                   <text x="371" y="76" font-size="8.5" fill="var(--fig-muted)" text-anchor="end">DAX</text>
                   <g font-family="Cascadia Mono, Consolas, monospace" font-size="10">
                     <text x="250" y="106" fill="var(--brand-deep)">Total Sales</text>
-                    <text x="316" y="106" fill="var(--fig-ink)">:=</text>
+                    <text x="316" y="106" fill="var(--fig-ink)">=</text>
                     <text x="250" y="124" fill="#0B6FB8">SUM</text>
                     <text x="272" y="124" fill="var(--fig-ink)">( Sales[Amount] )</text>
                   </g>
@@ -219,14 +462,17 @@
             <rect x="14" y="14" width="672" height="224" rx="14" fill="none" stroke="var(--fig-line)"/>
           </svg>
         </div>
-        <figcaption>Double-click a container and it centers and scales until it fills the view. Double-click empty canvas instead and the frame widens until the whole board fits.</figcaption>
+        <figcaption>
+          <p>Double-click a container and it centers and scales until it fills the view.</p>
+          <p>Double-click empty canvas instead and the frame widens until the whole board fits.</p>
+        </figcaption>
       </figure>
     </section>
 
     <section class="story">
       <h3>Bring a workshop in</h3>
       <p>A <code>.wimport</code> file is Markdown that builds image and text containers. Drop it on an open board to add them under the pointer. <span class="ui">File → Open</span>, or a double-click in the released install, starts a new untitled board from the recipe. Save always writes a <code>.wboard</code>.</p>
-      <p>Missing pictures or scripts are skipped and listed in a dialog you can copy. The <a href="wimport.html">import format</a> is the contract for that file.</p>
+      <p>Missing pictures or scripts are skipped and listed in a dialog you can copy.<br>The <a href="wimport.html">import format</a> is the contract for that file.</p>
 
       <figure class="fig">
         <div class="figbox">
@@ -276,27 +522,114 @@
               <text x="514" y="132" font-size="12.5" fill="var(--fig-muted)">in the filter.</text>
             </g>
             <g class="f4-c">
-              <rect x="330" y="178" width="246" height="70" rx="12" fill="var(--fig-surface)" stroke="var(--fig-line)"/>
-              <path d="M330 190a12 12 0 0 1 12-12h222a12 12 0 0 1 12 12v18H330Z" fill="var(--fig-surface-2)"/>
-              <text x="344" y="197" font-size="12" font-weight="620" fill="var(--fig-ink)">Next step</text>
-              <rect x="344" y="220" width="150" height="8" rx="4" fill="var(--fig-muted)" opacity=".3"/>
-              <rect x="344" y="234" width="96" height="8" rx="4" fill="var(--fig-muted)" opacity=".3"/>
+              <rect x="306" y="178" width="246" height="70" rx="12" fill="var(--fig-surface)" stroke="var(--fig-line)"/>
+              <path d="M306 190a12 12 0 0 1 12-12h222a12 12 0 0 1 12 12v18H306Z" fill="var(--fig-surface-2)"/>
+              <text x="320" y="197" font-size="12" font-weight="620" fill="var(--fig-ink)">Next step</text>
+              <rect x="320" y="220" width="150" height="8" rx="4" fill="var(--fig-muted)" opacity=".3"/>
+              <rect x="320" y="234" width="96" height="8" rx="4" fill="var(--fig-muted)" opacity=".3"/>
             </g>
           </svg>
         </div>
-        <figcaption>Each heading, picture, and paragraph in the recipe becomes a container. Drop the file on an open board and they arrive under the pointer.</figcaption>
+        <figcaption>
+          <p>Each heading, picture, and paragraph in the recipe becomes a container.</p>
+          <p>Drop the file on an open board and they arrive under the pointer.</p>
+        </figcaption>
       </figure>
     </section>
 
     <section class="story">
       <h3>Keep boards next to the material they document</h3>
-      <p>Save writes a <code>preview.png</code> into the <code>.wboard</code> ZIP. Explorer shows that picture as the thumbnail in the released install. In a repository, install <a href="https://marketplace.visualstudio.com/items?itemName=sqlbi.sqlbi-whiteboard">SQLBI Whiteboard for VS Code</a> so opening the file shows the same picture instead of the archive. Boards saved before previews existed keep the document icon until you open and save them again.</p>
+      <p>A saved board carries a picture of itself, so you can tell one board from another without opening any of them. Windows Explorer shows that picture as the thumbnail.</p>
+      <p>VS Code shows it too, once <a href="https://marketplace.visualstudio.com/items?itemName=sqlbi.sqlbi-whiteboard">SQLBI Whiteboard for VS Code</a> is installed. VS Code offers that extension on its own the first time you open a folder holding a <code>.wboard</code> file, so a board checked in beside the material it explains stays readable in the editor.</p>
+
+      <figure class="fig">
+        <div class="figbox">
+          <svg viewBox="0 0 700 300" role="img" aria-label="A folder in Windows Explorer where each dot-wboard file shows a small picture of the board it holds, next to an ordinary file that shows only a document icon.">
+            <title>Boards in a folder</title>
+            <rect width="700" height="300" rx="10" fill="var(--fig-ground)"/>
+            <rect x="20" y="16" width="660" height="268" rx="12" fill="var(--fig-surface)" stroke="var(--fig-line)"/>
+            <path d="M20 28A12 12 0 0 1 32 16h636a12 12 0 0 1 12 12v32H20Z" fill="var(--fig-surface-2)"/>
+            <path d="M20 60h660" stroke="var(--fig-line)" stroke-width="1"/>
+            <g fill="none" stroke="var(--fig-muted)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" opacity=".8">
+              <path d="M46 33l-6 6 6 6"/>
+              <path d="M64 33l6 6-6 6"/>
+            </g>
+            <rect x="84" y="28" width="300" height="22" rx="6" fill="var(--fig-surface)" stroke="var(--fig-line)"/>
+            <text x="96" y="43" font-size="11" fill="var(--fig-muted)">Documents &gt; Contoso workshop</text>
+            <rect x="520" y="28" width="140" height="22" rx="6" fill="var(--fig-surface)" stroke="var(--fig-line)"/>
+            <g fill="none" stroke="var(--fig-muted)" stroke-width="1.5" stroke-linecap="round">
+              <circle cx="534" cy="37" r="4"/><path d="M537 40l4 4"/>
+            </g>
+            <text x="548" y="43" font-size="11" fill="var(--fig-muted)">Search</text>
+
+            <g transform="translate(44 84)">
+              <rect width="138" height="92" rx="6" fill="var(--fig-surface)" stroke="var(--fig-line)"/>
+              <g class="f8-a">
+                <g fill="var(--fig-muted)" opacity=".3">
+                  <rect x="24" y="52" width="12" height="22" rx="2"/>
+                  <rect x="42" y="44" width="12" height="30" rx="2"/>
+                  <rect x="78" y="48" width="12" height="26" rx="2"/>
+                  <rect x="96" y="38" width="12" height="36" rx="2"/>
+                </g>
+                <rect x="60" y="30" width="12" height="44" rx="2" fill="var(--brand)" opacity=".8"/>
+                <path d="M18 74h102" stroke="var(--fig-line)" stroke-width="1.5"/>
+                <path d="M52 22c22-5 33 6 29 27-4 20-30 25-39 13-8-11-1-29 9-35" fill="none" stroke="var(--brand)" stroke-width="2.6" stroke-linecap="round"/>
+              </g>
+            </g>
+            <g transform="translate(202 84)">
+              <rect width="138" height="92" rx="6" fill="var(--fig-surface)" stroke="var(--fig-line)"/>
+              <g class="f8-b">
+                <g fill="var(--fig-muted)" opacity=".3">
+                  <rect x="18" y="22" width="72" height="7" rx="3.5"/>
+                  <rect x="18" y="36" width="98" height="7" rx="3.5"/>
+                  <rect x="18" y="50" width="58" height="7" rx="3.5"/>
+                </g>
+                <path d="M22 76c26 6 62 1 88-18" fill="none" stroke="var(--brand)" stroke-width="2.6" stroke-linecap="round"/>
+                <path d="M98 52l13 4-3 13" fill="none" stroke="var(--brand)" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/>
+              </g>
+            </g>
+            <g transform="translate(360 84)">
+              <rect width="138" height="92" rx="6" fill="var(--fig-surface)" stroke="var(--fig-line)"/>
+              <g class="f8-c">
+                <rect x="18" y="20" width="102" height="46" rx="5" fill="var(--fig-surface-2)"/>
+                <g opacity=".55" fill="#0B6FB8">
+                  <rect x="26" y="30" width="32" height="6" rx="3"/>
+                  <rect x="26" y="46" width="24" height="6" rx="3"/>
+                </g>
+                <g opacity=".33" fill="var(--fig-muted)">
+                  <rect x="62" y="30" width="48" height="6" rx="3"/>
+                  <rect x="54" y="46" width="42" height="6" rx="3"/>
+                </g>
+                <path d="M22 62c30 6 62 3 90-4" fill="none" stroke="var(--brand)" stroke-width="2.6" stroke-linecap="round"/>
+              </g>
+            </g>
+            <g transform="translate(518 84)">
+              <rect width="138" height="92" rx="6" fill="var(--fig-surface-2)" stroke="var(--fig-line)"/>
+              <g transform="translate(50 27) scale(1.6)" fill="var(--fig-muted)" opacity=".45"><path d="M6 2a2 2 0 0 0-2 2v16c0 1.1.9 2 2 2h12a2 2 0 0 0 2-2V9.83a2 2 0 0 0-.59-1.42L13.6 2.6A2 2 0 0 0 12.17 2H6Zm-.5 2c0-.28.22-.5.5-.5h6V8c0 1.1.9 2 2 2h4.5v10a.5.5 0 0 1-.5.5H6a.5.5 0 0 1-.5-.5V4Zm11.88 4.5H14a.5.5 0 0 1-.5-.5V4.62l3.88 3.88Z"/></g>
+            </g>
+
+            <g font-size="11.5" fill="var(--fig-ink)" text-anchor="middle">
+              <text x="113" y="198">margin.wboard</text>
+              <text x="271" y="198">filters.wboard</text>
+              <text x="429" y="198">joins.wboard</text>
+              <text x="587" y="198">agenda.md</text>
+            </g>
+            <g font-size="10.5" fill="var(--fig-muted)" text-anchor="middle">
+              <text x="113" y="214">SQLBI Whiteboard</text>
+              <text x="271" y="214">SQLBI Whiteboard</text>
+              <text x="429" y="214">SQLBI Whiteboard</text>
+              <text x="587" y="214">Markdown file</text>
+            </g>
+          </svg>
+        </div>
+        <figcaption>A folder of boards reads like a contact sheet: the tile is the board, so you pick the right one without opening it.</figcaption>
+      </figure>
     </section>
 
     <h2>The board</h2>
 
-    <h3>Ink and tools</h3>
-    <p>The session starts on the <span class="ui">Pen</span>. Each tool keeps its own colour and thickness, so switching back returns you to the stroke you were using.</p>
+    <h3 id="ink">Ink and tools</h3>
+    <p>The session starts on the <span class="ui">Pen</span>. Each tool keeps its own color and thickness, so switching back returns you to the stroke you were using.</p>
 
     <div class="toolrows">
       <div class="toolrow">
@@ -305,14 +638,14 @@
         <span class="role">Records pressure. Where the session starts.</span>
       </div>
       <div class="toolrow">
+        <svg class="glyph" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M7.5 2.75a.75.75 0 0 0-1.5 0v3c0 .9.67 1.64 1.54 1.74l-1.01 2.5c-.41 1-.37 2.19.12 3.15l3.99 7.95c.28.56.8.91 1.36.91s1.08-.35 1.36-.91l4-7.95c.48-.96.52-2.14.11-3.15l-1.01-2.5c.87-.1 1.54-.84 1.54-1.74v-3a.75.75 0 0 0-1.5 0v3c0 .14-.11.25-.25.25h-8.5a.25.25 0 0 1-.25-.25v-3Zm7.34 4.75 1.24 3.06c.25.6.22 1.33-.07 1.9l-3.26 6.5V12.3a1.5 1.5 0 1 0-1.5 0v6.67l-3.26-6.5a2.37 2.37 0 0 1-.07-1.91L9.16 7.5h5.68Z"/></svg>
+        <span class="name">Calligraphy<span class="chip" style="background:#1F2937"></span></span>
+        <span class="role">A second stroke style, with a nib that responds to direction.</span>
+      </div>
+      <div class="toolrow">
         <svg class="glyph" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M20.26 2c.38 0 .7.29.74.65v4.6c0 1.16-.87 2.11-2 2.24v2.26c0 1.19-.92 2.16-2.1 2.24h-.4v2.8c0 .81-.44 1.56-1.14 1.96l-.15.08-6.64 3.1a.75.75 0 0 1-1.06-.58V14h-.26c-1.2 0-2.17-.93-2.24-2.1L5 11.75V9.49A2.25 2.25 0 0 1 3 7.4V2.75a.75.75 0 0 1 1.5-.1v4.6c0 .38.28.7.65.74l.1.01h13.5c.38 0 .7-.28.75-.65v-4.6c0-.41.34-.75.76-.75ZM15 14H9v6.07l5.57-2.6c.23-.11.39-.33.42-.57l.01-.11v-2.8Zm2.5-4.5h-11v2.25c0 .38.28.69.65.74h9.6c.38 0 .7-.28.75-.64V9.5Z"/></svg>
         <span class="name">Highlighter<span class="chip" style="background:#FACC15"></span></span>
         <span class="role">A translucent stroke for marking a line of DAX or a region of a chart without covering it.</span>
-      </div>
-      <div class="toolrow">
-        <svg class="glyph" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M7.5 2.75a.75.75 0 0 0-1.5 0v3c0 .9.67 1.64 1.54 1.74l-1.01 2.5c-.41 1-.37 2.19.12 3.15l3.99 7.95c.28.56.8.91 1.36.91s1.08-.35 1.36-.91l4-7.95c.48-.96.52-2.14.11-3.15l-1.01-2.5c.87-.1 1.54-.84 1.54-1.74v-3a.75.75 0 0 0-1.5 0v3c0 .14-.11.25-.25.25h-8.5a.25.25 0 0 1-.25-.25v-3Zm7.34 4.75 1.24 3.06c.25.6.22 1.33-.07 1.9l-3.26 6.5V12.3a1.5 1.5 0 1 0-1.5 0v6.67l-3.26-6.5a2.37 2.37 0 0 1-.07-1.91L9.16 7.5h5.68Z"/></svg>
-        <span class="name">Calligraphy<span class="chip" style="background:#1F2937"></span></span>
-        <span class="role">A nib that responds to direction, for labels and arrows that need to read from the back of the room.</span>
       </div>
       <div class="toolrow">
         <svg class="glyph" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 18a6 6 0 1 0 0-12 6 6 0 0 0 0 12Zm0-16a10 10 0 1 0 0 20 10 10 0 0 0 0-20ZM3.5 12a8.5 8.5 0 1 1 17 0 8.5 8.5 0 0 1-17 0Z"/></svg>
@@ -322,7 +655,7 @@
       <div class="toolrow">
         <svg class="glyph" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="m15.87 2.67 4.97 4.97c.88.88.88 2.3 0 3.18l-8.68 8.68h6.1c.37 0 .69.28.74.65v.1c0 .38-.28.7-.64.74l-.1.01H9.83a2.24 2.24 0 0 1-1.71-.65l-4.97-4.97a2.25 2.25 0 0 1 0-3.18l9.53-9.53c.88-.88 2.3-.88 3.18 0Zm-10.16 9.1-1.49 1.49c-.3.29-.3.76 0 1.06l4.97 4.96c.15.15.34.22.53.22h.07a.75.75 0 0 0 .46-.22l1.49-1.48-6.03-6.03Zm8.04-8.04L6.77 10.7l6.03 6.03 6.98-6.98c.29-.3.29-.77 0-1.06L14.8 3.73a.75.75 0 0 0-1.06 0Z"/></svg>
         <span class="name">Eraser</span>
-        <span class="role">Removes whole strokes. The rear eraser on a Wacom pen does the same without switching tools.</span>
+        <span class="role">Removes whole strokes. The eraser end of a pen does the same.</span>
       </div>
       <div class="toolrow">
         <svg class="glyph" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M15.28 6.03c-.3.3-.77.3-1.06 0l-1.47-1.47v3.69a.75.75 0 0 1-1.5 0V4.56L9.78 6.03a.75.75 0 0 1-1.06-1.06l2.75-2.75a.75.75 0 0 1 1.06 0l2.75 2.75c.3.3.3.77 0 1.06Zm-9.25 8.19a.75.75 0 1 1-1.06 1.06l-2.75-2.75a.75.75 0 0 1 0-1.06l2.75-2.75a.75.75 0 0 1 1.06 1.06l-1.47 1.47h3.69a.75.75 0 0 1 0 1.5H4.56l1.47 1.47Zm11.94 1.06a.75.75 0 0 1 0-1.06l1.47-1.47h-3.69a.75.75 0 0 1 0-1.5h3.69l-1.47-1.47a.75.75 0 0 1 1.06-1.06l2.75 2.75a.75.75 0 0 1 0 1.06l-2.75 2.75c-.3.3-.77.3-1.06 0Zm-2.69 2.69a.75.75 0 0 0-1.06 0l-1.47 1.47v-3.69a.75.75 0 0 0-1.5 0v3.69l-1.47-1.47a.75.75 0 0 0-1.06 1.06l2.75 2.75a.75.75 0 0 0 1.06 0l2.75-2.75c.3-.3.3-.77 0-1.06Z"/></svg>
@@ -356,10 +689,10 @@
     <p>Images, LiveViews, and text blocks are containers. With a mouse, click to move, drag the circular handle to resize while keeping aspect ratio. Releasing the mouse returns to the drawing tool you had. Imported images accept PNG, JPEG, BMP, and GIF, including clipboard paste and Explorer drag-and-drop.</p>
     <p><span class="ui">View → Bring to front</span> and <span class="ui">View → Send to back</span> reorder the selected container and its linked strokes. Strokes cannot be reordered on their own.</p>
 
-    <h3>Text, DAX, and SQL</h3>
+    <h3>Text, SQL, and DAX</h3>
     <p>Paste prefers an image when the clipboard has one, including a file SnagIt or another capture tool left on the clipboard. Paste plain text to create a selected text container.</p>
-    <p><span class="ui">Help → Preferences</span> sets Snippet format order: paste tries those languages from top to bottom. Plain text always matches, so putting it first keeps paste as plain text. Use the title-bar chip to choose Plain text, DAX, or SQL Server afterwards.</p>
-    <p><kbd>F2</kbd> edits the selected container, and double-click still centers it and fits it to the canvas. <kbd>F6</kbd> formats DAX or SQL locally. SQL Server mode targets SQL Server 2025 T-SQL, keeps <code>GO</code> batch separators, and leaves an invalid script unchanged. <kbd>Ctrl</kbd><span class="plus">+</span><kbd>Enter</kbd> commits; <kbd>Escape</kbd> restores the previous text, language, and size.</p>
+    <p><span class="ui">Help → Preferences</span> sets Snippet format order: paste tries those languages from top to bottom. Plain text always matches, so putting it first keeps paste as plain text. Use the title-bar chip to choose Plain text, SQL Server, or DAX afterward.</p>
+    <p><kbd>F2</kbd> edits the selected container, and double-click still centers it and fits it to the canvas. <kbd>F6</kbd> formats SQL or DAX locally. SQL Server mode targets SQL Server 2025 T-SQL, keeps <code>GO</code> batch separators, and leaves an invalid script unchanged. <kbd>Ctrl</kbd><span class="plus">+</span><kbd>Enter</kbd> commits; <kbd>Escape</kbd> restores the previous text, language, and size.</p>
 
     <h3 id="liveview">LiveView</h3>
     <p><span class="ui">View → LiveView</span> captures a window or a display. The container behaves like an image: move, resize, frame, delete, undo.</p>
@@ -421,11 +754,66 @@
           </g>
         </svg>
       </div>
-      <figcaption><span class="ui">Freeze</span> stops capture on the last frame and can resume the same target. <span class="ui">Disconnect</span> releases the target, keeps the last frame, and hides the on-frame controls &mdash; <span class="ui">Reconnect</span> is then the only way back to a live feed. Copying a LiveView and pasting gives a still bitmap that was never connected to anything.</figcaption>
+      <figcaption><span class="ui">Freeze</span> stops capture on the last frame and can resume the same target. <span class="ui">Disconnect</span> releases the target, keeps the last frame, and hides the on-frame controls. <span class="ui">Reconnect</span> is then the only way back to a live feed. Copying a LiveView and pasting gives a still bitmap that was never connected to anything.</figcaption>
     </figure>
 
     <h3>Files</h3>
-    <p><kbd>Ctrl</kbd><span class="plus">+</span><kbd>S</kbd> and <kbd>Ctrl</kbd><span class="plus">+</span><kbd>O</kbd> save and open a <code>.wboard</code>. The released installer registers that type and <code>.wimport</code>. The pre-release (Dev) channel does not, so it can sit beside a released copy without stealing the file association.</p>
+    <p>The <span class="ui">File</span> row holds four commands: <span class="ui">New</span>, <span class="ui">Open</span>, <span class="ui">Save</span>, and <span class="ui">Save As</span>. <kbd>Ctrl</kbd><span class="plus">+</span><kbd>S</kbd> and <kbd>Ctrl</kbd><span class="plus">+</span><kbd>O</kbd> save and open a <code>.wboard</code> without opening the row at all.</p>
+    <p>The released installer registers that type and <code>.wimport</code>. The pre-release (Dev) channel does not, so it can sit beside a released copy without stealing the file association.</p>
+
+    <figure class="fig">
+      <div class="figbox">
+        <svg viewBox="0 0 740 200" role="img" aria-label="The File tab open over the canvas, showing New, Open, Save and Save As, with a pointer moving from one command to the next.">
+          <title>The File row</title>
+          <defs>
+            <radialGradient id="f9fade" cx="0.5" cy="0.4" r="0.8"><stop offset="0.3" stop-color="#fff"/><stop offset="1" stop-color="#000"/></radialGradient>
+            <mask id="f9mask"><rect x="6" y="102" width="728" height="92" fill="url(#f9fade)"/></mask>
+            <pattern id="f9grid" width="34" height="34" patternUnits="userSpaceOnUse"><path d="M34 0H0v34" fill="none" stroke="rgba(21,23,28,.055)" stroke-width="1"/></pattern>
+            <clipPath id="f9clip"><rect x="6" y="6" width="728" height="188" rx="14"/></clipPath>
+          </defs>
+          <rect width="740" height="200" rx="10" fill="var(--fig-ground)"/>
+          <g clip-path="url(#f9clip)">
+            <rect x="6" y="6" width="728" height="188" fill="#FFFFFF"/>
+            <rect x="6" y="102" width="728" height="92" fill="url(#f9grid)" mask="url(#f9mask)"/>
+            <g transform="translate(40 122)">
+              <rect width="224" height="58" rx="10" fill="#FAFAFB" stroke="#E2E4E9"/>
+              <rect x="14" y="16" width="122" height="8" rx="4" fill="#D3D7DF"/>
+              <rect x="14" y="34" width="176" height="8" rx="4" fill="#D3D7DF"/>
+            </g>
+            <rect x="6" y="6" width="728" height="32" fill="#F9F9F9"/>
+            <rect x="18" y="10" width="46" height="24" rx="6" fill="rgba(37,99,235,.10)"/>
+            <rect x="18" y="33" width="46" height="2.5" fill="#2563EB"/>
+            <g font-size="13" fill="#374151" text-anchor="middle">
+              <text x="41" y="27" font-weight="600">File</text><text x="88" y="27">Edit</text><text x="137" y="27">View</text><text x="186" y="27">Help</text>
+            </g>
+            <rect x="6" y="38" width="728" height="64" fill="#F9F9F9"/>
+            <rect x="6" y="101" width="728" height="1" fill="rgba(0,0,0,.14)"/>
+            <g class="f9-walk">
+              <rect x="26" y="42" width="74" height="56" rx="8" fill="rgba(37,99,235,.10)"/>
+            </g>
+            <g fill="#374151">
+              <g transform="translate(54 48) scale(0.75)"><path d="M6 2a2 2 0 0 0-2 2v16c0 1.1.9 2 2 2h12a2 2 0 0 0 2-2V9.83a2 2 0 0 0-.59-1.42L13.6 2.6A2 2 0 0 0 12.17 2H6Zm-.5 2c0-.28.22-.5.5-.5h6V8c0 1.1.9 2 2 2h4.5v10a.5.5 0 0 1-.5.5H6a.5.5 0 0 1-.5-.5V4Zm11.88 4.5H14a.5.5 0 0 1-.5-.5V4.62l3.88 3.88Z"/></g>
+              <g transform="translate(136 48) scale(0.75)"><path d="M3.5 6.25c0-.97.78-1.75 1.75-1.75h2.88c.2 0 .39.08.53.22l2.06 2.06c.14.14.33.22.53.22h5.5c.97 0 1.75.78 1.75 1.75 0 .09.01.17.04.25H8.72c-1.34 0-2.58.71-3.25 1.87L3.5 14.28V6.25ZM2 17.79A3.25 3.25 0 0 0 5.25 21h11.04c1.33 0 2.57-.72 3.24-1.88l3.03-5.25A3.25 3.25 0 0 0 19.96 9a.75.75 0 0 0 .04-.25c0-1.8-1.45-3.25-3.25-3.25h-5.19L9.72 3.66c-.42-.42-1-.66-1.6-.66H5.26A3.25 3.25 0 0 0 2 6.25V17.79Zm6.72-7.3h11.03a1.75 1.75 0 0 1 1.51 2.63l-3.03 5.25c-.4.7-1.14 1.13-1.95 1.13H5.25a1.75 1.75 0 0 1-1.51-2.63l3.03-5.25c.4-.7 1.14-1.12 1.95-1.12Z"/></g>
+              <g transform="translate(218 48) scale(0.75)"><path d="M3 5.75A2.75 2.75 0 0 1 5.75 3h9.96c.87 0 1.7.34 2.3.95L20.05 6c.6.6.95 1.43.95 2.3v9.96A2.75 2.75 0 0 1 18.25 21H5.75A2.75 2.75 0 0 1 3 18.25V5.75ZM5.75 4.5c-.69 0-1.25.56-1.25 1.25v12.5c0 .69.56 1.25 1.25 1.25H6v-5.25C6 13.01 7 12 8.25 12h7.5c1.24 0 2.25 1 2.25 2.25v5.25h.25c.69 0 1.25-.56 1.25-1.25V8.29c0-.47-.18-.91-.51-1.24L16.95 5c-.26-.26-.6-.43-.95-.49v2.73c0 1.24-1 2.25-2.25 2.25h-4.5C8.01 9.5 7 8.5 7 7.25V4.5H5.75Zm10.75 15v-5.25a.75.75 0 0 0-.75-.75h-7.5a.75.75 0 0 0-.75.75v5.25h9Zm-8-15v2.75c0 .41.34.75.75.75h4.5c.41 0 .75-.34.75-.75V4.5h-6Z"/></g>
+              <g transform="translate(300 48) scale(0.75)"><path d="M3 5.75A2.75 2.75 0 0 1 5.75 3h9.96c.87 0 1.7.34 2.3.95L20.05 6c.6.6.95 1.43.95 2.3v9.96A2.75 2.75 0 0 1 18.25 21H5.75A2.75 2.75 0 0 1 3 18.25V5.75ZM5.75 4.5c-.69 0-1.25.56-1.25 1.25v12.5c0 .69.56 1.25 1.25 1.25H6v-5.25C6 13.01 7 12 8.25 12h7.5c1.24 0 2.25 1 2.25 2.25v5.25h.25c.69 0 1.25-.56 1.25-1.25V8.29c0-.47-.18-.91-.51-1.24L16.95 5c-.26-.26-.6-.43-.95-.49v2.73c0 1.24-1 2.25-2.25 2.25h-4.5C8.01 9.5 7 8.5 7 7.25V4.5H5.75Zm10.75 15v-5.25a.75.75 0 0 0-.75-.75h-7.5a.75.75 0 0 0-.75.75v5.25h9Zm-8-15v2.75c0 .41.34.75.75.75h4.5c.41 0 .75-.34.75-.75V4.5h-6Z"/></g>
+            </g>
+            <g font-size="12" fill="#374151" text-anchor="middle">
+              <text x="63" y="82">New</text><text x="145" y="82">Open</text>
+              <text x="227" y="82">Save</text><text x="309" y="82">Save As</text>
+            </g>
+            <g font-size="10.5" fill="#8B93A1" text-anchor="middle">
+              <text x="63" y="95">N</text><text x="145" y="95">Ctrl+O</text>
+              <text x="227" y="95">Ctrl+S</text><text x="309" y="95">Shift+F12</text>
+            </g>
+            <g class="f9-walk">
+              <path d="M72 58l0 17 5-5 4 7 4-2-4-6 6-1z" fill="#15171C" stroke="#FFFFFF" stroke-width="1.5" stroke-linejoin="round"/>
+            </g>
+          </g>
+          <rect x="6" y="6" width="728" height="188" rx="14" fill="none" stroke="var(--fig-line)"/>
+        </svg>
+      </div>
+      <figcaption>Four commands, drawn from the application&rsquo;s own icons. The hint under each one is its shortcut: <kbd>N</kbd> needs the row open, the other three work at any time.</figcaption>
+    </figure>
 
     <h3>The command strip</h3>
     <p>File, Edit, View, and Help sit on a thin tab strip. Click a tab for a one-row command strip over the canvas; click the canvas to hide it. Edit and Help stay open after a command so you can run several; File and View close. Drawing tools stay on the floating palette, which never moves out from under your hand.</p>
@@ -485,7 +873,7 @@
               <rect x="240" y="8" width="36" height="18" rx="9" fill="#FFFFFF" stroke="#E2E4E9"/>
               <text x="258" y="21" font-size="11.5" fill="#5C6371" text-anchor="middle">DAX</text>
               <g font-family="Cascadia Mono, Consolas, monospace" font-size="13.5">
-                <text x="18" y="64" fill="#B71D1D">Total Sales</text><text x="110" y="64" fill="#15171C">:=</text>
+                <text x="18" y="64" fill="#B71D1D">Total Sales</text><text x="110" y="64" fill="#15171C">=</text>
                 <text x="18" y="90" fill="#0B6FB8">SUM</text><text x="50" y="90" fill="#15171C">( Sales[Amount] )</text>
               </g>
               <path d="M16 100c48 7 100 3 154-6" fill="none" stroke="#E64B3D" stroke-width="3.6" stroke-linecap="round"/>
@@ -509,11 +897,73 @@
           <rect x="6" y="6" width="728" height="300" rx="14" fill="none" stroke="var(--fig-line)"/>
         </svg>
       </div>
-      <figcaption>The <span class="ui">View</span> row, drawn from the application&rsquo;s own icons and colours. The floating palette keeps its default top-right placement, under a typical presenter picture-in-picture rather than over it.</figcaption>
+      <figcaption>The <span class="ui">View</span> row, drawn from the application&rsquo;s own icons and colors. The floating palette keeps its default top-right placement, under a typical presenter picture-in-picture rather than over it.</figcaption>
     </figure>
 
     <h3>Preferences</h3>
     <p><span class="ui">Help → Preferences</span> is a searchable list: which monitor to open on, start full screen, finger drawing, snippet format order, laser trail timing, and toolbar placement. <span class="ui">Help → About</span> shows the version. New settings are more rows in Preferences, not a new dialog.</p>
+
+    <figure class="fig">
+      <div class="figbox">
+        <svg viewBox="0 0 700 340" role="img" aria-label="The Preferences dialog: a search box across the top, the four categories down the left, and the settings of the selected category as rows on the right.">
+          <title>The Preferences dialog</title>
+          <rect width="700" height="340" rx="10" fill="var(--fig-ground)"/>
+          <rect x="20" y="14" width="660" height="312" rx="12" fill="var(--fig-surface)" stroke="var(--fig-line)"/>
+          <path d="M20 26A12 12 0 0 1 32 14h636a12 12 0 0 1 12 12v26H20Z" fill="var(--fig-surface-2)"/>
+          <path d="M20 52h660" stroke="var(--fig-line)" stroke-width="1"/>
+          <text x="40" y="37" font-size="12.5" font-weight="620" fill="var(--fig-ink)">Preferences</text>
+          <g stroke="var(--fig-muted)" stroke-width="1.6" stroke-linecap="round">
+            <path d="M648 28l12 12"/><path d="M660 28l-12 12"/>
+          </g>
+
+          <rect x="44" y="68" width="612" height="32" rx="8" fill="var(--fig-ground)" stroke="var(--fig-line)"/>
+          <g fill="none" stroke="var(--fig-muted)" stroke-width="1.6" stroke-linecap="round">
+            <circle cx="64" cy="82" r="5"/><path d="M68 86l5 5"/>
+          </g>
+          <g class="f10-q">
+            <text x="84" y="89" font-size="12.5" fill="var(--fig-ink)">laser</text>
+            <rect x="112" y="76" width="1.6" height="17" fill="var(--fig-accent)"/>
+          </g>
+
+          <g font-size="12.5">
+            <text x="60" y="138" fill="var(--fig-muted)">Startup</text>
+            <text x="60" y="172" fill="var(--fig-muted)">Input</text>
+            <rect x="44" y="186" width="170" height="30" rx="8" fill="var(--fig-surface-2)"/>
+            <rect x="44" y="186" width="3" height="30" rx="1.5" fill="var(--fig-accent)"/>
+            <text x="60" y="206" font-weight="620" fill="var(--fig-ink)">Laser pointer</text>
+            <text x="60" y="240" fill="var(--fig-muted)">Toolbar</text>
+          </g>
+
+          <g class="f10-a">
+            <rect x="232" y="118" width="424" height="58" rx="10" fill="var(--fig-ground)" stroke="var(--fig-line)"/>
+            <text x="250" y="143" font-size="12.5" font-weight="620" fill="var(--fig-ink)">Trail duration</text>
+            <text x="250" y="161" font-size="11" fill="var(--fig-muted)">How long the trail stays fully visible.</text>
+            <path d="M496 147h104" stroke="var(--fig-line)" stroke-width="4" stroke-linecap="round"/>
+            <path d="M496 147h60" stroke="var(--fig-accent)" stroke-width="4" stroke-linecap="round"/>
+            <circle cx="556" cy="147" r="7" fill="var(--fig-surface)" stroke="var(--fig-accent)" stroke-width="2.5"/>
+            <text x="640" y="151" font-size="11" fill="var(--fig-muted)" text-anchor="end">1.2 s</text>
+          </g>
+          <g class="f10-b">
+            <rect x="232" y="184" width="424" height="58" rx="10" fill="var(--fig-ground)" stroke="var(--fig-line)"/>
+            <text x="250" y="209" font-size="12.5" font-weight="620" fill="var(--fig-ink)">Fade duration</text>
+            <text x="250" y="227" font-size="11" fill="var(--fig-muted)">How long it then takes to disappear.</text>
+            <path d="M496 213h104" stroke="var(--fig-line)" stroke-width="4" stroke-linecap="round"/>
+            <path d="M496 213h34" stroke="var(--fig-accent)" stroke-width="4" stroke-linecap="round"/>
+            <circle cx="530" cy="213" r="7" fill="var(--fig-surface)" stroke="var(--fig-accent)" stroke-width="2.5"/>
+            <text x="640" y="217" font-size="11" fill="var(--fig-muted)" text-anchor="end">0.6 s</text>
+          </g>
+          <g class="f10-c">
+            <rect x="232" y="250" width="424" height="58" rx="10" fill="var(--fig-ground)" stroke="var(--fig-line)"/>
+            <text x="250" y="275" font-size="12.5" font-weight="620" fill="var(--fig-ink)">Hold</text>
+            <text x="250" y="293" font-size="11" fill="var(--fig-muted)">Whether a new stroke restarts it.</text>
+            <rect x="484" y="266" width="156" height="26" rx="6" fill="var(--fig-surface)" stroke="var(--fig-line)"/>
+            <text x="496" y="283" font-size="10.5" fill="var(--fig-ink)">Shared across strokes</text>
+            <path d="M622 279l5 5 5-5" fill="none" stroke="var(--fig-muted)" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+          </g>
+        </svg>
+      </div>
+      <figcaption>One list, searched by name. A new setting is another row in a category here, never a second dialog.</figcaption>
+    </figure>
   </article>
 
   <nav class="pagenav" aria-label="More documentation">

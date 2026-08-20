@@ -5,7 +5,7 @@ namespace SQLBI.Whiteboard.Dax.Engine;
 /// <summary>
 /// A layout document. A group is printed on one line when it fits within the line limit, and
 /// otherwise every separator inside it becomes a line break. This is what produces the
-/// "all arguments on one line, or one argument per line" behaviour DAX code is normally written in.
+/// "all arguments on one line, or one argument per line" behavior DAX code is normally written in.
 /// </summary>
 internal abstract class Doc
 {

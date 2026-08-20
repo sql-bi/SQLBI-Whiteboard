@@ -43,7 +43,7 @@ internal sealed class DaxCall(
     public IReadOnlyList<DaxToken> Separators { get; } = separators;
 }
 
-/// <summary>A parenthesised subexpression, a tuple ( a, b ), or a table constructor { a, b }.</summary>
+/// <summary>A parenthesized subexpression, a tuple ( a, b ), or a table constructor { a, b }.</summary>
 internal sealed class DaxBracketed(
     DaxToken open,
     IReadOnlyList<DaxNode> items,

@@ -8,7 +8,7 @@ namespace SQLBI.Whiteboard.AssetGenerator;
 
 /// <summary>
 /// Renders every derived brand asset from the tile and glyph defined below, which mirror
-/// src/SQLBI.Whiteboard/Assets/SQLBI.Whiteboard.svg. Change a colour here and in the SVG
+/// src/SQLBI.Whiteboard/Assets/SQLBI.Whiteboard.svg. Change a color here and in the SVG
 /// together, then re-run scripts/build-assets.ps1.
 /// </summary>
 internal static class Program
@@ -81,7 +81,7 @@ internal static class Program
         Write(Path.Combine(webAssets, "favicon-32.png"), EncodePng(RenderTile(32)));
         // iOS rounds the corners itself and composites over black, so this one is full bleed.
         Write(Path.Combine(webAssets, "apple-touch-icon.png"), EncodePng(RenderFullBleed(180)));
-        // The social cards are not here. tools/render-cards.ps1 rasterises them from the SVGs
+        // The social cards are not here. tools/render-cards.ps1 rasterizes them from the SVGs
         // beside the page with the same engine the site uses, so its output matches the page
         // preview and this generator must not write over it.
 
@@ -224,7 +224,7 @@ internal static class Program
         var glyphInk = glyph * 18.0 / 24.0;
         var titleGap = glyph * 0.2;
         var taglineGap = titleSize * 0.3;
-        // Measured rather than positioned by hand, so the block stays centred at either size.
+        // Measured rather than positioned by hand, so the block stays centered at either size.
         var block = glyphInk + titleGap + title.Height + taglineGap + tagline.Height;
 
         var y = (height - block) / 2;
@@ -361,7 +361,7 @@ internal static class Program
             writer.Write((byte)(sizes[i] >= 256 ? 0 : sizes[i]));
             writer.Write((byte)0);          // palette entries
             writer.Write((byte)0);          // reserved
-            writer.Write((ushort)1);        // colour planes
+            writer.Write((ushort)1);        // color planes
             writer.Write((ushort)32);       // bits per pixel
             writer.Write(frames[i].Length);
             writer.Write(offset);

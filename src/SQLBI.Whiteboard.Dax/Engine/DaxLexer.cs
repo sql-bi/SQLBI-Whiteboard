@@ -23,14 +23,14 @@ internal enum DaxTokenKind
 }
 
 /// <summary>A comment. Block comments written on a single line can stay inline; the rest cannot.</summary>
-/// <param name="Start">Offset in the source, so the code can be coloured without a second scan.</param>
+/// <param name="Start">Offset in the source, so the code can be colored without a second scan.</param>
 internal sealed record DaxComment(string Text, bool IsBlock, int Start);
 
 internal sealed class DaxToken
 {
     public DaxTokenKind Kind { get; init; }
 
-    /// <summary>Text as it will be printed, after case normalisation.</summary>
+    /// <summary>Text as it will be printed, after case normalization.</summary>
     public string Text { get; init; } = string.Empty;
 
     /// <summary>Comments written before this token, on lines of their own.</summary>
@@ -42,7 +42,7 @@ internal sealed class DaxToken
     /// <summary>Offset of the token in the source it was read from.</summary>
     public int Start { get; init; }
 
-    /// <summary>Length of the token in the source, which may differ from Text after normalisation.</summary>
+    /// <summary>Length of the token in the source, which may differ from Text after normalization.</summary>
     public int Length { get; init; }
 
     public bool IsKeyword(string keyword) =>
@@ -61,7 +61,7 @@ internal sealed class DaxToken
 internal static class DaxLexer
 {
     /// <summary>
-    /// The only words upper-cased on sight. Every other keyword is normalised by the printer, which
+    /// The only words upper-cased on sight. Every other keyword is normalized by the printer, which
     /// knows whether the word sits in a keyword position: a variable called Total or Year is a name,
     /// not a keyword, and renaming it would be a change to the author's code.
     /// </summary>

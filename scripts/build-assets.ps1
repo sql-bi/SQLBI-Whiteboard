@@ -6,7 +6,7 @@
 
 .DESCRIPTION
     The master artwork is src/SQLBI.Whiteboard/Assets/SQLBI.Whiteboard.svg. The generator
-    in tools/AssetGenerator mirrors that composition, so a colour change belongs in both
+    in tools/AssetGenerator mirrors that composition, so a color change belongs in both
     files. Outputs are committed, so this only needs running when the artwork changes.
 #>
 [CmdletBinding()]

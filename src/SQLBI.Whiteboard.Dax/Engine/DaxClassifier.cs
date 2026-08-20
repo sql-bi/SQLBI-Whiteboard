@@ -13,7 +13,7 @@ internal enum DaxClassification
     Variable,
     QueryParameter,
 
-    /// <summary>Brackets and braces, which the palette colours apart from the code inside them.</summary>
+    /// <summary>Brackets and braces, which the palette colors apart from the code inside them.</summary>
     Parenthesis,
 
     /// <summary>The name of the object being defined, on the left of := or =.</summary>
@@ -26,7 +26,7 @@ internal enum DaxClassification
 internal readonly record struct DaxSpan(int Start, int Length, DaxClassification Kind);
 
 /// <summary>
-/// Works out what every piece of DAX text is, so it can be coloured. The answer comes from the same
+/// Works out what every piece of DAX text is, so it can be colored. The answer comes from the same
 /// parse the formatter uses, which is why a string containing "--", a comment spanning several
 /// lines, or a variable named after a function are all classified correctly.
 /// </summary>
@@ -34,7 +34,7 @@ internal static class DaxClassifier
 {
     /// <summary>
     /// Bare words that are function arguments rather than table names: sort orders, ranking
-    /// behaviours and the like. Without this they would read as tables, because that is what an
+    /// behaviors and the like. Without this they would read as tables, because that is what an
     /// unqualified identifier normally is.
     /// </summary>
     private static readonly HashSet<string> ArgumentWords = new(StringComparer.OrdinalIgnoreCase)
@@ -59,7 +59,7 @@ internal static class DaxClassifier
         var spans = new List<DaxSpan>();
         foreach (var token in tokens)
         {
-            // Both kinds of comment are coloured. Most comments are trailing ones, because a comment
+            // Both kinds of comment are colored. Most comments are trailing ones, because a comment
             // written after code stays on the line of the code it describes.
             foreach (var comment in token.LeadingComments)
                 spans.Add(new DaxSpan(comment.Start, comment.Text.Length, DaxClassification.Comment));
@@ -237,7 +237,7 @@ internal static class DaxClassifier
         }
     }
 
-    /// <summary>In 'Sales'[Amount] the table qualifier and the column part are coloured differently.</summary>
+    /// <summary>In 'Sales'[Amount] the table qualifier and the column part are colored differently.</summary>
     private static void MarkReference(Dictionary<int, DaxClassification> roles, DaxReference reference)
     {
         foreach (var token in reference.Tokens)

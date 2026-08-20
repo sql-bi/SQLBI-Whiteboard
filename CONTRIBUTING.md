@@ -38,7 +38,7 @@ typing the code themselves or directing a coding agent. It is deliberately tool-
    automatically on merge.
 
 Do not push to `main` directly. Once the release pipeline is wired up, every merge to `main`
-publishes a pre-release build, so `main` is a published artefact rather than a scratch area.
+publishes a pre-release build, so `main` is a published artifact rather than a scratch area.
 
 ### The pull request is the permanent record
 
@@ -66,7 +66,7 @@ already.
 
 **Brand assets are generated.** Only `src/SQLBI.Whiteboard/Assets/SQLBI.Whiteboard.svg` is
 authored. Icons, installer artwork, and web assets come from `scripts/build-assets.ps1`, and
-hand edits are lost on the next run. Colours must change in both the SVG and
+hand edits are lost on the next run. Colors must change in both the SVG and
 `tools/AssetGenerator/Program.cs`.
 
 **The installer builds four products, not one.** Released and pre-release, each per-machine

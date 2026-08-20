@@ -86,7 +86,7 @@ code, kbd, pre {
 code { font-size: .9em; }
 
 /* Third-party marks: the VS Code logo keeps its own blue, the GitHub mark is
-   monochrome by design and follows the text colour. */
+   monochrome by design and follows the text color. */
 .ico-inline { width: 15px; height: 15px; flex: none; }
 /* Outside the flex nav, the mark needs its own spacing and baseline nudge. */
 .features .ico-inline,
@@ -532,8 +532,8 @@ th, td {
   border-bottom: 1px solid var(--line);
 }
 th {
-  color: var(--muted);
-  font-weight: 620;
+  color: var(--ink);
+  font-weight: 700;
   font-size: 12.5px;
   letter-spacing: .05em;
   text-transform: uppercase;
@@ -882,6 +882,12 @@ footer a:hover { color: var(--ink); text-decoration: underline; }
   color: var(--muted);
 }
 .fig figcaption b { font-weight: 620; color: var(--ink); }
+
+/* A caption that legends two marks, or states two separate rules, reads as a
+   list rather than a paragraph. One <p> per point, tight enough to still be
+   one caption. */
+.fig figcaption p { margin: 0; }
+.fig figcaption p + p { margin-top: 5px; }
 .fig .swatch {
   display: inline-block;
   width: 9px;
@@ -944,6 +950,10 @@ footer a:hover { color: var(--ink); text-decoration: underline; }
 .f2-trail { stroke-dasharray: 640; stroke-dashoffset: 0; }
 .f3-zoom { transform-origin: 350px 126px; transform: scale(1.85) translate(30px, 18px); }
 .f3-tap { opacity: 0; }
+/* Each of these paths declares pathLength="100", so the dash is a percentage
+   of the stroke rather than a measurement of it. */
+.f11-ink, .f11-hi, .f12-ink { stroke-dasharray: 100; stroke-dashoffset: 0; }
+.f12-b { opacity: 0; }
 
 /* Motion is opt-in: no animation is declared at all unless the reader allows
    it, which is why the reduce block below needs no figure rules.
@@ -975,6 +985,28 @@ footer a:hover { color: var(--ink); text-decoration: underline; }
   .fig.is-visible .f6-2 { animation: fig-pop 6.5s ease .45s infinite both; }
   .fig.is-visible .f6-3 { animation: fig-pop 6.5s ease .9s infinite both; }
   .fig.is-visible .f6-4 { animation: fig-pop 6.5s ease 1.35s infinite both; }
+
+  .fig.is-visible .f7-b { animation: fig-pop 6.5s ease .25s infinite both; }
+  .fig.is-visible .f7-d { animation: fig-pop 6.5s ease .55s infinite both; }
+
+  .fig.is-visible .f8-a { animation: fig-pop 6.5s ease infinite both; }
+  .fig.is-visible .f8-b { animation: fig-pop 6.5s ease .3s infinite both; }
+  .fig.is-visible .f8-c { animation: fig-pop 6.5s ease .6s infinite both; }
+
+  .fig.is-visible .f9-walk { animation: fig-filewalk 8s cubic-bezier(.4, 0, .2, 1) infinite; }
+
+  .fig.is-visible .f10-q { animation: fig-pop 6.5s ease infinite both; }
+  .fig.is-visible .f10-a { animation: fig-pop 6.5s ease .3s infinite both; }
+  .fig.is-visible .f10-b { animation: fig-pop 6.5s ease .5s infinite both; }
+  .fig.is-visible .f10-c { animation: fig-pop 6.5s ease .7s infinite both; }
+
+  .fig.is-visible .f11-ink { animation: fig-inkdraw 7s ease-out infinite; }
+  .fig.is-visible .f11-hi { animation: fig-hidraw 7s ease-out infinite; }
+
+  /* Half a cycle apart, so one column is always the one on screen. */
+  .fig.is-visible .f12-a { animation: fig-swap 6s ease infinite; }
+  .fig.is-visible .f12-b { animation: fig-swap 6s ease -3s infinite; }
+  .fig.is-visible .f12-ink { animation: fig-inkdraw 7s ease-out .5s infinite; }
 }
 
 /* The container carries its ink out, holds, and is put back. */
@@ -1012,6 +1044,30 @@ footer a:hover { color: var(--ink); text-decoration: underline; }
   100% { transform: translate(-528px, 72px); opacity: 0; }
 }
 
+@keyframes fig-inkdraw {
+  0% { stroke-dashoffset: 100px; opacity: 1; }
+  24%, 84% { stroke-dashoffset: 0px; opacity: 1; }
+  92% { stroke-dashoffset: 0px; opacity: 0; }
+  93% { stroke-dashoffset: 100px; opacity: 0; }
+  100% { stroke-dashoffset: 100px; opacity: 1; }
+}
+/* The band arrives after the loop, the way you would mark it up out loud. */
+@keyframes fig-hidraw {
+  0%, 30% { stroke-dashoffset: 100px; opacity: 1; }
+  48%, 84% { stroke-dashoffset: 0px; opacity: 1; }
+  92% { stroke-dashoffset: 0px; opacity: 0; }
+  93% { stroke-dashoffset: 100px; opacity: 0; }
+  100% { stroke-dashoffset: 100px; opacity: 1; }
+}
+
+/* The live column is replaced rather than cross-faded: a query result that
+   dissolved into the next one would read as an animation, not as new numbers. */
+@keyframes fig-swap {
+  0%, 49.9% { opacity: 1; }
+  50%, 99.9% { opacity: 0; }
+  100% { opacity: 1; }
+}
+
 @keyframes fig-frame {
   0%, 12% { transform: scale(1) translate(0, 0); }
   36%, 80% { transform: scale(1.85) translate(30px, 18px); }
@@ -1041,6 +1097,13 @@ footer a:hover { color: var(--ink); text-decoration: underline; }
   26%, 78% { opacity: 1; }
   86%, 100% { opacity: 0; }
 }
+@keyframes fig-filewalk {
+  0%, 14% { transform: translate(0, 0); }
+  24%, 38% { transform: translate(82px, 0); }
+  48%, 62% { transform: translate(164px, 0); }
+  72%, 90% { transform: translate(246px, 0); }
+  100% { transform: translate(0, 0); }
+}
 @keyframes fig-strip {
   0%, 22% { opacity: 0; transform: translateY(-10px); }
   32%, 76% { opacity: 1; transform: translateY(0); }
@@ -1049,7 +1112,10 @@ footer a:hover { color: var(--ink); text-decoration: underline; }
 
 .fig .f3-tap,
 .fig .f4-a, .fig .f4-b, .fig .f4-c,
-.fig .f6-1, .fig .f6-2, .fig .f6-3, .fig .f6-4 {
+.fig .f6-1, .fig .f6-2, .fig .f6-3, .fig .f6-4,
+.fig .f7-b, .fig .f7-d,
+.fig .f8-a, .fig .f8-b, .fig .f8-c,
+.fig .f10-q, .fig .f10-a, .fig .f10-b, .fig .f10-c {
   transform-box: fill-box;
   transform-origin: center;
 }

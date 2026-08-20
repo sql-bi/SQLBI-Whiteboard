@@ -9,7 +9,7 @@ How the project is developed and shipped is documented separately:
 
 ## Included in the application
 
-- Low-latency, pressure-aware WPF wet ink, including Wacom rear-eraser detection
+- Low-latency, pressure-aware WPF wet ink, including rear-eraser detection on any pen that reports it
 - A normal cursor for physical mouse input and a high-contrast pen-hover dot that disappears on contact
 - Touch panning and two-finger pinch zoom
 - Optional finger drawing (default when no pen is detected): one finger uses the current tool, two fingers still pan and pinch-zoom, and Eraser and Pan appear on the toolbar
@@ -24,11 +24,11 @@ How the project is developed and shipped is documented separately:
 - LiveView containers for GPU-backed capture of an application window or display, with freeze/resume and saved last-frame previews
 - Double-click a container to center it and fit it to the canvas
 - Undo and redo for strokes, erasing, containers, text edits, and transformations
-- Versioned ZIP-based `.wboard` documents with an embedded `preview.png`. Explorer shows that picture as the file thumbnail in the released install; older boards keep the document icon. The VS Code extension in `vscode/sqlbi-whiteboard` opens the same picture instead of the ZIP.
+- Versioned ZIP-based `.wboard` documents with an embedded `preview.png`. Explorer shows that picture as the file thumbnail in the released install. The VS Code extension in `vscode/sqlbi-whiteboard` opens the same picture instead of the ZIP.
 - Markdown `.wimport` recipes that build image and text containers from headings
 - An intentionally small floating toolbar
 - A File / Edit / View / Help tab strip. Click a tab for a one-row command strip over the canvas
-- Preferences for the startup monitor, full-screen start, finger drawing, laser trail, and toolbar layout
+- Preferences for the startup monitor, full-screen start, finger drawing, snippet format order, laser trail, and toolbar position and layout
 - About, with version and channel
 
 ## Build and run
@@ -203,7 +203,7 @@ With the mouse, selection is automatic: click a container to move it, or drag th
 
 Imported images, LiveViews, and text objects act as containers. A completed stroke is linked when it touches exactly one container, including crossing its edge; a stroke touching multiple containers remains independent. Moving or resizing a container transforms its linked strokes with it. **View → Bring to front** and **View → Send to back** reorder the selected container and those linked strokes. Deleting a container also deletes all of its linked strokes. Undo/redo treats each complete container operation as one action.
 
-Paste plain text to create a selected text container in display mode. **Help → Preferences** has Snippet format order: paste tries those languages from top to bottom and uses the first that accepts the text. Plain text always accepts, so leaving it first keeps every paste as plain text. Recognized extensions (`.dax`, `.sql`, `.txt`) keep their language; other dropped text files use the same order. Choose **Plain text**, **DAX**, or **SQL Server** from the title-bar chip afterwards. Press **F2** to edit the body; the same list is in the title bar while editing. Text reflows while its edit-mode resize grip changes the width, and the height grows automatically when necessary. Double-click still centers and fits the container. Syntax highlighting applies in both edit and display modes. A language-aware title identifies a defined DAX or SQL object when possible. Press **F6** to apply the corresponding local formatter. SQL Server mode targets SQL Server 2025 T-SQL, preserves `GO` batch separators, and leaves invalid scripts unchanged. Press **Ctrl+Enter** to commit or **Escape** to restore the previous text, language, and dimensions. In display mode, resizing preserves the aspect ratio and scales the complete text visual without reflowing it.
+Paste plain text to create a selected text container in display mode. **Help → Preferences** has Snippet format order: paste tries those languages from top to bottom and uses the first that accepts the text. Plain text always accepts, so leaving it first keeps every paste as plain text. Recognized extensions (`.dax`, `.sql`, `.txt`) keep their language; other dropped text files use the same order. Choose **Plain text**, **DAX**, or **SQL Server** from the title-bar chip afterward. Press **F2** to edit the body; the same list is in the title bar while editing. Text reflows while its edit-mode resize grip changes the width, and the height grows automatically when necessary. Double-click still centers and fits the container. Syntax highlighting applies in both edit and display modes. A language-aware title identifies a defined DAX or SQL object when possible. Press **F6** to apply the corresponding local formatter. SQL Server mode targets SQL Server 2025 T-SQL, preserves `GO` batch separators, and leaves invalid scripts unchanged. Press **Ctrl+Enter** to commit or **Escape** to restore the previous text, language, and dimensions. In display mode, resizing preserves the aspect ratio and scales the complete text visual without reflowing it.
 
 Image files, and `.txt`, `.dax`, and `.sql` files, can be dropped directly from File Explorer. Their initial center is the board position at which they were dropped. DAX and SQL files open in the matching language mode. Other dropped text files use Snippet format order.
 

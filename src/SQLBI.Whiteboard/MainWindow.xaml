@@ -24,7 +24,9 @@
         PreviewStylusInAirMove="Window_PreviewStylusInAirMove">
     <Grid x:Name="RootGrid">
         <Grid.RowDefinitions>
-            <RowDefinition Height="32" />
+            <!-- Matches SessionChrome tab height. Collapsed in full screen
+                 and canvas-only so the board reaches the top of the screen. -->
+            <RowDefinition x:Name="SessionTabRow" Height="32" />
             <RowDefinition Height="*" />
         </Grid.RowDefinitions>
 
@@ -216,10 +218,11 @@
         </Grid>
 
         <Border x:Name="ToolPalette"
-                Grid.Row="1"
+                Grid.Row="0"
+                Grid.RowSpan="2"
                 HorizontalAlignment="Right"
                 VerticalAlignment="Top"
-                Margin="16"
+                Margin="16,48,16,16"
                 Padding="6"
                 CornerRadius="12"
                 BorderBrush="{StaticResource ToolbarBorderBrush}"
