@@ -129,8 +129,19 @@ tied to the `sqlbi` publisher, then add it under the GitHub repo **Settings → 
 variables → Actions**. Forks never receive it.
 
 **Publish site** (`.github/workflows/publish-site.yml`) deploys `site/` to GitHub Pages
-when that tree changes on `main`, and on **Run workflow**. It needs **Settings → Pages →
-Source: GitHub Actions**. `site/CNAME` carries the custom domain.
+when that tree changes on `main`, when a release is published, and on **Run workflow**.
+`site/CNAME` carries the custom domain.
+
+Two settings outside the repository have to be right, and each fails in its own quiet way:
+
+- **Settings → Pages → Source: GitHub Actions.** With the default "Deploy from a branch"
+  the workflow runs and deploys nothing.
+- **Settings → Environments → `github-pages` → Deployment branches and tags** must allow a
+  branch rule for `main` *and* a tag rule for `v*`. A release event runs on the tag, so
+  without the tag rule every release-triggered run is rejected within seconds while pushes
+  to `main` keep working — which means the manifests quietly stop tracking releases and the
+  download page keeps offering an old version. That is precisely what happened between
+  0.9.3 and 0.9.4.
 
 ### Azure Pipelines
 
