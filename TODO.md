@@ -16,7 +16,7 @@ The delivery chain works end to end: a merge to `main` builds, signs, and publis
 pre-release to GitHub Releases, and one approval promotes that same build to a release.
 <https://whiteboard.sqlbi.com> reads its download links from the release manifest
 deployed beside it and needs no edit per release. The current product version is `VersionPrefix` in `Directory.Build.props`
-(0.9.3). Identity version for the Store package is `VersionPrefix.0` (`0.9.3.0`).
+(0.9.4). Identity version for the Store package is `VersionPrefix.0` (`0.9.4.0`).
 
 What 1.0 was waiting on is in the product: Preferences, `.wimport`, Explorer and VS Code
 previews, the public documentation site, and Finger drawing (default when no pen is
@@ -60,9 +60,9 @@ manual one for 0.9.2, and the stage was written against the documented behaviour
 Microsoft Store Developer CLI rather than against a run of it. The first promoted release
 after this lands is the one that proves it.
 
-It needs a version the Store has not seen. The Release stage refuses to reuse an existing
-tag, so exercising this at all means bumping `VersionPrefix` — 0.9.3 cannot be released a
-second time to carry the test.
+0.9.4 is that release. `VersionPrefix` was bumped for it, because the Release stage
+refuses to reuse an existing tag and 0.9.3 could not be released a second time to carry
+the test.
 
 Watch two things on that run. The stage has to pick the MSIX out of `drop-x64-true`, since
 both matrix jobs pack an identically named package and only one of them is self-contained.
