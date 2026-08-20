@@ -55,10 +55,14 @@ visible and gates nothing.
 
 ## Waiting on the first automated Store submission
 
-Also not work. The pipeline's Store stage has never run: 0.9.2 and 0.9.3 were submitted by
-hand, and the stage was written against the documented behaviour of the Microsoft Store
-Developer CLI rather than against a run of it. The first promoted release after this lands
-is the one that proves it.
+Also not work. The pipeline's Store stage has never run. The only submission so far is the
+manual one for 0.9.2, and the stage was written against the documented behaviour of the
+Microsoft Store Developer CLI rather than against a run of it. The first promoted release
+after this lands is the one that proves it.
+
+It needs a version the Store has not seen. The Release stage refuses to reuse an existing
+tag, so exercising this at all means bumping `VersionPrefix` — 0.9.3 cannot be released a
+second time to carry the test.
 
 Watch two things on that run. The stage has to pick the MSIX out of `drop-x64-true`, since
 both matrix jobs pack an identically named package and only one of them is self-contained.
