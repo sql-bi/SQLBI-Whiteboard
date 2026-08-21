@@ -56,11 +56,16 @@ jobs:
 
       # Generated into the checkout, so the manifests ship with the page in one
       # deployment. Both files are gitignored: this is the only thing that writes them.
+      # ExpectTag is empty for every trigger except a release, and that is the point: a
+      # release event fires seconds before the releases API lists the release, so without
+      # it this step reads the previous version and writes a stale manifest while
+      # reporting success. That happened to 0.9.5.
       - name: Generate the release manifests
         shell: pwsh
-        run: ./scripts/build-release-manifests.ps1 -Repository "$env:GITHUB_REPOSITORY" -OutputFolder site -Token "$env:GH_TOKEN"
+        run: ./scripts/build-release-manifests.ps1 -Repository "$env:GITHUB_REPOSITORY" -OutputFolder site -Token "$env:GH_TOKEN" -ExpectTag "$env:EXPECT_TAG"
         env:
           GH_TOKEN: ${{ github.token }}
+          EXPECT_TAG: ${{ github.event.release.tag_name }}
 
       - uses: actions/configure-pages@v5
 

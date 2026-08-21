@@ -238,6 +238,21 @@ A channel with no published release produces no file. The contract is that the f
 existing means a release exists, so a consumer that gets a 404 knows to fall back rather
 than having to interpret an empty manifest.
 
+Two properties of the releases API are easy to be caught by, and the script now handles
+both:
+
+- **It lags publication.** A release event fires seconds before the release appears in
+  `/releases`, so a run triggered by one can read a list that does not contain it yet and
+  write a manifest describing the *previous* version — while reporting success. The
+  workflow passes the tag being published as `-ExpectTag`, and the script waits for it to
+  appear rather than trusting the first answer. It fails after ten attempts instead of
+  writing a stale manifest, because a loud failure is recoverable and a quiet wrong answer
+  is not. 0.9.5 shipped with `stable.json` still on 0.9.4 for this reason.
+- **It does not order by publication.** The list is ordered by `created_at`, which for a
+  release is the date of the commit its tag points at, not the moment it was published — so
+  a pre-release built from a later commit sorts above a release promoted from an earlier
+  one. The script sorts on `published_at`, which is what "newest" has to mean here.
+
 The download page reads `stable.json` first and falls back to the API, so it makes no API
 call at all on an ordinary visit.
 
