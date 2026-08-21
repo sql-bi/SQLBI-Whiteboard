@@ -302,7 +302,7 @@ ships can inherit it by accident.
 ## Open questions
 
 - Whether 1.0.0 is declared, and on what. `VersionPrefix` in `Directory.Build.props`
-  reads `0.9.4`, the released channel has been published since `0.9.0`, and `0.9.2` is
+  reads `0.9.5`, the released channel has been published since `0.9.0`, and `0.9.2` is
   the version live in the Store. Nothing is blocked on the number; what is open is
   what has to be true before it stops being 0.x.
 - arm64 is not built; add it if Surface devices matter for a pen application.
