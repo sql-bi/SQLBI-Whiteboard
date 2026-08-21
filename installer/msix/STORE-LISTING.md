@@ -111,8 +111,8 @@ repeat.
    Nothing in this repository can stand in: the site artwork is the wrong
    shape, and the launch card carries both the product title and a competitor's
    name. What to shoot is under the listing fields below, and reshooting is
-   needed whenever the UI moves on. The teaser in TODO.md is independent of
-   these stills.
+   needed whenever the UI moves on. The teaser video on the landing page is
+   independent of these stills.
 8. **The listing text** — every field is written out below. Paste it, then edit
    freely in Partner Center.
 

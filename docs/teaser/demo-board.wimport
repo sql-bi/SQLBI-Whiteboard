@@ -1,0 +1,36 @@
+# Contoso sales review
+
+Staging recipe for beat 3 of the teaser (see `shot-script.md`). Dropping this file
+builds the review board in one gesture: two images on the first row, then the measure,
+the query, and the open questions. This paragraph is only for the Markdown preview.
+
+## Model
+![Contoso star schema](assets/star-schema.png)
+
+## Sales by month
+![Monthly sales, December peak](assets/sales-trend.png)
+
+---
+
+## Sales Amount
+```dax
+Sales Amount :=
+SUMX ( Sales, Sales[Quantity] * Sales[Net Price] )
+```
+
+## Top customers
+```sql
+SELECT TOP ( 10 )
+    c.CustomerName,
+    SUM ( s.Quantity * s.NetPrice ) AS SalesAmount
+FROM Sales AS s
+JOIN Customer AS c
+    ON c.CustomerKey = s.CustomerKey
+GROUP BY c.CustomerName
+ORDER BY SalesAmount DESC;
+```
+
+## Open questions
+- Why does December spike?
+- Returns are not in the model yet
+- Align the fiscal calendar with finance

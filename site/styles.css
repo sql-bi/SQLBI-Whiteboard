@@ -346,7 +346,7 @@ footer .ico-inline { vertical-align: -2px; margin-right: 5px; }
   overflow: hidden;
   background: #F7F6F2;
 }
-.teaser-frame iframe {
+.teaser-frame video {
   position: absolute;
   inset: 0;
   width: 100%;
