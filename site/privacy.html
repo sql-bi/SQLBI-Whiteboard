@@ -37,7 +37,7 @@
   <div class="wrap narrow">
     <span class="eyebrow">Project</span>
     <h1>Privacy</h1>
-    <p class="lede">The application does not create an account or send telemetry. A Microsoft Store install never phones home. Any other copy may ask GitHub once a day whether a newer released build exists; that check can be turned off.</p>
+    <p class="lede">The application does not send telemetry. This page is what the website and the installer actually do.</p>
   </div>
 </header>
 
@@ -46,16 +46,15 @@
 <article>
     <h2>The application</h2>
     <p>SQLBI Whiteboard does not create an account, does not join a tenant, and does not send telemetry. There is no Application Insights, no crash reporter, and no outbound product analytics in the source.</p>
-    <p>A copy that did not come from the Microsoft Store, with <span class="ui">Check for new versions</span> on (the default), makes at most one GET a day to <code>whiteboard.sqlbi.com</code> for <code>stable.json</code>, the same short file this site publishes for its own download links. A pre-release copy reads <code>dev.json</code> instead. If that request fails, it makes one to <code>github.com</code> to read the tag of the newest release. Either way it reads a version number and nothing else.</p>
-    <p>The request identifies the product version in the User-Agent; it does not send a machine identifier, a board, or preferences. A Microsoft Store install never makes that request; the Store updates it. Turn the check off under <span class="ui">Help → Preferences → Updates</span>.</p>
+    <p>A copy that did not come from the Microsoft Store, with <span class="ui">Check for new versions</span> on (the default), makes at most one GET a day to this site for <code>stable.json</code>, or <code>dev.json</code> for a pre-release copy. That is the same file the download page uses. If the request fails, it asks <code>github.com</code> for the newest release tag. Either way it reads a version number. The User-Agent carries the product version. Nothing else is sent. A Microsoft Store install never makes that request. Turn the check off under <span class="ui">Help → Preferences → Updates</span>.</p>
     <p>Boards are local <code>.wboard</code> files. Preferences live under <code>%APPDATA%\SQLBI\Whiteboard</code> (or <code>Whiteboard Dev</code> for the pre-release channel).</p>
     <p>LiveView uses Windows Graphics Capture on this machine. The capture permission cannot be saved with the file. After you reload a board, the last frame is shown from the file; <span class="ui">Reconnect</span> asks Windows again.</p>
 
     <h2>This website</h2>
     <p>The site is static HTML on GitHub Pages. It does not set a first-party cookie and it has no consent banner.</p>
     <ul>
-      <li>The download button on the home page calls <code>api.github.com</code> so the installer link can carry the current version. Without scripting, the same links go to the GitHub releases page.</li>
-      <li>The changelog page makes the same kind of request, to list published releases.</li>
+      <li>The download button on the home page reads <code>stable.json</code> from this site so the installer link can carry the current version. If that file is missing, it asks <code>api.github.com</code>. Without scripting, the same links go to the GitHub releases page.</li>
+      <li>The changelog page asks <code>api.github.com</code> to list published releases.</li>
       <li>The home page embeds a player from <code>player.vimeo.com</code>, with <code>dnt=1</code>. Vimeo is a third party and may set its own cookies. There is no Vimeo JavaScript API on this site.</li>
     </ul>
 
