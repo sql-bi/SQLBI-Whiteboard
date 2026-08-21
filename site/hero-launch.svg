@@ -43,7 +43,9 @@
     <text x="72" y="566" font-size="27" fill="#B9C7DA">Retiring soon. Thank you for</text>
     <text x="72" y="602" font-size="27" fill="#B9C7DA">using Microsoft Whiteboard.</text>
 
-    <g transform="translate(72 706)">
+    <!-- Anchored to the same baseline as the reply's date below the window,
+         so the two effective dates read side by side. -->
+    <g transform="translate(72 916)">
       <rect x="0" y="-28" width="40" height="40" rx="8" fill="none" stroke="#8FA5C4" stroke-width="3"/>
       <path d="M0 -16h40M11 -28v-9M29 -28v-9" stroke="#8FA5C4" stroke-width="3"/>
       <text x="60" y="-6" font-size="26" fill="#DCE4EE">Effective date:</text>
@@ -218,5 +220,14 @@
       </g>
     </g>
     <rect x="0" y="0" width="1400" height="900" rx="14" fill="none" stroke="#0A0C10" stroke-opacity=".18"/>
+  </g>
+
+  <!-- The reply's own effective date, on the announcement's baseline: the
+       application shipped the month before the retirement takes effect. -->
+  <g font-family="Segoe UI Variable Display, Segoe UI, sans-serif" transform="translate(612 916)">
+    <rect x="0" y="-28" width="40" height="40" rx="8" fill="none" stroke="#6B7A90" stroke-width="3"/>
+    <path d="M0 -16h40M11 -28v-9M29 -28v-9" stroke="#6B7A90" stroke-width="3"/>
+    <text x="60" y="-6" font-size="26" fill="#5C6371">Effective date:</text>
+    <text x="60" y="30" font-size="26" font-weight="600" fill="#0A1B33">August 2026</text>
   </g>
 </svg>
