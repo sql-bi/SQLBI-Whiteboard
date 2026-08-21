@@ -126,18 +126,23 @@ What it submits is packages only. Listing text, screenshots, and **What's new**
 carry over from the last published submission untouched, so this page stays the
 record of them and a change here means a change made by hand in Partner Center.
 
-## Once the listing is live
+## The listing is live
 
-The Store ID gives the public addresses. Both 404 until certification
-completes and the listing is published, so nothing links to them yet:
+0.9.5 completed certification and is published. The Store ID gives the public
+addresses:
 
 - `https://apps.microsoft.com/detail/9NN5N0L2TMTF`
 - `ms-windows-store://pdp/?ProductId=9NN5N0L2TMTF` (opens the Store app)
 
-Then, and not before, the Store becomes a second route on
-`whiteboard.sqlbi.com`. It stays second: Store availability is uneven on
-managed corporate machines, which is why the MSI is the primary channel
-(decision 10).
+`whiteboard.sqlbi.com` links to the first of those from the alternates under the
+download button. It stays an alternate rather than the headline: Store
+availability is uneven on managed corporate machines, which is why the MSI is
+the primary channel (decision 10). The `ms-windows-store:` form is recorded
+here but not linked from the site, because it fails silently in a browser that
+has no Store app to hand it to.
+
+Store installs update through the Store and never make the daily version check,
+which is what the site and `privacy.html` already say about them.
 
 ## The listing page, field by field (0.9.2)
 
