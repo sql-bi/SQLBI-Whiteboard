@@ -33,12 +33,20 @@
 
 .PARAMETER Token
     Optional GitHub token. Only raises the API rate limit; the data read is public.
+
+.PARAMETER ExpectTag
+    Tag that must appear in the API response before the manifests are written. Set it when
+    a release has just been published: the releases API lags publication by seconds, so a
+    run triggered by the release event can otherwise read a list that does not contain it
+    yet and write a manifest describing the previous version - successfully, and silently.
+    Waiting is better than that, and failing is better than either.
 #>
 [CmdletBinding()]
 param(
     [string] $Repository = 'sql-bi/SQLBI-Whiteboard',
     [string] $OutputFolder = (Join-Path $PSScriptRoot '..' 'site'),
-    [string] $Token
+    [string] $Token,
+    [string] $ExpectTag
 )
 
 $ErrorActionPreference = 'Stop'
@@ -117,14 +125,37 @@ if ($Token) { $headers['Authorization'] = "Bearer $Token" }
 # the array of releases into a single object, and everything downstream then filters it
 # away and reports that nothing is published.
 $uri = "https://api.github.com/repos/$Repository/releases?per_page=50"
-try {
-    $response = Invoke-RestMethod -Uri $uri -Headers $headers -Method Get
-}
-catch {
-    throw "Could not read releases from $uri - $($_.Exception.Message)"
-}
 
-$releases = @($response) | Where-Object { -not $_.draft }
+# The API does not return releases in publication order. It orders by created_at, which
+# for a release carries the date of the commit its tag points at, not the moment it was
+# published - so a pre-release built from a later commit sorts above a release promoted
+# from an earlier one. Sorting on published_at is what the word "newest" means here.
+$releases = $null
+for ($attempt = 1; $attempt -le 10; $attempt++) {
+    try {
+        $response = Invoke-RestMethod -Uri $uri -Headers $headers -Method Get
+    }
+    catch {
+        throw "Could not read releases from $uri - $($_.Exception.Message)"
+    }
+
+    $releases = @($response) |
+        Where-Object { -not $_.draft } |
+        Sort-Object -Property @{ Expression = { [datetime]$_.published_at } } -Descending
+
+    if (-not $ExpectTag) { break }
+    if (@($releases | Where-Object { $_.tag_name -eq $ExpectTag }).Count -gt 0) {
+        Write-Host "$ExpectTag is visible in the releases API."
+        break
+    }
+
+    if ($attempt -eq 10) {
+        throw "$ExpectTag has not appeared in $uri after $attempt attempts. Refusing to write manifests that would describe an older release as the newest one."
+    }
+
+    Write-Host "$ExpectTag is not in the releases API yet. Waiting (attempt $attempt)."
+    Start-Sleep -Seconds 15
+}
 
 # Select-Object rather than [0]: indexing an empty result throws under Set-StrictMode,
 # and a channel with nothing published is an ordinary state, not an error.
