@@ -16,7 +16,7 @@ The delivery chain works end to end: a merge to `main` builds, signs, and publis
 pre-release to GitHub Releases, and one approval promotes that same build to a release.
 <https://whiteboard.sqlbi.com> reads its download links from the release manifest
 deployed beside it and needs no edit per release. The current product version is `VersionPrefix` in `Directory.Build.props`
-(0.9.4). Identity version for the Store package is `VersionPrefix.0` (`0.9.4.0`).
+(0.9.5). Identity version for the Store package is `VersionPrefix.0` (`0.9.5.0`).
 
 What 1.0 was waiting on is in the product: Preferences, `.wimport`, Explorer and VS Code
 previews, the public documentation site, and Finger drawing (default when no pen is
@@ -58,13 +58,16 @@ visible and gates nothing.
 Also not work. The stage ran for the first time on 0.9.4 and failed: it authenticated,
 created the submission, and then could not upload the package, because `msstore publish`
 defaults its blob upload timeout to zero when `--uploadTimeout` is not given. That is
-fixed, but the fix has not been exercised — a pipeline run uses the YAML on `main` at the
-time it runs, and 0.9.4 cannot be released twice, so the next promoted release is the one
-that proves it.
+fixed, and 0.9.5 is the release that exercises the fix — a pipeline run uses the YAML on
+`main` at the time it runs, so the fix could not be applied to 0.9.4 retroactively.
 
-0.9.4 was not submitted to the Store. Nothing depends on the Store carrying every version,
-and the alternative was submitting it by hand, which is the thing this stage exists to
-avoid.
+0.9.4 was never submitted to the Store, and 0.9.5 carries no product change over it: the
+binaries are identical, and the release exists to put a version through the Store stage.
+Nothing depends on the Store carrying every version, and the alternative was submitting by
+hand, which is the thing this stage exists to avoid.
+
+That run also clears the abandoned submission 0.9.4 left behind, which is the first test of
+that path as well.
 
 Watch two things on that run. The stage has to pick the MSIX out of `drop-x64-true`, since
 both matrix jobs pack an identically named package and only one of them is self-contained.
