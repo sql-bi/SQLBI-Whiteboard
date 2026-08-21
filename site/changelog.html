@@ -95,6 +95,7 @@
   (function () {
     var list = document.getElementById('releases');
     var note = document.getElementById('release-note');
+    var ISSUES = 'https://github.com/sql-bi/SQLBI-Whiteboard/issues/';
 
     fetch('https://api.github.com/repos/sql-bi/SQLBI-Whiteboard/releases?per_page=20')
       .then(function (response) {
@@ -120,13 +121,133 @@
           });
         }
 
-        function firstLine(text) {
+        function stripTrailers(text) {
           var lines = String(text).replace(/\r\n/g, '\n').split('\n');
-          for (var i = 0; i < lines.length; i++) {
-            var line = lines[i].replace(/^#+\s*/, '').trim();
-            if (line) return line;
+          while (lines.length) {
+            var t = lines[lines.length - 1].trim();
+            if (!t || /^Co-authored-by:/i.test(t) || /^Signed-off-by:/i.test(t) || /^-{3,}$/.test(t)) {
+              lines.pop();
+              continue;
+            }
+            break;
           }
-          return '';
+          return lines.join('\n').trim();
+        }
+
+        function splitNotes(text) {
+          var lines = String(text).replace(/\r\n/g, '\n').split('\n');
+          var i = 0;
+          while (i < lines.length && !lines[i].trim()) i++;
+          var sum = (lines[i] || '').replace(/^#+\s*/, '').trim();
+          i++;
+          while (i < lines.length && !lines[i].trim()) i++;
+          return { sum: sum, rest: stripTrailers(lines.slice(i).join('\n')) };
+        }
+
+        function inline(s) {
+          var slots = [];
+          function keep(html) {
+            slots.push(html);
+            return '\0' + (slots.length - 1) + '\0';
+          }
+          s = s.replace(/`([^`]+)`/g, function (_, c) {
+            return keep('<code>' + c + '</code>');
+          });
+          s = s.replace(/\[([^\]]+)\]\((https?:\/\/[^)\s]+)\)/g, function (_, t, u) {
+            return keep('<a href="' + u + '" rel="noopener">' + t + '</a>');
+          });
+          s = s.replace(/(^|[\s(])(https?:\/\/[^\s<]+[^.\s<),])/g, function (_, p, u) {
+            return p + keep('<a href="' + u + '" rel="noopener">' + u + '</a>');
+          });
+          s = s.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
+          s = s.replace(/(^|[\s(])\*([^*\s][^*]*)\*/g, '$1<em>$2</em>');
+          s = s.replace(/(^|[\s(])#(\d+)\b/g, function (_, p, n) {
+            return p + '<a href="' + ISSUES + n + '">#' + n + '</a>';
+          });
+          return s.replace(/\0(\d+)\0/g, function (_, i) { return slots[+i]; });
+        }
+
+        function md(src) {
+          var lines = esc(src).split('\n');
+          var out = [];
+          var i = 0;
+
+          function peek() { return i < lines.length ? lines[i] : null; }
+          function blank(line) { return !line || !String(line).trim(); }
+          function isHeading(line) { return /^(#{1,6})\s+\S/.test(line); }
+          function isHr(line) { return /^(-{3,}|_{3,}|\*{3,})\s*$/.test(String(line || '').trim()); }
+          function isUl(line) { return /^[-*+]\s+\S/.test(line); }
+          function isOl(line) { return /^\d+[.)]\s+\S/.test(line); }
+          function isFence(line) { return /^```/.test(line); }
+
+          function takeFence() {
+            i++;
+            var body = [];
+            while (i < lines.length && !/^```/.test(lines[i])) {
+              body.push(lines[i]);
+              i++;
+            }
+            if (i < lines.length) i++;
+            return '<pre><code>' + body.join('\n') + '</code></pre>';
+          }
+
+          function takeList(ordered) {
+            var tag = ordered ? 'ol' : 'ul';
+            var re = ordered ? /^\d+[.)]\s+/ : /^[-*+]\s+/;
+            var items = [];
+            while (i < lines.length) {
+              if (blank(peek())) {
+                var j = i + 1;
+                while (j < lines.length && blank(lines[j])) j++;
+                if (j < lines.length && re.test(lines[j])) { i = j; continue; }
+                break;
+              }
+              if (isFence(peek()) || isHeading(peek()) || isHr(peek())) break;
+              if (re.test(peek())) {
+                items.push(peek().replace(re, ''));
+                i++;
+                continue;
+              }
+              if (items.length) {
+                items[items.length - 1] += ' ' + peek().trim();
+                i++;
+                continue;
+              }
+              break;
+            }
+            return '<' + tag + '>' + items.map(function (it) {
+              return '<li>' + inline(it.trim()) + '</li>';
+            }).join('') + '</' + tag + '>';
+          }
+
+          function takeParagraph() {
+            var buf = [];
+            while (i < lines.length && !blank(peek())) {
+              if (isFence(peek()) || isHeading(peek()) || isHr(peek()) ||
+                  isUl(peek()) || isOl(peek())) break;
+              buf.push(peek().trim());
+              i++;
+            }
+            return '<p>' + inline(buf.join(' ')) + '</p>';
+          }
+
+          while (i < lines.length) {
+            var line = peek();
+            if (blank(line)) { i++; continue; }
+            if (isFence(line)) { out.push(takeFence()); continue; }
+            if (isHeading(line)) {
+              var m = line.match(/^(#{1,6})\s+(.*)$/);
+              var lvl = Math.min(m[1].length, 3);
+              out.push('<h' + lvl + '>' + inline(m[2].trim()) + '</h' + lvl + '>');
+              i++;
+              continue;
+            }
+            if (isHr(line)) { out.push('<hr>'); i++; continue; }
+            if (isUl(line)) { out.push(takeList(false)); continue; }
+            if (isOl(line)) { out.push(takeList(true)); continue; }
+            out.push(takeParagraph());
+          }
+          return out.join('');
         }
 
         function notesFor(release) {
@@ -151,17 +272,16 @@
             var when = new Date(r.published_at).toLocaleDateString(undefined, {
               year: 'numeric', month: 'long', day: 'numeric'
             });
-            var full = notes[i] || '';
-            var sum = firstLine(full);
+            var parts = splitNotes(notes[i] || '');
             html += '<li><div class="reltop"><a class="ver" href="' + esc(r.html_url) + '">' +
               esc(r.tag_name.replace(/^v/, '')) + '</a><span class="when">' +
               esc(when) + '</span></div>';
-            if (sum) {
-              html += '<p class="relsum">' + esc(sum) + '</p>';
+            if (parts.sum) {
+              html += '<p class="relsum">' + esc(parts.sum) + '</p>';
             }
-            if (full && full.replace(/\r\n/g, '\n').trim() !== sum) {
-              html += '<details><summary>Notes</summary><pre class="relbody">' +
-                esc(full.trim()) + '</pre></details>';
+            if (parts.rest) {
+              html += '<details><summary>Notes</summary><div class="relbody">' +
+                md(parts.rest) + '</div></details>';
             }
             html += '</li>';
           }

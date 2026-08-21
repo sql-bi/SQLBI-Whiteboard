@@ -805,11 +805,35 @@ footer a:hover { color: var(--ink); text-decoration: underline; }
 .releases details[open] summary::after { content: " \2212"; }
 .relbody {
   margin: 10px 0 0;
-  font: inherit;
-  font-size: 14px;
+  font-size: 14.5px;
   line-height: 1.55;
-  white-space: pre-wrap;
   color: var(--ink);
+}
+.relbody > *:first-child { margin-top: 0; }
+.relbody > *:last-child { margin-bottom: 0; }
+.relbody h1, .relbody h2, .relbody h3 {
+  font-size: 14.5px;
+  font-weight: 650;
+  margin: 1.05em 0 .35em;
+}
+.relbody p { margin: 0 0 .7em; }
+.relbody ul, .relbody ol { margin: 0 0 .7em; padding-left: 1.25em; }
+.relbody li { margin: .2em 0; }
+.relbody a { color: var(--brand-link); text-underline-offset: 2px; }
+.relbody hr {
+  border: 0;
+  border-top: 1px solid var(--line);
+  margin: .9em 0;
+}
+.relbody pre {
+  margin: 0 0 .7em;
+  padding: 10px 12px;
+  font-size: 13px;
+  line-height: 1.45;
+  white-space: pre-wrap;
+  background: var(--surface-2);
+  border: 1px solid var(--line);
+  border-radius: 10px;
 }
 
 .compare { font-size: 14.5px; }

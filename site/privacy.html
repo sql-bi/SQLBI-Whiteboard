@@ -46,7 +46,8 @@
 <article>
     <h2>The application</h2>
     <p>SQLBI Whiteboard does not create an account, does not join a tenant, and does not send telemetry. There is no Application Insights, no crash reporter, and no outbound product analytics in the source.</p>
-    <p>A copy that did not come from the Microsoft Store, with <span class="ui">Check for new versions</span> on (the default), makes at most one GET a day to this site for <code>stable.json</code>, or <code>dev.json</code> for a pre-release copy. That is the same file the download page uses. If the request fails, it asks <code>github.com</code> for the newest release tag. Either way it reads a version number. The User-Agent carries the product version. Nothing else is sent. A Microsoft Store install never makes that request. Turn the check off under <span class="ui">Help → Preferences → Updates</span>.</p>
+    <p>A Microsoft Store install never phones home. The Store updates it. Any other copy may ask this site once a day whether a newer build exists. That check is on by default; turn it off under <span class="ui">Help → Preferences → Updates</span>.</p>
+    <p>The request is a GET of <code>stable.json</code>, or <code>dev.json</code> for a pre-release copy, the same file the download page uses. If it fails, a request to <code>github.com</code> for the newest release tag. The User-Agent carries the product version. Nothing else is sent.</p>
     <p>Boards are local <code>.wboard</code> files. Preferences live under <code>%APPDATA%\SQLBI\Whiteboard</code> (or <code>Whiteboard Dev</code> for the pre-release channel).</p>
     <p>LiveView uses Windows Graphics Capture on this machine. The capture permission cannot be saved with the file. After you reload a board, the last frame is shown from the file; <span class="ui">Reconnect</span> asks Windows again.</p>
 
