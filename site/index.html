@@ -79,14 +79,16 @@
 
     <section class="teaser" aria-label="Product teaser">
       <div class="teaser-frame">
-        <!-- Replace 763673561 with the teaser id when that clip is published. -->
-        <iframe
-          src="https://player.vimeo.com/video/763673561?badge=0&amp;dnt=1&amp;title=0&amp;byline=0&amp;portrait=0"
-          allow="fullscreen; picture-in-picture"
-          referrerpolicy="strict-origin-when-cross-origin"
-          title="SQLBI Whiteboard, thirty seconds"></iframe>
+        <!-- Served from this site: no third party, and it plays where embeds are
+             blocked. Decision 19 in docs/decisions.md. -->
+        <video controls playsinline preload="metadata"
+               poster="teaser-poster.jpg"
+               title="SQLBI Whiteboard, forty seconds">
+          <source src="teaser-av1.mp4" type='video/mp4; codecs="av01.0.12M.08"'>
+          <source src="teaser-h264.mp4" type='video/mp4; codecs="avc1.640032"'>
+        </video>
       </div>
-      <p class="launch-caption">Thirty seconds on a board.</p>
+      <p class="launch-caption">Forty seconds on a board.</p>
     </section>
   </div>
 </header>

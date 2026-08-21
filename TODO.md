@@ -22,24 +22,14 @@ What 1.0 was waiting on is in the product: Preferences, `.wimport`, Explorer and
 previews, the public documentation site, and Finger drawing (default when no pen is
 detected). The Store listing was submitted by hand on 20 August 2026 for 0.9.2.
 
-One item remains. The release manifests, winget, and Store submission are done: the
-manifests are live at <https://whiteboard.sqlbi.com/stable.json>, the first winget
-submission is in review, and the pipeline's Store stage submits each promoted release.
-All three are described in [docs/release-management.md](docs/release-management.md).
-
-## 1. Video teaser
-
-A short recording that shows what the application does. Ink following a pen, containers
-carrying their strokes, and LiveView all need motion to read. The landing page, the Store
-listing, and any announcement all need the same clip.
-
-The home page already has a Vimeo embed (`site/index.html`) with tracking stripped
-(`dnt=1`, no `player.js`). The id `763673561` is a placeholder. When the real clip is
-published, replace that id only. Do not add YouTube or a self-hosted file.
-
-Record against the current UI: Preferences, Finger drawing, the tab strip, LiveView
-freeze/disconnect/reconnect, and a `.wimport` drop. The campaign hero on the home page
-stays through 14 September 2026; the teaser is independent of that art.
+No numbered work remains. The video teaser is recorded and served from the landing page
+itself as `site/teaser-av1.mp4` / `site/teaser-h264.mp4` — the Vimeo-embed plan was
+reversed, see decision 19 in [docs/decisions.md](docs/decisions.md); the production
+script and staging assets are in `docs/teaser/`. The release manifests, winget, and
+Store submission are done: the manifests are live at
+<https://whiteboard.sqlbi.com/stable.json>, the first winget submission is in review,
+and the pipeline's Store stage submits each promoted release. All three are described
+in [docs/release-management.md](docs/release-management.md).
 
 ## Waiting on the first winget submission
 

@@ -297,6 +297,35 @@ on every merge to `main`, so both are caught before anything is signed or publis
 reduction is expressed in the workflow that wants it, not in the script, so nothing that
 ships can inherit it by accident.
 
+## 19. The teaser video is a file on the site, not an embed
+
+**Implemented.**
+
+The original plan was a Vimeo embed with tracking stripped (`dnt=1`, no player script),
+deliberately excluding YouTube and self-hosted files. It was reversed when the clip
+existed, for three reasons:
+
+- Vimeo is blocked or unreliable in several regions; an embed shows those visitors a dead
+  frame. A file served with the page plays wherever the page loads.
+- The embed was the only third party on the privacy page. Removing it makes "static HTML,
+  no third parties" true without a footnote.
+- The bandwidth argument for an embed did not survive the numbers. The clip is 42 seconds
+  of mostly still screen content: 3.3 MB as 1440p60 AV1 and 2.7 MB as 1080p60 H.264,
+  around 0.6 Mbit/s — fluent on connections far below any embed's minimum. GitHub Pages
+  serves through a CDN with range-request support, and both files carry `faststart`, so
+  playback begins after a few hundred kilobytes.
+
+What is given up is adaptive streaming and player analytics. At these bitrates the ladder
+has nothing to adapt between, and the site collects no analytics anyway.
+
+The two renditions and the poster live in `site/` (`teaser-av1.mp4`, `teaser-h264.mp4`,
+`teaser-poster.jpg`) and deploy with every site publish. The `<video>` element lists AV1
+first and H.264 as the universal fallback, is click-to-play (`preload="metadata"`), and
+costs page load only the poster. The 4K Camtasia master is kept outside the repository;
+re-encoding is two ffmpeg commands recorded in `docs/teaser/shot-script.md`. GitHub
+Pages' soft bandwidth limit is ~100 GB/month; only visitors who press play download a
+rendition, so the limit is far away at this site's traffic.
+
 ---
 
 ## Open questions

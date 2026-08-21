@@ -65,6 +65,9 @@ if (-not (Test-Path $handler)) { throw "Thumbnail handler not found: $handler" }
 if (-not (Test-Path (Join-Path $assets 'StoreLogo.png'))) {
     throw "Store assets are missing. Run scripts/build-assets.ps1 first."
 }
+if (-not (Test-Path (Join-Path $assets 'Square44x44Logo.targetsize-24_altform-unplated.png'))) {
+    throw "Unplated icon variants are missing. Run scripts/build-assets.ps1 first."
+}
 
 $makeAppxPath = $null
 $makeAppxCmd = Get-Command makeappx.exe -ErrorAction SilentlyContinue
@@ -84,6 +87,11 @@ if (-not $makeAppxPath) {
     throw "makeappx.exe was not found. Install the Windows 10/11 SDK (MakeAppx)."
 }
 
+$makePriPath = Join-Path (Split-Path $makeAppxPath) 'makepri.exe'
+if (-not (Test-Path $makePriPath)) {
+    throw "makepri.exe was not found beside makeappx.exe. Install the Windows 10/11 SDK (MakePri)."
+}
+
 $staging = Join-Path $OutputFolder '.msix-staging'
 if (Test-Path $staging) { Remove-Item $staging -Recurse -Force }
 New-Item -ItemType Directory -Path $staging | Out-Null
@@ -101,6 +109,25 @@ try {
     $manifest = $manifest.Replace('__VERSION__', $identityVersion)
     Set-Content -Path (Join-Path $staging 'AppxManifest.xml') -Value $manifest -Encoding utf8
 
+    # The taskbar resolves the targetsize-*_altform-unplated icon variants through the
+    # package resource index; without resources.pri those files are dead weight and the
+    # shell falls back to plating Square44x44Logo on the accent color. The index is
+    # built from a root holding only the manifest and Assets: indexing the staged
+    # binaries would sweep the .NET satellite-assembly folders into per-language
+    # split PRI files, and the runtime loads those satellites itself.
+    Write-Host "==> makepri new" -ForegroundColor Cyan
+    $priRoot = Join-Path $OutputFolder '.msix-pri-index'
+    $priConfig = Join-Path $OutputFolder '.msix-priconfig.xml'
+    if (Test-Path $priRoot) { Remove-Item $priRoot -Recurse -Force }
+    if (Test-Path $priConfig) { Remove-Item $priConfig -Force }
+    New-Item -ItemType Directory -Path $priRoot | Out-Null
+    Copy-Item (Join-Path $staging 'AppxManifest.xml') $priRoot
+    Copy-Item (Join-Path $staging 'Assets') (Join-Path $priRoot 'Assets') -Recurse
+    & $makePriPath createconfig /cf $priConfig /dq lang-en-US_scale-100 /o
+    if ($LASTEXITCODE -ne 0) { throw "makepri createconfig failed with exit code $LASTEXITCODE" }
+    & $makePriPath new /pr $priRoot /cf $priConfig /mn (Join-Path $priRoot 'AppxManifest.xml') /of (Join-Path $staging 'resources.pri') /o
+    if ($LASTEXITCODE -ne 0) { throw "makepri new failed with exit code $LASTEXITCODE" }
+
     $msixPath = Join-Path $OutputFolder "SQLBI.Whiteboard.$Version.$Architecture.msix"
     # Print the identity. A Store rejection reads as three separate errors, so
     # having the packed values in the build log is what makes it one glance.
@@ -115,4 +142,8 @@ try {
 }
 finally {
     if (Test-Path $staging) { Remove-Item $staging -Recurse -Force }
+    $priRoot = Join-Path $OutputFolder '.msix-pri-index'
+    if (Test-Path $priRoot) { Remove-Item $priRoot -Recurse -Force }
+    $priConfig = Join-Path $OutputFolder '.msix-priconfig.xml'
+    if (Test-Path $priConfig) { Remove-Item $priConfig -Force }
 }

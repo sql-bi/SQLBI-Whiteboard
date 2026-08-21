@@ -1,0 +1,1 @@
+Sales YoY % = VAR CY = [Sales Amount] VAR PY = CALCULATE ( [Sales Amount], SAMEPERIODLASTYEAR ( 'Date'[Date] ) ) RETURN DIVIDE ( CY - PY, PY )

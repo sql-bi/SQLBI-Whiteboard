@@ -88,6 +88,18 @@ internal static class Program
         Console.WriteLine("Store");
         Write(Path.Combine(msixAssets, "StoreLogo.png"), EncodePng(RenderTile(50)));
         Write(Path.Combine(msixAssets, "Square44x44Logo.png"), EncodePng(RenderTile(44)));
+        // Without altform-unplated variants the taskbar shows Square44x44Logo shrunken
+        // on an accent-colored plate. The tile carries its own rounded square, so every
+        // form is the same artwork; what matters is that the names exist and are indexed
+        // into resources.pri, which scripts/build-msix.ps1 builds at pack time.
+        int[] taskbarSizes = [16, 24, 32, 48, 256];
+        foreach (var size in taskbarSizes)
+        {
+            var frame = EncodePng(RenderTile(size));
+            Write(Path.Combine(msixAssets, $"Square44x44Logo.targetsize-{size}.png"), frame);
+            Write(Path.Combine(msixAssets, $"Square44x44Logo.targetsize-{size}_altform-unplated.png"), frame);
+            Write(Path.Combine(msixAssets, $"Square44x44Logo.targetsize-{size}_altform-lightunplated.png"), frame);
+        }
         Write(Path.Combine(msixAssets, "Square150x150Logo.png"), EncodePng(RenderTile(150)));
         Write(Path.Combine(msixAssets, "Wide310x150Logo.png"), EncodePng(RenderWideTile(310, 150)));
         Write(Path.Combine(msixAssets, "SplashScreen.png"), EncodePng(RenderWideTile(620, 300)));
@@ -199,10 +211,10 @@ internal static class Program
     });
 
     /// <summary>Composition the Store listing images share: the mark reversed out of the brand
-    /// gradient, over the product name. Full bleed, because the Store applies its own corners,
-    /// and titled, because these are the main logo on surfaces that do not print the name
-    /// beside them.</summary>
-    private static void DrawListingArt(DrawingContext context, double width, double height, double glyph, double titleSize)
+    /// gradient. Full bleed, because the Store applies its own corners. Untitled: the Store
+    /// prints the product name beside this art in search results and the product header, and
+    /// the titled version read as the name twice.</summary>
+    private static void DrawListingArt(DrawingContext context, double width, double height, double glyph)
     {
         context.DrawRectangle(
             new LinearGradientBrush(BrandRed, BrandRedDeep, new Point(0, 0), new Point(width, height))
@@ -212,56 +224,21 @@ internal static class Program
             null,
             new Rect(0, 0, width, height));
 
-        var title = Text("SQLBI Whiteboard", Segoe(FontWeights.SemiBold), titleSize, Colors.White);
-        var tagline = Text(
-            "Pen, touch, and live capture",
-            Segoe(FontWeights.Normal),
-            titleSize * 0.48,
-            Color.FromArgb(0xD0, 0xFF, 0xFF, 0xFF));
-
-        // The glyph occupies the middle 18 of its 24-unit box, so only that part is measured
-        // into the block; centring on the nominal square would sit the artwork low.
+        // The glyph occupies the middle 18 of its 24-unit box, so only that part is
+        // centered; centring on the nominal square would sit the artwork low.
         var glyphInk = glyph * 18.0 / 24.0;
-        var titleGap = glyph * 0.2;
-        var taglineGap = titleSize * 0.3;
-        // Measured rather than positioned by hand, so the block stays centered at either size.
-        var block = glyphInk + titleGap + title.Height + taglineGap + tagline.Height;
-
-        var y = (height - block) / 2;
-        DrawGlyph(context, (width - glyph) / 2, y - (glyph * 3.0 / 24.0), glyph, Brushes.White);
-        y += glyphInk + titleGap;
-        context.DrawText(title, new Point((width - title.Width) / 2, y));
-        y += title.Height + taglineGap;
-        context.DrawText(tagline, new Point((width - tagline.Width) / 2, y));
-
-        if (title.Width > width * 0.88)
-        {
-            Console.Error.WriteLine(
-                $"  warning: listing title reaches {title.Width:F0}px of {width * 0.88:F0}px");
-        }
+        var y = (height - glyphInk) / 2 - (glyph * 3.0 / 24.0);
+        DrawGlyph(context, (width - glyph) / 2, y, glyph, Brushes.White);
     }
 
     /// <summary>9:16 poster art, which Windows 10 and 11 use as the main listing logo.</summary>
     private static BitmapSource RenderPosterArt() =>
-        Render(720, 1080, context => DrawListingArt(context, 720, 1080, 320, 62));
+        Render(720, 1080, context => DrawListingArt(context, 720, 1080, 360));
 
     /// <summary>1:1 box art, which the Store substitutes into layouts the poster does not fit,
     /// and falls back to as the main logo when no poster art is supplied.</summary>
     private static BitmapSource RenderBoxArt() =>
-        Render(1080, 1080, context => DrawListingArt(context, 1080, 1080, 420, 84));
-
-    private static Typeface Segoe(FontWeight weight) =>
-        new(new FontFamily("Segoe UI"), FontStyles.Normal, weight, FontStretches.Normal);
-
-    private static FormattedText Text(string value, Typeface typeface, double size, Color color) =>
-        new(
-            value,
-            CultureInfo.InvariantCulture,
-            FlowDirection.LeftToRight,
-            typeface,
-            size,
-            new SolidColorBrush(color),
-            1.0);
+        Render(1080, 1080, context => DrawListingArt(context, 1080, 1080, 480));
 
     private static BitmapSource RenderWideTile(int width, int height) => Render(width, height, context =>
     {
