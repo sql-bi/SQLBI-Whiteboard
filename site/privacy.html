@@ -46,8 +46,13 @@
 <article>
     <h2>The application</h2>
     <p>SQLBI Whiteboard does not create an account, does not join a tenant, and does not send telemetry. There is no Application Insights, no crash reporter, and no outbound product analytics in the source.</p>
-    <p>A Microsoft Store install never phones home. The Store updates it. Any other copy may ask this site once a day whether a newer build exists. That check is on by default; turn it off under <span class="ui">Help → Preferences → Updates</span>.</p>
-    <p>The request is a GET of <code>stable.json</code>, or <code>dev.json</code> for a pre-release copy, the same file the download page uses. If it fails, a request to <code>github.com</code> for the newest release tag. The User-Agent carries the product version. Nothing else is sent.</p>
+    <p>A Microsoft Store install never phones home. The Store updates it. Any other copy may ask this site once a day whether a newer build exists.</p>
+    <ul>
+      <li><span class="ui">Check for new versions</span> is on by default; turn it off under <span class="ui">Help → Preferences → Updates</span>.</li>
+      <li>A GET of <code>stable.json</code>, or <code>dev.json</code> for a pre-release copy, the same file the download page uses.</li>
+      <li>If that fails, a request to <code>github.com</code> for the newest release tag.</li>
+      <li>The User-Agent carries the product version. Nothing else is sent.</li>
+    </ul>
     <p>Boards are local <code>.wboard</code> files. Preferences live under <code>%APPDATA%\SQLBI\Whiteboard</code> (or <code>Whiteboard Dev</code> for the pre-release channel).</p>
     <p>LiveView uses Windows Graphics Capture on this machine. The capture permission cannot be saved with the file. After you reload a board, the last frame is shown from the file; <span class="ui">Reconnect</span> asks Windows again.</p>
 
