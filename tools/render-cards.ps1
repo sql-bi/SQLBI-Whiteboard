@@ -52,6 +52,10 @@ img{display:block;width:$($card.width)px;height:${height}px}</style>
 
     $out = Join-Path $site $card.png
 
+    # Remove the previous export first: the wait below watches for the file to
+    # appear, and a stale copy would satisfy it even when the render failed.
+    Remove-Item $out -Force -ErrorAction SilentlyContinue
+
     # A private profile: headless refuses to start against a running Chrome.
     & $chrome --headless --disable-gpu --hide-scrollbars `
         --user-data-dir="$work\profile" `
