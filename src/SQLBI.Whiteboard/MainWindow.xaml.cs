@@ -2248,6 +2248,7 @@ public partial class MainWindow : Window
         LaserTrail.HoldSeconds = laser.HoldSeconds;
         LaserTrail.FadeSeconds = laser.FadeSeconds;
         LaserTrail.HoldMode = laser.HoldMode;
+        LaserTrail.TrailWeight = laser.TrailWeight;
     }
 
     private void CommitInkStyle(PenStyle style)
@@ -4720,7 +4721,23 @@ public partial class MainWindow : Window
         }
 
         UsePenCursor();
-        ShowPointerDot(rootPosition);
+        if (EffectiveTool == BoardTool.Laser)
+        {
+            // The laser is the same instrument in the air as on the glass, so
+            // hover drives the trail surface rather than the plain hover dot.
+            // HidePointerDot is not used here: it ends the hover it is about to
+            // be handed.
+            PointerDot.Visibility = Visibility.Collapsed;
+            LaserTrail.Hover(RootGrid.TranslatePoint(rootPosition, LaserTrail));
+        }
+        else
+        {
+            // Switching tools mid-hover has to take the comet with it; the pen
+            // is still in range, so the hover watchdog would never fire.
+            LaserTrail.EndHover();
+            ShowPointerDot(rootPosition);
+        }
+
         _lastHoverTimestamp = Stopwatch.GetTimestamp();
         if (!_hoverWatch.IsEnabled)
         {
@@ -4747,9 +4764,13 @@ public partial class MainWindow : Window
         PointerDot.Visibility = Visibility.Visible;
     }
 
+    // Every path that means "the pen is no longer over the board" comes through
+    // here, including the hover watchdog, so the laser comet is cleared here too
+    // rather than at each of those call sites.
     private void HidePointerDot()
     {
         PointerDot.Visibility = Visibility.Collapsed;
+        LaserTrail.EndHover();
         _hoverWatch.Stop();
     }
 

@@ -11,12 +11,29 @@ internal sealed class LaserTrailSurface : FrameworkElement
 {
     private const double ResumeSeconds = 0.05;
     private const double ResumeDistance = 36;
-    private const double MaximumWidth = 9;
-    private const double MinimumWidth = 1.2;
-    private static readonly Color LaserRed = Color.FromRgb(0xE1, 0x1D, 0x48);
+    private const double MaximumWidth = LaserSettings.MaximumTrailWidth;
+
+    // The hover dot is deliberately independent of the trail weight below: that
+    // setting is about how hard you have to press, and the pointer is drawn
+    // without pressing at all.
+    private const double HoverHeadWidth = 5.1;
+
+    // The hover comet is every sample from this window, so its length is the
+    // distance the pen covered in that time: a fast hover draws a long tail and
+    // a slow one barely more than the dot. The cap stops a flick from streaking
+    // across the board.
+    private const double HoverTrailSeconds = 0.11;
+    private const double HoverTrailLimit = 170;
+    private const float HoverPressure = 0.5f;
+    private static readonly Color LaserRed = Color.FromRgb(
+        LaserSettings.TrailRed,
+        LaserSettings.TrailGreen,
+        LaserSettings.TrailBlue);
 
     private readonly List<LaserStroke> _strokes = [];
     private readonly Dictionary<int, long> _groupClocks = [];
+    private readonly List<LaserPoint> _hover = [];
+    private Point? _hoverHead;
     private Point? _head;
     private float _headPressure = 0.5f;
     private bool _strokeOpen;
@@ -29,6 +46,8 @@ internal sealed class LaserTrailSurface : FrameworkElement
     public double FadeSeconds { get; set; } = LaserSettings.DefaultFadeSeconds;
 
     public LaserHoldMode HoldMode { get; set; } = LaserHoldMode.Shared;
+
+    public LaserTrailWeight TrailWeight { get; set; } = LaserTrailWeight.Light;
 
     public LaserTrailSurface()
     {
@@ -64,6 +83,39 @@ internal sealed class LaserTrailSurface : FrameworkElement
         InvalidateVisual();
     }
 
+    // Hover is deliberately kept clear of the contact state. A lifted pen leaves
+    // the stroke open for a moment so a resumed line joins the last one, and that
+    // window is measured from _head being gone; a hovering pen must not fill it.
+    public void Hover(Point point)
+    {
+        var now = Stopwatch.GetTimestamp();
+        if (_hover.Count > 0 && Distance(_hover[^1].Point, point) < 0.5)
+        {
+            _hover[^1] = new LaserPoint(point, now, HoverPressure);
+        }
+        else
+        {
+            _hover.Add(new LaserPoint(point, now, HoverPressure));
+        }
+
+        _hoverHead = point;
+        TrimHover();
+        EnsureTick();
+        InvalidateVisual();
+    }
+
+    public void EndHover()
+    {
+        if (_hoverHead is null && _hover.Count == 0)
+        {
+            return;
+        }
+
+        _hoverHead = null;
+        _hover.Clear();
+        InvalidateVisual();
+    }
+
     public void Clear()
     {
         _head = null;
@@ -72,6 +124,8 @@ internal sealed class LaserTrailSurface : FrameworkElement
         _liftTimestamp = 0;
         _strokes.Clear();
         _groupClocks.Clear();
+        _hover.Clear();
+        _hoverHead = null;
         _activeGroupId = 1;
         StopTick();
         InvalidateVisual();
@@ -82,6 +136,7 @@ internal sealed class LaserTrailSurface : FrameworkElement
         base.OnRender(drawingContext);
         CloseStrokeIfLiftExpired();
         TrimExpired();
+        TrimHover();
 
         foreach (var stroke in _strokes)
         {
@@ -113,32 +168,170 @@ internal sealed class LaserTrailSurface : FrameworkElement
             ink.Draw(drawingContext);
             ink.DrawingAttributes = LaserAttributes(
                 width,
-                (byte)(230 * life * (0.55 + (0.45 * pressure))));
+                (byte)(230 * life * OpacityFor(pressure)));
             ink.Draw(drawingContext);
         }
 
-        if (_head is not Point head)
+        if (_hoverHead is Point hoverHead)
         {
-            return;
+            DrawHoverTail(drawingContext);
+            DrawHead(drawingContext, hoverHead, HoverHeadWidth, HoverPressure);
         }
 
-        var headWidth = WidthFor(_headPressure);
-        var halo = new RadialGradientBrush(
-            Color.FromArgb((byte)(80 + (80 * _headPressure)), LaserRed.R, LaserRed.G, LaserRed.B),
-            Color.FromArgb(0, LaserRed.R, LaserRed.G, LaserRed.B));
+        if (_head is Point head)
+        {
+            DrawHead(drawingContext, head, WidthFor(_headPressure), _headPressure);
+        }
+    }
+
+    // A solid red centre inside a soft shade. The shade is what separates the
+    // pointer from drawn ink; the centre is what stays legible on a white board
+    // once a projector and a video encoder have had their turn at it.
+    private static void DrawHead(
+        DrawingContext drawingContext,
+        Point head,
+        double headWidth,
+        float pressure)
+    {
+        var halo = new RadialGradientBrush
+        {
+            GradientStops =
+            [
+                new GradientStop(
+                    Color.FromArgb((byte)(120 + (70 * pressure)), LaserRed.R, LaserRed.G, LaserRed.B),
+                    0.3),
+                new GradientStop(Color.FromArgb(0, LaserRed.R, LaserRed.G, LaserRed.B), 1),
+            ],
+        };
         halo.Freeze();
         drawingContext.DrawEllipse(halo, null, head, headWidth + 6, headWidth + 6);
+
+        var core = new SolidColorBrush(LaserRed);
+        core.Freeze();
+        var coreRadius = Math.Max(2.4, headWidth * 0.55);
+        drawingContext.DrawEllipse(core, null, head, coreRadius, coreRadius);
+
         var hot = new SolidColorBrush(Color.FromArgb(
-            (byte)(180 + (65 * _headPressure)),
+            (byte)(150 + (70 * pressure)),
             255,
             244,
             246));
         hot.Freeze();
-        drawingContext.DrawEllipse(hot, null, head, Math.Max(1.4, headWidth * 0.38), Math.Max(1.4, headWidth * 0.38));
+        var hotRadius = Math.Max(0.9, headWidth * 0.2);
+        drawingContext.DrawEllipse(hot, null, head, hotRadius, hotRadius);
+    }
+
+    private void DrawHoverTail(DrawingContext drawingContext)
+    {
+        if (_hover.Count < 2)
+        {
+            return;
+        }
+
+        var tail = _hover[0].Point;
+        var head = _hover[^1].Point;
+        if (Distance(tail, head) < 1.5)
+        {
+            return;
+        }
+
+        var half = HoverHeadWidth * 0.5;
+        var glow = HoverGeometry(half + 2.5);
+        var core = HoverGeometry(half);
+        if (glow is null || core is null)
+        {
+            return;
+        }
+
+        drawingContext.DrawGeometry(HoverBrush(tail, head, 70), null, glow);
+        drawingContext.DrawGeometry(HoverBrush(tail, head, 205), null, core);
+    }
+
+    // A wedge that comes to a point at the tail and reaches full width under the
+    // head, so the comet reads as motion rather than as a drawn line.
+    private Geometry? HoverGeometry(double halfWidth)
+    {
+        var count = _hover.Count;
+        var left = new Point[count];
+        var right = new Point[count];
+        for (var index = 0; index < count; index++)
+        {
+            var direction = HoverDirection(index);
+            var taper = halfWidth * index / (count - 1);
+            var offsetX = -direction.Y * taper;
+            var offsetY = direction.X * taper;
+            var point = _hover[index].Point;
+            left[index] = new Point(point.X + offsetX, point.Y + offsetY);
+            right[index] = new Point(point.X - offsetX, point.Y - offsetY);
+        }
+
+        Array.Reverse(right);
+        var geometry = new StreamGeometry();
+        using (var context = geometry.Open())
+        {
+            context.BeginFigure(left[0], isFilled: true, isClosed: true);
+            context.PolyLineTo(left[1..], isStroked: false, isSmoothJoin: true);
+            context.PolyLineTo(right, isStroked: false, isSmoothJoin: true);
+        }
+
+        geometry.Freeze();
+        return geometry;
+    }
+
+    private Vector HoverDirection(int index)
+    {
+        var previous = _hover[Math.Max(index - 1, 0)].Point;
+        var next = _hover[Math.Min(index + 1, _hover.Count - 1)].Point;
+        var direction = next - previous;
+        if (direction.Length < 0.001)
+        {
+            direction = _hover[^1].Point - _hover[0].Point;
+            if (direction.Length < 0.001)
+            {
+                return new Vector(1, 0);
+            }
+        }
+
+        direction.Normalize();
+        return direction;
+    }
+
+    private static Brush HoverBrush(Point tail, Point head, byte alpha)
+    {
+        var brush = new LinearGradientBrush
+        {
+            StartPoint = tail,
+            EndPoint = head,
+            MappingMode = BrushMappingMode.Absolute,
+        };
+        brush.GradientStops.Add(
+            new GradientStop(Color.FromArgb(0, LaserRed.R, LaserRed.G, LaserRed.B), 0));
+        brush.GradientStops.Add(
+            new GradientStop(Color.FromArgb(alpha, LaserRed.R, LaserRed.G, LaserRed.B), 1));
+        brush.Freeze();
+        return brush;
+    }
+
+    private void TrimHover()
+    {
+        _hover.RemoveAll(sample => AgeSeconds(sample.Timestamp) > HoverTrailSeconds);
+
+        var length = 0.0;
+        for (var index = _hover.Count - 1; index > 0; index--)
+        {
+            length += Distance(_hover[index].Point, _hover[index - 1].Point);
+            if (length > HoverTrailLimit)
+            {
+                _hover.RemoveRange(0, index);
+                return;
+            }
+        }
     }
 
     private void AcceptSample(Point point, float pressure, bool leaveTrail)
     {
+        _hover.Clear();
+        _hoverHead = null;
         var amount = ClampPressure(pressure);
         if (leaveTrail)
         {
@@ -202,7 +395,11 @@ internal sealed class LaserTrailSurface : FrameworkElement
     {
         CloseStrokeIfLiftExpired();
         TrimExpired();
-        if (_strokes.Count == 0 && _head is null)
+        TrimHover();
+
+        // A stationary hover has nothing left to animate once its tail has aged
+        // out; the head stays on screen and the next move restarts the clock.
+        if (_strokes.Count == 0 && _head is null && _hover.Count <= 1)
         {
             StopTick();
         }
@@ -345,8 +542,17 @@ internal sealed class LaserTrailSurface : FrameworkElement
         };
     }
 
-    private static double WidthFor(float pressure) =>
-        MinimumWidth + ((MaximumWidth - MinimumWidth) * ClampPressure(pressure));
+    private double WidthFor(float pressure)
+    {
+        var minimum = LaserSettings.MinimumTrailWidthFor(TrailWeight);
+        return minimum + ((MaximumWidth - minimum) * ClampPressure(pressure));
+    }
+
+    private double OpacityFor(float pressure)
+    {
+        var floor = LaserSettings.MinimumTrailOpacityFor(TrailWeight);
+        return floor + ((1 - floor) * ClampPressure(pressure));
+    }
 
     private static float ClampPressure(float pressure) => Math.Clamp(pressure, 0.02f, 1f);
 
