@@ -9,6 +9,13 @@ internal enum SettingEditorKind
     DoubleRange,
     MonitorChoice,
     OrderedList,
+
+    /// <summary>
+    /// The laser trail weights, drawn side by side as the strokes they produce.
+    /// Naming the options tells you nothing about what they look like, and this
+    /// is a setting about how something looks.
+    /// </summary>
+    LaserWeightChoice,
 }
 
 internal sealed class SettingChoice
@@ -54,6 +61,8 @@ internal static class SettingsCatalog
         public const string LaserHoldSeconds = "laser.holdSeconds";
         public const string LaserFadeSeconds = "laser.fadeSeconds";
         public const string LaserHoldMode = "laser.holdMode";
+
+        public const string LaserTrailWeight = "laser.trailWeight";
         public const string ToolbarPlacement = "toolbar.placement";
         public const string ToolbarLayout = "toolbar.layout";
         public const string FingerMode = "input.fingerMode";
@@ -148,6 +157,21 @@ internal static class SettingsCatalog
             [
                 new() { Id = nameof(LaserHoldMode.Shared), Title = "Shared across strokes" },
                 new() { Id = nameof(LaserHoldMode.PerStroke), Title = "Each stroke separately" },
+            ],
+        },
+        new()
+        {
+            Id = Ids.LaserTrailWeight,
+            Category = Laser,
+            Title = "Trail weight",
+            Description = "A pen reports little pressure on a quick tap. Each option shows that tap above a firm stroke: the firm stroke never changes, only how much the light one is thinned out.",
+            Keywords = ["laser", "weight", "thickness", "width", "pressure", "trail"],
+            Editor = SettingEditorKind.LaserWeightChoice,
+            Choices =
+            [
+                new() { Id = nameof(LaserTrailWeight.Light), Title = "Light" },
+                new() { Id = nameof(LaserTrailWeight.Medium), Title = "Medium" },
+                new() { Id = nameof(LaserTrailWeight.Bold), Title = "Bold" },
             ],
         },
         new()
