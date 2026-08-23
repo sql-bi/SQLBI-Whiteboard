@@ -26,6 +26,7 @@ on:
     paths:
       - 'site/**'
       - 'scripts/build-release-manifests.ps1'
+      - 'scripts/verify-published-site.ps1'
       - '.github/workflows/publish-site.yml'
   # A release changes what the manifests say without changing anything in site/, so it has
   # to redeploy the page as well. This is what keeps the download links current.
@@ -75,3 +76,13 @@ jobs:
 
       - id: deployment
         uses: actions/deploy-pages@v4
+
+      # A Pages deployment can report success, be recorded as the active deployment, and
+      # still leave the site serving the previous one. Every step above went green for
+      # 1.0.0 while the download page offered 0.9.5, and nothing said so; re-running this
+      # workflow published the same files and fixed it. Reading the site back is the only
+      # place that failure is visible, so it fails the run that caused it rather than
+      # waiting to be noticed.
+      - name: Verify the site is serving this deployment
+        shell: pwsh
+        run: ./scripts/verify-published-site.ps1 -Folder site

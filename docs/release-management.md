@@ -143,6 +143,21 @@ Two settings outside the repository have to be right, and each fails in its own 
   download page keeps offering an old version. That is precisely what happened between
   0.9.3 and 0.9.4.
 
+A third failure is not a setting at all, and looks like nothing: **a deployment can report
+success and still not be what the site serves.** For 1.0.0 the release-triggered run waited
+for the release, wrote the correct manifests, uploaded them, and deployed them; GitHub
+recorded that deployment as successful and marked the previous one inactive; and
+whiteboard.sqlbi.com went on serving the deployment from twenty minutes earlier, download
+page and all. Re-running the workflow published the same files and they were live
+immediately.
+
+Nothing upstream of the site reports that, so the workflow now reads the manifests back
+from the live domain after deploying and fails if they are not the ones it just wrote
+(`scripts/verify-published-site.ps1`, which also runs by hand against any folder holding a
+`CNAME` and the manifests). It compares against the deployed files rather than the newest
+release, because a pre-release deployment leaves `stable.json` untouched and that is
+correct. When it fails, the fix is **Run workflow** — the files are already right.
+
 ### Azure Pipelines
 
 `.azure/pipelines/build-whiteboard.yaml`, in the `SQLBI Whiteboard` Azure DevOps project,
