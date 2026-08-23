@@ -296,8 +296,26 @@
                                                           Width="Auto" />
                                         <ColumnDefinition Width="Auto" />
                                     </Grid.ColumnDefinitions>
-                                    <StackPanel x:Name="DualHighlighterColors"
-                                                Orientation="Horizontal" />
+                                    <!-- The highlighter has four swatches where the pen has six,
+                                         so the select button sits in the room the two missing
+                                         swatches leave. That keeps this row, the widest in the
+                                         palette, to the same two tool buttons as the pen row. -->
+                                    <DockPanel>
+                                        <ToggleButton x:Name="DualSelectButton"
+                                                      DockPanel.Dock="Right"
+                                                      Style="{StaticResource ToolbarIconButton}"
+                                                      ToolTip="Select image"
+                                                      Click="SelectToolButton_Click">
+                                            <Path Width="20"
+                                                  Height="20"
+                                                  Stretch="Uniform"
+                                                  Fill="{Binding Foreground, RelativeSource={RelativeSource AncestorType=ToggleButton}}"
+                                                  Data="{StaticResource ImageSelectGeometry}" />
+                                        </ToggleButton>
+                                        <StackPanel x:Name="DualHighlighterColors"
+                                                    HorizontalAlignment="Left"
+                                                    Orientation="Horizontal" />
+                                    </DockPanel>
                                     <StackPanel Grid.Column="1"
                                                 Orientation="Horizontal">
                                         <ToggleButton x:Name="DualHighlighterButton"
@@ -309,16 +327,6 @@
                                                   Stretch="Uniform"
                                                   Fill="{Binding Foreground, RelativeSource={RelativeSource AncestorType=ToggleButton}}"
                                                   Data="{StaticResource HighlightGeometry}" />
-                                        </ToggleButton>
-                                        <ToggleButton x:Name="DualSelectButton"
-                                                      Style="{StaticResource ToolbarIconButton}"
-                                                      ToolTip="Select image"
-                                                      Click="SelectToolButton_Click">
-                                            <Path Width="20"
-                                                  Height="20"
-                                                  Stretch="Uniform"
-                                                  Fill="{Binding Foreground, RelativeSource={RelativeSource AncestorType=ToggleButton}}"
-                                                  Data="{StaticResource ImageSelectGeometry}" />
                                         </ToggleButton>
                                         <ToggleButton x:Name="DualLaserButton"
                                                       Style="{StaticResource ToolbarIconButton}"
