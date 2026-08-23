@@ -122,8 +122,8 @@
 
     <!--
         These sizes set the width of the whole tool palette. Six pen swatches drive the shared
-        color column, and the highlighter row - that column plus three tool buttons - is the
-        widest thing in the palette. At 32 with a 3 margin the palette overflowed a presenter
+        color column, and either dual row - that column plus two tool buttons - is the widest
+        thing in the palette. At 32 with a 3 margin the palette overflowed a presenter
         picture-in-picture in the top-right corner, which is the placement the default toolbar
         position exists to hide under. Enlarging these again brings that back.
     -->

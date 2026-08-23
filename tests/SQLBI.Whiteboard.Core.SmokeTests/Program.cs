@@ -603,6 +603,28 @@ Assert(
         .Laser.HoldMode == LaserHoldMode.Shared,
     "Unknown laser hold modes should fall back to shared.");
 Assert(
+    defaultSettings.Laser.TrailWeight == LaserTrailWeight.Light,
+    "Missing settings should leave the laser trail following pen pressure.");
+Assert(
+    AppSettingsSerializer.Parse("{ \"laser\": { \"trailWeight\": \"Heavy\" } }")
+        .Laser.TrailWeight == LaserTrailWeight.Light,
+    "Unknown laser trail weights should fall back to light.");
+Assert(
+    AppSettingsSerializer.Parse("{ \"laser\": { \"trailWeight\": \"Bold\" } }")
+        .Laser.TrailWeight == LaserTrailWeight.Bold,
+    "Saved laser trail weight should still load.");
+Assert(
+    LaserSettings.MinimumTrailWidthFor(LaserTrailWeight.Light) <
+        LaserSettings.MinimumTrailWidthFor(LaserTrailWeight.Medium) &&
+    LaserSettings.MinimumTrailWidthFor(LaserTrailWeight.Medium) <
+        LaserSettings.MinimumTrailWidthFor(LaserTrailWeight.Bold),
+    "Heavier laser trail weights should raise the width floor.");
+Assert(
+    LaserSettings.MinimumTrailOpacityFor(LaserTrailWeight.Light) <
+        LaserSettings.MinimumTrailOpacityFor(LaserTrailWeight.Bold) &&
+    LaserSettings.MinimumTrailOpacityFor(LaserTrailWeight.Bold) <= 1,
+    "Heavier laser trail weights should raise the opacity floor without exceeding it.");
+Assert(
     AppSettingsSerializer.Parse("{ \"laser\": { \"holdMode\": \"PerStroke\" } }")
         .Laser.HoldMode == LaserHoldMode.PerStroke,
     "Saved per-stroke laser hold should still load.");

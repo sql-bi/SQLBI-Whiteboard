@@ -3,6 +3,7 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Controls.Primitives;
 using System.Windows.Input;
+using System.Windows.Media;
 using SQLBI.Whiteboard.Core.Model;
 using SQLBI.Whiteboard.Core.Settings;
 
@@ -172,7 +173,7 @@ public partial class PreferencesWindow : Window
             body.Children.Add(value);
             body.Children.Add(slider);
         }
-        else if (setting.Editor == SettingEditorKind.OrderedList)
+        else if (setting.Editor is SettingEditorKind.OrderedList or SettingEditorKind.LaserWeightChoice)
         {
             body.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
             body.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
@@ -206,8 +207,87 @@ public partial class PreferencesWindow : Window
             SettingEditorKind.DoubleRange => CreateSlider(setting),
             SettingEditorKind.MonitorChoice => CreateMonitorCombo(),
             SettingEditorKind.OrderedList => CreateOrderedList(setting),
+            SettingEditorKind.LaserWeightChoice => CreateLaserWeightChoice(setting),
             _ => CreateEnumCombo(setting),
         };
+
+    // Each option is drawn as the strokes it produces, at the same width and
+    // opacity the trail itself would use, so the choice is made by looking
+    // rather than by imagining what a word means.
+    private FrameworkElement CreateLaserWeightChoice(SettingDescriptor setting)
+    {
+        const float LightTouch = 0.08f;
+        const float FirmTouch = 0.6f;
+
+        var host = new UniformGrid
+        {
+            Rows = 1,
+            Columns = setting.Choices.Count,
+        };
+
+        var segments = new List<ToggleButton>();
+        foreach (var choice in setting.Choices)
+        {
+            if (!Enum.TryParse<LaserTrailWeight>(choice.Id, out var weight))
+            {
+                continue;
+            }
+
+            var samples = new StackPanel { HorizontalAlignment = HorizontalAlignment.Center };
+            samples.Children.Add(CreateLaserSample(weight, LightTouch));
+            samples.Children.Add(CreateLaserSample(weight, FirmTouch));
+            samples.Children.Add(new TextBlock
+            {
+                Style = (Style)FindResource("SettingsValueLabel"),
+                Text = choice.Title,
+                Margin = new Thickness(0, 8, 0, 0),
+                HorizontalAlignment = HorizontalAlignment.Center,
+            });
+
+            var segment = new ToggleButton
+            {
+                Style = (Style)FindResource("SettingsSampleSegment"),
+                Content = samples,
+                IsChecked = choice.Id == CurrentEnumId(setting),
+                Tag = choice.Id,
+            };
+            segment.Click += (_, _) =>
+            {
+                foreach (var other in segments)
+                {
+                    other.IsChecked = ReferenceEquals(other, segment);
+                }
+
+                SetEnum(setting, choice.Id);
+            };
+            segments.Add(segment);
+            host.Children.Add(segment);
+        }
+
+        return host;
+    }
+
+    private Border CreateLaserSample(LaserTrailWeight weight, float pressure)
+    {
+        var minimumWidth = LaserSettings.MinimumTrailWidthFor(weight);
+        var height = minimumWidth + ((LaserSettings.MaximumTrailWidth - minimumWidth) * pressure);
+        var floor = LaserSettings.MinimumTrailOpacityFor(weight);
+        var opacity = floor + ((1 - floor) * pressure);
+        var brush = new SolidColorBrush(Color.FromArgb(
+            (byte)(230 * opacity),
+            LaserSettings.TrailRed,
+            LaserSettings.TrailGreen,
+            LaserSettings.TrailBlue));
+        brush.Freeze();
+        return new Border
+        {
+            Height = height,
+            Width = 76,
+            Margin = new Thickness(0, 4, 0, 4),
+            CornerRadius = new CornerRadius(height / 2),
+            Background = brush,
+        };
+    }
 
     private FrameworkElement CreateOrderedList(SettingDescriptor setting)
     {
@@ -463,6 +543,7 @@ public partial class PreferencesWindow : Window
         setting.Id switch
         {
             SettingsCatalog.Ids.LaserHoldMode => _settings.Laser.HoldMode.ToString(),
+            SettingsCatalog.Ids.LaserTrailWeight => _settings.Laser.TrailWeight.ToString(),
             SettingsCatalog.Ids.ToolbarPlacement => _settings.ToolbarPlacement.ToString(),
             SettingsCatalog.Ids.ToolbarLayout => _settings.CalligraphyAccess.ToString(),
             SettingsCatalog.Ids.FingerMode => _settings.FingerMode.ToString(),
@@ -524,6 +605,10 @@ public partial class PreferencesWindow : Window
             case SettingsCatalog.Ids.LaserHoldMode
                 when Enum.TryParse<LaserHoldMode>(id, out var holdMode):
                 _settings.Laser.HoldMode = holdMode;
+                break;
+            case SettingsCatalog.Ids.LaserTrailWeight
+                when Enum.TryParse<LaserTrailWeight>(id, out var trailWeight):
+                _settings.Laser.TrailWeight = trailWeight;
                 break;
             case SettingsCatalog.Ids.ToolbarPlacement
                 when Enum.TryParse<ToolbarPlacement>(id, out var placement):

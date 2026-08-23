@@ -108,6 +108,14 @@ public partial class MainWindow : Window
     private AppSettings _settings = new();
 
     private const double ChevronInkOptionsWidth = 240;
+
+    private bool _syntheticLaserContact;
+    private bool _penInverted;
+
+    // How far the eraser reaches from the pen, in screen pixels at any zoom.
+    // The hover square is drawn from the same number, so what it outlines is
+    // what a tap would clear.
+    private const double EraserScreenRadius = 12;
     private const double SessionTabHeight = 32;
     private const double ToolPaletteInset = 16;
     private WindowState _windowStateBeforeFullScreen;
@@ -279,6 +287,22 @@ public partial class MainWindow : Window
             return;
         }
 
+        if (!IsTouchStylus(e) && !IsPenTipDown(e))
+        {
+            Debug.WriteLine("[Laser] ignoring the barrel button's synthetic stylus down");
+
+            // The event still reached the InkCanvas, which restores its own ink
+            // cursor on the way past. Nothing else refreshes it until the pen
+            // moves again, and a pen resting still after a barrel click does not
+            // move, so the cursor is put back here rather than left showing.
+            UsePenCursor();
+
+            // Handled so the InkCanvas does not open an editing gesture for a
+            // touch we have just decided never happened.
+            e.Handled = true;
+            return;
+        }
+
         if (IsTouchStylus(e))
         {
             if (!TryBeginFingerTool(e))
@@ -352,6 +376,8 @@ public partial class MainWindow : Window
             TrackTouchPoint(e);
         }
 
+        RecoverLaserContactFromPressure(e);
+
         var position = e.GetPosition(InkSurface);
         var screen = ToPointD(position);
 
@@ -378,6 +404,10 @@ public partial class MainWindow : Window
         if (e.StylusDevice.Inverted)
         {
             LaserTrail.HideHead();
+            if (!_penInContact)
+            {
+                UpdateHoverPointerDot(e);
+            }
         }
         else if (EffectiveTool == BoardTool.Laser)
         {
@@ -461,19 +491,13 @@ public partial class MainWindow : Window
 
         _stylusAction = PointerAction.None;
         _penInContact = false;
+        _syntheticLaserContact = false;
         if (EffectiveTool == BoardTool.Laser)
         {
             StopLaserSampling();
             LaserTrail.Lift();
-            InkSurface.Cursor = Cursors.None;
-            if (e.StylusDevice.InAir)
-            {
-                UpdateHoverPointerDot(e);
-            }
-            else
-            {
-                HidePointerDot();
-            }
+            UsePenCursor();
+            UpdateHoverPointerDot(e);
         }
         else if (EffectiveTool == BoardTool.Select)
         {
@@ -482,13 +506,9 @@ public partial class MainWindow : Window
             InkSurface.Cursor = SelectCursorAt(hoverScreen);
             HidePointerDot();
         }
-        else if (e.StylusDevice.InAir)
-        {
-            UpdateHoverPointerDot(e);
-        }
         else
         {
-            HidePointerDot();
+            UpdateHoverPointerDot(e);
         }
         Debug.WriteLine("[WpfInk] stylus-up reached WPF");
     }
@@ -546,6 +566,65 @@ public partial class MainWindow : Window
     private void Window_PreviewStylusDown(object sender, StylusDownEventArgs e)
     {
         TryActivatePaletteFromStylus(e);
+    }
+
+    private bool IsPenTipDown(StylusEventArgs e) =>
+        !e.StylusDevice.InAir &&
+        !PhantomStylus.IsBarrelDown(e.GetStylusPoints(InkSurface));
+
+    // The barrel click opens a stylus down that WPF does not close until well
+    // after the pen has touched and left again, so the first real landing is
+    // delivered as moves inside it and never gets a down of its own. Tip
+    // pressure is the only honest signal that the pen is on the glass, so the
+    // trail starts and ends on that instead of waiting for events that are not
+    // coming.
+    private void RecoverLaserContactFromPressure(StylusEventArgs e)
+    {
+        if (IsTouchStylus(e) || e.StylusDevice.Inverted)
+        {
+            return;
+        }
+
+        var pressed = HasTipPressure(e);
+        if (pressed &&
+            !_penInContact &&
+            _stylusAction == PointerAction.None &&
+            EffectiveTool == BoardTool.Laser)
+        {
+            _penInContact = true;
+            _syntheticLaserContact = true;
+            BeginLaserContact(e);
+            _stylusAction = PointerAction.Laser;
+            return;
+        }
+
+        if (!pressed && _syntheticLaserContact)
+        {
+            EndSyntheticLaserContact();
+        }
+    }
+
+    private void EndSyntheticLaserContact()
+    {
+        _syntheticLaserContact = false;
+        _penInContact = false;
+        _stylusAction = PointerAction.None;
+        StopLaserSampling();
+        LaserTrail.Lift();
+    }
+
+    private bool HasTipPressure(StylusEventArgs e)
+    {
+        var points = e.GetStylusPoints(InkSurface);
+        for (var index = 0; index < points.Count; index++)
+        {
+            if (points[index].PressureFactor > 0)
+            {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     private void ToolPalette_PreviewStylusDown(object sender, StylusDownEventArgs e)
@@ -676,6 +755,11 @@ public partial class MainWindow : Window
         _discardInkStroke = _penInContact;
         SetActiveTool(BoardTool.Laser);
         InkSurface.AbortWetInk();
+
+        // Engaging the laser from the barrel button is the one tool change that
+        // can happen without the pen moving, so it cannot wait for the next
+        // pointer event to settle the cursor.
+        UsePenCursor();
     }
 
     private void BeginLaserContact(Point position, float pressure)
@@ -1324,7 +1408,7 @@ public partial class MainWindow : Window
 
     private void EraseAt(PointD worldPoint)
     {
-        var radius = 12 / _camera.Zoom;
+        var radius = EraserScreenRadius / _camera.Zoom;
         var hits = _document.Objects
             .OfType<InkStrokeObject>()
             .Where(stroke => _erasedObjects.All(item => item.Id != stroke.Id))
@@ -2174,6 +2258,7 @@ public partial class MainWindow : Window
         LaserTrail.HoldSeconds = laser.HoldSeconds;
         LaserTrail.FadeSeconds = laser.FadeSeconds;
         LaserTrail.HoldMode = laser.HoldMode;
+        LaserTrail.TrailWeight = laser.TrailWeight;
     }
 
     private void CommitInkStyle(PenStyle style)
@@ -4546,6 +4631,7 @@ public partial class MainWindow : Window
         _stylusAction = PointerAction.None;
         _mouseAction = PointerAction.None;
         _penInContact = false;
+        _syntheticLaserContact = false;
         ClearTouchNavigation();
         InkSurface.Cursor = Cursors.Arrow;
         HidePointerDot();
@@ -4604,11 +4690,16 @@ public partial class MainWindow : Window
         }
     }
 
+    // Assigning Cursor only takes effect at the next cursor query, and a pen
+    // held still raises none - the barrel button can change the tool without any
+    // pointer movement at all. Without the refresh the previous cursor stays on
+    // screen until something else moves, which is why a tap appeared to fix it.
     private void UsePenCursor()
     {
         InkSurface.Cursor = EffectiveTool is BoardTool.Select
             ? Cursors.Arrow
             : Cursors.None;
+        Mouse.UpdateCursor();
     }
 
     // Contact packets arrive as StylusMove; hover is StylusInAirMove. Wacom
@@ -4616,9 +4707,16 @@ public partial class MainWindow : Window
     // not the same as leaving the InkCanvas hit-test bounds.
     private void UpdateHoverPointerDot(StylusEventArgs e)
     {
-        if (IsTouchStylus(e) ||
-            e.StylusDevice.Inverted ||
-            !e.StylusDevice.InAir)
+        if (IsTouchStylus(e))
+        {
+            HidePointerDot();
+            return;
+        }
+
+        // A reversed pen used to be dropped here. It erases on contact, so it
+        // has more to show while hovering than any other pose, not less.
+        _penInverted = e.StylusDevice.Inverted;
+        if (_penInContact)
         {
             HidePointerDot();
             return;
@@ -4640,7 +4738,32 @@ public partial class MainWindow : Window
         }
 
         UsePenCursor();
-        ShowPointerDot(rootPosition);
+        if (IsErasing)
+        {
+            // What a tap would erase is a patch of board, not a point, so the
+            // pointer shows the patch. A dot would say nothing about reach.
+            PointerDot.Visibility = Visibility.Collapsed;
+            LaserTrail.EndHover();
+            ShowEraserHint(rootPosition);
+        }
+        else if (EffectiveTool == BoardTool.Laser)
+        {
+            // The laser is the same instrument in the air as on the glass, so
+            // hover drives the trail surface rather than the plain hover dot.
+            // HidePointerDot is not used here: it ends the hover it is about to
+            // be handed.
+            PointerDot.Visibility = Visibility.Collapsed;
+            LaserTrail.Hover(RootGrid.TranslatePoint(rootPosition, LaserTrail));
+        }
+        else
+        {
+            // Switching tools mid-hover has to take the comet with it; the pen
+            // is still in range, so the hover watchdog would never fire.
+            LaserTrail.EndHover();
+            HideEraserHint();
+            ShowPointerDot(rootPosition);
+        }
+
         _lastHoverTimestamp = Stopwatch.GetTimestamp();
         if (!_hoverWatch.IsEnabled)
         {
@@ -4667,11 +4790,32 @@ public partial class MainWindow : Window
         PointerDot.Visibility = Visibility.Visible;
     }
 
+    // Every path that means "the pen is no longer over the board" comes through
+    // here, including the hover watchdog, so the laser comet is cleared here too
+    // rather than at each of those call sites.
     private void HidePointerDot()
     {
         PointerDot.Visibility = Visibility.Collapsed;
+        LaserTrail.EndHover();
+        HideEraserHint();
         _hoverWatch.Stop();
     }
+
+    // Reversing the pen erases without changing the selected tool, so the tool
+    // alone does not answer what a tap would do here.
+    private bool IsErasing => _penInverted || EffectiveTool == BoardTool.Eraser;
+
+    private void ShowEraserHint(Point position)
+    {
+        var side = EraserScreenRadius * 2;
+        EraserHint.Width = side;
+        EraserHint.Height = side;
+        EraserHintTransform.X = position.X - (side / 2);
+        EraserHintTransform.Y = position.Y - (side / 2);
+        EraserHint.Visibility = Visibility.Visible;
+    }
+
+    private void HideEraserHint() => EraserHint.Visibility = Visibility.Collapsed;
 
     private void ShowError(string context, Exception exception)
     {

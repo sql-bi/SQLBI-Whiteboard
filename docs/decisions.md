@@ -328,11 +328,26 @@ rendition, so the limit is far away at this site's traffic.
 
 ---
 
+## 20. The version is 1.0.0
+
+**Implemented.**
+
+The open question was never the number, it was what had to be true before it stopped
+being 0.x. That turned out to be product rather than pipeline: Preferences, `.wimport`,
+the Explorer and VS Code previews, the documentation site, and Finger drawing. All of
+them shipped during 0.9.x, and no numbered work was left behind them.
+
+Nothing about delivery changes with it. A merge still publishes a pre-release, promotion
+is still an approval on that same run, and the Store still takes the MSIX from it — so
+1.0.0 reaches people by the path 0.9.5 already proved, which is the reason the number
+could be treated as a statement about the product rather than an event in the pipeline.
+
+The Store carries `1.0.0.0` as its identity version, and winget continues from whatever
+version its first submission settles on.
+
+---
+
 ## Open questions
 
-- Whether 1.0.0 is declared, and on what. `VersionPrefix` in `Directory.Build.props`
-  reads `0.9.5`, the released channel has been published since `0.9.0`, and `0.9.2` is
-  the version live in the Store. Nothing is blocked on the number; what is open is
-  what has to be true before it stops being 0.x.
 - arm64 is not built; add it if Surface devices matter for a pen application.
 - The brand mark is placeholder-grade (decision 12).

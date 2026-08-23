@@ -292,6 +292,60 @@
         </DataTemplate.Triggers>
     </DataTemplate>
 
+    <!--
+        One segment of a choice whose options are drawn rather than named. The
+        samples inside carry the meaning, so the chrome stays quiet until the
+        segment is selected.
+    -->
+    <Style x:Key="SettingsSampleSegment"
+           TargetType="ToggleButton">
+        <Setter Property="Margin"
+                Value="4,0" />
+        <Setter Property="Padding"
+                Value="10,12" />
+        <Setter Property="Focusable"
+                Value="False" />
+        <Setter Property="Cursor"
+                Value="Hand" />
+        <Setter Property="Stylus.IsPressAndHoldEnabled"
+                Value="False" />
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="ToggleButton">
+                    <Border x:Name="Root"
+                            Padding="{TemplateBinding Padding}"
+                            CornerRadius="8"
+                            BorderThickness="1"
+                            BorderBrush="#FFE4E6EA"
+                            Background="{DynamicResource SettingsEditorBrush}"
+                            SnapsToDevicePixels="True">
+                        <ContentPresenter HorizontalAlignment="Center" />
+                    </Border>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsMouseOver"
+                                 Value="True">
+                            <Setter TargetName="Root"
+                                    Property="Background"
+                                    Value="{DynamicResource ToolbarHoverBrush}" />
+                        </Trigger>
+                        <Trigger Property="IsChecked"
+                                 Value="True">
+                            <Setter TargetName="Root"
+                                    Property="Background"
+                                    Value="{DynamicResource ToolbarSelectedBrush}" />
+                            <Setter TargetName="Root"
+                                    Property="BorderBrush"
+                                    Value="{DynamicResource ToolbarAccentBrush}" />
+                            <Setter TargetName="Root"
+                                    Property="BorderThickness"
+                                    Value="2" />
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
     <Style x:Key="SettingsComboBoxItem"
            TargetType="ComboBoxItem">
         <Setter Property="Padding"

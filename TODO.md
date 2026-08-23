@@ -16,10 +16,10 @@ The delivery chain works end to end: a merge to `main` builds, signs, and publis
 pre-release to GitHub Releases, and one approval promotes that same build to a release.
 <https://whiteboard.sqlbi.com> reads its download links from the release manifest
 deployed beside it and needs no edit per release. The current product version is `VersionPrefix` in `Directory.Build.props`
-(0.9.5). Identity version for the Store package is `VersionPrefix.0` (`0.9.5.0`).
+(1.0.0). Identity version for the Store package is `VersionPrefix.0` (`1.0.0.0`).
 
-What 1.0 was waiting on is in the product: Preferences, `.wimport`, Explorer and VS Code
-previews, the public documentation site, and Finger drawing (default when no pen is
+What 1.0 was waiting on shipped during 0.9.x: Preferences, `.wimport`, Explorer and VS
+Code previews, the public documentation site, and Finger drawing (default when no pen is
 detected). The Store listing was submitted by hand on 20 August 2026 for 0.9.2.
 
 No numbered work remains. The video teaser is recorded and served from the landing page
