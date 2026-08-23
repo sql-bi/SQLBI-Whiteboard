@@ -18,18 +18,20 @@ pre-release to GitHub Releases, and one approval promotes that same build to a r
 deployed beside it and needs no edit per release. The current product version is `VersionPrefix` in `Directory.Build.props`
 (1.0.0). Identity version for the Store package is `VersionPrefix.0` (`1.0.0.0`).
 
-What 1.0 was waiting on shipped during 0.9.x: Preferences, `.wimport`, Explorer and VS
-Code previews, the public documentation site, and Finger drawing (default when no pen is
-detected). The Store listing was submitted by hand on 20 August 2026 for 0.9.2.
+Declaring that number is decision 20 in [docs/decisions.md](docs/decisions.md). What 1.0
+was waiting on shipped during 0.9.x: Preferences, `.wimport`, Explorer and VS Code
+previews, the public documentation site, and Finger drawing (default when no pen is
+detected).
 
 No numbered work remains. The video teaser is recorded and served from the landing page
 itself as `site/teaser-av1.mp4` / `site/teaser-h264.mp4` — the Vimeo-embed plan was
 reversed, see decision 19 in [docs/decisions.md](docs/decisions.md); the production
-script and staging assets are in `docs/teaser/`. The release manifests, winget, and
-Store submission are done: the manifests are live at
-<https://whiteboard.sqlbi.com/stable.json>, the first winget submission is in review,
-and the pipeline's Store stage submits each promoted release. All three are described
-in [docs/release-management.md](docs/release-management.md).
+script and staging assets are in `docs/teaser/`. The release manifests and the Store
+submission are done and proven: the manifests are live at
+<https://whiteboard.sqlbi.com/stable.json>, and the pipeline's Store stage carried 0.9.5
+through certification unattended, which was the last part of the chain never exercised
+end to end. winget is the one piece still waiting, below. All of it is described in
+[docs/release-management.md](docs/release-management.md).
 
 ## Waiting on the first winget submission
 
@@ -43,26 +45,15 @@ Until that pull request merges, `.github/workflows/publish-winget.yml` fails on 
 release, because `wingetcreate update` has no previous version to read. That failure is
 visible and gates nothing.
 
-## Waiting on the first automated Store submission
+## Before promoting 1.0.0
 
-Also not work. The stage ran for the first time on 0.9.4 and failed: it authenticated,
-created the submission, and then could not upload the package, because `msstore publish`
-defaults its blob upload timeout to zero when `--uploadTimeout` is not given. That is
-fixed, and 0.9.5 is the release that exercises the fix — a pipeline run uses the YAML on
-`main` at the time it runs, so the fix could not be applied to 0.9.4 retroactively.
+The build, signing, and publishing chain is proven. What has never been done for a real
+release is everything that involves installing the result — `signtool verify` on each
+MSI, install, upgrade and uninstall for each scope, opening a `.wboard` by double-click,
+released and pre-release side by side, and a clean machine for SmartScreen. The list is
+in [docs/release-management.md](docs/release-management.md) under "Verification before a
+public release".
 
-0.9.4 was never submitted to the Store, and 0.9.5 carries no product change over it: the
-binaries are identical, and the release exists to put a version through the Store stage.
-Nothing depends on the Store carrying every version, and the alternative was submitting by
-hand, which is the thing this stage exists to avoid.
-
-That run also clears the abandoned submission 0.9.4 left behind, which is the first test of
-that path as well.
-
-Watch two things on that run. The stage has to pick the MSIX out of `drop-x64-true`, since
-both matrix jobs pack an identically named package and only one of them is self-contained.
-And a submission already pending in Partner Center makes `msstore publish` fail by design —
-the stage does not delete someone else's in-flight submission to make room for its own.
-
-Nothing gates on it. The stage runs after the GitHub release exists, so a failure leaves
-every download in place and is visible as a failed stage.
+It mattered less through 0.9.x, when a version number invited nobody to install fresh.
+1.0.0 does, so the list is worth walking before the Release stage is approved rather
+than after.

@@ -10,7 +10,7 @@ How the project is developed and shipped is documented separately:
 ## Included in the application
 
 - Low-latency, pressure-aware WPF wet ink, including rear-eraser detection on any pen that reports it
-- A normal cursor for physical mouse input and a high-contrast pen-hover dot that disappears on contact
+- A normal cursor for physical mouse input, and a pen-hover indicator that shows what a tap would do: the laser with its halo and speed trail, a dashed square around what the eraser would clear, and a high-contrast dot for everything else. All of them disappear on contact
 - Touch panning and two-finger pinch zoom
 - Optional finger drawing (default when no pen is detected): one finger uses the current tool, two fingers still pan and pinch-zoom, and Eraser and Pan appear on the toolbar
 - Basic palm rejection: touch navigation is suspended when the pen makes contact
@@ -28,7 +28,7 @@ How the project is developed and shipped is documented separately:
 - Markdown `.wimport` recipes that build image and text containers from headings
 - An intentionally small floating toolbar
 - A File / Edit / View / Help tab strip. Click a tab for a one-row command strip over the canvas
-- Preferences for the startup monitor, full-screen start, finger drawing, snippet format order, laser trail, toolbar position and layout, and (except Store installs) a daily new-version check
+- Preferences for the startup monitor, full-screen start, finger drawing, snippet format order, laser trail timing and weight, toolbar position and layout, and (except Store installs) a daily new-version check
 - About, with version and channel
 
 ## Build and run
