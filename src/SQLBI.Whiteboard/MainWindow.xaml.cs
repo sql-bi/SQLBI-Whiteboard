@@ -108,6 +108,8 @@ public partial class MainWindow : Window
     private AppSettings _settings = new();
 
     private const double ChevronInkOptionsWidth = 240;
+
+    private bool _syntheticLaserContact;
     private const double SessionTabHeight = 32;
     private const double ToolPaletteInset = 16;
     private WindowState _windowStateBeforeFullScreen;
@@ -279,6 +281,22 @@ public partial class MainWindow : Window
             return;
         }
 
+        if (!IsTouchStylus(e) && !IsPenTipDown(e))
+        {
+            Debug.WriteLine("[Laser] ignoring the barrel button's synthetic stylus down");
+
+            // The event still reached the InkCanvas, which restores its own ink
+            // cursor on the way past. Nothing else refreshes it until the pen
+            // moves again, and a pen resting still after a barrel click does not
+            // move, so the cursor is put back here rather than left showing.
+            UsePenCursor();
+
+            // Handled so the InkCanvas does not open an editing gesture for a
+            // touch we have just decided never happened.
+            e.Handled = true;
+            return;
+        }
+
         if (IsTouchStylus(e))
         {
             if (!TryBeginFingerTool(e))
@@ -351,6 +369,8 @@ public partial class MainWindow : Window
 
             TrackTouchPoint(e);
         }
+
+        RecoverLaserContactFromPressure(e);
 
         var position = e.GetPosition(InkSurface);
         var screen = ToPointD(position);
@@ -461,19 +481,13 @@ public partial class MainWindow : Window
 
         _stylusAction = PointerAction.None;
         _penInContact = false;
+        _syntheticLaserContact = false;
         if (EffectiveTool == BoardTool.Laser)
         {
             StopLaserSampling();
             LaserTrail.Lift();
-            InkSurface.Cursor = Cursors.None;
-            if (e.StylusDevice.InAir)
-            {
-                UpdateHoverPointerDot(e);
-            }
-            else
-            {
-                HidePointerDot();
-            }
+            UsePenCursor();
+            UpdateHoverPointerDot(e);
         }
         else if (EffectiveTool == BoardTool.Select)
         {
@@ -482,13 +496,9 @@ public partial class MainWindow : Window
             InkSurface.Cursor = SelectCursorAt(hoverScreen);
             HidePointerDot();
         }
-        else if (e.StylusDevice.InAir)
-        {
-            UpdateHoverPointerDot(e);
-        }
         else
         {
-            HidePointerDot();
+            UpdateHoverPointerDot(e);
         }
         Debug.WriteLine("[WpfInk] stylus-up reached WPF");
     }
@@ -546,6 +556,65 @@ public partial class MainWindow : Window
     private void Window_PreviewStylusDown(object sender, StylusDownEventArgs e)
     {
         TryActivatePaletteFromStylus(e);
+    }
+
+    private bool IsPenTipDown(StylusEventArgs e) =>
+        !e.StylusDevice.InAir &&
+        !PhantomStylus.IsBarrelDown(e.GetStylusPoints(InkSurface));
+
+    // The barrel click opens a stylus down that WPF does not close until well
+    // after the pen has touched and left again, so the first real landing is
+    // delivered as moves inside it and never gets a down of its own. Tip
+    // pressure is the only honest signal that the pen is on the glass, so the
+    // trail starts and ends on that instead of waiting for events that are not
+    // coming.
+    private void RecoverLaserContactFromPressure(StylusEventArgs e)
+    {
+        if (IsTouchStylus(e) || e.StylusDevice.Inverted)
+        {
+            return;
+        }
+
+        var pressed = HasTipPressure(e);
+        if (pressed &&
+            !_penInContact &&
+            _stylusAction == PointerAction.None &&
+            EffectiveTool == BoardTool.Laser)
+        {
+            _penInContact = true;
+            _syntheticLaserContact = true;
+            BeginLaserContact(e);
+            _stylusAction = PointerAction.Laser;
+            return;
+        }
+
+        if (!pressed && _syntheticLaserContact)
+        {
+            EndSyntheticLaserContact();
+        }
+    }
+
+    private void EndSyntheticLaserContact()
+    {
+        _syntheticLaserContact = false;
+        _penInContact = false;
+        _stylusAction = PointerAction.None;
+        StopLaserSampling();
+        LaserTrail.Lift();
+    }
+
+    private bool HasTipPressure(StylusEventArgs e)
+    {
+        var points = e.GetStylusPoints(InkSurface);
+        for (var index = 0; index < points.Count; index++)
+        {
+            if (points[index].PressureFactor > 0)
+            {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     private void ToolPalette_PreviewStylusDown(object sender, StylusDownEventArgs e)
@@ -676,6 +745,11 @@ public partial class MainWindow : Window
         _discardInkStroke = _penInContact;
         SetActiveTool(BoardTool.Laser);
         InkSurface.AbortWetInk();
+
+        // Engaging the laser from the barrel button is the one tool change that
+        // can happen without the pen moving, so it cannot wait for the next
+        // pointer event to settle the cursor.
+        UsePenCursor();
     }
 
     private void BeginLaserContact(Point position, float pressure)
@@ -4546,6 +4620,7 @@ public partial class MainWindow : Window
         _stylusAction = PointerAction.None;
         _mouseAction = PointerAction.None;
         _penInContact = false;
+        _syntheticLaserContact = false;
         ClearTouchNavigation();
         InkSurface.Cursor = Cursors.Arrow;
         HidePointerDot();
@@ -4604,11 +4679,16 @@ public partial class MainWindow : Window
         }
     }
 
+    // Assigning Cursor only takes effect at the next cursor query, and a pen
+    // held still raises none - the barrel button can change the tool without any
+    // pointer movement at all. Without the refresh the previous cursor stays on
+    // screen until something else moves, which is why a tap appeared to fix it.
     private void UsePenCursor()
     {
         InkSurface.Cursor = EffectiveTool is BoardTool.Select
             ? Cursors.Arrow
             : Cursors.None;
+        Mouse.UpdateCursor();
     }
 
     // Contact packets arrive as StylusMove; hover is StylusInAirMove. Wacom
@@ -4618,7 +4698,7 @@ public partial class MainWindow : Window
     {
         if (IsTouchStylus(e) ||
             e.StylusDevice.Inverted ||
-            !e.StylusDevice.InAir)
+            _penInContact)
         {
             HidePointerDot();
             return;

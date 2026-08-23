@@ -53,6 +53,39 @@ public sealed class PenOnlyInkCanvas : InkCanvas
     }
 }
 
+// Clicking the barrel button over a hovering pen is delivered as a stylus down
+// that claims everything a real touch claims - not in air, tip switch pressed.
+// Only the pressure gives it away, because nothing is pressing on the tip.
+// Requiring the barrel to be down as well keeps a genuinely light first packet
+// from being mistaken for one of these.
+internal static class PhantomStylus
+{
+    public static bool IsBarrelDown(StylusPointCollection points)
+    {
+        if (points.Count == 0)
+        {
+            return false;
+        }
+
+        for (var index = 0; index < points.Count; index++)
+        {
+            var point = points[index];
+            if (point.PressureFactor > 0)
+            {
+                return false;
+            }
+
+            if (!point.HasProperty(StylusPointProperties.BarrelButton) ||
+                point.GetPropertyValue(StylusPointProperties.BarrelButton) == 0)
+            {
+                return false;
+            }
+        }
+
+        return true;
+    }
+}
+
 public sealed class LaserSamplePlugIn : StylusPlugIn
 {
     private readonly ConcurrentQueue<(double X, double Y, float Pressure)> _samples = new();
@@ -107,25 +140,19 @@ public sealed class HoverTrackerPlugIn : StylusPlugIn
     private readonly object _gate = new();
     private Point _latest;
     private bool _queued;
-    private bool _contact;
 
     public Action<Point>? Hovered { get; set; }
 
-    protected override void OnStylusDown(RawStylusInput rawStylusInput) => _contact = true;
-
-    protected override void OnStylusUp(RawStylusInput rawStylusInput)
-    {
-        _contact = false;
+    // Contact is deliberately not tracked here. The barrel button opens a stylus
+    // down whose up does not arrive until after the next real touch, so a flag
+    // set here stayed set across the whole hover in between and every sample was
+    // dropped. The window already knows whether the pen is down, and that is the
+    // only copy of the state worth keeping.
+    protected override void OnStylusUp(RawStylusInput rawStylusInput) =>
         Enqueue(rawStylusInput);
-    }
 
-    protected override void OnStylusMove(RawStylusInput rawStylusInput)
-    {
-        if (!_contact)
-        {
-            Enqueue(rawStylusInput);
-        }
-    }
+    protected override void OnStylusMove(RawStylusInput rawStylusInput) =>
+        Enqueue(rawStylusInput);
 
     private void Enqueue(RawStylusInput rawStylusInput)
     {
@@ -149,7 +176,19 @@ public sealed class HoverTrackerPlugIn : StylusPlugIn
         }
 
         var dispatcher = Element?.Dispatcher;
-        dispatcher?.BeginInvoke(() =>
+        if (dispatcher is null)
+        {
+            // Nothing will ever clear the queued flag otherwise, and the tracker
+            // would go quiet for the rest of the session.
+            lock (_gate)
+            {
+                _queued = false;
+            }
+
+            return;
+        }
+
+        dispatcher.BeginInvoke(() =>
         {
             Point consumed;
             lock (_gate)
@@ -213,7 +252,12 @@ internal sealed class PenOnlyDynamicRenderer : DynamicRenderer
 
     protected override void OnStylusDown(RawStylusInput rawStylusInput)
     {
-        if (IsTouch(rawStylusInput) || _laserMode)
+        // Without this the barrel click opens a wet stroke for a pen that never
+        // touched the glass, which is then torn down mid-flight when the button
+        // switches to the laser a moment later.
+        if (IsTouch(rawStylusInput) ||
+            _laserMode ||
+            PhantomStylus.IsBarrelDown(rawStylusInput.GetStylusPoints()))
         {
             return;
         }
