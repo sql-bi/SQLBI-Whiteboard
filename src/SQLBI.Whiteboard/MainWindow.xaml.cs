@@ -110,6 +110,12 @@ public partial class MainWindow : Window
     private const double ChevronInkOptionsWidth = 240;
 
     private bool _syntheticLaserContact;
+    private bool _penInverted;
+
+    // How far the eraser reaches from the pen, in screen pixels at any zoom.
+    // The hover square is drawn from the same number, so what it outlines is
+    // what a tap would clear.
+    private const double EraserScreenRadius = 12;
     private const double SessionTabHeight = 32;
     private const double ToolPaletteInset = 16;
     private WindowState _windowStateBeforeFullScreen;
@@ -398,6 +404,10 @@ public partial class MainWindow : Window
         if (e.StylusDevice.Inverted)
         {
             LaserTrail.HideHead();
+            if (!_penInContact)
+            {
+                UpdateHoverPointerDot(e);
+            }
         }
         else if (EffectiveTool == BoardTool.Laser)
         {
@@ -1398,7 +1408,7 @@ public partial class MainWindow : Window
 
     private void EraseAt(PointD worldPoint)
     {
-        var radius = 12 / _camera.Zoom;
+        var radius = EraserScreenRadius / _camera.Zoom;
         var hits = _document.Objects
             .OfType<InkStrokeObject>()
             .Where(stroke => _erasedObjects.All(item => item.Id != stroke.Id))
@@ -4697,9 +4707,16 @@ public partial class MainWindow : Window
     // not the same as leaving the InkCanvas hit-test bounds.
     private void UpdateHoverPointerDot(StylusEventArgs e)
     {
-        if (IsTouchStylus(e) ||
-            e.StylusDevice.Inverted ||
-            _penInContact)
+        if (IsTouchStylus(e))
+        {
+            HidePointerDot();
+            return;
+        }
+
+        // A reversed pen used to be dropped here. It erases on contact, so it
+        // has more to show while hovering than any other pose, not less.
+        _penInverted = e.StylusDevice.Inverted;
+        if (_penInContact)
         {
             HidePointerDot();
             return;
@@ -4721,7 +4738,15 @@ public partial class MainWindow : Window
         }
 
         UsePenCursor();
-        if (EffectiveTool == BoardTool.Laser)
+        if (IsErasing)
+        {
+            // What a tap would erase is a patch of board, not a point, so the
+            // pointer shows the patch. A dot would say nothing about reach.
+            PointerDot.Visibility = Visibility.Collapsed;
+            LaserTrail.EndHover();
+            ShowEraserHint(rootPosition);
+        }
+        else if (EffectiveTool == BoardTool.Laser)
         {
             // The laser is the same instrument in the air as on the glass, so
             // hover drives the trail surface rather than the plain hover dot.
@@ -4735,6 +4760,7 @@ public partial class MainWindow : Window
             // Switching tools mid-hover has to take the comet with it; the pen
             // is still in range, so the hover watchdog would never fire.
             LaserTrail.EndHover();
+            HideEraserHint();
             ShowPointerDot(rootPosition);
         }
 
@@ -4771,8 +4797,25 @@ public partial class MainWindow : Window
     {
         PointerDot.Visibility = Visibility.Collapsed;
         LaserTrail.EndHover();
+        HideEraserHint();
         _hoverWatch.Stop();
     }
+
+    // Reversing the pen erases without changing the selected tool, so the tool
+    // alone does not answer what a tap would do here.
+    private bool IsErasing => _penInverted || EffectiveTool == BoardTool.Eraser;
+
+    private void ShowEraserHint(Point position)
+    {
+        var side = EraserScreenRadius * 2;
+        EraserHint.Width = side;
+        EraserHint.Height = side;
+        EraserHintTransform.X = position.X - (side / 2);
+        EraserHintTransform.Y = position.Y - (side / 2);
+        EraserHint.Visibility = Visibility.Visible;
+    }
+
+    private void HideEraserHint() => EraserHint.Visibility = Visibility.Collapsed;
 
     private void ShowError(string context, Exception exception)
     {

@@ -492,6 +492,26 @@
             </StackPanel>
         </Border>
 
+        <!-- Sized in code from the eraser's own reach, so it cannot outline an
+             area the eraser does not actually clear. -->
+        <Rectangle x:Name="EraserHint"
+                   Grid.RowSpan="2"
+                   HorizontalAlignment="Left"
+                   VerticalAlignment="Top"
+                   Stroke="#FF6B7280"
+                   StrokeThickness="1.5"
+                   StrokeDashArray="2 2"
+                   StrokeDashCap="Round"
+                   RadiusX="2"
+                   RadiusY="2"
+                   IsHitTestVisible="False"
+                   Visibility="Collapsed"
+                   Panel.ZIndex="20">
+            <Rectangle.RenderTransform>
+                <TranslateTransform x:Name="EraserHintTransform" />
+            </Rectangle.RenderTransform>
+        </Rectangle>
+
         <Ellipse x:Name="PointerDot"
                  Grid.RowSpan="2"
                  Width="8"
