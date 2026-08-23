@@ -325,7 +325,8 @@ command line ends up in shell history.
 The **Store** stage of the Azure pipeline submits the released MSIX to Partner Center. It
 depends on **Release**, so it runs only for a build that was actually promoted, and only
 after the GitHub release exists — by the time a submission can fail, every download is
-already published. Certification takes hours to days and gates nothing (decision 13).
+already published. Certification runs unattended in under an hour, and gates nothing
+either way (decision 13).
 
 `UseMSStoreCLI@0` installs the [Microsoft Store Developer CLI][msstore]; `msstore
 reconfigure` authenticates with the `SQLBI-StoreSubmission` group, and `msstore publish`
@@ -371,8 +372,13 @@ release without touching the Store.
 
 ### Verification before a public release
 
-The build, signing, and publishing chain is proven (see above). What has **not** been done
-for a real release is everything that involves installing the result.
+Walked in full for 1.0.0, which is the first release it was done for. Everything above is
+proven by every release that ships; this list is the part that had only ever been reasoned
+about, because nothing before it installs the result.
+
+Worth repeating whenever the installer authoring changes, since that is what these steps
+actually exercise — a missing shortcut, a file association an uninstall left behind, or
+SmartScreen on a fresh reputation are invisible to every check that runs earlier.
 
 - `signtool verify /pa /v` on each MSI.
 - Install, upgrade, and uninstall for each scope; confirm uninstall removes the install

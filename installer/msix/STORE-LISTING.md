@@ -128,8 +128,10 @@ record of them and a change here means a change made by hand in Partner Center.
 
 ## The listing is live
 
-0.9.5 completed certification and is published. The Store ID gives the public
-addresses:
+1.0.0 is published. Certification now runs in under an hour and needs nobody,
+so a promoted release reaches the Store the same day rather than the same week —
+which is why the pipeline submitting it unattended is the whole of the work.
+The Store ID gives the public addresses:
 
 - `https://apps.microsoft.com/detail/9NN5N0L2TMTF`
 - `ms-windows-store://pdp/?ProductId=9NN5N0L2TMTF` (opens the Store app)
