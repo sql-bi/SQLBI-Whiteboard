@@ -28,9 +28,10 @@ itself as `site/teaser-av1.mp4` / `site/teaser-h264.mp4` — the Vimeo-embed pla
 reversed, see decision 19 in [docs/decisions.md](docs/decisions.md); the production
 script and staging assets are in `docs/teaser/`. The release manifests and the Store
 submission are done and proven: the manifests are live at
-<https://whiteboard.sqlbi.com/stable.json>, and the pipeline's Store stage carried 0.9.5
-through certification unattended, which was the last part of the chain never exercised
-end to end. winget is the one piece still waiting, below. All of it is described in
+<https://whiteboard.sqlbi.com/stable.json>, and the pipeline's Store stage has carried
+two releases through certification unattended. The install-side verification list was
+walked in full for 1.0.0, which was the last part of the chain that had only ever been
+reasoned about. winget is the one piece still waiting, below. All of it is described in
 [docs/release-management.md](docs/release-management.md).
 
 ## Waiting on the first winget submission
@@ -44,16 +45,3 @@ token it needs is set.
 Until that pull request merges, `.github/workflows/publish-winget.yml` fails on every
 release, because `wingetcreate update` has no previous version to read. That failure is
 visible and gates nothing.
-
-## Before promoting 1.0.0
-
-The build, signing, and publishing chain is proven. What has never been done for a real
-release is everything that involves installing the result — `signtool verify` on each
-MSI, install, upgrade and uninstall for each scope, opening a `.wboard` by double-click,
-released and pre-release side by side, and a clean machine for SmartScreen. The list is
-in [docs/release-management.md](docs/release-management.md) under "Verification before a
-public release".
-
-It mattered less through 0.9.x, when a version number invited nobody to install fresh.
-1.0.0 does, so the list is worth walking before the Release stage is approved rather
-than after.

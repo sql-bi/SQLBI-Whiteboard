@@ -203,10 +203,13 @@ Three constraints shape it:
   followed (full-trust desktop package, file-type associations in the manifest).
 - Store version numbers must end in `.0`. The MSIX Identity Version is `VersionPrefix.0`,
   not the four-part assembly stamp the MSI uses.
-- Certification takes hours to days, so submission must never gate the web release. The
-  Store stage runs after Release rather than beside it: the GitHub release already exists
-  by the time it starts, so a failed or slow submission changes nothing that shipped, and
-  a build that was never promoted is never submitted.
+- Submission must never gate the web release. Certification took hours to days when this
+  was decided and now runs in under an hour unattended, which changes how long the Store
+  lags the download rather than the reasoning: it is still someone else's queue, it can
+  still stall or reject, and none of that should be able to hold up a release that is
+  already built and signed. The Store stage runs after Release rather than beside it, so
+  the GitHub release already exists by the time it starts, a failed or slow submission
+  changes nothing that shipped, and a build that was never promoted is never submitted.
 
 The first submission was manual, and was made on 20 August 2026 for 0.9.2: listing,
 screenshots, and age rating are one-time work no pipeline performs.
