@@ -81,7 +81,7 @@
       <div class="teaser-frame">
         <!-- Served from this site: no third party, and it plays where embeds are
              blocked. Decision 19 in docs/decisions.md. -->
-        <video controls playsinline preload="metadata"
+        <video controls autoplay muted loop playsinline
                poster="teaser-poster.jpg"
                title="SQLBI Whiteboard, forty seconds">
           <source src="teaser-av1.mp4" type='video/mp4; codecs="av01.0.12M.08"'>
@@ -306,6 +306,18 @@
     fromManifest().catch(function () {
       return fromApi().catch(function () {});
     });
+  })();
+</script>
+<script>
+  // The teaser loop is motion the visitor did not ask for. Stop it for those
+  // who asked their system for less; the poster and controls remain.
+  (function () {
+    if (!window.matchMedia || !matchMedia('(prefers-reduced-motion: reduce)').matches) { return; }
+    var teaser = document.querySelector('.teaser video');
+    if (teaser) {
+      teaser.removeAttribute('autoplay');
+      teaser.pause();
+    }
   })();
 </script>
 </body>

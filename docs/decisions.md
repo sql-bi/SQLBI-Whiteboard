@@ -323,11 +323,19 @@ has nothing to adapt between, and the site collects no analytics anyway.
 
 The two renditions and the poster live in `site/` (`teaser-av1.mp4`, `teaser-h264.mp4`,
 `teaser-poster.jpg`) and deploy with every site publish. The `<video>` element lists AV1
-first and H.264 as the universal fallback, is click-to-play (`preload="metadata"`), and
-costs page load only the poster. The 4K Camtasia master is kept outside the repository;
-re-encoding is two ffmpeg commands recorded in `docs/teaser/shot-script.md`. GitHub
-Pages' soft bandwidth limit is ~100 GB/month; only visitors who press play download a
-rendition, so the limit is far away at this site's traffic.
+first and H.264 as the universal fallback, and plays automatically — muted, looping,
+with controls kept visible — because the ink only reads in motion. A visitor whose
+system asks for reduced motion gets the poster and a play button instead: a small
+script removes the autoplay. A YouTube `nocookie` embed was considered for the loop and
+rejected — its privacy-enhanced mode only defers cookies until playback, which an
+autoplaying loop triggers on page load for everyone.
+
+The 4K Camtasia master is kept outside the repository; re-encoding is two ffmpeg
+commands recorded in `docs/teaser/shot-script.md`. Autoplay means every home-page visit
+downloads a rendition (about 3 MB), so GitHub Pages' ~100 GB/month soft bandwidth limit
+maps to roughly 30,000 visits a month — far beyond this site's traffic, and GitHub has
+no bandwidth meter to watch anyway. If a launch ever approaches that, the escape hatch
+is a lighter loop rendition or a caching proxy in front of the domain, not an embed.
 
 ---
 
