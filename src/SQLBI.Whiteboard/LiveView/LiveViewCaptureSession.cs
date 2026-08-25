@@ -455,18 +455,21 @@ internal sealed class LiveViewCaptureSession : IDisposable
         _captureItem = null;
     }
 
+    /// <summary>
+    /// Borrows the frame's DXGI texture. Reference counting here is the whole
+    /// point: <c>GetRef</c> hands out one owned reference, and
+    /// <c>ComObject.As</c> takes ownership of the pointer it is given — its
+    /// temporary wrapper Releases it, including when the QueryInterface throws.
+    /// Those two pair exactly. Releasing <c>inspectable</c> again dropped the
+    /// frame pool's recycled surface by one reference on every presented frame,
+    /// and the finalizer that later Released the freed pointer is the
+    /// AccessViolationException that closes the app.
+    /// </summary>
     private static ID3D11Texture2D GetTexture(IDirect3DSurface surface)
     {
         nint inspectable = ((IWinRTObject)surface).NativeObject.GetRef();
-        try
-        {
-            using IDirect3DDxgiInterfaceAccess access = ComObject.As<IDirect3DDxgiInterfaceAccess>(inspectable);
-            return access.GetInterface<ID3D11Texture2D>();
-        }
-        finally
-        {
-            Marshal.Release(inspectable);
-        }
+        using IDirect3DDxgiInterfaceAccess access = ComObject.As<IDirect3DDxgiInterfaceAccess>(inspectable);
+        return access.GetInterface<ID3D11Texture2D>();
     }
 
     private static WinRtDirect3DDevice CreateWinRtDevice(IDXGIDevice dxgiDevice)
