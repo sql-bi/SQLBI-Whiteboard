@@ -111,7 +111,7 @@ internal sealed class LiveViewCaptureSession : IDisposable
         {
             ThrowIfDisposed();
             StopCaptureCore();
-            DisposeWinRt(_winRtDevice);
+            WinRtThreading.Release(_winRtDevice);
             _winRtDevice = winRtDevice;
             StartCaptureCore();
         }
@@ -123,7 +123,7 @@ internal sealed class LiveViewCaptureSession : IDisposable
         lock (_gate)
         {
             StopCaptureCore();
-            DisposeWinRt(_winRtDevice);
+            WinRtThreading.Release(_winRtDevice);
             _winRtDevice = null;
         }
     }
@@ -229,12 +229,8 @@ internal sealed class LiveViewCaptureSession : IDisposable
         }
         finally
         {
-            // Close the surface RCW on this thread. Leaving it for the GC
-            // finalizer AVs in Store-packaged processes: those WinRT objects
-            // are apartment-bound and Marshal.Release from GC.RunFinalizers
-            // is the 0xC0000005 that closes the app a few seconds after resize.
-            DisposeWinRt(surface);
-            DisposeWinRt(frame);
+            WinRtThreading.Release(surface);
+            WinRtThreading.Release(frame);
         }
     }
 
@@ -256,7 +252,7 @@ internal sealed class LiveViewCaptureSession : IDisposable
             _disposed = true;
             StopCaptureCore();
             ReleaseCaptureItem();
-            DisposeWinRt(_winRtDevice);
+            WinRtThreading.Release(_winRtDevice);
             _winRtDevice = null;
         }
     }
@@ -268,8 +264,12 @@ internal sealed class LiveViewCaptureSession : IDisposable
             return;
         }
 
+        WinRtThreading.EnsureDispatcherQueue();
         _contentSize = SanitizeSize(_captureItem.Size);
-        Direct3D11CaptureFramePool framePool = Direct3D11CaptureFramePool.CreateFreeThreaded(
+        // Create, not CreateFreeThreaded: frames and their RCWs must be born
+        // on this dispatcher. Free-threaded FrameArrived ran on a worker,
+        // and those IObjectReferences finalized with 0xC0000005 in the Store.
+        Direct3D11CaptureFramePool framePool = Direct3D11CaptureFramePool.Create(
             _winRtDevice,
             DirectXPixelFormat.B8G8R8A8UIntNormalized,
             2,
@@ -307,13 +307,19 @@ internal sealed class LiveViewCaptureSession : IDisposable
             framePool.FrameArrived -= FramePool_FrameArrived;
         }
 
-        DisposeWinRt(captureSession);
-        DisposeWinRt(framePool);
-        DisposeWinRt(pendingFrame);
+        WinRtThreading.Release(captureSession);
+        WinRtThreading.Release(framePool);
+        WinRtThreading.Release(pendingFrame);
     }
 
     private void FramePool_FrameArrived(Direct3D11CaptureFramePool sender, object args)
     {
+        if (!_dispatcher.CheckAccess())
+        {
+            _ = _dispatcher.BeginInvoke(() => FramePool_FrameArrived(sender, args));
+            return;
+        }
+
         Direct3D11CaptureFrame? frame = null;
         try
         {
@@ -328,7 +334,7 @@ internal sealed class LiveViewCaptureSession : IDisposable
             {
                 if (!ReferenceEquals(sender, _framePool) || _isFrozen)
                 {
-                    DisposeWinRt(frame);
+                    WinRtThreading.Release(frame);
                     return;
                 }
 
@@ -337,7 +343,7 @@ internal sealed class LiveViewCaptureSession : IDisposable
                     // Recreate discards native frames. Close the pending wrapper
                     // first so its finalizer cannot Release a pointer Recreate
                     // has already invalidated.
-                    DisposeWinRt(_pendingFrame);
+                    WinRtThreading.Release(_pendingFrame);
                     _pendingFrame = null;
                     _contentSize = size;
                     sender.Recreate(
@@ -345,7 +351,7 @@ internal sealed class LiveViewCaptureSession : IDisposable
                         DirectXPixelFormat.B8G8R8A8UIntNormalized,
                         2,
                         size);
-                    DisposeWinRt(frame);
+                    WinRtThreading.Release(frame);
                     frame = null;
                 }
             }
@@ -361,7 +367,7 @@ internal sealed class LiveViewCaptureSession : IDisposable
             long previous = Interlocked.Read(ref _lastAcceptedTimestamp);
             if (previous != 0 && now - previous < minimumTicks)
             {
-                DisposeWinRt(frame);
+                WinRtThreading.Release(frame);
                 return;
             }
 
@@ -370,22 +376,29 @@ internal sealed class LiveViewCaptureSession : IDisposable
             {
                 if (!ReferenceEquals(sender, _framePool) || _isFrozen)
                 {
-                    DisposeWinRt(frame);
+                    WinRtThreading.Release(frame);
                     return;
                 }
 
                 Direct3D11CaptureFrame? replaced = _pendingFrame;
                 _pendingFrame = frame;
                 frame = null;
-                DisposeWinRt(replaced);
+                WinRtThreading.Release(replaced);
             }
 
             FrameAvailable?.Invoke();
         }
         catch (Exception exception)
         {
-            DisposeWinRt(frame);
+            WinRtThreading.Release(frame);
             CaptureFailed?.Invoke(exception);
+        }
+        finally
+        {
+            if (args is IWinRTObject && !ReferenceEquals(args, sender))
+            {
+                WinRtThreading.Release(args);
+            }
         }
     }
 
@@ -438,9 +451,7 @@ internal sealed class LiveViewCaptureSession : IDisposable
         }
 
         _captureItem.Closed -= CaptureItem_Closed;
-        // GraphicsCaptureItem is not IClosable. Drop the RCW's COM pointer here
-        // so IObjectReference.Finalize never Release's it from the GC thread.
-        DisposeWinRt(_captureItem);
+        WinRtThreading.Release(_captureItem);
         _captureItem = null;
     }
 
@@ -479,32 +490,6 @@ internal sealed class LiveViewCaptureSession : IDisposable
     private void ThrowIfDisposed() => ObjectDisposedException.ThrowIf(_disposed, this);
 
     private void VerifyDispatcherAccess() => _dispatcher.VerifyAccess();
-
-    private static void DisposeWinRt(object? value)
-    {
-        if (value is null)
-        {
-            return;
-        }
-
-        try
-        {
-            if (value is IDisposable disposable)
-            {
-                disposable.Dispose();
-                return;
-            }
-
-            if (value is IWinRTObject winrt)
-            {
-                winrt.NativeObject.Dispose();
-            }
-        }
-        catch (Exception exception)
-        {
-            Debug.WriteLine($"[LiveView] WinRT release failed: {exception}");
-        }
-    }
 
     [DllImport("d3d11.dll", ExactSpelling = true)]
     private static extern int CreateDirect3D11DeviceFromDXGIDevice(
