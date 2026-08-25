@@ -3541,10 +3541,18 @@ public partial class MainWindow : Window
 
     private async Task<GraphicsCaptureItem?> PickLiveViewTargetAsync()
     {
+        WinRtThreading.EnsureDispatcherQueue();
         GraphicsCapturePicker picker = new();
-        nint windowHandle = new WindowInteropHelper(this).Handle;
-        WinRT.Interop.InitializeWithWindow.Initialize(picker, windowHandle);
-        return await picker.PickSingleItemAsync();
+        try
+        {
+            nint windowHandle = new WindowInteropHelper(this).Handle;
+            WinRT.Interop.InitializeWithWindow.Initialize(picker, windowHandle);
+            return await picker.PickSingleItemAsync();
+        }
+        finally
+        {
+            WinRtThreading.Release(picker);
+        }
     }
 
     private void AttachLiveViewPresenter(

@@ -1,5 +1,6 @@
 using System.IO;
 using System.Windows;
+using SQLBI.Whiteboard.LiveView;
 
 namespace SQLBI.Whiteboard;
 
@@ -8,6 +9,7 @@ public partial class App : Application
     protected override void OnStartup(StartupEventArgs e)
     {
         base.OnStartup(e);
+        WinRtThreading.EnsureDispatcherQueue();
         var window = new MainWindow(FindBoardPath(e.Args));
         MainWindow = window;
         window.Show();
