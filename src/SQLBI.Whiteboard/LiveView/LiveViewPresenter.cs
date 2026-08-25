@@ -15,7 +15,7 @@ namespace SQLBI.Whiteboard.LiveView;
 /// </summary>
 internal sealed class LiveViewPresenter : IDisposable
 {
-    private readonly LiveViewCaptureSession _capture = new();
+    private readonly LiveViewCaptureSession _capture;
     private readonly Dispatcher _dispatcher;
     private SizeInt32 _contentSize = new(960, 540);
     private int _invalidateQueued;
@@ -26,6 +26,7 @@ internal sealed class LiveViewPresenter : IDisposable
     {
         ObjectId = objectId;
         _dispatcher = dispatcher;
+        _capture = new LiveViewCaptureSession(dispatcher);
         Surface = new OnDemandDrawingSurface
         {
             Width = _contentSize.Width,
