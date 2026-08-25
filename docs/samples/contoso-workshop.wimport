@@ -17,6 +17,9 @@ Total Sales := SUM(Sales[Amount])
 ## Test picture
 ![demo](../../src/SQLBI.Whiteboard/Assets/SQLBI.Whiteboard.png)
 
+## Test vector
+![the same mark, as SVG](../../src/SQLBI.Whiteboard/Assets/SQLBI.Whiteboard.svg)
+
 ## Warehouse query
 ```sql
 SELECT TOP (10)

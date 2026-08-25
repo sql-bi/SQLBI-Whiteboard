@@ -178,7 +178,7 @@ Live application capture — put any window or display on the board with LiveVie
 
 Code containers — paste DAX or T-SQL and get syntax highlighting, a language-aware title, and F6 to format the code in place. Plain text works the same way.
 
-Images and text — import PNG, JPEG, BMP, and GIF, paste from the clipboard, or drag files in from File Explorer. Ink that touches a container travels with it when you move or resize it.
+Images and text — import PNG, JPEG, BMP, GIF, and SVG, paste from the clipboard, or drag files in from File Explorer. SVG stays vector, so it is still sharp when you enlarge it. Ink that touches a container travels with it when you move or resize it.
 
 Portable board files — boards save as .wboard files with an embedded preview, so File Explorer and Visual Studio Code both show what is inside.
 

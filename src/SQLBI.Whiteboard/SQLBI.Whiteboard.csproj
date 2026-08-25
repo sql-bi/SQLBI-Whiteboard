@@ -32,6 +32,9 @@
   </ItemGroup>
   <ItemGroup>
     <PackageReference Include="AvalonEdit" Version="6.3.1.120" />
+    <!-- WPF has no SVG decoder. This one produces a DrawingGroup, so an SVG container
+         stays vector through zoom and resize instead of being rasterized at import. -->
+    <PackageReference Include="SharpVectors.Wpf" Version="1.8.5" />
     <PackageReference Include="Vortice.Wpf" Version="3.8.3" />
   </ItemGroup>
 </Project>

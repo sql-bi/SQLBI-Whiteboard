@@ -1,5 +1,6 @@
 using System.Buffers.Binary;
 using System.IO;
+using System.Text;
 using System.Windows;
 using System.Windows.Media.Imaging;
 using SQLBI.Whiteboard.Core.Import;
@@ -20,6 +21,55 @@ internal static class ClipboardImage
             .Where(path => !string.IsNullOrWhiteSpace(path) && File.Exists(path))
             .ToArray();
         return DroppedFileImport.CanImportAny(paths) ? paths : [];
+    }
+
+    /// <summary>
+    /// The clipboard format names that carry SVG markup. Illustrator, Inkscape, Office,
+    /// Figma, and the browsers each publish their own; the last two are what a plain
+    /// "copy as SVG" command tends to use.
+    /// </summary>
+    public static readonly string[] SvgFormats =
+    [
+        "image/svg+xml",
+        "image/svg-xml",
+        "image/x-inkscape-svg",
+        "Scalable Vector Graphics",
+        "SVG",
+    ];
+
+    /// <summary>
+    /// Reads SVG off the clipboard, either as one of its own formats or as markup that
+    /// was copied as text — which is how an SVG built by a DAX measure arrives.
+    /// </summary>
+    public static byte[]? TryGetSvgBytes()
+    {
+        var data = Clipboard.GetDataObject();
+        if (data is not null)
+        {
+            foreach (var format in SvgFormats)
+            {
+                if (!data.GetDataPresent(format, autoConvert: false))
+                {
+                    continue;
+                }
+
+                var bytes = ReadBytes(data.GetData(format)) ?? ReadText(data.GetData(format));
+                if (DroppedFileImport.LooksLikeSvg(bytes))
+                {
+                    return bytes;
+                }
+            }
+        }
+
+        if (!Clipboard.ContainsText(TextDataFormat.UnicodeText))
+        {
+            return null;
+        }
+
+        var text = Clipboard.GetText(TextDataFormat.UnicodeText);
+        return DroppedFileImport.LooksLikeSvg(text)
+            ? new UTF8Encoding(false).GetBytes(text)
+            : null;
     }
 
     public static byte[]? TryGetEncodedPng() =>
@@ -165,6 +215,9 @@ internal static class ClipboardImage
         bytes[1] == (byte)'P' &&
         bytes[2] == (byte)'N' &&
         bytes[3] == (byte)'G';
+
+    private static byte[]? ReadText(object? data) =>
+        data is string text ? new UTF8Encoding(false).GetBytes(text) : null;
 
     private static byte[]? ReadBytes(object? data) => data switch
     {

@@ -82,6 +82,51 @@ Assert(
     DroppedFileImport.LooksLikeText("DEFINE MEASURE Sales[X] = 1"u8.ToArray()) &&
     !DroppedFileImport.LooksLikeText([0x4D, 0x5A, 0x00, 0x00]),
     "Text drops should reject files with a NUL in the header.");
+Assert(
+    DroppedFileImport.Classify("logo.svg") == DroppedFileKind.Image &&
+    DroppedFileImport.Classify(@"C:\art\LOGO.SVG") == DroppedFileKind.Image &&
+    ImportCatalog.Default.IsImageExtension(".svg"),
+    "An SVG is an image everywhere an image is accepted, not a text snippet.");
+Assert(
+    DroppedFileImport.LooksLikeSvg("<svg xmlns='x' width='4'><rect/></svg>") &&
+    DroppedFileImport.LooksLikeSvg("\uFEFF  \n<?xml version=\"1.0\"?><svg><g/></svg>") &&
+    DroppedFileImport.LooksLikeSvg("<!-- note --><!DOCTYPE svg PUBLIC \"x\" \"y\"><svg/>") &&
+    DroppedFileImport.LooksLikeSvg("<svg:svg xmlns:svg='x'><svg:g/></svg:svg>") &&
+    DroppedFileImport.LooksLikeSvg("<s:svg xmlns:s='x'/>"),
+    "Pasted SVG markup should survive a BOM, a prologue, and any namespace prefix.");
+Assert(
+    !DroppedFileImport.LooksLikeSvg("SELECT * FROM <svg> -- </svg>") &&
+    !DroppedFileImport.LooksLikeSvg("<svgx><rect/></svgx>") &&
+    !DroppedFileImport.LooksLikeSvg("<html><body><svg><rect/></svg></body></html>") &&
+    !DroppedFileImport.LooksLikeSvg("<?xml version=\"1.0\"?>") &&
+    !DroppedFileImport.LooksLikeSvg((string?)null),
+    "Only a document whose root element is svg is a picture; one that contains svg is not.");
+Assert(
+    DroppedFileImport.LooksLikeSvg("<svg><g/></svg>"u8.ToArray()) &&
+    !DroppedFileImport.LooksLikeSvg([0x89, 0x50, 0x4E, 0x47]) &&
+    !DroppedFileImport.LooksLikeSvg([0xFF, 0xD8, 0xFF, 0xE0]) &&
+    !DroppedFileImport.LooksLikeSvg((byte[]?)null) &&
+    !DroppedFileImport.LooksLikeSvg([]),
+    "Asset bytes should choose the SVG decoder without relying on a stored content type.");
+Assert(
+    !DroppedFileImport.LooksLikeSvg([0x3C, 0xFF, 0xFE, 0x3C]),
+    "Bytes that open with '<' but are not UTF-8 text are not SVG.");
+
+var svgImport = ImportDocument.Parse(
+    """
+    ## Diagram
+    ![star](./art/star.svg)
+
+    ## Linked
+    [logo](./art/logo.svg)
+    """);
+Assert(
+    svgImport.Items is
+    [
+        { Kind: ImportItemKind.Image, SourcePath: "./art/star.svg" },
+        { Kind: ImportItemKind.Image, SourcePath: "./art/logo.svg" },
+    ],
+    "A .wimport should build image containers from SVG, both embedded and linked.");
 
 var parsedImport = ImportDocument.Parse(
     """
@@ -211,6 +256,12 @@ Assert(
 Assert(
     ImportLayout.ImageSize(1800, 1400) is { Width: 900, Height: 700 },
     "Imported images should use the same 900 by 700 cap as a dropped image.");
+Assert(
+    ImportLayout.VectorImageSize(24, 24) is { Width: 240, Height: 240 } &&
+    ImportLayout.VectorImageSize(1800, 1400) is { Width: 900, Height: 700 } &&
+    ImportLayout.VectorImageSize(100, 20) is { Width: 240, Height: 48 } &&
+    ImportLayout.VectorImageSize(400, 100) is { Width: 400, Height: 100 },
+    "A vector should be grown to a legible edge, keep its aspect, and keep the 900 by 700 cap.");
 
 var document = new BoardDocument();
 Assert(document.ContentBounds is null, "An empty document should not have content bounds.");

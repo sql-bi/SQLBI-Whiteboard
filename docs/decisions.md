@@ -358,6 +358,32 @@ version its first submission settles on.
 
 ---
 
+## 21. SVG is kept as markup and drawn by SharpVectors
+
+**Implemented.**
+
+WPF has no SVG decoder, so supporting SVG at all meant taking a rendering library —
+including the option of rasterizing on arrival, which needs one just the same. That made
+the choice about which library, not whether to have one.
+
+`SharpVectors.Wpf` produces a `DrawingGroup`, so an SVG container is redrawn at whatever
+size it is displayed at rather than stretched from pixels. That is the point of accepting
+SVG on a canvas whose zoom is unbounded. It is BSD-3, managed-only, and ships no native
+binary, which keeps it out of the signing step and out of the per-architecture question
+the installer would otherwise have to answer. Direct2D was the tempting alternative, since
+`Vortice` is already referenced and would have cost nothing: it implements a restricted
+SVG subset with no `<text>` element, which is most of what a DAX SVG measure emits.
+
+Assets are stored as the bytes that arrived, and `BoardArchive` has always treated them as
+opaque, so the format version did not move. A board holding an SVG opened in 1.0.3 draws
+the missing-image placeholder for it rather than failing to open.
+
+The renderer is given `ExternalResourcesAccessModes.Ignore`. Its default is to fetch what
+the markup names, which would let a pasted or dropped file turn opening a board into an
+outbound request.
+
+---
+
 ## Open questions
 
 - arm64 is not built; add it if Surface devices matter for a pen application.

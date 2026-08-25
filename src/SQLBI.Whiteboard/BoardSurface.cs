@@ -2,7 +2,6 @@ using System.Windows;
 using System.Windows.Ink;
 using System.Windows.Input;
 using System.Windows.Media;
-using System.Windows.Media.Imaging;
 using SQLBI.Whiteboard.Core.Geometry;
 using SQLBI.Whiteboard.Core.Model;
 using SQLBI.Whiteboard.Core.Viewport;
@@ -17,7 +16,7 @@ internal sealed class BoardSurface : FrameworkElement
     private static readonly Brush MissingImageBrush = CreateFrozenBrush(0xFFE5E7EB);
     private static readonly Pen MissingImagePen = CreateFrozenPen(0xFF9CA3AF, 1);
 
-    private readonly Dictionary<string, BitmapSource> _bitmapCache = new(StringComparer.Ordinal);
+    private readonly Dictionary<string, ImageSource> _imageCache = new(StringComparer.Ordinal);
     private BoardDocument? _document;
     private Camera2D? _camera;
 
@@ -33,13 +32,13 @@ internal sealed class BoardSurface : FrameworkElement
     {
         _document = document;
         _camera = camera;
-        _bitmapCache.Clear();
+        _imageCache.Clear();
         InvalidateVisual();
     }
 
     public void InvalidateAssets()
     {
-        _bitmapCache.Clear();
+        _imageCache.Clear();
         InvalidateVisual();
     }
 
@@ -129,9 +128,9 @@ internal sealed class BoardSurface : FrameworkElement
             Math.Max(1, bottomRight.X - topLeft.X),
             Math.Max(1, bottomRight.Y - topLeft.Y));
 
-        if (TryGetBitmap(image.AssetId, document, out var bitmap))
+        if (TryGetImage(image.AssetId, document, out var source))
         {
-            drawingContext.DrawImage(bitmap, destination);
+            drawingContext.DrawImage(source, destination);
         }
         else
         {
@@ -149,7 +148,7 @@ internal sealed class BoardSurface : FrameworkElement
         ImageSource? source = LiveViewImageSourceProvider?.Invoke(liveView.Id);
         if (source is null &&
             liveView.SnapshotAssetId is { } assetId &&
-            TryGetBitmap(assetId, document, out BitmapSource? snapshot))
+            TryGetImage(assetId, document, out ImageSource? snapshot))
         {
             source = snapshot;
         }
@@ -190,31 +189,31 @@ internal sealed class BoardSurface : FrameworkElement
             : 0;
     }
 
-    private bool TryGetBitmap(
+    private bool TryGetImage(
         string assetId,
         BoardDocument document,
-        out BitmapSource? bitmap)
+        out ImageSource? image)
     {
-        if (_bitmapCache.TryGetValue(assetId, out bitmap))
+        if (_imageCache.TryGetValue(assetId, out image))
         {
             return true;
         }
 
         if (!document.Assets.TryGetValue(assetId, out var asset))
         {
-            bitmap = null;
+            image = null;
             return false;
         }
 
         try
         {
-            bitmap = WpfImageCodec.Decode(asset.Data);
-            _bitmapCache[assetId] = bitmap;
+            image = BoardImageCodec.Decode(asset.Data).Source;
+            _imageCache[assetId] = image;
             return true;
         }
         catch
         {
-            bitmap = null;
+            image = null;
             return false;
         }
     }
