@@ -16,7 +16,8 @@ How the project is developed and shipped is documented separately:
 - Basic palm rejection: touch navigation is suspended when the pen makes contact
 - Mouse-wheel zoom and middle-button or temporary Space-key panning
 - Whole-stroke erasing
-- PNG, JPEG, BMP, and GIF import, clipboard bitmap paste, and Explorer drag-and-drop of images, text files, and `.wimport` recipes
+- PNG, JPEG, BMP, GIF, and SVG import, clipboard bitmap paste, and Explorer drag-and-drop of images, text files, and `.wimport` recipes
+- SVG stays vector: it is stored as its markup and redrawn at every zoom and resize rather than rasterized on arrival. Pasting SVG markup that was copied as text — the output of a DAX SVG measure, for instance — creates a picture, and copying an SVG container puts both the markup and a bitmap on the clipboard
 - Image selection, movement, resizing, and deletion
 - Text containers created by pasting plain text, with display and in-place edit modes
 - Plain-text, DAX, and SQL Server language modes, with live syntax highlighting and local F6 formatting

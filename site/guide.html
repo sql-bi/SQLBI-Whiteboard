@@ -686,11 +686,12 @@
     <p>The window can sit in a narrow strip beside another app. <kbd>F11</kbd> fills the monitor and hides the title and tabs. <kbd>Ctrl</kbd><span class="plus">+</span><kbd>F11</kbd> hides the same chrome and keeps the window where it is. <kbd>Escape</kbd> leaves either unless a text container is being edited.</p>
 
     <h3>Containers</h3>
-    <p>Images, LiveViews, and text blocks are containers. With a mouse, click to move, drag the circular handle to resize while keeping aspect ratio. Releasing the mouse returns to the drawing tool you had. Imported images accept PNG, JPEG, BMP, and GIF, including clipboard paste and Explorer drag-and-drop.</p>
+    <p>Images, LiveViews, and text blocks are containers. With a mouse, click to move, drag the circular handle to resize while keeping aspect ratio. Releasing the mouse returns to the drawing tool you had. Imported images accept PNG, JPEG, BMP, GIF, and SVG, including clipboard paste and Explorer drag-and-drop. An SVG is kept as its markup and redrawn at every size, so enlarging one costs it nothing.</p>
     <p><span class="ui">View → Bring to front</span> and <span class="ui">View → Send to back</span> reorder the selected container and its linked strokes. Strokes cannot be reordered on their own.</p>
 
     <h3>Text, SQL, and DAX</h3>
     <p>Paste prefers an image when the clipboard has one, including a file SnagIt or another capture tool left on the clipboard. Paste plain text to create a selected text container.</p>
+    <p>SVG counts as an image, whether the source application published it as SVG or the markup was simply copied as text — the output of a DAX SVG measure pastes as a picture, not as a snippet. Copying an SVG container puts the markup and a bitmap on the clipboard together, so an editor receives the source and a slide receives the picture.</p>
     <p><span class="ui">Help → Preferences</span> sets Snippet format order: paste tries those languages from top to bottom. Plain text always matches, so putting it first keeps paste as plain text. Use the title-bar chip to choose Plain text, SQL Server, or DAX afterward.</p>
     <p><kbd>F6</kbd> formats SQL or DAX on the selected container, without entering edit mode. <kbd>F2</kbd> edits the container, and double-click still centers it and fits it to the canvas; inside an edit <kbd>F6</kbd> formats in place and <kbd>Ctrl</kbd><span class="plus">+</span><kbd>Enter</kbd> commits that format with the rest of the edit. SQL Server mode targets SQL Server 2025 T-SQL, keeps <code>GO</code> batch separators, and leaves an invalid script unchanged. <kbd>Escape</kbd> restores the previous text, language, and size.</p>
 

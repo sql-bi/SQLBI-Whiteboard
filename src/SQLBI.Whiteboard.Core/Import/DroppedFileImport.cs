@@ -1,3 +1,5 @@
+using System.Text;
+
 namespace SQLBI.Whiteboard.Core.Import;
 
 public enum DroppedFileKind
@@ -11,7 +13,12 @@ public enum DroppedFileKind
 public static class DroppedFileImport
 {
     public const int MaximumTextBytes = 1_000_000;
+    public const int MaximumSvgBytes = 16_000_000;
     public const string ImportExtension = ".wimport";
+    public const string SvgExtension = ".svg";
+    public const string SvgContentType = "image/svg+xml";
+
+    private const char ByteOrderMark = '\uFEFF';
 
     private static readonly HashSet<string> PlainTextExtensions = new(StringComparer.OrdinalIgnoreCase)
     {
@@ -99,6 +106,113 @@ public static class DroppedFileImport
             }
         }
 
+        return true;
+    }
+
+    /// <summary>
+    /// Recognizes an SVG document from its markup. Clipboard content arrives without a
+    /// file name, so the shape of the text is the only signal there is. The root element
+    /// has to be the SVG one — a page of HTML with a picture inside it carries the same
+    /// tags and is not an image.
+    /// </summary>
+    public static bool LooksLikeSvg(string? markup)
+    {
+        if (string.IsNullOrWhiteSpace(markup))
+        {
+            return false;
+        }
+
+        var text = markup.TrimStart(ByteOrderMark).TrimStart();
+        while (TryMeasurePrologue(text, out var prologue))
+        {
+            text = text[prologue..].TrimStart();
+        }
+
+        if (text.Length < 2 || text[0] != '<')
+        {
+            return false;
+        }
+
+        var end = 1;
+        while (end < text.Length &&
+               !char.IsWhiteSpace(text[end]) &&
+               text[end] is not ('>' or '/'))
+        {
+            end++;
+        }
+
+        if (end == text.Length)
+        {
+            return false;
+        }
+
+        // Any prefix may be bound to the SVG namespace, so compare the local name.
+        var name = text[1..end];
+        var colon = name.LastIndexOf(':');
+        return string.Equals(
+            colon >= 0 ? name[(colon + 1)..] : name,
+            "svg",
+            StringComparison.OrdinalIgnoreCase);
+    }
+
+    public static bool LooksLikeSvg(byte[]? bytes)
+    {
+        if (bytes is null || bytes.Length is 0 or > MaximumSvgBytes)
+        {
+            return false;
+        }
+
+        // Bitmaps fail on their first byte, so the decode below only runs for markup.
+        var start = bytes.Length >= 3 && bytes[0] == 0xEF && bytes[1] == 0xBB && bytes[2] == 0xBF
+            ? 3
+            : 0;
+        while (start < bytes.Length && bytes[start] is 0x20 or 0x09 or 0x0D or 0x0A)
+        {
+            start++;
+        }
+
+        if (start >= bytes.Length || bytes[start] != (byte)'<')
+        {
+            return false;
+        }
+
+        try
+        {
+            return LooksLikeSvg(new UTF8Encoding(false, throwOnInvalidBytes: true)
+                .GetString(bytes, start, bytes.Length - start));
+        }
+        catch (ArgumentException)
+        {
+            return false;
+        }
+    }
+
+    /// <summary>
+    /// Measures an XML declaration, comment, or doctype sitting ahead of the root element.
+    /// </summary>
+    private static bool TryMeasurePrologue(string text, out int length)
+    {
+        length = 0;
+        var (opening, closing) = text switch
+        {
+            _ when text.StartsWith("<?", StringComparison.Ordinal) => ("<?", "?>"),
+            _ when text.StartsWith("<!--", StringComparison.Ordinal) => ("<!--", "-->"),
+            _ when text.StartsWith("<!", StringComparison.Ordinal) => ("<!", ">"),
+            _ => (string.Empty, string.Empty),
+        };
+
+        if (opening.Length == 0)
+        {
+            return false;
+        }
+
+        var end = text.IndexOf(closing, opening.Length, StringComparison.Ordinal);
+        if (end < 0)
+        {
+            return false;
+        }
+
+        length = end + closing.Length;
         return true;
     }
 }

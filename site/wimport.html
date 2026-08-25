@@ -72,7 +72,7 @@
     <h2>How the body becomes a container</h2>
     <p>Recognizers run in this order. The first match wins. Extra material after the match is ignored.</p>
     <ol>
-      <li><strong>Markdown image</strong>: <code>![optional alt](relative/path.png)</code>. Image container. Title is the <code>##</code> heading, then the alt text, then the file name. Allowed extensions: <code>.png</code>, <code>.jpg</code>, <code>.jpeg</code>, <code>.bmp</code>, <code>.gif</code>.</li>
+      <li><strong>Markdown image</strong>: <code>![optional alt](relative/path.png)</code>. Image container. Title is the <code>##</code> heading, then the alt text, then the file name. Allowed extensions: <code>.png</code>, <code>.jpg</code>, <code>.jpeg</code>, <code>.bmp</code>, <code>.gif</code>, <code>.svg</code>. An <code>.svg</code> stays vector on the board, so give it a <code>width</code>/<code>height</code> or a <code>viewBox</code> to be sized from; anything it fetches from elsewhere is ignored.</li>
       <li><strong>Fenced code</strong> whose info-string is a registered language. Text container. Contents of the fence. Language from the tag.</li>
       <li><strong>Markdown link</strong> to an image extension: same as an image.</li>
       <li><strong>Markdown link</strong> to a registered language extension: <code>[label](relative/path.dax)</code>. Text container. File contents. Language from the extension.</li>
@@ -134,7 +134,7 @@ Total Sales := SUM(Sales[Amount])
       <li>File name ends in <code>.wimport</code>.</li>
       <li>Every container is a <code>##</code> heading with exactly one payload.</li>
       <li>Images and linked code exist next to the file, using relative paths.</li>
-      <li>Image files are png/jpeg/bmp/gif. Linked code files are <code>.dax</code> or <code>.sql</code>, or the code is embedded in a <code>dax</code> / <code>sql</code> / <code>tsql</code> fence.</li>
+      <li>Image files are png/jpeg/bmp/gif/svg. Linked code files are <code>.dax</code> or <code>.sql</code>, or the code is embedded in a <code>dax</code> / <code>sql</code> / <code>tsql</code> fence.</li>
       <li>Row breaks are a thematic break on its own line, not a fake heading.</li>
       <li>You did not use <code>http://</code>, YAML, or explicit positions.</li>
       <li>Opening the file in a Markdown preview still reads as a normal document.</li>

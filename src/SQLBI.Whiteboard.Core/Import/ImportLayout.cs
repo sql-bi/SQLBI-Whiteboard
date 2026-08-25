@@ -8,6 +8,7 @@ public static class ImportLayout
     public const double Gap = 32;
     public const double MaxImageWidth = 900;
     public const double MaxImageHeight = 700;
+    public const double MinVectorImageEdge = 240;
 
     public static IReadOnlyList<RectD> Place(
         IReadOnlyList<(double Width, double Height, bool StartNewRow)> items,
@@ -49,5 +50,18 @@ public static class ImportLayout
         var height = Math.Max(1, naturalHeight);
         var scale = Math.Min(1, Math.Min(MaxImageWidth / width, MaxImageHeight / height));
         return (width * scale, height * scale);
+    }
+
+    /// <summary>
+    /// Sizes a vector image. Icons are authored at 16 or 24 units and would arrive as a
+    /// speck on a board whose rows are 2400 wide, so a vector is grown to a legible edge
+    /// first. Enlarging costs a bitmap its sharpness and a vector nothing.
+    /// </summary>
+    public static (double Width, double Height) VectorImageSize(double naturalWidth, double naturalHeight)
+    {
+        var width = Math.Max(1, naturalWidth);
+        var height = Math.Max(1, naturalHeight);
+        var grow = Math.Max(1, MinVectorImageEdge / Math.Max(width, height));
+        return ImageSize(width * grow, height * grow);
     }
 }

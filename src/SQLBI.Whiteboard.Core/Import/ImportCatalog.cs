@@ -28,7 +28,7 @@ public sealed class ImportCatalog
                 Extensions = [".sql"],
             },
         ],
-        [".png", ".jpg", ".jpeg", ".bmp", ".gif"]);
+        [".png", ".jpg", ".jpeg", ".bmp", ".gif", ".svg"]);
 
     public ImportCatalog(
         IReadOnlyList<ImportLanguage> languages,

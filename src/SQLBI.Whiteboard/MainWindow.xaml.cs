@@ -3307,7 +3307,7 @@ public partial class MainWindow : Window
         {
             Title = "Import",
             Filter =
-                "Importable files|*.wimport;*.png;*.jpg;*.jpeg;*.bmp;*.gif|Whiteboard import|*.wimport|Images|*.png;*.jpg;*.jpeg;*.bmp;*.gif",
+                "Importable files|*.wimport;*.png;*.jpg;*.jpeg;*.bmp;*.gif;*.svg|Whiteboard import|*.wimport|Images|*.png;*.jpg;*.jpeg;*.bmp;*.gif;*.svg",
             Multiselect = false,
         };
         if (dialog.ShowDialog(this) != true)
@@ -3343,6 +3343,18 @@ public partial class MainWindow : Window
                 return;
             }
 
+            // Ahead of the bitmap: an application that offers both is offering the same
+            // picture twice, and only one of the two survives being enlarged.
+            byte[]? svg = ClipboardImage.TryGetSvgBytes();
+            if (svg is not null)
+            {
+                AddImage(
+                    svg,
+                    "clipboard-image" + DroppedFileImport.SvgExtension,
+                    DroppedFileImport.SvgContentType);
+                return;
+            }
+
             byte[]? png = ClipboardImage.TryGetEncodedPng();
             if (png is not null)
             {
@@ -3368,16 +3380,12 @@ public partial class MainWindow : Window
         string contentType,
         PointD? worldCenter = null)
     {
-        var bitmap = WpfImageCodec.Decode(bytes);
+        var decoded = BoardImageCodec.Decode(bytes);
         var assetId = Guid.NewGuid().ToString("N");
         _document.AddAsset(new BoardAsset(assetId, fileName, contentType, bytes));
         SceneSurface.InvalidateAssets();
 
-        var naturalWidth = Math.Max(1, bitmap.PixelWidth);
-        var naturalHeight = Math.Max(1, bitmap.PixelHeight);
-        var scale = Math.Min(1, Math.Min(900d / naturalWidth, 700d / naturalHeight));
-        var width = naturalWidth * scale;
-        var height = naturalHeight * scale;
+        var (width, height) = BoardImageCodec.ArrivalSize(decoded);
         var center = worldCenter ?? _camera.Center;
         var image = new ImageBoardObject(
             Guid.NewGuid(),
@@ -4091,7 +4099,26 @@ public partial class MainWindow : Window
                 return;
             }
 
-            Clipboard.SetImage(WpfImageCodec.Decode(asset.Data));
+            BoardImage copied = BoardImageCodec.Decode(asset.Data);
+            if (!copied.IsVector)
+            {
+                Clipboard.SetImage(BoardImageCodec.Rasterize(copied));
+                return;
+            }
+
+            var flattened = BoardImageCodec.Rasterize(copied, selected.Bounds);
+
+            // A vector goes out as both, so an editor receives the markup and a slide
+            // receives a picture, and pasting it back into a board keeps it a vector.
+            var vector = new DataObject();
+            vector.SetData(
+                DroppedFileImport.SvgContentType,
+                new MemoryStream(asset.Data, writable: false));
+            vector.SetText(
+                System.Text.Encoding.UTF8.GetString(asset.Data),
+                TextDataFormat.UnicodeText);
+            vector.SetImage(flattened);
+            Clipboard.SetDataObject(vector, copy: true);
         }
         catch (Exception exception)
         {
@@ -4249,8 +4276,8 @@ public partial class MainWindow : Window
 
                 try
                 {
-                    var bitmap = WpfImageCodec.Decode(item.ImageBytes);
-                    var (width, height) = ImportLayout.ImageSize(bitmap.PixelWidth, bitmap.PixelHeight);
+                    var (width, height) = BoardImageCodec.ArrivalSize(
+                        BoardImageCodec.Decode(item.ImageBytes));
                     sizes.Add((width, height, item.StartNewRow));
                     decoded.Add((item, item.ImageBytes, width, height));
                 }
@@ -4848,6 +4875,7 @@ public partial class MainWindow : Window
             ".jpg" or ".jpeg" => "image/jpeg",
             ".bmp" => "image/bmp",
             ".gif" => "image/gif",
+            DroppedFileImport.SvgExtension => DroppedFileImport.SvgContentType,
             _ => "application/octet-stream",
         };
 

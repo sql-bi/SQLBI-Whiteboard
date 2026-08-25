@@ -46,7 +46,10 @@ ignored.
    - Image container.
    - Title is the `##` heading. If the heading is empty, the alt text is used, then the file
      name.
-   - Allowed extensions: `.png`, `.jpg`, `.jpeg`, `.bmp`, `.gif`.
+   - Allowed extensions: `.png`, `.jpg`, `.jpeg`, `.bmp`, `.gif`, `.svg`.
+   - An `.svg` stays vector on the board. Whiteboard sizes it from the `width`/`height` or
+     the `viewBox`, so give the file one; and anything the markup fetches from elsewhere —
+     an external stylesheet, an `<image href>` pointing outside the file — is ignored.
 2. **Fenced code** whose info-string is a registered language
    - Text container. Contents of the fence. Language from the tag.
 3. **Markdown link** to an image extension — `[label](relative/path.png)`
@@ -131,7 +134,7 @@ A complete sample is `docs/samples/contoso-workshop.wimport`.
 - File name ends in `.wimport`.
 - Every container is a `##` heading with exactly one payload.
 - Images and linked code exist next to the file, using relative paths.
-- Image files are png/jpeg/bmp/gif. Code files you link are `.dax` or `.sql`, or the code is
+- Image files are png/jpeg/bmp/gif/svg. Code files you link are `.dax` or `.sql`, or the code is
   embedded in a `dax` / `sql` / `tsql` fence.
 - Row breaks are a thematic break on its own line, not a fake heading.
 - You did not use `http://`, YAML, or explicit positions.
@@ -141,7 +144,8 @@ A complete sample is `docs/samples/contoso-workshop.wimport`.
 
 - Write a `.md` and expect Whiteboard to import it.
 - Ask Whiteboard to save or export `.wimport`.
-- Embed bitmap bytes. Images are always a link to a file.
+- Embed bitmap bytes, or paste SVG markup into the document. Images are always a link to a
+  file, whatever their format.
 - Mix two payloads in one `##` section.
 - Use HTML, YAML front matter, or custom XML.
 - Reference network URLs.
