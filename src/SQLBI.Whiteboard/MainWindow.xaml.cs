@@ -235,6 +235,7 @@ public partial class MainWindow : Window
 
     private void InkSurface_StrokeCollected(object sender, InkCanvasStrokeCollectedEventArgs e)
     {
+        var straightLineDirection = InkSurface.TakeCompletedStraightLineDirection();
         if (EffectiveTool == BoardTool.Laser ||
             _stylusAction == PointerAction.Laser ||
             _discardInkStroke)
@@ -250,12 +251,22 @@ public partial class MainWindow : Window
             return;
         }
 
+        var screenAnchor = new PointD(
+            e.Stroke.StylusPoints[0].X,
+            e.Stroke.StylusPoints[0].Y);
         var firstTimestamp = Stopwatch.GetTimestamp();
         var points = e.Stroke.StylusPoints
-            .Select((point, index) => new InkPoint(
-                _camera.ScreenToWorld(new PointD(point.X, point.Y)),
-                point.PressureFactor,
-                firstTimestamp + index))
+            .Select((point, index) =>
+            {
+                var screenPoint = StraightLineSnap.Apply(
+                    new PointD(point.X, point.Y),
+                    screenAnchor,
+                    straightLineDirection);
+                return new InkPoint(
+                    _camera.ScreenToWorld(screenPoint),
+                    point.PressureFactor,
+                    firstTimestamp + index);
+            })
             .ToArray();
         var stroke = InkStrokeObject.Create(
             points,
@@ -4371,6 +4382,7 @@ public partial class MainWindow : Window
         var controlDown = modifiers.HasFlag(ModifierKeys.Control);
         var shiftDown = modifiers.HasFlag(ModifierKeys.Shift);
         var altDown = modifiers.HasFlag(ModifierKeys.Alt) || e.Key == Key.System;
+        InkSurface.SetStraightLineMode(shiftDown);
 
         if (e.Key == Key.F11 || (e.Key == Key.System && e.SystemKey == Key.F11))
         {
@@ -4641,6 +4653,8 @@ public partial class MainWindow : Window
 
     private void Window_PreviewKeyUp(object sender, KeyEventArgs e)
     {
+        InkSurface.SetStraightLineMode(
+            Keyboard.Modifiers.HasFlag(ModifierKeys.Shift));
         if (e.Key == Key.Space && _spaceTemporaryPan)
         {
             _spaceTemporaryPan = false;
@@ -4667,6 +4681,7 @@ public partial class MainWindow : Window
         _mouseAction = PointerAction.None;
         _penInContact = false;
         _syntheticLaserContact = false;
+        InkSurface.SetStraightLineMode(false);
         ClearTouchNavigation();
         InkSurface.Cursor = Cursors.Arrow;
         HidePointerDot();

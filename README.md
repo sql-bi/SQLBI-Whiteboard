@@ -174,6 +174,7 @@ Use **Copy settings** after finding a useful combination so the exact values can
 | Input | Behavior |
 | --- | --- |
 | Pen tip | Current tool; Pen is selected at startup |
+| Shift + pen tip | Constrain a near-horizontal or near-vertical stroke to that axis |
 | Pen hover | Show the small red pointer dot and hide the arrow |
 | Pen contact | Hide both the pointer dot and arrow |
 | Physical mouse movement | Show the normal arrow |

@@ -5,6 +5,7 @@ using System.Windows.Input;
 using System.Windows.Input.StylusPlugIns;
 using System.Windows.Media;
 using System.Windows.Threading;
+using SQLBI.Whiteboard.Core.Geometry;
 using SQLBI.Whiteboard.Core.Model;
 
 namespace SQLBI.Whiteboard;
@@ -40,6 +41,12 @@ public sealed class PenOnlyInkCanvas : InkCanvas
 
     public void SetAllowTouchInk(bool allow) =>
         _penOnlyRenderer.SetAllowTouchInk(allow);
+
+    public void SetStraightLineMode(bool active) =>
+        _penOnlyRenderer.SetStraightLineMode(active);
+
+    public StraightLineDirection TakeCompletedStraightLineDirection() =>
+        _penOnlyRenderer.TakeCompletedStraightLineDirection();
 
     public void AbortWetInk()
     {
@@ -208,10 +215,16 @@ internal sealed class PenOnlyDynamicRenderer : DynamicRenderer
     private volatile PenKind _penKind;
     private volatile bool _laserMode;
     private volatile bool _allowTouchInk;
+    private volatile bool _straightLineMode;
     private PenKind _strokeKind;
     private StylusPoint? _lastCalligraphyPoint;
     private int _lastPacketTimestamp;
     private double _smoothedCalligraphySpeed;
+    private bool _straightLineStroke;
+    private bool _straightLineDecisionMade;
+    private StraightLineDirection _straightLineDirection;
+    private StylusPoint? _straightLineAnchor;
+    private int _completedStraightLineDirection;
 
     public PenOnlyDynamicRenderer(IEnumerable<int> touchTabletIds)
     {
@@ -244,8 +257,19 @@ internal sealed class PenOnlyDynamicRenderer : DynamicRenderer
         }
     }
 
+    public void SetStraightLineMode(bool active) => _straightLineMode = active;
+
+    public StraightLineDirection TakeCompletedStraightLineDirection() =>
+        (StraightLineDirection)Interlocked.Exchange(
+            ref _completedStraightLineDirection,
+            (int)StraightLineDirection.None);
+
     public void AbortWetInk()
     {
+        ResetStraightLineStroke();
+        Interlocked.Exchange(
+            ref _completedStraightLineDirection,
+            (int)StraightLineDirection.None);
         Enabled = false;
         Enabled = true;
     }
@@ -264,7 +288,9 @@ internal sealed class PenOnlyDynamicRenderer : DynamicRenderer
 
         _strokeKind = _penKind;
         ResetCalligraphyDynamics();
+        BeginStraightLineStroke(rawStylusInput);
         ApplyCalligraphyDynamics(rawStylusInput);
+        ApplyStraightLine(rawStylusInput);
         base.OnStylusDown(rawStylusInput);
     }
 
@@ -276,6 +302,7 @@ internal sealed class PenOnlyDynamicRenderer : DynamicRenderer
         }
 
         ApplyCalligraphyDynamics(rawStylusInput);
+        ApplyStraightLine(rawStylusInput);
         base.OnStylusMove(rawStylusInput);
     }
 
@@ -287,8 +314,15 @@ internal sealed class PenOnlyDynamicRenderer : DynamicRenderer
         }
 
         ApplyCalligraphyDynamics(rawStylusInput);
+        ApplyStraightLine(rawStylusInput);
+        Interlocked.Exchange(
+            ref _completedStraightLineDirection,
+            (int)(_straightLineStroke
+                ? _straightLineDirection
+                : StraightLineDirection.None));
         base.OnStylusUp(rawStylusInput);
         ResetCalligraphyDynamics();
+        ResetStraightLineStroke();
     }
 
     protected override void OnDraw(
@@ -359,6 +393,97 @@ internal sealed class PenOnlyDynamicRenderer : DynamicRenderer
         _smoothedCalligraphySpeed = 0;
     }
 
+    private void BeginStraightLineStroke(RawStylusInput rawStylusInput)
+    {
+        ResetStraightLineStroke();
+        Interlocked.Exchange(
+            ref _completedStraightLineDirection,
+            (int)StraightLineDirection.None);
+        _straightLineStroke = _straightLineMode && !IsTouchTablet(rawStylusInput);
+        if (!_straightLineStroke)
+        {
+            return;
+        }
+
+        var points = rawStylusInput.GetStylusPoints();
+        if (points.Count > 0)
+        {
+            _straightLineAnchor = points[0];
+        }
+    }
+
+    private void ApplyStraightLine(RawStylusInput rawStylusInput)
+    {
+        if (!_straightLineStroke)
+        {
+            return;
+        }
+
+        var points = rawStylusInput.GetStylusPoints();
+        if (points.Count == 0)
+        {
+            return;
+        }
+
+        _straightLineAnchor ??= points[0];
+        var anchor = _straightLineAnchor.Value;
+        if (!_straightLineDecisionMade)
+        {
+            var latest = points[^1];
+            var anchorPoint = new PointD(anchor.X, anchor.Y);
+            var latestPoint = new PointD(latest.X, latest.Y);
+            if (!StraightLineSnap.HasActivationDistance(anchorPoint, latestPoint))
+            {
+                for (var index = 0; index < points.Count; index++)
+                {
+                    var point = points[index];
+                    point.X = anchor.X;
+                    point.Y = anchor.Y;
+                    points[index] = point;
+                }
+
+                rawStylusInput.SetStylusPoints(points);
+                return;
+            }
+
+            _straightLineDirection = StraightLineSnap.DetectDirection(
+                anchorPoint,
+                latestPoint);
+            _straightLineDecisionMade = true;
+        }
+
+        if (_straightLineDirection == StraightLineDirection.None)
+        {
+            return;
+        }
+
+        var fixedPoint = new PointD(anchor.X, anchor.Y);
+        for (var index = 0; index < points.Count; index++)
+        {
+            var point = points[index];
+            var snapped = StraightLineSnap.Apply(
+                new PointD(point.X, point.Y),
+                fixedPoint,
+                _straightLineDirection);
+            point.X = snapped.X;
+            point.Y = snapped.Y;
+            points[index] = point;
+        }
+
+        rawStylusInput.SetStylusPoints(points);
+    }
+
+    private void ResetStraightLineStroke()
+    {
+        _straightLineStroke = false;
+        _straightLineDecisionMade = false;
+        _straightLineDirection = StraightLineDirection.None;
+        _straightLineAnchor = null;
+    }
+
     private bool IsTouch(RawStylusInput rawStylusInput) =>
         !_allowTouchInk && _touchTabletIds.ContainsKey(rawStylusInput.TabletDeviceId);
+
+    private bool IsTouchTablet(RawStylusInput rawStylusInput) =>
+        _touchTabletIds.ContainsKey(rawStylusInput.TabletDeviceId);
 }

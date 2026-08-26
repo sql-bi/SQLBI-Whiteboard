@@ -30,6 +30,34 @@ var framedTopLeft = camera.WorldToScreen(
 Assert(framedTopLeft.X >= 49.999999, "Framing must preserve the horizontal margin.");
 Assert(framedTopLeft.Y >= 49.999999, "Framing must preserve the vertical margin.");
 
+var lineAnchor = new PointD(100, 100);
+Assert(
+    StraightLineSnap.DetectDirection(lineAnchor, new PointD(200, 120)) ==
+    StraightLineDirection.Horizontal,
+    "A Shift stroke within 15 degrees of horizontal should snap horizontally.");
+Assert(
+    StraightLineSnap.DetectDirection(lineAnchor, new PointD(85, 200)) ==
+    StraightLineDirection.Vertical,
+    "A Shift stroke within 15 degrees of vertical should snap vertically in either direction.");
+Assert(
+    StraightLineSnap.DetectDirection(lineAnchor, new PointD(200, 130)) ==
+    StraightLineDirection.None,
+    "A Shift stroke outside the axis tolerance should remain free.");
+Assert(
+    StraightLineSnap.DetectDirection(lineAnchor, new PointD(105, 102)) ==
+    StraightLineDirection.None,
+    "Straight-line direction should wait for enough movement to establish intent.");
+Assert(
+    StraightLineSnap.Apply(
+        new PointD(180, 116),
+        lineAnchor,
+        StraightLineDirection.Horizontal) == new PointD(180, 100) &&
+    StraightLineSnap.Apply(
+        new PointD(88, 210),
+        lineAnchor,
+        StraightLineDirection.Vertical) == new PointD(100, 210),
+    "Snapping should preserve travel along the chosen axis and remove only off-axis movement.");
+
 var originalLiveViewBounds = new RectD(100, 50, 400, 200);
 var reconnectedLiveViewBounds = originalLiveViewBounds.WithCenteredAspectRatio(9d / 16d);
 AssertNear(
