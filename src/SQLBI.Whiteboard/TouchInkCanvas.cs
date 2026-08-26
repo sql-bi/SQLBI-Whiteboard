@@ -5,85 +5,55 @@ using System.Windows.Input;
 using System.Windows.Input.StylusPlugIns;
 using System.Windows.Media;
 using System.Windows.Threading;
+using SQLBI.Whiteboard.Core.Geometry;
 using SQLBI.Whiteboard.Core.Model;
 
 namespace SQLBI.Whiteboard;
 
-public sealed class PenOnlyInkCanvas : InkCanvas
+/// <summary>
+/// The finger's ink surface, and the host for the laser sampler and the hover
+/// tracker. It collects no pen ink: the pen's packets are read directly by the
+/// window - see MainWindow.AppendPenInk - because a barrel button tears the WPF
+/// contact in two every time it is pressed or released, and no stroke built on
+/// that bookkeeping could be made to behave like the Shift key.
+/// </summary>
+public sealed class TouchInkCanvas : InkCanvas
 {
-    private readonly PenOnlyDynamicRenderer _penOnlyRenderer;
+    private readonly TouchOnlyDynamicRenderer _touchRenderer;
 
     public LaserSamplePlugIn LaserSamples { get; } = new();
 
     public HoverTrackerPlugIn HoverTracker { get; } = new();
 
-    public PenOnlyInkCanvas()
+    public TouchInkCanvas()
     {
         var touchTabletIds = Tablet.TabletDevices
             .Cast<TabletDevice>()
             .Where(device => device.Type == TabletDeviceType.Touch)
             .Select(device => device.Id);
-        _penOnlyRenderer = new PenOnlyDynamicRenderer(touchTabletIds);
-        DynamicRenderer = _penOnlyRenderer;
+        _touchRenderer = new TouchOnlyDynamicRenderer(touchTabletIds);
+        DynamicRenderer = _touchRenderer;
         StylusPlugIns.Add(LaserSamples);
         StylusPlugIns.Add(HoverTracker);
     }
 
     public void RegisterTouchTablet(int tabletDeviceId) =>
-        _penOnlyRenderer.RegisterTouchTablet(tabletDeviceId);
+        _touchRenderer.RegisterTouchTablet(tabletDeviceId);
 
-    public void SetPenKind(PenKind kind) =>
-        _penOnlyRenderer.SetPenKind(kind);
+    public void SetPenKind(PenKind kind) => _touchRenderer.SetPenKind(kind);
 
-    public void SetLaserMode(bool laser) =>
-        _penOnlyRenderer.SetLaserMode(laser);
+    public void SetLaserMode(bool laser) => _touchRenderer.SetLaserMode(laser);
 
-    public void SetAllowTouchInk(bool allow) =>
-        _penOnlyRenderer.SetAllowTouchInk(allow);
+    public void SetAllowTouchInk(bool allow) => _touchRenderer.SetAllowTouchInk(allow);
 
     public void AbortWetInk()
     {
-        _penOnlyRenderer.AbortWetInk();
+        _touchRenderer.AbortWetInk();
         Strokes.Clear();
     }
 
-    public void DrainLaserSamples(Action<Point, float> consume)
-    {
+    public void DrainLaserSamples(Action<Point, float> consume) =>
         LaserSamples.Drain(consume);
-    }
-}
-
-// Clicking the barrel button over a hovering pen is delivered as a stylus down
-// that claims everything a real touch claims - not in air, tip switch pressed.
-// Only the pressure gives it away, because nothing is pressing on the tip.
-// Requiring the barrel to be down as well keeps a genuinely light first packet
-// from being mistaken for one of these.
-internal static class PhantomStylus
-{
-    public static bool IsBarrelDown(StylusPointCollection points)
-    {
-        if (points.Count == 0)
-        {
-            return false;
-        }
-
-        for (var index = 0; index < points.Count; index++)
-        {
-            var point = points[index];
-            if (point.PressureFactor > 0)
-            {
-                return false;
-            }
-
-            if (!point.HasProperty(StylusPointProperties.BarrelButton) ||
-                point.GetPropertyValue(StylusPointProperties.BarrelButton) == 0)
-            {
-                return false;
-            }
-        }
-
-        return true;
-    }
 }
 
 public sealed class LaserSamplePlugIn : StylusPlugIn
@@ -202,18 +172,24 @@ public sealed class HoverTrackerPlugIn : StylusPlugIn
     }
 }
 
-internal sealed class PenOnlyDynamicRenderer : DynamicRenderer
+/// <summary>
+/// Wet ink for the finger only. Pen ink is collected and drawn by the window
+/// from the pen's own packet stream, because a barrel button tears the WPF
+/// contact in two every time it is pressed or released - see TODO.md - and a
+/// wet stroke driven by that bookkeeping cannot match the stroke that results.
+/// </summary>
+internal sealed class TouchOnlyDynamicRenderer : DynamicRenderer
 {
     private readonly ConcurrentDictionary<int, byte> _touchTabletIds = new();
-    private volatile PenKind _penKind;
     private volatile bool _laserMode;
     private volatile bool _allowTouchInk;
+    private volatile PenKind _penKind;
     private PenKind _strokeKind;
     private StylusPoint? _lastCalligraphyPoint;
     private int _lastPacketTimestamp;
     private double _smoothedCalligraphySpeed;
 
-    public PenOnlyDynamicRenderer(IEnumerable<int> touchTabletIds)
+    public TouchOnlyDynamicRenderer(IEnumerable<int> touchTabletIds)
     {
         foreach (var tabletId in touchTabletIds)
         {
@@ -250,14 +226,14 @@ internal sealed class PenOnlyDynamicRenderer : DynamicRenderer
         Enabled = true;
     }
 
+    private bool Ignore(RawStylusInput rawStylusInput) =>
+        _laserMode ||
+        !_allowTouchInk ||
+        !_touchTabletIds.ContainsKey(rawStylusInput.TabletDeviceId);
+
     protected override void OnStylusDown(RawStylusInput rawStylusInput)
     {
-        // Without this the barrel click opens a wet stroke for a pen that never
-        // touched the glass, which is then torn down mid-flight when the button
-        // switches to the laser a moment later.
-        if (IsTouch(rawStylusInput) ||
-            _laserMode ||
-            PhantomStylus.IsBarrelDown(rawStylusInput.GetStylusPoints()))
+        if (Ignore(rawStylusInput))
         {
             return;
         }
@@ -270,7 +246,7 @@ internal sealed class PenOnlyDynamicRenderer : DynamicRenderer
 
     protected override void OnStylusMove(RawStylusInput rawStylusInput)
     {
-        if (IsTouch(rawStylusInput) || _laserMode)
+        if (Ignore(rawStylusInput))
         {
             return;
         }
@@ -281,7 +257,7 @@ internal sealed class PenOnlyDynamicRenderer : DynamicRenderer
 
     protected override void OnStylusUp(RawStylusInput rawStylusInput)
     {
-        if (IsTouch(rawStylusInput) || _laserMode)
+        if (Ignore(rawStylusInput))
         {
             return;
         }
@@ -358,7 +334,4 @@ internal sealed class PenOnlyDynamicRenderer : DynamicRenderer
         _lastPacketTimestamp = 0;
         _smoothedCalligraphySpeed = 0;
     }
-
-    private bool IsTouch(RawStylusInput rawStylusInput) =>
-        !_allowTouchInk && _touchTabletIds.ContainsKey(rawStylusInput.TabletDeviceId);
 }

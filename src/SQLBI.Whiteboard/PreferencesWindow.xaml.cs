@@ -4,6 +4,7 @@ using System.Windows.Controls;
 using System.Windows.Controls.Primitives;
 using System.Windows.Input;
 using System.Windows.Media;
+using System.Windows.Shapes;
 using SQLBI.Whiteboard.Core.Model;
 using SQLBI.Whiteboard.Core.Settings;
 
@@ -173,7 +174,12 @@ public partial class PreferencesWindow : Window
             body.Children.Add(value);
             body.Children.Add(slider);
         }
-        else if (setting.Editor is SettingEditorKind.OrderedList or SettingEditorKind.LaserWeightChoice)
+        else if (setting.Editor is
+                 SettingEditorKind.OrderedList or
+                 SettingEditorKind.LaserWeightChoice or
+                 SettingEditorKind.PenButtonChoice or
+                 SettingEditorKind.ToolbarPlacementChoice or
+                 SettingEditorKind.ToolbarLayoutChoice)
         {
             body.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
             body.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
@@ -208,17 +214,21 @@ public partial class PreferencesWindow : Window
             SettingEditorKind.MonitorChoice => CreateMonitorCombo(),
             SettingEditorKind.OrderedList => CreateOrderedList(setting),
             SettingEditorKind.LaserWeightChoice => CreateLaserWeightChoice(setting),
+            SettingEditorKind.PenButtonChoice =>
+                CreateSampleChoice(setting, CreatePenButtonSample),
+            SettingEditorKind.ToolbarPlacementChoice =>
+                CreateSampleChoice(setting, CreateToolbarPlacementSample),
+            SettingEditorKind.ToolbarLayoutChoice =>
+                CreateSampleChoice(setting, CreateToolbarLayoutSample),
             _ => CreateEnumCombo(setting),
         };
 
-    // Each option is drawn as the strokes it produces, at the same width and
-    // opacity the trail itself would use, so the choice is made by looking
-    // rather than by imagining what a word means.
-    private FrameworkElement CreateLaserWeightChoice(SettingDescriptor setting)
+    // Options that are drawn rather than named: each is a sample under its own
+    // label, and the row of them behaves as one choice.
+    private FrameworkElement CreateSampleChoice(
+        SettingDescriptor setting,
+        Func<string, FrameworkElement?> sampleFor)
     {
-        const float LightTouch = 0.08f;
-        const float FirmTouch = 0.6f;
-
         var host = new UniformGrid
         {
             Rows = 1,
@@ -228,28 +238,31 @@ public partial class PreferencesWindow : Window
         var segments = new List<ToggleButton>();
         foreach (var choice in setting.Choices)
         {
-            if (!Enum.TryParse<LaserTrailWeight>(choice.Id, out var weight))
+            if (sampleFor(choice.Id) is not { } sample)
             {
                 continue;
             }
 
-            var samples = new StackPanel { HorizontalAlignment = HorizontalAlignment.Center };
-            samples.Children.Add(CreateLaserSample(weight, LightTouch));
-            samples.Children.Add(CreateLaserSample(weight, FirmTouch));
-            samples.Children.Add(new TextBlock
+            var content = new StackPanel { HorizontalAlignment = HorizontalAlignment.Center };
+            sample.HorizontalAlignment = HorizontalAlignment.Center;
+            content.Children.Add(sample);
+            content.Children.Add(new TextBlock
             {
                 Style = (Style)FindResource("SettingsValueLabel"),
                 Text = choice.Title,
                 Margin = new Thickness(0, 8, 0, 0),
+                TextWrapping = TextWrapping.Wrap,
+                TextAlignment = TextAlignment.Center,
                 HorizontalAlignment = HorizontalAlignment.Center,
             });
 
             var segment = new ToggleButton
             {
                 Style = (Style)FindResource("SettingsSampleSegment"),
-                Content = samples,
+                Content = content,
                 IsChecked = choice.Id == CurrentEnumId(setting),
                 Tag = choice.Id,
+                ToolTip = choice.Title,
             };
             segment.Click += (_, _) =>
             {
@@ -266,6 +279,238 @@ public partial class PreferencesWindow : Window
 
         return host;
     }
+
+    private static readonly Brush SampleInkBrush = Frozen(0xFF374151);
+    private static readonly Brush SampleGhostBrush = Frozen(0x59374151);
+    private static readonly Brush SampleBoardBrush = Frozen(0xFFFFFFFF);
+    private static readonly Brush SampleEdgeBrush = Frozen(0xFFD1D5DB);
+    private static readonly Brush SampleAccentBrush = Frozen(0xFF2563EB);
+
+    private static Brush Frozen(uint argb)
+    {
+        var brush = new SolidColorBrush(Color.FromArgb(
+            (byte)(argb >> 24),
+            (byte)(argb >> 16),
+            (byte)(argb >> 8),
+            (byte)argb));
+        brush.Freeze();
+        return brush;
+    }
+
+    // The laser lays a fading trail behind a bright head; the straight line
+    // takes the same wandering hand and rules it flat.
+    private FrameworkElement? CreatePenButtonSample(string id)
+    {
+        if (!Enum.TryParse<PenButtonAction>(id, out var action))
+        {
+            return null;
+        }
+
+        var canvas = new Canvas { Width = 84, Height = 34 };
+        if (action == PenButtonAction.Laser)
+        {
+            for (var step = 0; step < 7; step++)
+            {
+                var fraction = step / 6d;
+                var size = 3 + (7 * fraction);
+                var trail = new Ellipse
+                {
+                    Width = size,
+                    Height = size,
+                    Fill = Frozen((uint)((byte)(40 + (190 * fraction)) << 24) |
+                                  ((uint)LaserSettings.TrailRed << 16) |
+                                  ((uint)LaserSettings.TrailGreen << 8) |
+                                  LaserSettings.TrailBlue),
+                };
+                Canvas.SetLeft(trail, 8 + (fraction * 60) - (size / 2));
+                Canvas.SetTop(trail, 17 - (size / 2) - (Math.Sin(fraction * 3) * 5));
+                canvas.Children.Add(trail);
+            }
+
+            return canvas;
+        }
+
+        canvas.Children.Add(new Polyline
+        {
+            Points = [
+                new Point(6, 24), new Point(20, 12), new Point(34, 22),
+                new Point(48, 10), new Point(62, 20), new Point(78, 12),
+            ],
+            Stroke = SampleGhostBrush,
+            StrokeThickness = 2,
+            StrokeStartLineCap = PenLineCap.Round,
+            StrokeEndLineCap = PenLineCap.Round,
+            StrokeLineJoin = PenLineJoin.Round,
+        });
+
+        var ruled = new Rectangle
+        {
+            Width = 72,
+            Height = 4,
+            RadiusX = 2,
+            RadiusY = 2,
+            Fill = SampleInkBrush,
+        };
+        Canvas.SetLeft(ruled, 6);
+        Canvas.SetTop(ruled, 15);
+        canvas.Children.Add(ruled);
+        return canvas;
+    }
+
+    // A board with the toolbar in it, so the corner is seen rather than read.
+    private FrameworkElement? CreateToolbarPlacementSample(string id)
+    {
+        if (!Enum.TryParse<ToolbarPlacement>(id, out var placement))
+        {
+            return null;
+        }
+
+        var bar = new Border
+        {
+            Width = placement == ToolbarPlacement.BottomCenter ? 30 : 24,
+            Height = 7,
+            CornerRadius = new CornerRadius(3.5),
+            Background = SampleAccentBrush,
+            Margin = new Thickness(5),
+            HorizontalAlignment = placement switch
+            {
+                ToolbarPlacement.TopLeft or ToolbarPlacement.BottomLeft =>
+                    HorizontalAlignment.Left,
+                ToolbarPlacement.BottomCenter => HorizontalAlignment.Center,
+                _ => HorizontalAlignment.Right,
+            },
+            VerticalAlignment = placement is ToolbarPlacement.TopLeft or ToolbarPlacement.TopRight
+                ? VerticalAlignment.Top
+                : VerticalAlignment.Bottom,
+        };
+
+        return new Border
+        {
+            Width = 76,
+            Height = 46,
+            CornerRadius = new CornerRadius(6),
+            Background = SampleBoardBrush,
+            BorderBrush = SampleEdgeBrush,
+            BorderThickness = new Thickness(1),
+            Child = bar,
+        };
+    }
+
+    // A miniature of the ink flyout each layout produces.
+    private FrameworkElement? CreateToolbarLayoutSample(string id)
+    {
+        if (!Enum.TryParse<CalligraphyAccess>(id, out var access))
+        {
+            return null;
+        }
+
+        var rows = new StackPanel
+        {
+            HorizontalAlignment = HorizontalAlignment.Center,
+            VerticalAlignment = VerticalAlignment.Center,
+        };
+
+        switch (access)
+        {
+            case CalligraphyAccess.DualPalette:
+                // Two tools' colors and sizes, both on show at once.
+                rows.Children.Add(SampleChipRow(4, chevron: false, nibs: false));
+                rows.Children.Add(SampleChipRow(4, chevron: false, nibs: false));
+                break;
+            case CalligraphyAccess.Chevron:
+                // One compact bar, the second tool behind a chevron.
+                rows.Children.Add(SampleChipRow(4, chevron: true, nibs: false));
+                break;
+            default:
+                // One bar, the nibs trailing the size chips.
+                rows.Children.Add(SampleChipRow(3, chevron: false, nibs: true));
+                break;
+        }
+
+        return new Border
+        {
+            Width = 76,
+            Height = 46,
+            CornerRadius = new CornerRadius(6),
+            Background = SampleBoardBrush,
+            BorderBrush = SampleEdgeBrush,
+            BorderThickness = new Thickness(1),
+            Child = rows,
+        };
+    }
+
+    private static StackPanel SampleChipRow(int chips, bool chevron, bool nibs)
+    {
+        var row = new StackPanel
+        {
+            Orientation = Orientation.Horizontal,
+            HorizontalAlignment = HorizontalAlignment.Center,
+            Margin = new Thickness(0, 2, 0, 2),
+        };
+
+        for (var index = 0; index < chips; index++)
+        {
+            var size = nibs ? 5 + (index * 2) : 8;
+            row.Children.Add(new Ellipse
+            {
+                Width = size,
+                Height = size,
+                Margin = new Thickness(2, 0, 2, 0),
+                VerticalAlignment = VerticalAlignment.Center,
+                Fill = index == 0 ? SampleAccentBrush : SampleGhostBrush,
+            });
+        }
+
+        if (chevron)
+        {
+            row.Children.Add(new Polyline
+            {
+                Points = [new Point(0, 0), new Point(4, 4), new Point(8, 0)],
+                Stroke = SampleInkBrush,
+                StrokeThickness = 1.6,
+                Margin = new Thickness(3, 0, 0, 0),
+                VerticalAlignment = VerticalAlignment.Center,
+            });
+        }
+
+        if (nibs)
+        {
+            for (var index = 0; index < 2; index++)
+            {
+                row.Children.Add(new Rectangle
+                {
+                    Width = 7,
+                    Height = index == 0 ? 7 : 3,
+                    RadiusX = 1.5,
+                    RadiusY = 1.5,
+                    Margin = new Thickness(3, 0, 0, 0),
+                    VerticalAlignment = VerticalAlignment.Center,
+                    Fill = SampleInkBrush,
+                });
+            }
+        }
+
+        return row;
+    }
+
+    // Each option is drawn as the strokes it produces, at the same width and
+    // opacity the trail itself would use, so the choice is made by looking
+    // rather than by imagining what a word means.
+    private FrameworkElement CreateLaserWeightChoice(SettingDescriptor setting) =>
+        CreateSampleChoice(setting, id =>
+        {
+            const float LightTouch = 0.08f;
+            const float FirmTouch = 0.6f;
+            if (!Enum.TryParse<LaserTrailWeight>(id, out var weight))
+            {
+                return null;
+            }
+
+            var samples = new StackPanel();
+            samples.Children.Add(CreateLaserSample(weight, LightTouch));
+            samples.Children.Add(CreateLaserSample(weight, FirmTouch));
+            return samples;
+        });
 
     private Border CreateLaserSample(LaserTrailWeight weight, float pressure)
     {
@@ -547,6 +792,7 @@ public partial class PreferencesWindow : Window
             SettingsCatalog.Ids.ToolbarPlacement => _settings.ToolbarPlacement.ToString(),
             SettingsCatalog.Ids.ToolbarLayout => _settings.CalligraphyAccess.ToString(),
             SettingsCatalog.Ids.FingerMode => _settings.FingerMode.ToString(),
+            SettingsCatalog.Ids.PenButton => _settings.PenButtons.Barrel.ToString(),
             _ => string.Empty,
         };
 
@@ -621,6 +867,10 @@ public partial class PreferencesWindow : Window
             case SettingsCatalog.Ids.FingerMode
                 when Enum.TryParse<FingerMode>(id, out var fingerMode):
                 _settings.FingerMode = fingerMode;
+                break;
+            case SettingsCatalog.Ids.PenButton
+                when Enum.TryParse<PenButtonAction>(id, out var penButton):
+                _settings.PenButtons.Barrel = penButton;
                 break;
             default:
                 return;

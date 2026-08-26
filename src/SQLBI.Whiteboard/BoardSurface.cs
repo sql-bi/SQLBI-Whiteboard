@@ -28,6 +28,15 @@ internal sealed class BoardSurface : FrameworkElement
 
     public Func<Guid, ImageSource?>? LiveViewImageSourceProvider { get; set; }
 
+    /// <summary>
+    /// The stroke the pen is drawing right now, before it is committed. Pen ink
+    /// is collected here rather than by the InkCanvas, so the wet stroke is
+    /// drawn here too.
+    /// </summary>
+    public IReadOnlyList<InkPoint>? PendingStroke { get; set; }
+
+    public PenStyle PendingStrokeStyle { get; set; }
+
     public void Configure(BoardDocument document, Camera2D camera)
     {
         _document = document;
@@ -50,6 +59,11 @@ internal sealed class BoardSurface : FrameworkElement
         if (_document is null || _camera is null)
         {
             return;
+        }
+
+        if (PendingStroke is { Count: > 1 } pending)
+        {
+            DrawStroke(drawingContext, pending, PendingStrokeStyle, _camera);
         }
 
         foreach (var item in _document.Query(_camera.VisibleWorldBounds))
@@ -98,9 +112,16 @@ internal sealed class BoardSurface : FrameworkElement
     private static void DrawStroke(
         DrawingContext drawingContext,
         InkStrokeObject stroke,
+        Camera2D camera) =>
+        DrawStroke(drawingContext, stroke.Points, stroke.Style, camera);
+
+    private static void DrawStroke(
+        DrawingContext drawingContext,
+        IReadOnlyList<InkPoint> strokePoints,
+        PenStyle style,
         Camera2D camera)
     {
-        var points = new StylusPointCollection(stroke.Points.Select(point =>
+        var points = new StylusPointCollection(strokePoints.Select(point =>
         {
             var screen = camera.WorldToScreen(point.Position);
             return new StylusPoint(
@@ -109,7 +130,7 @@ internal sealed class BoardSurface : FrameworkElement
                 Math.Clamp(point.Pressure, 0f, 1f));
         }));
 
-        var attributes = InkDrawingAttributes.Create(stroke.Style, camera.Zoom);
+        var attributes = InkDrawingAttributes.Create(style, camera.Zoom);
         var wpfStroke = new Stroke(points, attributes);
         wpfStroke.Draw(drawingContext);
     }

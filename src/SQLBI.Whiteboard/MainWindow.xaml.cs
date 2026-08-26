@@ -66,10 +66,17 @@ public partial class MainWindow : Window
     private BoardTool _activeTool = BoardTool.Pen;
     private BoardTool _lastDrawingTool = BoardTool.Pen;
     private BoardTool _toolBeforeSpace = BoardTool.Pen;
-    private BoardTool _toolBeforeLaser = BoardTool.Pen;
-    private bool _laserTemporary;
+    private BoardTool _toolBeforeBarrel = BoardTool.Pen;
+    private bool _barrelToolTemporary;
     private bool _discardInkStroke;
-    private StylusButton? _laserBarrelButton;
+    private StylusButton? _barrelButton;
+    private bool _lastContactWasPen;
+    private readonly List<InkPoint> _penInk = [];
+    private PointD? _penInkAnchor;
+    private StraightLineDirection _penInkDirection;
+    private PointD? _penInkPrevious;
+    private double _penInkSpeed;
+    private int _penInkWeightless;
     private PenStyle _penStyle = InkPalettes.DefaultPen;
     private PointerAction _stylusAction;
     private PointerAction _mouseAction;
@@ -233,30 +240,35 @@ public partial class MainWindow : Window
         SessionBar.SetEditEnabled(_history.CanUndo, _history.CanRedo);
     }
 
+    // Only touch reaches here now. Pen ink is collected from the pen's own
+    // stream instead - see AppendPenInk - because the barrel switch tears the
+    // WPF contact in two on every press and every release, and nothing built on
+    // top of that bookkeeping could be made to behave like the Shift key.
     private void InkSurface_StrokeCollected(object sender, InkCanvasStrokeCollectedEventArgs e)
     {
+        InkSurface.Strokes.Remove(e.Stroke);
         if (EffectiveTool == BoardTool.Laser ||
             _stylusAction == PointerAction.Laser ||
-            _discardInkStroke)
+            _discardInkStroke ||
+            _lastContactWasPen ||
+            e.Stroke.StylusPoints.Count == 0)
         {
             _discardInkStroke = false;
-            InkSurface.Strokes.Remove(e.Stroke);
-            return;
-        }
-
-        if (e.Stroke.StylusPoints.Count == 0)
-        {
-            InkSurface.Strokes.Remove(e.Stroke);
             return;
         }
 
         var firstTimestamp = Stopwatch.GetTimestamp();
-        var points = e.Stroke.StylusPoints
+        CommitInkPoints(e.Stroke.StylusPoints
             .Select((point, index) => new InkPoint(
                 _camera.ScreenToWorld(new PointD(point.X, point.Y)),
                 point.PressureFactor,
                 firstTimestamp + index))
-            .ToArray();
+            .ToArray());
+        SceneSurface.InvalidateVisual();
+    }
+
+    private void CommitInkPoints(IReadOnlyList<InkPoint> points)
+    {
         var stroke = InkStrokeObject.Create(
             points,
             _penStyle,
@@ -267,18 +279,138 @@ public partial class MainWindow : Window
         }
 
         _history.Execute(new AddObjectCommand(stroke), _document);
+    }
 
-        // The DynamicRenderer owns the low-latency wet stroke. Once WPF has
-        // collected it, the same pressure points move into the retained world
-        // model and the temporary InkCanvas copy can be discarded.
-        InkSurface.Strokes.Remove(e.Stroke);
-        SceneSurface.InvalidateVisual();
-        Debug.WriteLine(
-            $"[WpfInk] committed {points.Length} pressure points to world coordinates");
+    // Every packet the pen reports, in contact or not. This is the whole of the
+    // pen ink path: the constraint is one question asked per point, exactly as
+    // it is for Shift, because nothing here depends on WPF believing the pen is
+    // down. It does not believe it for as long as a barrel button is held.
+    private void AppendPenInk(StylusEventArgs e)
+    {
+        if (!IsInkTool || _stylusAction != PointerAction.None || e.StylusDevice.Inverted)
+        {
+            EndPenInk();
+            return;
+        }
+
+        var points = e.GetStylusPoints(InkSurface);
+        var pressed = false;
+        for (var index = 0; index < points.Count; index++)
+        {
+            var point = points[index];
+            if (point.PressureFactor <= 0)
+            {
+                continue;
+            }
+
+            pressed = true;
+            AppendPenInkPoint(new PointD(point.X, point.Y), point.PressureFactor);
+        }
+
+        if (pressed)
+        {
+            _penInkWeightless = 0;
+            _lastContactWasPen = true;
+            _penInContact = true;
+            SceneSurface.PendingStroke = _penInk;
+            SceneSurface.PendingStrokeStyle = _penStyle;
+            SceneSurface.InvalidateVisual();
+            return;
+        }
+
+        // One weightless packet is a dropped reading; a run of them is the pen
+        // off the glass.
+        if (_penInk.Count > 0 && ++_penInkWeightless < LiftedPacketCount)
+        {
+            return;
+        }
+
+        EndPenInk();
+    }
+
+    private void AppendPenInkPoint(PointD screen, float pressure)
+    {
+        var constrained = StraightLineConstraintActive;
+        if (!constrained)
+        {
+            _penInkAnchor = null;
+            _penInkDirection = StraightLineDirection.None;
+        }
+        else if (_penInkAnchor is null)
+        {
+            _penInkAnchor = screen;
+            _penInkDirection = StraightLineDirection.None;
+        }
+
+        if (constrained && _penInkAnchor is PointD anchor)
+        {
+            // The axis is chosen once and kept. A hand that drifts off it is
+            // still drawing the line it asked for, however far away it gets.
+            if (_penInkDirection == StraightLineDirection.None)
+            {
+                _penInkDirection = StraightLineSnap.DetectDirection(anchor, screen);
+            }
+
+            screen = _penInkDirection == StraightLineDirection.None
+                ? anchor
+                : StraightLineSnap.Apply(screen, anchor, _penInkDirection);
+
+            // A straight line is drawn, not written: uniform width.
+            pressure = StraightLinePressure;
+            _penInkPrevious = screen;
+            _penInkSpeed = 0;
+        }
+        else if (_penStyle.Kind == PenKind.Calligraphy)
+        {
+            if (_penInkPrevious is PointD previous)
+            {
+                var deltaX = screen.X - previous.X;
+                var deltaY = screen.Y - previous.Y;
+                var speed = Math.Sqrt((deltaX * deltaX) + (deltaY * deltaY));
+                _penInkSpeed = _penInkSpeed == 0
+                    ? speed
+                    : (_penInkSpeed * 0.65) + (speed * 0.35);
+            }
+
+            pressure = CalligraphyDynamics.AdjustPressure(pressure, _penInkSpeed);
+            _penInkPrevious = screen;
+        }
+        else
+        {
+            _penInkPrevious = screen;
+        }
+
+        _penInk.Add(new InkPoint(
+            _camera.ScreenToWorld(screen),
+            pressure,
+            Stopwatch.GetTimestamp()));
+    }
+
+    private void EndPenInk()
+    {
+        _penInkWeightless = 0;
+        _penInkAnchor = null;
+        _penInkDirection = StraightLineDirection.None;
+        _penInkPrevious = null;
+        _penInkSpeed = 0;
+        SceneSurface.PendingStroke = null;
+        if (_penInk.Count > 1 && !_discardInkStroke)
+        {
+            CommitInkPoints([.. _penInk]);
+        }
+
+        _discardInkStroke = false;
+        if (_penInk.Count > 0)
+        {
+            _penInk.Clear();
+            SceneSurface.InvalidateVisual();
+        }
     }
 
     private void InkSurface_PreviewStylusDown(object sender, StylusDownEventArgs e)
     {
+        PenTrace.Write("stylus-down", e, PenTraceState());
+        _lastContactWasPen = !IsTouchStylus(e);
         CommitTextEdit();
         SessionBar.CollapseIfTransient();
 
@@ -289,7 +421,7 @@ public partial class MainWindow : Window
 
         if (!IsTouchStylus(e) && !IsPenTipDown(e))
         {
-            Debug.WriteLine("[Laser] ignoring the barrel button's synthetic stylus down");
+            Debug.WriteLine("[Pen] barrel button opened a stylus down in mid-air");
 
             // The event still reached the InkCanvas, which restores its own ink
             // cursor on the way past. Nothing else refreshes it until the pen
@@ -300,6 +432,17 @@ public partial class MainWindow : Window
             // Handled so the InkCanvas does not open an editing gesture for a
             // touch we have just decided never happened.
             e.Handled = true;
+            return;
+        }
+
+        // A barrel transition while the tip is already down is delivered as a
+        // stylus down of its own. Our own state is already right for a contact
+        // that never ended, so none of it is redone here - but the event is left
+        // to reach the InkCanvas, which opens the next stroke with it. Held
+        // back, the InkCanvas instead carried the previous stroke across the
+        // pen's absence and drew a line through it.
+        if (!IsTouchStylus(e) && _penInContact && HasTipPressure(e))
+        {
             return;
         }
 
@@ -326,10 +469,11 @@ public partial class MainWindow : Window
         }
 
         var screen = ToPointD(e.GetPosition(InkSurface));
-        if (e.StylusDevice.Inverted || _activeTool == BoardTool.Eraser)
+        if (e.StylusDevice.Inverted || EffectiveTool == BoardTool.Eraser)
         {
             BeginErase(screen);
             _stylusAction = PointerAction.Erase;
+            _discardInkStroke = true;
             InkSurface.CaptureStylus();
             e.Handled = true;
         }
@@ -366,6 +510,7 @@ public partial class MainWindow : Window
     {
         if (IsTouchStylus(e))
         {
+            _lastContactWasPen = false;
             InkSurface.RegisterTouchTablet(e.StylusDevice.TabletDevice.Id);
             if (IsTouchNavigating)
             {
@@ -374,6 +519,11 @@ public partial class MainWindow : Window
             }
 
             TrackTouchPoint(e);
+        }
+        else
+        {
+            PenTrace.Write("stylus-move", e, PenTraceState());
+            AppendPenInk(e);
         }
 
         RecoverLaserContactFromPressure(e);
@@ -447,6 +597,7 @@ public partial class MainWindow : Window
 
     private void InkSurface_PreviewStylusUp(object sender, StylusEventArgs e)
     {
+        PenTrace.Write("stylus-up", e, PenTraceState());
         if (IsTouchStylus(e))
         {
             InkSurface.RegisterTouchTablet(e.StylusDevice.TabletDevice.Id);
@@ -456,6 +607,17 @@ public partial class MainWindow : Window
             {
                 return;
             }
+        }
+        else if (HasTipPressure(e))
+        {
+            // A stylus up still carrying tip pressure is a barrel transition,
+            // not a lift, so the contact state here is left alone - but the
+            // event goes on to the InkCanvas, which ends the stroke with it.
+            // That is the truth of what follows: Windows reports the pen in the
+            // air from here until the next stylus down, so the stroke really
+            // does stop, and joining it to whatever comes next draws a line
+            // through everywhere the pen was not.
+            return;
         }
 
         var screen = ToPointD(e.GetPosition(InkSurface));
@@ -568,9 +730,37 @@ public partial class MainWindow : Window
         TryActivatePaletteFromStylus(e);
     }
 
-    private bool IsPenTipDown(StylusEventArgs e) =>
-        !e.StylusDevice.InAir &&
-        !PhantomStylus.IsBarrelDown(e.GetStylusPoints(InkSurface));
+    // Clicking the barrel button over a hovering pen is delivered as a stylus
+    // down that claims everything a real touch claims - not in air, tip switch
+    // pressed. Only the pressure gives it away, because nothing is pressing on
+    // the tip. Requiring the barrel to be down as well keeps a genuinely light
+    // first packet from being mistaken for one of these.
+    private bool IsPenTipDown(StylusEventArgs e)
+    {
+        if (e.StylusDevice.InAir)
+        {
+            return false;
+        }
+
+        var points = e.GetStylusPoints(InkSurface);
+        if (points.Count == 0)
+        {
+            return true;
+        }
+
+        for (var index = 0; index < points.Count; index++)
+        {
+            var point = points[index];
+            if (point.PressureFactor > 0 ||
+                !point.HasProperty(StylusPointProperties.BarrelButton) ||
+                point.GetPropertyValue(StylusPointProperties.BarrelButton) == 0)
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
 
     // The barrel click opens a stylus down that WPF does not close until well
     // after the pen has touched and left again, so the first real landing is
@@ -580,7 +770,7 @@ public partial class MainWindow : Window
     // coming.
     private void RecoverLaserContactFromPressure(StylusEventArgs e)
     {
-        if (IsTouchStylus(e) || e.StylusDevice.Inverted)
+        if (IsTouchStylus(e))
         {
             return;
         }
@@ -588,13 +778,25 @@ public partial class MainWindow : Window
         var pressed = HasTipPressure(e);
         if (pressed &&
             !_penInContact &&
-            _stylusAction == PointerAction.None &&
-            EffectiveTool == BoardTool.Laser)
+            _stylusAction == PointerAction.None)
         {
             _penInContact = true;
-            _syntheticLaserContact = true;
-            BeginLaserContact(e);
-            _stylusAction = PointerAction.Laser;
+            HidePointerDot();
+            UsePenCursor();
+            if (e.StylusDevice.Inverted || EffectiveTool == BoardTool.Eraser)
+            {
+                BeginErase(ToPointD(e.GetPosition(InkSurface)));
+                InkSurface.CaptureStylus();
+                _stylusAction = PointerAction.Erase;
+                _discardInkStroke = true;
+            }
+            else if (EffectiveTool == BoardTool.Laser)
+            {
+                _syntheticLaserContact = true;
+                BeginLaserContact(e);
+                _stylusAction = PointerAction.Laser;
+            }
+
             return;
         }
 
@@ -704,62 +906,34 @@ public partial class MainWindow : Window
 
     private void InkSurface_PreviewStylusButtonDown(object sender, StylusButtonEventArgs e)
     {
-        if (IsTouchStylus(e) || e.StylusDevice.Inverted)
+        if (IsTouchStylus(e))
         {
             return;
         }
 
-        Debug.WriteLine(
-            $"[Laser] stylus button down '{e.StylusButton.Name}' guid={e.StylusButton.Guid} " +
-            $"inAir={e.StylusDevice.InAir} contact={_penInContact}");
+        PenTrace.Write("button-down", e, PenTraceState());
 
-        if (!IsLowerBarrelButton(e.StylusDevice, e.StylusButton))
+        if (!IsBarrelButton(e.StylusDevice, e.StylusButton))
         {
             return;
         }
 
-        BeginTemporaryLaser(e.StylusButton);
-        if (_penInContact)
-        {
-            InkSurface.AbortWetInk();
-            BeginLaserContact(e);
-            _stylusAction = PointerAction.Laser;
-        }
-
+        _barrelButton = e.StylusButton;
+        RefreshBarrelState(e);
         e.Handled = true;
     }
 
     private void InkSurface_PreviewStylusButtonUp(object sender, StylusButtonEventArgs e)
     {
-        if (_laserBarrelButton is null || !ReferenceEquals(e.StylusButton, _laserBarrelButton))
+        PenTrace.Write("button-up", e, PenTraceState());
+        if (!ReferenceEquals(e.StylusButton, _barrelButton))
         {
             return;
         }
 
-        EndTemporaryLaser();
+        _barrelButton = null;
+        RefreshBarrelState(e);
         e.Handled = true;
-    }
-
-    private void BeginTemporaryLaser(StylusButton button)
-    {
-        if (_laserTemporary)
-        {
-            return;
-        }
-
-        _laserBarrelButton = button;
-        _toolBeforeLaser = _activeTool == BoardTool.Laser
-            ? _lastDrawingTool
-            : _activeTool;
-        _laserTemporary = true;
-        _discardInkStroke = _penInContact;
-        SetActiveTool(BoardTool.Laser);
-        InkSurface.AbortWetInk();
-
-        // Engaging the laser from the barrel button is the one tool change that
-        // can happen without the pen moving, so it cannot wait for the next
-        // pointer event to settle the cursor.
-        UsePenCursor();
     }
 
     private void BeginLaserContact(Point position, float pressure)
@@ -826,46 +1000,121 @@ public partial class MainWindow : Window
         LaserTrail.AddSample(position, pressure, leaveTrail);
     }
 
-    private static bool IsLowerBarrelButton(StylusDevice device, StylusButton button)
+    private bool BarrelHolds(PenButtonAction action) =>
+        _barrelButton is not null && _settings.PenButtons.Barrel == action;
+
+    // Actions that swap the tool for as long as the button is held. A modifier
+    // such as the straight-line constraint has no tool of its own.
+    private static BoardTool? BarrelToolFor(PenButtonAction action) => action switch
     {
-        var name = button.Name ?? string.Empty;
-        if (name.Contains("Tip", StringComparison.OrdinalIgnoreCase) ||
-            name.Contains("Eraser", StringComparison.OrdinalIgnoreCase))
+        PenButtonAction.Laser => BoardTool.Laser,
+        _ => null,
+    };
+
+    private void RefreshBarrelState(StylusEventArgs e)
+    {
+        if (_barrelButton is not null &&
+            BarrelToolFor(_settings.PenButtons.Barrel) is BoardTool tool)
         {
-            return false;
+            ApplyTemporaryBarrelTool(tool, e);
+        }
+        else
+        {
+            EndTemporaryBarrelTool();
         }
 
-        if (name.Contains('2', StringComparison.Ordinal) ||
-            name.Contains("Upper", StringComparison.OrdinalIgnoreCase) ||
-            name.Contains("Secondary", StringComparison.OrdinalIgnoreCase))
-        {
-            return false;
-        }
-
-        var extras = device.StylusButtons
-            .Cast<StylusButton>()
-            .Where(item =>
-            {
-                var itemName = item.Name ?? string.Empty;
-                return !itemName.Contains("Tip", StringComparison.OrdinalIgnoreCase) &&
-                       !itemName.Contains("Eraser", StringComparison.OrdinalIgnoreCase);
-            })
-            .ToArray();
-
-        return extras.Length == 0 || ReferenceEquals(extras[0], button);
     }
 
-    private void EndTemporaryLaser()
+    private void ApplyTemporaryBarrelTool(BoardTool tool, StylusEventArgs e)
     {
-        if (!_laserTemporary)
+        if (!_barrelToolTemporary)
+        {
+            _toolBeforeBarrel = _activeTool == tool ? _lastDrawingTool : _activeTool;
+            _barrelToolTemporary = true;
+            SetActiveTool(tool);
+            InkSurface.AbortWetInk();
+            _discardInkStroke = _penInContact;
+
+            // Engaging a tool from the barrel button is the one tool change that
+            // can happen without the pen moving, so it cannot wait for the next
+            // pointer event to settle the cursor.
+            UsePenCursor();
+        }
+
+        if (_penInContact && tool == BoardTool.Laser && _stylusAction != PointerAction.Laser)
+        {
+            BeginLaserContact(e);
+            _stylusAction = PointerAction.Laser;
+        }
+    }
+
+    private void EndTemporaryBarrelTool()
+    {
+        if (!_barrelToolTemporary)
         {
             return;
         }
 
-        _laserTemporary = false;
-        _laserBarrelButton = null;
+        _barrelToolTemporary = false;
+        if (_stylusAction == PointerAction.Laser)
+        {
+            StopLaserSampling();
+            LaserTrail.Lift();
+            _stylusAction = PointerAction.None;
+        }
+
         LaserTrail.HideHead();
-        SetActiveTool(_toolBeforeLaser);
+        SetActiveTool(_toolBeforeBarrel);
+        UsePenCursor();
+    }
+
+    // WPF's neutral pressure: a constrained segment is drawn at exactly the
+    // configured thickness, with no taper at either end.
+    private const float StraightLinePressure = 0.5f;
+
+    // Packets arrive a few milliseconds apart, so a lift is tens of weightless
+    // ones. A shorter run is the digitizer missing a reading.
+    private const int LiftedPacketCount = 4;
+
+    private bool StraightLineConstraintActive =>
+        Keyboard.Modifiers.HasFlag(ModifierKeys.Shift) ||
+        BarrelHolds(PenButtonAction.StraightLine);
+
+    private bool IsInkTool =>
+        EffectiveTool is BoardTool.Pen or BoardTool.Highlighter or BoardTool.Calligraphy;
+
+    // The barrel button is whichever button is neither the writing tip nor the
+    // reverse end. Both of those raise button events of their own - the tip on
+    // every contact, the reverse end when it lands - and neither is assignable.
+    private static bool IsBarrelButton(StylusDevice device, StylusButton button)
+    {
+        if (button.Guid == StylusPointProperties.TipButton.Id ||
+            PenBarrelButton.IsWritingTipName(button.Name))
+        {
+            return false;
+        }
+
+        if (button.Guid == StylusPointProperties.BarrelButton.Id)
+        {
+            return true;
+        }
+
+        if (button.Guid == StylusPointProperties.SecondaryTipButton.Id ||
+            PenBarrelButton.IsReverseEndName(button.Name))
+        {
+            return false;
+        }
+
+        // A pen that names its buttons something else entirely: take the first
+        // one left after the tip and the reverse end are ruled out.
+        var barrel = device.StylusButtons
+            .Cast<StylusButton>()
+            .FirstOrDefault(item =>
+                item.Guid != StylusPointProperties.TipButton.Id &&
+                item.Guid != StylusPointProperties.SecondaryTipButton.Id &&
+                !PenBarrelButton.IsWritingTipName(item.Name) &&
+                !PenBarrelButton.IsReverseEndName(item.Name));
+        return barrel is not null && ReferenceEquals(barrel, button);
     }
 
     private const float MouseLaserPressure = 0.5f;
@@ -2107,11 +2356,7 @@ public partial class MainWindow : Window
     }
 
     private BoardTool EffectiveTool =>
-        _spaceTemporaryPan
-            ? BoardTool.Pan
-            : _laserTemporary
-                ? BoardTool.Laser
-                : _activeTool;
+        _spaceTemporaryPan ? BoardTool.Pan : _activeTool;
 
     private void LaserToolButton_Click(object sender, RoutedEventArgs e) =>
         SetActiveTool(BoardTool.Laser);
@@ -2188,6 +2433,9 @@ public partial class MainWindow : Window
         }
 
         UpdateDualToolChecks();
+        // Ink here is the finger's; the pen's is collected by AppendPenInk. A
+        // stylus reading as inverted is a pen the wrong way round, and erasing
+        // is ours to do, so the InkCanvas is given nothing to do with it.
         InkSurface.EditingMode =
             tool is BoardTool.Pen or BoardTool.Highlighter or BoardTool.Calligraphy or BoardTool.Laser
             ? InkCanvasEditingMode.Ink
@@ -2633,10 +2881,10 @@ public partial class MainWindow : Window
 
     private void LeaveLaserIfActive()
     {
-        if (_laserTemporary)
+        if (_barrelToolTemporary)
         {
-            _laserTemporary = false;
-            _laserBarrelButton = null;
+            _barrelToolTemporary = false;
+            _barrelButton = null;
         }
 
         if (_activeTool == BoardTool.Laser)
@@ -4667,15 +4915,14 @@ public partial class MainWindow : Window
         _mouseAction = PointerAction.None;
         _penInContact = false;
         _syntheticLaserContact = false;
+        _barrelButton = null;
+        EndPenInk();
         ClearTouchNavigation();
         InkSurface.Cursor = Cursors.Arrow;
         HidePointerDot();
         StopLaserSampling();
         LaserTrail.HideHead();
-        if (_laserTemporary)
-        {
-            EndTemporaryLaser();
-        }
+        EndTemporaryBarrelTool();
     }
 
     private void Window_Closing(object? sender, CancelEventArgs e)
@@ -4689,6 +4936,11 @@ public partial class MainWindow : Window
 
     private void Window_PreviewStylusInRange(object sender, StylusEventArgs e)
     {
+        if (!IsTouchStylus(e))
+        {
+            PenTrace.Write("in-range", e, PenTraceState());
+        }
+
         if (!_penInContact)
         {
             UpdateHoverPointerDot(e);
@@ -4699,12 +4951,34 @@ public partial class MainWindow : Window
     {
         if (!IsTouchStylus(e))
         {
+            EndPenInk();
             HidePointerDot();
         }
     }
 
-    private void Window_PreviewStylusInAirMove(object sender, StylusEventArgs e) =>
+    // The pen reports the same way in the air as in contact - and while a barrel
+    // button is held it reports in the air the whole time, pressure and all. The
+    // packets are the same packets; only WPF's opinion of them differs.
+    private void Window_PreviewStylusInAirMove(object sender, StylusEventArgs e)
+    {
+        if (!IsTouchStylus(e))
+        {
+            PenTrace.Write("air-move", e, PenTraceState());
+            AppendPenInk(e);
+            if (_penInk.Count > 0)
+            {
+                return;
+            }
+
+            _penInContact = false;
+        }
+
         UpdateHoverPointerDot(e);
+    }
+
+    private string PenTraceState() =>
+        $"contact={_penInContact} barrel={_barrelButton is not null} " +
+        $"temporary={_barrelToolTemporary} action={_stylusAction} tool={EffectiveTool}";
 
     private void HoverTracker_Hovered(Point inkSurfacePoint)
     {

@@ -96,6 +96,8 @@ public sealed class AppSettings
 
     public LaserSettings Laser { get; set; } = new();
 
+    public PenButtonSettings PenButtons { get; set; } = new();
+
     public bool CheckForUpdates { get; set; } = true;
 
     public DateTimeOffset? LastUpdateCheckUtc { get; set; }
@@ -109,7 +111,7 @@ public sealed class AppSettings
 
 public static class AppSettingsSerializer
 {
-    public const int CurrentVersion = 10;
+    public const int CurrentVersion = 11;
 
     private static readonly JsonSerializerOptions JsonOptions = new()
     {
@@ -208,6 +210,7 @@ public static class AppSettingsSerializer
         settings.Highlighter = InkPalettes.Normalize(settings.Highlighter, PenKind.Highlighter);
         settings.Calligraphy = InkPalettes.Normalize(settings.Calligraphy, PenKind.Calligraphy);
         settings.Laser = LaserSettings.Normalize(settings.Laser);
+        settings.PenButtons = PenButtonSettings.Normalize(settings.PenButtons);
         settings.SnippetFormatOrder = [.. TextLanguageIds.NormalizeOrder(settings.SnippetFormatOrder)];
         settings.LatestKnownVersion = NormalizeVersionId(settings.LatestKnownVersion);
         settings.LastDismissedVersion = NormalizeVersionId(settings.LastDismissedVersion);
