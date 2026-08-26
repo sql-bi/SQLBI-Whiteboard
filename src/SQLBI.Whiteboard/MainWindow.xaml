@@ -51,7 +51,7 @@
                                      IsHitTestVisible="False"
                                      Panel.ZIndex="15" />
 
-            <local:PenOnlyInkCanvas x:Name="InkSurface"
+            <local:TouchInkCanvas x:Name="InkSurface"
                        Background="Transparent"
                        EditingMode="Ink"
                        EditingModeInverted="None"

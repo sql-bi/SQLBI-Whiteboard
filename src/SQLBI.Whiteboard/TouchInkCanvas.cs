@@ -10,87 +10,50 @@ using SQLBI.Whiteboard.Core.Model;
 
 namespace SQLBI.Whiteboard;
 
-public sealed class PenOnlyInkCanvas : InkCanvas
+/// <summary>
+/// The finger's ink surface, and the host for the laser sampler and the hover
+/// tracker. It collects no pen ink: the pen's packets are read directly by the
+/// window - see MainWindow.AppendPenInk - because a barrel button tears the WPF
+/// contact in two every time it is pressed or released, and no stroke built on
+/// that bookkeeping could be made to behave like the Shift key.
+/// </summary>
+public sealed class TouchInkCanvas : InkCanvas
 {
-    private readonly PenOnlyDynamicRenderer _penOnlyRenderer;
+    private readonly TouchOnlyDynamicRenderer _touchRenderer;
 
     public LaserSamplePlugIn LaserSamples { get; } = new();
 
     public HoverTrackerPlugIn HoverTracker { get; } = new();
 
-    public PenOnlyInkCanvas()
+    public TouchInkCanvas()
     {
         var touchTabletIds = Tablet.TabletDevices
             .Cast<TabletDevice>()
             .Where(device => device.Type == TabletDeviceType.Touch)
             .Select(device => device.Id);
-        _penOnlyRenderer = new PenOnlyDynamicRenderer(touchTabletIds);
-        DynamicRenderer = _penOnlyRenderer;
+        _touchRenderer = new TouchOnlyDynamicRenderer(touchTabletIds);
+        DynamicRenderer = _touchRenderer;
         StylusPlugIns.Add(LaserSamples);
         StylusPlugIns.Add(HoverTracker);
     }
 
     public void RegisterTouchTablet(int tabletDeviceId) =>
-        _penOnlyRenderer.RegisterTouchTablet(tabletDeviceId);
+        _touchRenderer.RegisterTouchTablet(tabletDeviceId);
 
-    public void SetPenKind(PenKind kind) =>
-        _penOnlyRenderer.SetPenKind(kind);
+    public void SetPenKind(PenKind kind) => _touchRenderer.SetPenKind(kind);
 
-    public void SetLaserMode(bool laser) =>
-        _penOnlyRenderer.SetLaserMode(laser);
+    public void SetLaserMode(bool laser) => _touchRenderer.SetLaserMode(laser);
 
-    public void SetAllowTouchInk(bool allow) =>
-        _penOnlyRenderer.SetAllowTouchInk(allow);
-
-    public void SetStraightLineMode(bool active) =>
-        _penOnlyRenderer.SetStraightLineMode(active);
-
-    public StraightLineDirection TakeCompletedStraightLineDirection() =>
-        _penOnlyRenderer.TakeCompletedStraightLineDirection();
+    public void SetAllowTouchInk(bool allow) => _touchRenderer.SetAllowTouchInk(allow);
 
     public void AbortWetInk()
     {
-        _penOnlyRenderer.AbortWetInk();
+        _touchRenderer.AbortWetInk();
         Strokes.Clear();
     }
 
-    public void DrainLaserSamples(Action<Point, float> consume)
-    {
+    public void DrainLaserSamples(Action<Point, float> consume) =>
         LaserSamples.Drain(consume);
-    }
-}
-
-// Clicking the barrel button over a hovering pen is delivered as a stylus down
-// that claims everything a real touch claims - not in air, tip switch pressed.
-// Only the pressure gives it away, because nothing is pressing on the tip.
-// Requiring the barrel to be down as well keeps a genuinely light first packet
-// from being mistaken for one of these.
-internal static class PhantomStylus
-{
-    public static bool IsBarrelDown(StylusPointCollection points)
-    {
-        if (points.Count == 0)
-        {
-            return false;
-        }
-
-        for (var index = 0; index < points.Count; index++)
-        {
-            var point = points[index];
-            if (point.PressureFactor > 0)
-            {
-                return false;
-            }
-
-            if (!point.HasProperty(StylusPointProperties.BarrelButton) ||
-                point.GetPropertyValue(StylusPointProperties.BarrelButton) == 0)
-            {
-                return false;
-            }
-        }
-
-        return true;
-    }
 }
 
 public sealed class LaserSamplePlugIn : StylusPlugIn
@@ -209,24 +172,24 @@ public sealed class HoverTrackerPlugIn : StylusPlugIn
     }
 }
 
-internal sealed class PenOnlyDynamicRenderer : DynamicRenderer
+/// <summary>
+/// Wet ink for the finger only. Pen ink is collected and drawn by the window
+/// from the pen's own packet stream, because a barrel button tears the WPF
+/// contact in two every time it is pressed or released - see TODO.md - and a
+/// wet stroke driven by that bookkeeping cannot match the stroke that results.
+/// </summary>
+internal sealed class TouchOnlyDynamicRenderer : DynamicRenderer
 {
     private readonly ConcurrentDictionary<int, byte> _touchTabletIds = new();
-    private volatile PenKind _penKind;
     private volatile bool _laserMode;
     private volatile bool _allowTouchInk;
-    private volatile bool _straightLineMode;
+    private volatile PenKind _penKind;
     private PenKind _strokeKind;
     private StylusPoint? _lastCalligraphyPoint;
     private int _lastPacketTimestamp;
     private double _smoothedCalligraphySpeed;
-    private bool _straightLineStroke;
-    private bool _straightLineDecisionMade;
-    private StraightLineDirection _straightLineDirection;
-    private StylusPoint? _straightLineAnchor;
-    private int _completedStraightLineDirection;
 
-    public PenOnlyDynamicRenderer(IEnumerable<int> touchTabletIds)
+    public TouchOnlyDynamicRenderer(IEnumerable<int> touchTabletIds)
     {
         foreach (var tabletId in touchTabletIds)
         {
@@ -257,72 +220,51 @@ internal sealed class PenOnlyDynamicRenderer : DynamicRenderer
         }
     }
 
-    public void SetStraightLineMode(bool active) => _straightLineMode = active;
-
-    public StraightLineDirection TakeCompletedStraightLineDirection() =>
-        (StraightLineDirection)Interlocked.Exchange(
-            ref _completedStraightLineDirection,
-            (int)StraightLineDirection.None);
-
     public void AbortWetInk()
     {
-        ResetStraightLineStroke();
-        Interlocked.Exchange(
-            ref _completedStraightLineDirection,
-            (int)StraightLineDirection.None);
         Enabled = false;
         Enabled = true;
     }
 
+    private bool Ignore(RawStylusInput rawStylusInput) =>
+        _laserMode ||
+        !_allowTouchInk ||
+        !_touchTabletIds.ContainsKey(rawStylusInput.TabletDeviceId);
+
     protected override void OnStylusDown(RawStylusInput rawStylusInput)
     {
-        // Without this the barrel click opens a wet stroke for a pen that never
-        // touched the glass, which is then torn down mid-flight when the button
-        // switches to the laser a moment later.
-        if (IsTouch(rawStylusInput) ||
-            _laserMode ||
-            PhantomStylus.IsBarrelDown(rawStylusInput.GetStylusPoints()))
+        if (Ignore(rawStylusInput))
         {
             return;
         }
 
         _strokeKind = _penKind;
         ResetCalligraphyDynamics();
-        BeginStraightLineStroke(rawStylusInput);
         ApplyCalligraphyDynamics(rawStylusInput);
-        ApplyStraightLine(rawStylusInput);
         base.OnStylusDown(rawStylusInput);
     }
 
     protected override void OnStylusMove(RawStylusInput rawStylusInput)
     {
-        if (IsTouch(rawStylusInput) || _laserMode)
+        if (Ignore(rawStylusInput))
         {
             return;
         }
 
         ApplyCalligraphyDynamics(rawStylusInput);
-        ApplyStraightLine(rawStylusInput);
         base.OnStylusMove(rawStylusInput);
     }
 
     protected override void OnStylusUp(RawStylusInput rawStylusInput)
     {
-        if (IsTouch(rawStylusInput) || _laserMode)
+        if (Ignore(rawStylusInput))
         {
             return;
         }
 
         ApplyCalligraphyDynamics(rawStylusInput);
-        ApplyStraightLine(rawStylusInput);
-        Interlocked.Exchange(
-            ref _completedStraightLineDirection,
-            (int)(_straightLineStroke
-                ? _straightLineDirection
-                : StraightLineDirection.None));
         base.OnStylusUp(rawStylusInput);
         ResetCalligraphyDynamics();
-        ResetStraightLineStroke();
     }
 
     protected override void OnDraw(
@@ -392,98 +334,4 @@ internal sealed class PenOnlyDynamicRenderer : DynamicRenderer
         _lastPacketTimestamp = 0;
         _smoothedCalligraphySpeed = 0;
     }
-
-    private void BeginStraightLineStroke(RawStylusInput rawStylusInput)
-    {
-        ResetStraightLineStroke();
-        Interlocked.Exchange(
-            ref _completedStraightLineDirection,
-            (int)StraightLineDirection.None);
-        _straightLineStroke = _straightLineMode && !IsTouchTablet(rawStylusInput);
-        if (!_straightLineStroke)
-        {
-            return;
-        }
-
-        var points = rawStylusInput.GetStylusPoints();
-        if (points.Count > 0)
-        {
-            _straightLineAnchor = points[0];
-        }
-    }
-
-    private void ApplyStraightLine(RawStylusInput rawStylusInput)
-    {
-        if (!_straightLineStroke)
-        {
-            return;
-        }
-
-        var points = rawStylusInput.GetStylusPoints();
-        if (points.Count == 0)
-        {
-            return;
-        }
-
-        _straightLineAnchor ??= points[0];
-        var anchor = _straightLineAnchor.Value;
-        if (!_straightLineDecisionMade)
-        {
-            var latest = points[^1];
-            var anchorPoint = new PointD(anchor.X, anchor.Y);
-            var latestPoint = new PointD(latest.X, latest.Y);
-            if (!StraightLineSnap.HasActivationDistance(anchorPoint, latestPoint))
-            {
-                for (var index = 0; index < points.Count; index++)
-                {
-                    var point = points[index];
-                    point.X = anchor.X;
-                    point.Y = anchor.Y;
-                    points[index] = point;
-                }
-
-                rawStylusInput.SetStylusPoints(points);
-                return;
-            }
-
-            _straightLineDirection = StraightLineSnap.DetectDirection(
-                anchorPoint,
-                latestPoint);
-            _straightLineDecisionMade = true;
-        }
-
-        if (_straightLineDirection == StraightLineDirection.None)
-        {
-            return;
-        }
-
-        var fixedPoint = new PointD(anchor.X, anchor.Y);
-        for (var index = 0; index < points.Count; index++)
-        {
-            var point = points[index];
-            var snapped = StraightLineSnap.Apply(
-                new PointD(point.X, point.Y),
-                fixedPoint,
-                _straightLineDirection);
-            point.X = snapped.X;
-            point.Y = snapped.Y;
-            points[index] = point;
-        }
-
-        rawStylusInput.SetStylusPoints(points);
-    }
-
-    private void ResetStraightLineStroke()
-    {
-        _straightLineStroke = false;
-        _straightLineDecisionMade = false;
-        _straightLineDirection = StraightLineDirection.None;
-        _straightLineAnchor = null;
-    }
-
-    private bool IsTouch(RawStylusInput rawStylusInput) =>
-        !_allowTouchInk && _touchTabletIds.ContainsKey(rawStylusInput.TabletDeviceId);
-
-    private bool IsTouchTablet(RawStylusInput rawStylusInput) =>
-        _touchTabletIds.ContainsKey(rawStylusInput.TabletDeviceId);
 }

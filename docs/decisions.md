@@ -384,6 +384,44 @@ outbound request.
 
 ---
 
+## 22. Pen ink is collected from the pen, not from the InkCanvas
+
+**Implemented.**
+
+`InkCanvas` collects a stroke between a stylus down and the matching up. On a pen whose
+barrel switch shares the report with the tip switch — the development Cintiq, and the
+reason this was found — pressing or releasing that button fabricates a stylus up followed
+by a stylus down, and between a release and the next press the driver reports the tip as
+open while it is still pressing. WPF therefore reports the pen in the air for as long as
+the button is held, and the contact is torn in two on every click.
+
+Every attempt to repair that inside the InkCanvas moved the fault rather than removing it:
+strokes joined across stretches the pen never drew, ink was lost between a release and the
+next press, and a modifier held down could not be released. Meanwhile the pen's own packet
+stream never breaks — position and pressure arrive continuously, in contact or not, which
+a trace of a real session established (`PenTrace`, enabled by pointing
+`SQLBI_WHITEBOARD_PENTRACE` at a file).
+
+So the window reads that stream directly. `MainWindow.AppendPenInk` owns the contact — it
+begins at the first pressured packet and ends after a run of weightless ones — and applies
+the straight-line constraint and the calligraphy dynamics to each point as it arrives. The
+wet stroke is drawn by `BoardSurface.PendingStroke` rather than by WPF's dynamic renderer.
+The straight-line constraint is then one boolean read per point, which is what makes the
+barrel button behave exactly like the Shift key: neither has any opinion about whether WPF
+thinks the pen is down.
+
+`TouchInkCanvas` keeps the InkCanvas for finger ink, where nothing tears the contact, and
+hosts the laser sampler and the hover tracker. It collects no pen ink; strokes the
+InkCanvas still opens for a pen are discarded on arrival.
+
+The cost is that pen wet ink is drawn on the UI thread rather than WPF's dedicated
+dynamic-rendering thread. Reverting is not attractive: the machinery this replaced —
+a stylus plug-in for the constraint, recovery of ink from in-air packets, splitting a
+collected stroke back into contacts, and a second stroke lifecycle inside the renderer —
+was several hundred lines and never converged.
+
+---
+
 ## Open questions
 
 - arm64 is not built; add it if Surface devices matter for a pen application.

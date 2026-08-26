@@ -7,12 +7,25 @@ public enum StraightLineDirection
     Vertical,
 }
 
+/// <summary>
+/// The straight-line constraint is horizontal or vertical only. Holding the
+/// modifier is the request for one of those two, so a diagonal drag picks the
+/// nearer axis instead of falling back to a free stroke - the modifier would
+/// otherwise do nothing for most of the directions a hand actually moves in.
+/// </summary>
 public static class StraightLineSnap
 {
-    public const double DefaultActivationDistance = 8;
-    public const double DefaultAngleToleranceDegrees = 15;
+    // How far the pen must travel from the anchor before the axis is settled and
+    // kept. Once chosen it is not revisited: a hand drifting off the axis is
+    // still drawing the line it asked for.
+    // Eight pixels was too eager: pressing the button in the middle of a stroke
+    // leaves a few milliseconds of the previous direction still arriving, and
+    // the line committed to that instead of to where the hand then went - a
+    // fourteen-pixel horizontal stub in front of a hundred-pixel vertical
+    // stroke. This is far enough to be a turn rather than the tail of one.
+    public const double DefaultActivationDistance = 24;
 
-    public static bool HasActivationDistance(
+    private static bool HasActivationDistance(
         PointD anchor,
         PointD current,
         double activationDistance = DefaultActivationDistance)
@@ -26,7 +39,6 @@ public static class StraightLineSnap
     public static StraightLineDirection DetectDirection(
         PointD anchor,
         PointD current,
-        double angleToleranceDegrees = DefaultAngleToleranceDegrees,
         double activationDistance = DefaultActivationDistance)
     {
         if (!HasActivationDistance(anchor, current, activationDistance))
@@ -34,18 +46,9 @@ public static class StraightLineSnap
             return StraightLineDirection.None;
         }
 
-        var deltaX = Math.Abs(current.X - anchor.X);
-        var deltaY = Math.Abs(current.Y - anchor.Y);
-        var tolerance = Math.Clamp(angleToleranceDegrees, 0, 45);
-        var maximumOffAxisRatio = Math.Tan(tolerance * Math.PI / 180);
-        if (deltaY <= deltaX * maximumOffAxisRatio)
-        {
-            return StraightLineDirection.Horizontal;
-        }
-
-        return deltaX <= deltaY * maximumOffAxisRatio
-            ? StraightLineDirection.Vertical
-            : StraightLineDirection.None;
+        return Math.Abs(current.X - anchor.X) >= Math.Abs(current.Y - anchor.Y)
+            ? StraightLineDirection.Horizontal
+            : StraightLineDirection.Vertical;
     }
 
     public static PointD Apply(

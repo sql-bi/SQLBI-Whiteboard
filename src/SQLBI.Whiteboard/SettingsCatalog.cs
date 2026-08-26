@@ -16,6 +16,23 @@ internal enum SettingEditorKind
     /// is a setting about how something looks.
     /// </summary>
     LaserWeightChoice,
+
+    /// <summary>
+    /// What the pen's barrel button does, drawn as what it draws: a laser trail
+    /// or a wobble ruled straight.
+    /// </summary>
+    PenButtonChoice,
+
+    /// <summary>
+    /// Where the toolbar sits, drawn as a board with the toolbar in it. A corner
+    /// is a place, and a picture of the place beats the name of it.
+    /// </summary>
+    ToolbarPlacementChoice,
+
+    /// <summary>
+    /// How the ink flyout is arranged, drawn as a miniature of the flyout.
+    /// </summary>
+    ToolbarLayoutChoice,
 }
 
 internal sealed class SettingChoice
@@ -66,6 +83,7 @@ internal static class SettingsCatalog
         public const string ToolbarPlacement = "toolbar.placement";
         public const string ToolbarLayout = "toolbar.layout";
         public const string FingerMode = "input.fingerMode";
+        public const string PenButton = "input.penButton";
         public const string SnippetFormatOrder = "input.snippetFormatOrder";
         public const string CheckForUpdates = "updates.check";
     }
@@ -112,6 +130,20 @@ internal static class SettingsCatalog
                 new() { Id = nameof(Core.Settings.FingerMode.WhenNoPen), Title = "When no pen is detected" },
                 new() { Id = nameof(Core.Settings.FingerMode.Off), Title = "Off" },
                 new() { Id = nameof(Core.Settings.FingerMode.On), Title = "On" },
+            ],
+        },
+        new()
+        {
+            Id = Ids.PenButton,
+            Category = Input,
+            Title = "Pen button",
+            Description = "The barrel button on the side of the pen. Hold it for the assigned action: Laser lasts only while the button is down, Straight line is the same constraint as holding Shift. The reverse end of the pen always erases, and so does the upper button, because Windows reports the two the same way.",
+            Keywords = ["pen", "barrel", "button", "laser", "straight", "line", "shift", "stylus", "eraser", "wacom", "cintiq"],
+            Editor = SettingEditorKind.PenButtonChoice,
+            Choices =
+            [
+                new() { Id = nameof(PenButtonAction.Laser), Title = "Laser" },
+                new() { Id = nameof(PenButtonAction.StraightLine), Title = "Straight line" },
             ],
         },
         new()
@@ -181,7 +213,7 @@ internal static class SettingsCatalog
             Title = "Position",
             Description = "Top right keeps the toolbar under a typical presenter picture-in-picture during recording.",
             Keywords = ["toolbar", "position", "placement", "pip"],
-            Editor = SettingEditorKind.EnumChoice,
+            Editor = SettingEditorKind.ToolbarPlacementChoice,
             Choices =
             [
                 new() { Id = nameof(ToolbarPlacement.TopRight), Title = "Top right" },
@@ -198,7 +230,7 @@ internal static class SettingsCatalog
             Title = "Layout",
             Description = "Dual palette keeps both tools’ colors and sizes visible. The other layouts use a compact bar and a single-tool panel.",
             Keywords = ["toolbar", "layout", "calligraphy", "palette", "chevron"],
-            Editor = SettingEditorKind.EnumChoice,
+            Editor = SettingEditorKind.ToolbarLayoutChoice,
             Choices =
             [
                 new() { Id = nameof(CalligraphyAccess.DualPalette), Title = "Dual palette" },

@@ -34,19 +34,43 @@ var lineAnchor = new PointD(100, 100);
 Assert(
     StraightLineSnap.DetectDirection(lineAnchor, new PointD(200, 120)) ==
     StraightLineDirection.Horizontal,
-    "A Shift stroke within 15 degrees of horizontal should snap horizontally.");
+    "A mostly horizontal constrained stroke should snap horizontally.");
 Assert(
     StraightLineSnap.DetectDirection(lineAnchor, new PointD(85, 200)) ==
     StraightLineDirection.Vertical,
-    "A Shift stroke within 15 degrees of vertical should snap vertically in either direction.");
+    "A mostly vertical constrained stroke should snap vertically in either direction.");
 Assert(
     StraightLineSnap.DetectDirection(lineAnchor, new PointD(200, 130)) ==
-    StraightLineDirection.None,
-    "A Shift stroke outside the axis tolerance should remain free.");
+    StraightLineDirection.Horizontal &&
+    StraightLineSnap.DetectDirection(lineAnchor, new PointD(130, 200)) ==
+    StraightLineDirection.Vertical,
+    "A diagonal constrained stroke should take the nearer axis, never fall back to free ink.");
+Assert(
+    StraightLineSnap.DetectDirection(lineAnchor, new PointD(160, 160)) ==
+    StraightLineDirection.Horizontal,
+    "An exactly diagonal constrained stroke should settle on one axis rather than none.");
 Assert(
     StraightLineSnap.DetectDirection(lineAnchor, new PointD(105, 102)) ==
+    StraightLineDirection.None &&
+    StraightLineSnap.DetectDirection(lineAnchor, new PointD(115, 108)) ==
     StraightLineDirection.None,
     "Straight-line direction should wait for enough movement to establish intent.");
+Assert(
+    StraightLineSnap.DetectDirection(lineAnchor, new PointD(100, 130)) ==
+    StraightLineDirection.Vertical,
+    "Once the pen has clearly turned, the axis should follow the turn.");
+Assert(
+    StraightLineSnap.Apply(
+        new PointD(180, 116),
+        lineAnchor,
+        StraightLineDirection.None) == new PointD(180, 116),
+    "Releasing the constraint should leave the remaining points exactly where the pen went.");
+Assert(
+    StraightLineSnap.Apply(
+        new PointD(300, 400),
+        lineAnchor,
+        StraightLineDirection.Horizontal) == new PointD(300, 100),
+    "A settled axis keeps its line however far off it the hand drifts.");
 Assert(
     StraightLineSnap.Apply(
         new PointD(180, 116),
@@ -850,6 +874,42 @@ Assert(
 Assert(
     AppSettingsSerializer.Parse("{ }").SnippetFormatOrder is ["plain", "dax", "sqlserver"],
     "Partial settings should fill the default snippet format order.");
+Assert(
+    defaultSettings.PenButtons.Barrel == PenButtonAction.Laser,
+    "Missing settings should assign Laser to the pen barrel button.");
+Assert(
+    AppSettingsSerializer.Parse("{ \"penButtons\": { \"barrel\": \"Sideways\" } }")
+        .PenButtons.Barrel == PenButtonAction.Laser,
+    "An unknown pen button action should fall back to Laser.");
+Assert(
+    AppSettingsSerializer.Parse("{ \"penButtons\": { \"barrel\": \"StraightLine\" } }")
+        .PenButtons.Barrel == PenButtonAction.StraightLine,
+    "A saved pen button assignment should still load.");
+Assert(
+    AppSettingsSerializer.Parse("{ \"penButtons\": { \"lower\": \"Eraser\", \"upper\": \"Laser\" } }")
+        .PenButtons.Barrel == PenButtonAction.Laser,
+    "Settings written before the upper button was dropped should load, not reset the file.");
+Assert(
+    AppSettingsSerializer.Parse(
+        AppSettingsSerializer.Format(new AppSettings
+        {
+            PenButtons = new PenButtonSettings { Barrel = PenButtonAction.StraightLine },
+        })).PenButtons.Barrel == PenButtonAction.StraightLine,
+    "Settings JSON should round-trip the pen button assignment.");
+Assert(
+    PenBarrelButton.IsWritingTipName("Tip") &&
+    PenBarrelButton.IsWritingTipName("TipButton") &&
+    !PenBarrelButton.IsWritingTipName("Eraser") &&
+    !PenBarrelButton.IsWritingTipName("Secondary Tip"),
+    "The writing tip is not the barrel button; an Eraser or Secondary name is not the tip.");
+Assert(
+    PenBarrelButton.IsReverseEndName("Eraser") &&
+    PenBarrelButton.IsReverseEndName("Barrel Button 2") &&
+    PenBarrelButton.IsReverseEndName("Upper") &&
+    PenBarrelButton.IsReverseEndName("Secondary") &&
+    !PenBarrelButton.IsReverseEndName("Barrel") &&
+    !PenBarrelButton.IsReverseEndName("Tip"),
+    "Windows names the reverse end Eraser, or the second/upper/secondary barrel.");
 
 var daxSource = """
 Tricky :=
