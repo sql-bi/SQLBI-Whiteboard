@@ -229,27 +229,7 @@ public partial class PreferencesWindow : Window
         SettingDescriptor setting,
         Func<string, FrameworkElement?> sampleFor)
     {
-        // Below this a segment cannot hold the longest word in a label - "Bottom"
-        // is 44px at the 12px label size, and the padding and border take the
-        // rest - and a word too long for its line overflows and is clipped
-        // rather than wrapped or trimmed. So the row reflows instead: five
-        // choices sit in one row at the default width and take a second row
-        // when the dialog is dragged towards its minimum.
-        const double MinimumSegmentWidth = 82;
-
-        var host = new UniformGrid { Columns = setting.Choices.Count };
-        host.SizeChanged += (_, args) =>
-        {
-            var columns = Math.Clamp(
-                (int)(args.NewSize.Width / MinimumSegmentWidth),
-                1,
-                setting.Choices.Count);
-            if (host.Columns != columns)
-            {
-                host.Columns = columns;
-            }
-        };
-
+        var host = new ReflowingSegments();
         var segments = new List<ToggleButton>();
         foreach (var choice in setting.Choices)
         {
@@ -310,6 +290,91 @@ public partial class PreferencesWindow : Window
         }
 
         return host;
+    }
+
+    /// <summary>
+    /// A row of drawn choices that takes a second row rather than squeezing its
+    /// labels. Below <see cref="MinimumSegmentWidth"/> a segment cannot hold the
+    /// longest word in a label - "Bottom" is 44px at the 12px label size, and
+    /// the padding and border take the rest - and a word too long for its line
+    /// overflows and is clipped rather than wrapped or trimmed, so it reads as a
+    /// different word.
+    /// </summary>
+    private sealed class ReflowingSegments : Panel
+    {
+        private const double MinimumSegmentWidth = 82;
+
+        // The width a row is measured against and the width it is finally given
+        // are not the same here: measurement arrives far narrower than the
+        // arrangement, so a count settled during measure put five choices on
+        // three columns in a row with room for all five. Arrange has the real
+        // width, so that is what the count is taken from, and the children are
+        // measured again if it disagrees with what measure assumed.
+        protected override Size MeasureOverride(Size availableSize)
+        {
+            var count = InternalChildren.Count;
+            if (count == 0)
+            {
+                return default;
+            }
+
+            var columns = ColumnsFor(availableSize.Width, count);
+            var cell = MeasureCells(columns, availableSize.Width, count);
+            return new Size(
+                double.IsInfinity(availableSize.Width)
+                    ? cell.Width * columns
+                    : availableSize.Width,
+                cell.Height * RowsFor(count, columns));
+        }
+
+        protected override Size ArrangeOverride(Size finalSize)
+        {
+            var count = InternalChildren.Count;
+            if (count == 0)
+            {
+                return finalSize;
+            }
+
+            var columns = ColumnsFor(finalSize.Width, count);
+            MeasureCells(columns, finalSize.Width, count);
+
+            var cellWidth = finalSize.Width / columns;
+            var cellHeight = finalSize.Height / RowsFor(count, columns);
+            for (var index = 0; index < count; index++)
+            {
+                InternalChildren[index].Arrange(new Rect(
+                    index % columns * cellWidth,
+                    index / columns * cellHeight,
+                    cellWidth,
+                    cellHeight));
+            }
+
+            return finalSize;
+        }
+
+        private static int ColumnsFor(double width, int count) => Math.Clamp(
+            double.IsInfinity(width) ? count : (int)(width / MinimumSegmentWidth),
+            1,
+            count);
+
+        private static int RowsFor(int count, int columns) =>
+            ((count - 1) / columns) + 1;
+
+        private Size MeasureCells(int columns, double width, int count)
+        {
+            var cellWidth = double.IsInfinity(width)
+                ? MinimumSegmentWidth
+                : width / columns;
+            var tallest = 0d;
+            for (var index = 0; index < count; index++)
+            {
+                var child = InternalChildren[index];
+                child.Measure(new Size(cellWidth, double.PositiveInfinity));
+                tallest = Math.Max(tallest, child.DesiredSize.Height);
+            }
+
+            return new Size(cellWidth, tallest);
+        }
     }
 
     private static readonly Brush SampleInkBrush = Frozen(0xFF374151);
