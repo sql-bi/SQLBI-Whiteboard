@@ -229,10 +229,25 @@ public partial class PreferencesWindow : Window
         SettingDescriptor setting,
         Func<string, FrameworkElement?> sampleFor)
     {
-        var host = new UniformGrid
+        // Below this a segment cannot hold the longest word in a label - "Bottom"
+        // is 44px at the 12px label size, and the padding and border take the
+        // rest - and a word too long for its line overflows and is clipped
+        // rather than wrapped or trimmed. So the row reflows instead: five
+        // choices sit in one row at the default width and take a second row
+        // when the dialog is dragged towards its minimum.
+        const double MinimumSegmentWidth = 82;
+
+        var host = new UniformGrid { Columns = setting.Choices.Count };
+        host.SizeChanged += (_, args) =>
         {
-            Rows = 1,
-            Columns = setting.Choices.Count,
+            var columns = Math.Clamp(
+                (int)(args.NewSize.Width / MinimumSegmentWidth),
+                1,
+                setting.Choices.Count);
+            if (host.Columns != columns)
+            {
+                host.Columns = columns;
+            }
         };
 
         var segments = new List<ToggleButton>();
@@ -243,17 +258,33 @@ public partial class PreferencesWindow : Window
                 continue;
             }
 
-            var content = new StackPanel { HorizontalAlignment = HorizontalAlignment.Center };
+            var content = new StackPanel { HorizontalAlignment = HorizontalAlignment.Stretch };
+
+            // The sample is drawn at a fixed size and then allowed to shrink
+            // with the column. Left to its own width it overflowed a narrowed
+            // dialog and was clipped, edges first, which is worse than small.
             sample.HorizontalAlignment = HorizontalAlignment.Center;
-            content.Children.Add(sample);
+            content.Children.Add(new Viewbox
+            {
+                Child = sample,
+                Stretch = Stretch.Uniform,
+                StretchDirection = StretchDirection.DownOnly,
+                MaxWidth = sample.Width > 0 ? sample.Width : double.PositiveInfinity,
+                HorizontalAlignment = HorizontalAlignment.Center,
+            });
+
+            // Wrapping runs out at the longest word, and a clipped word reads as
+            // a different one. Past that point the picture carries the meaning,
+            // and the tooltip still spells it out.
             content.Children.Add(new TextBlock
             {
                 Style = (Style)FindResource("SettingsValueLabel"),
                 Text = choice.Title,
                 Margin = new Thickness(0, 8, 0, 0),
                 TextWrapping = TextWrapping.Wrap,
+                TextTrimming = TextTrimming.CharacterEllipsis,
                 TextAlignment = TextAlignment.Center,
-                HorizontalAlignment = HorizontalAlignment.Center,
+                HorizontalAlignment = HorizontalAlignment.Stretch,
             });
 
             var segment = new ToggleButton
@@ -263,6 +294,7 @@ public partial class PreferencesWindow : Window
                 IsChecked = choice.Id == CurrentEnumId(setting),
                 Tag = choice.Id,
                 ToolTip = choice.Title,
+                HorizontalContentAlignment = HorizontalAlignment.Stretch,
             };
             segment.Click += (_, _) =>
             {

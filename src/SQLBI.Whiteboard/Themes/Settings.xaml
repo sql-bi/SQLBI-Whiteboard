@@ -300,9 +300,9 @@
     <Style x:Key="SettingsSampleSegment"
            TargetType="ToggleButton">
         <Setter Property="Margin"
-                Value="4,0" />
+                Value="3,0" />
         <Setter Property="Padding"
-                Value="10,12" />
+                Value="6,12" />
         <Setter Property="Focusable"
                 Value="False" />
         <Setter Property="Cursor"
@@ -319,7 +319,7 @@
                             BorderBrush="#FFE4E6EA"
                             Background="{DynamicResource SettingsEditorBrush}"
                             SnapsToDevicePixels="True">
-                        <ContentPresenter HorizontalAlignment="Center" />
+                        <ContentPresenter HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}" />
                     </Border>
                     <ControlTemplate.Triggers>
                         <Trigger Property="IsMouseOver"
