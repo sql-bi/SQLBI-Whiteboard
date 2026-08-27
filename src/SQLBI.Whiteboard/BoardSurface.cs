@@ -61,11 +61,6 @@ internal sealed class BoardSurface : FrameworkElement
             return;
         }
 
-        if (PendingStroke is { Count: > 1 } pending)
-        {
-            DrawStroke(drawingContext, pending, PendingStrokeStyle, _camera);
-        }
-
         foreach (var item in _document.Query(_camera.VisibleWorldBounds))
         {
             if (item.Id == HiddenObjectId)
@@ -93,6 +88,14 @@ internal sealed class BoardSurface : FrameworkElement
                         LanguageChipTitleReserve(text));
                     break;
             }
+        }
+
+        // Over the containers, not under them: the stroke is committed with the
+        // topmost z-index, so drawing it first made the wet ink disappear behind
+        // whatever it crossed and reappear only once the pen lifted.
+        if (PendingStroke is { Count: > 1 } pending)
+        {
+            DrawStroke(drawingContext, pending, PendingStrokeStyle, _camera);
         }
 
         if (HoveredObjectId is Guid hoveredId &&
