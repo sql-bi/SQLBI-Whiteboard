@@ -1,5 +1,5 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 1000" width="1200" height="1000" role="img"
-     aria-label="Microsoft is retiring its Whiteboard app on 14 September 2026. SQLBI Whiteboard is the answer, shown in its real window: a captured Power BI matrix with highlighter marks, a DAX measure, and red pen annotations.">
+     aria-label="Microsoft is retiring its Whiteboard app on 16 October 2026. SQLBI Whiteboard is the answer, shown in its real window: a captured Power BI matrix with highlighter marks, a DAX measure, and red pen annotations.">
   <title>Hold my beer</title>
   <!-- The page hero. hero-launch-card.svg is the landscape social-card companion;
        the application window below is the same drawing, taken from the Store
@@ -49,7 +49,7 @@
       <rect x="0" y="-28" width="40" height="40" rx="8" fill="none" stroke="#8FA5C4" stroke-width="3"/>
       <path d="M0 -16h40M11 -28v-9M29 -28v-9" stroke="#8FA5C4" stroke-width="3"/>
       <text x="60" y="-6" font-size="26" fill="#DCE4EE">Effective date:</text>
-      <text x="60" y="30" font-size="26" font-weight="600">September 14, 2026</text>
+      <text x="60" y="30" font-size="26" font-weight="600">October 16, 2026</text>
     </g>
   </g>
 
@@ -223,7 +223,7 @@
   </g>
 
   <!-- The reply's own effective date, on the announcement's baseline: the
-       application shipped the month before the retirement takes effect. -->
+       application shipped well before the retirement takes effect. -->
   <g font-family="Segoe UI Variable Display, Segoe UI, sans-serif" transform="translate(612 916)">
     <rect x="0" y="-28" width="40" height="40" rx="8" fill="none" stroke="#6B7A90" stroke-width="3"/>
     <path d="M0 -16h40M11 -28v-9M29 -28v-9" stroke="#6B7A90" stroke-width="3"/>
