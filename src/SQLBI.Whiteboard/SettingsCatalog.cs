@@ -82,6 +82,7 @@ internal static class SettingsCatalog
         public const string LaserTrailWeight = "laser.trailWeight";
         public const string ToolbarPlacement = "toolbar.placement";
         public const string ToolbarLayout = "toolbar.layout";
+        public const string WarnWhenNoDigitizer = "startup.noDigitizerNotice";
         public const string FingerMode = "input.fingerMode";
         public const string PenButton = "input.penButton";
         public const string SnippetFormatOrder = "input.snippetFormatOrder";
@@ -115,6 +116,15 @@ internal static class SettingsCatalog
             Title = "Start full screen",
             Description = "Fill the current monitor and hide the title and tabs the next time the application starts. F11 still toggles this session. Ctrl+F11 hides chrome without filling the monitor.",
             Keywords = ["fullscreen", "full screen", "f11", "maximize"],
+            Editor = SettingEditorKind.BooleanSwitch,
+        },
+        new()
+        {
+            Id = Ids.WarnWhenNoDigitizer,
+            Category = Startup,
+            Title = "Warn when there is nothing to draw with",
+            Description = "Say so at startup when Windows reports neither a pen tablet nor a touchscreen. The application opens either way; a mouse pans, zooms, and moves containers, but cannot draw. What Windows reports is a list of digitizers rather than what is plugged in, so a pen that has never been brought into range can be missing from it.",
+            Keywords = ["pen", "touch", "touchscreen", "digitizer", "tablet", "mouse", "warning", "notice", "startup"],
             Editor = SettingEditorKind.BooleanSwitch,
         },
         new()

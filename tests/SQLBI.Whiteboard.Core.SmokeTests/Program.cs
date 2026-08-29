@@ -878,6 +878,14 @@ Assert(
     defaultSettings.PenButtons.Barrel == PenButtonAction.Laser,
     "Missing settings should assign Laser to the pen barrel button.");
 Assert(
+    defaultSettings.WarnWhenNoDigitizer,
+    "Missing settings should warn when Windows reports nothing to draw with.");
+Assert(
+    !AppSettingsSerializer.Parse(
+        AppSettingsSerializer.Format(new AppSettings { WarnWhenNoDigitizer = false }))
+        .WarnWhenNoDigitizer,
+    "Dismissing the no-digitizer notice should survive a round trip.");
+Assert(
     AppSettingsSerializer.Parse("{ \"penButtons\": { \"barrel\": \"Sideways\" } }")
         .PenButtons.Barrel == PenButtonAction.Laser,
     "An unknown pen button action should fall back to Laser.");

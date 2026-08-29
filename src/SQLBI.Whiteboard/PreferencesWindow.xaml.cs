@@ -727,6 +727,7 @@ public partial class PreferencesWindow : Window
             IsChecked = setting.Id switch
             {
                 SettingsCatalog.Ids.StartFullScreen => _settings.StartFullScreen,
+                SettingsCatalog.Ids.WarnWhenNoDigitizer => _settings.WarnWhenNoDigitizer,
                 SettingsCatalog.Ids.CheckForUpdates => _settings.CheckForUpdates,
                 _ => false,
             },
@@ -903,6 +904,10 @@ public partial class PreferencesWindow : Window
         if (setting.Id == SettingsCatalog.Ids.StartFullScreen)
         {
             _settings.StartFullScreen = value;
+        }
+        else if (setting.Id == SettingsCatalog.Ids.WarnWhenNoDigitizer)
+        {
+            _settings.WarnWhenNoDigitizer = value;
         }
         else if (setting.Id == SettingsCatalog.Ids.CheckForUpdates)
         {
