@@ -229,12 +229,7 @@ public partial class PreferencesWindow : Window
         SettingDescriptor setting,
         Func<string, FrameworkElement?> sampleFor)
     {
-        var host = new UniformGrid
-        {
-            Rows = 1,
-            Columns = setting.Choices.Count,
-        };
-
+        var host = new ReflowingSegments();
         var segments = new List<ToggleButton>();
         foreach (var choice in setting.Choices)
         {
@@ -243,17 +238,33 @@ public partial class PreferencesWindow : Window
                 continue;
             }
 
-            var content = new StackPanel { HorizontalAlignment = HorizontalAlignment.Center };
+            var content = new StackPanel { HorizontalAlignment = HorizontalAlignment.Stretch };
+
+            // The sample is drawn at a fixed size and then allowed to shrink
+            // with the column. Left to its own width it overflowed a narrowed
+            // dialog and was clipped, edges first, which is worse than small.
             sample.HorizontalAlignment = HorizontalAlignment.Center;
-            content.Children.Add(sample);
+            content.Children.Add(new Viewbox
+            {
+                Child = sample,
+                Stretch = Stretch.Uniform,
+                StretchDirection = StretchDirection.DownOnly,
+                MaxWidth = sample.Width > 0 ? sample.Width : double.PositiveInfinity,
+                HorizontalAlignment = HorizontalAlignment.Center,
+            });
+
+            // Wrapping runs out at the longest word, and a clipped word reads as
+            // a different one. Past that point the picture carries the meaning,
+            // and the tooltip still spells it out.
             content.Children.Add(new TextBlock
             {
                 Style = (Style)FindResource("SettingsValueLabel"),
                 Text = choice.Title,
                 Margin = new Thickness(0, 8, 0, 0),
                 TextWrapping = TextWrapping.Wrap,
+                TextTrimming = TextTrimming.CharacterEllipsis,
                 TextAlignment = TextAlignment.Center,
-                HorizontalAlignment = HorizontalAlignment.Center,
+                HorizontalAlignment = HorizontalAlignment.Stretch,
             });
 
             var segment = new ToggleButton
@@ -263,6 +274,7 @@ public partial class PreferencesWindow : Window
                 IsChecked = choice.Id == CurrentEnumId(setting),
                 Tag = choice.Id,
                 ToolTip = choice.Title,
+                HorizontalContentAlignment = HorizontalAlignment.Stretch,
             };
             segment.Click += (_, _) =>
             {
@@ -278,6 +290,91 @@ public partial class PreferencesWindow : Window
         }
 
         return host;
+    }
+
+    /// <summary>
+    /// A row of drawn choices that takes a second row rather than squeezing its
+    /// labels. Below <see cref="MinimumSegmentWidth"/> a segment cannot hold the
+    /// longest word in a label - "Bottom" is 44px at the 12px label size, and
+    /// the padding and border take the rest - and a word too long for its line
+    /// overflows and is clipped rather than wrapped or trimmed, so it reads as a
+    /// different word.
+    /// </summary>
+    private sealed class ReflowingSegments : Panel
+    {
+        private const double MinimumSegmentWidth = 82;
+
+        // The width a row is measured against and the width it is finally given
+        // are not the same here: measurement arrives far narrower than the
+        // arrangement, so a count settled during measure put five choices on
+        // three columns in a row with room for all five. Arrange has the real
+        // width, so that is what the count is taken from, and the children are
+        // measured again if it disagrees with what measure assumed.
+        protected override Size MeasureOverride(Size availableSize)
+        {
+            var count = InternalChildren.Count;
+            if (count == 0)
+            {
+                return default;
+            }
+
+            var columns = ColumnsFor(availableSize.Width, count);
+            var cell = MeasureCells(columns, availableSize.Width, count);
+            return new Size(
+                double.IsInfinity(availableSize.Width)
+                    ? cell.Width * columns
+                    : availableSize.Width,
+                cell.Height * RowsFor(count, columns));
+        }
+
+        protected override Size ArrangeOverride(Size finalSize)
+        {
+            var count = InternalChildren.Count;
+            if (count == 0)
+            {
+                return finalSize;
+            }
+
+            var columns = ColumnsFor(finalSize.Width, count);
+            MeasureCells(columns, finalSize.Width, count);
+
+            var cellWidth = finalSize.Width / columns;
+            var cellHeight = finalSize.Height / RowsFor(count, columns);
+            for (var index = 0; index < count; index++)
+            {
+                InternalChildren[index].Arrange(new Rect(
+                    index % columns * cellWidth,
+                    index / columns * cellHeight,
+                    cellWidth,
+                    cellHeight));
+            }
+
+            return finalSize;
+        }
+
+        private static int ColumnsFor(double width, int count) => Math.Clamp(
+            double.IsInfinity(width) ? count : (int)(width / MinimumSegmentWidth),
+            1,
+            count);
+
+        private static int RowsFor(int count, int columns) =>
+            ((count - 1) / columns) + 1;
+
+        private Size MeasureCells(int columns, double width, int count)
+        {
+            var cellWidth = double.IsInfinity(width)
+                ? MinimumSegmentWidth
+                : width / columns;
+            var tallest = 0d;
+            for (var index = 0; index < count; index++)
+            {
+                var child = InternalChildren[index];
+                child.Measure(new Size(cellWidth, double.PositiveInfinity));
+                tallest = Math.Max(tallest, child.DesiredSize.Height);
+            }
+
+            return new Size(cellWidth, tallest);
+        }
     }
 
     private static readonly Brush SampleInkBrush = Frozen(0xFF374151);

@@ -5,7 +5,7 @@
       scripts/build-installer.ps1 both read it from here, so releasing is a reviewed change
       to this line rather than an edit in a pipeline variable group.
     -->
-    <VersionPrefix>1.1.2</VersionPrefix>
+    <VersionPrefix>1.1.4</VersionPrefix>
     <LangVersion>latest</LangVersion>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
