@@ -13,6 +13,7 @@ How the project is developed and shipped is documented separately:
 - A normal cursor for physical mouse input, and a pen-hover indicator that shows what a tap would do: the laser with its halo and speed trail, a dashed square around what the eraser would clear, and a high-contrast dot for everything else. All of them disappear on contact
 - Touch panning and two-finger pinch zoom
 - Optional finger drawing (default when no pen is detected): one finger uses the current tool, two fingers still pan and pinch-zoom, and Eraser and Pan appear on the toolbar
+- A notice at startup when Windows reports neither a pen tablet nor a touchscreen: the application still opens, but there is nothing to draw with, and [discussion 78](https://github.com/sql-bi/SQLBI-Whiteboard/discussions/78) collects votes for mouse-only drawing. Dismissable from the notice itself or from Preferences, since the tablet list Windows reports can miss a pen that has never been in range
 - Basic palm rejection: touch navigation is suspended when the pen makes contact
 - Mouse-wheel zoom and middle-button or temporary Space-key panning
 - Whole-stroke erasing
@@ -202,7 +203,7 @@ Use **Copy settings** after finding a useful combination so the exact values can
 | Delete | Delete the selected container and its linked strokes |
 | Alt+L | Laser pointer |
 | File / Edit / View / Help | Tab strip. Click a tab for a one-row command strip over the canvas. Click the canvas to hide it |
-| Help > Preferences | Searchable settings: startup monitor, full screen, finger drawing, pen button, snippet format order, laser trail, toolbar, update checks |
+| Help > Preferences | Searchable settings: startup monitor, full screen, no-pen warning, finger drawing, pen button, snippet format order, laser trail, toolbar, update checks |
 | View > Bring to front / Send to back | Reorder the selected image, text, or LiveView (and its linked strokes) |
 | Help > About | Version, channel, license, the product site, and a download link when a newer release is known |
 | View > LiveView | Capture, freeze, disconnect, or reconnect a window or display |

@@ -98,6 +98,15 @@ public sealed class AppSettings
 
     public PenButtonSettings PenButtons { get; set; } = new();
 
+    /// <summary>
+    /// Whether to say at startup that Windows reports nothing to draw with. The
+    /// tablet list this reads is a list of digitizers rather than an answer
+    /// about what is plugged in, so a pen that has never been brought into
+    /// range can be missing from it - which is the other reason this can be
+    /// turned off.
+    /// </summary>
+    public bool WarnWhenNoDigitizer { get; set; } = true;
+
     public bool CheckForUpdates { get; set; } = true;
 
     public DateTimeOffset? LastUpdateCheckUtc { get; set; }
@@ -111,7 +120,7 @@ public sealed class AppSettings
 
 public static class AppSettingsSerializer
 {
-    public const int CurrentVersion = 11;
+    public const int CurrentVersion = 12;
 
     private static readonly JsonSerializerOptions JsonOptions = new()
     {

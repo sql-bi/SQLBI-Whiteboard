@@ -1,0 +1,60 @@
+<Window x:Class="SQLBI.Whiteboard.NoDigitizerWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="No pen or touchscreen found"
+        Width="480"
+        SizeToContent="Height"
+        ResizeMode="NoResize"
+        WindowStartupLocation="CenterOwner"
+        ShowInTaskbar="False"
+        Background="{DynamicResource ToolbarBackgroundBrush}"
+        PreviewKeyDown="Window_PreviewKeyDown">
+    <StackPanel Margin="28,24">
+        <TextBlock FontFamily="Segoe UI"
+                   FontSize="16"
+                   FontWeight="SemiBold"
+                   Foreground="#FF1F2937"
+                   TextWrapping="Wrap"
+                   Text="No pen or touchscreen found" />
+        <TextBlock Margin="0,12,0,0"
+                   FontFamily="Segoe UI"
+                   FontSize="13"
+                   Foreground="#FF374151"
+                   TextWrapping="Wrap"
+                   Text="SQLBI Whiteboard is built for drawing with a pen or a finger. Windows reports no pen tablet and no touchscreen on this computer, so there is nothing here to draw with." />
+        <TextBlock Margin="0,10,0,0"
+                   FontFamily="Segoe UI"
+                   FontSize="13"
+                   Foreground="#FF374151"
+                   TextWrapping="Wrap"
+                   Text="A mouse can pan, zoom, and move containers, and the keyboard runs the rest, but there is no mouse drawing yet. The application will open, and everything that does not need ink will work." />
+        <TextBlock Margin="0,10,0,0"
+                   FontFamily="Segoe UI"
+                   FontSize="13"
+                   Foreground="#FF374151"
+                   TextWrapping="Wrap">
+            <Run Text="If you would like a mouse-only version, say so here:" />
+            <LineBreak />
+            <Hyperlink NavigateUri="https://github.com/sql-bi/SQLBI-Whiteboard/discussions/78"
+                       RequestNavigate="DiscussionLink_RequestNavigate">
+                <Run Text="Vote for mouse-only support" />
+            </Hyperlink>
+        </TextBlock>
+        <CheckBox x:Name="DoNotShowAgainBox"
+                  Margin="0,20,0,0"
+                  FontFamily="Segoe UI"
+                  FontSize="13"
+                  Foreground="#FF374151"
+                  Content="Do not show this again" />
+        <StackPanel Margin="0,16,0,0"
+                    Orientation="Horizontal"
+                    HorizontalAlignment="Right">
+            <Button MinWidth="96"
+                    MinHeight="30"
+                    IsDefault="True"
+                    IsCancel="True"
+                    Content="Continue"
+                    Click="ContinueButton_Click" />
+        </StackPanel>
+    </StackPanel>
+</Window>

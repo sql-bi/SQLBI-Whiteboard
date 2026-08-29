@@ -196,11 +196,32 @@ public partial class MainWindow : Window
     private async void MainWindow_Loaded(object sender, RoutedEventArgs e)
     {
         Loaded -= MainWindow_Loaded;
+        WarnWhenNothingToDrawWith();
         _ = CheckForUpdatesAsync();
         if (_initialBoardPath is not null)
         {
             await OpenPathAsync(_initialBoardPath, confirmDiscard: false);
         }
+    }
+
+    // A whiteboard with nothing to draw on it is worth saying out loud, rather
+    // than leaving someone to work out why the pen tools do nothing.
+    private void WarnWhenNothingToDrawWith()
+    {
+        if (!_settings.WarnWhenNoDigitizer || NoDigitizerWindow.HasDrawingDevice())
+        {
+            return;
+        }
+
+        var notice = new NoDigitizerWindow { Owner = this };
+        notice.ShowDialog();
+        if (!notice.DoNotShowAgain)
+        {
+            return;
+        }
+
+        _settings.WarnWhenNoDigitizer = false;
+        AppSettingsStore.Save(_settings);
     }
 
     private void BoardViewport_SizeChanged(object sender, SizeChangedEventArgs e)
