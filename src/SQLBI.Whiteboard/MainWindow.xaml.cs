@@ -46,6 +46,7 @@ public partial class MainWindow : Window
         Pan,
         Container,
         Laser,
+        Ink,
     }
 
     private readonly Camera2D _camera = new();
@@ -80,6 +81,7 @@ public partial class MainWindow : Window
     private PenStyle _penStyle = InkPalettes.DefaultPen;
     private PointerAction _stylusAction;
     private PointerAction _mouseAction;
+    private bool _mouseToolBorrowed;
     private PointD _lastPanPoint;
     private bool _penInContact;
     private bool _touchNavigationLocked;
@@ -175,7 +177,7 @@ public partial class MainWindow : Window
         ApplyLaserSettings();
         ApplyToolbarPlacement();
         ApplyCalligraphyAccess();
-        ApplyFingerMode();
+        ApplyPointerModes();
         ApplyDrawingAttributes();
         SetActiveTool(BoardTool.Pen);
         InkSurface.Focus();
@@ -204,8 +206,9 @@ public partial class MainWindow : Window
         }
     }
 
-    // A whiteboard with nothing to draw on it is worth saying out loud, rather
-    // than leaving someone to work out why the pen tools do nothing.
+    // Which pointing device this session is drawing with is worth saying out
+    // loud, rather than leaving someone to work out from the toolbar that the
+    // left button has taken on a job it does not have on a pen machine.
     private void WarnWhenNothingToDrawWith()
     {
         if (!_settings.WarnWhenNoDigitizer || NoDigitizerWindow.HasDrawingDevice())
@@ -213,7 +216,7 @@ public partial class MainWindow : Window
             return;
         }
 
-        var notice = new NoDigitizerWindow { Owner = this };
+        var notice = new NoDigitizerWindow(IsMouseModeEffective) { Owner = this };
         notice.ShowDialog();
         if (!notice.DoNotShowAgain)
         {
@@ -325,7 +328,7 @@ public partial class MainWindow : Window
             }
 
             pressed = true;
-            AppendPenInkPoint(new PointD(point.X, point.Y), point.PressureFactor);
+            AppendInkPoint(new PointD(point.X, point.Y), point.PressureFactor);
         }
 
         if (pressed)
@@ -349,7 +352,11 @@ public partial class MainWindow : Window
         EndPenInk();
     }
 
-    private void AppendPenInkPoint(PointD screen, float pressure)
+    // Shared by the pen and the mouse: it takes a screen point and a pressure,
+    // and has no opinion about where either came from. The straight-line
+    // constraint and the calligraphy dynamics live here, which is why the mouse
+    // gets both without a second implementation.
+    private void AppendInkPoint(PointD screen, float pressure)
     {
         var constrained = StraightLineConstraintActive;
         if (!constrained)
@@ -1140,6 +1147,59 @@ public partial class MainWindow : Window
 
     private const float MouseLaserPressure = 0.5f;
 
+    // A mouse reports a button, not a pressure. This is the neutral value the
+    // straight-line constraint already draws at: exactly the configured
+    // thickness, with no taper at either end. Calligraphy still varies its
+    // width, because that comes from speed rather than from this number.
+    private const float MousePressure = 0.5f;
+
+    /// <summary>
+    /// Whether the left button does what the active tool does. A mouse gets the
+    /// tools, not the gestures: nothing here simulates pressure, hover, the
+    /// reverse end or the barrel button, and the pen path is untouched.
+    /// </summary>
+    private bool IsMouseModeEffective =>
+        _settings.MouseMode switch
+        {
+            MouseMode.On => true,
+            MouseMode.WhenNoDigitizer => !NoDigitizerWindow.HasDrawingDevice(),
+            _ => false,
+        };
+
+    private void BeginMouseInk(PointD screen)
+    {
+        EndPenInk();
+        AppendInkPoint(screen, MousePressure);
+    }
+
+    private void UpdateMouseInk(PointD screen)
+    {
+        AppendInkPoint(screen, MousePressure);
+        SceneSurface.PendingStroke = _penInk;
+        SceneSurface.PendingStrokeStyle = _penStyle;
+        SceneSurface.InvalidateVisual();
+    }
+
+    // A click that never moves is a dot, and a dot still has to be a stroke with
+    // some length: points in the same place enclose nothing to render. A pen tap
+    // does not have this problem - it reports a burst of packets, and no hand is
+    // that still. The nudge is a hundredth of a screen pixel at the current
+    // zoom, so what appears is the nib and nothing wider.
+    private void EndMouseInk()
+    {
+        if (_penInk.Count > 0 && _penInk.TrueForAll(point => point.Position == _penInk[0].Position))
+        {
+            var nudge = 0.01 / Math.Max(_camera.Zoom, 0.0001);
+            var last = _penInk[^1];
+            _penInk.Add(last with
+            {
+                Position = new PointD(last.Position.X + nudge, last.Position.Y + nudge),
+            });
+        }
+
+        EndPenInk();
+    }
+
     private void InkSurface_PreviewMouseDown(object sender, MouseButtonEventArgs e)
     {
         if (e.StylusDevice is not null)
@@ -1159,15 +1219,33 @@ public partial class MainWindow : Window
         CommitTextEdit();
         InkSurface.Focus();
         var screen = ToPointD(e.GetPosition(InkSurface));
+        var mouseDraws = IsMouseModeEffective;
+
+        // Ctrl is the old mouse. Letting the left button draw takes away the one
+        // genuinely good thing about mouse input - moving an image without
+        // leaving the Pen - so it is handed straight back on a modifier rather
+        // than lost. With mouse drawing off, every left gesture is this one.
+        var borrowSelect = !mouseDraws || Keyboard.Modifiers.HasFlag(ModifierKeys.Control);
+
         if (e.ChangedButton is MouseButton.Middle or MouseButton.Right)
         {
             _lastPanPoint = screen;
             _mouseAction = PointerAction.Pan;
+
+            // A sticky tool is not given back afterwards: reverting would take
+            // someone who chose the Eraser and panned with the right button and
+            // quietly leave them holding a pen.
+            _mouseToolBorrowed = !mouseDraws;
             Mouse.Capture(InkSurface);
             e.Handled = true;
         }
-        else if (e.ChangedButton == MouseButton.Left && e.ClickCount >= 2)
+        else if (e.ChangedButton == MouseButton.Left &&
+                 e.ClickCount >= 2 &&
+                 (borrowSelect || EffectiveTool is BoardTool.Select or BoardTool.Pan))
         {
+            // Two quick dabs with an ink tool are two strokes, not a request to
+            // reframe the board, so framing moves behind Ctrl exactly where the
+            // left button has something else to do.
             FrameContentAt(screen);
             e.Handled = true;
         }
@@ -1175,14 +1253,22 @@ public partial class MainWindow : Window
         {
             BeginLaserContact(e.GetPosition(LaserTrail), MouseLaserPressure);
             _mouseAction = PointerAction.Laser;
+            _mouseToolBorrowed = false;
+            Mouse.Capture(InkSurface);
+            e.Handled = true;
+        }
+        else if (e.ChangedButton == MouseButton.Left && borrowSelect)
+        {
+            SetActiveTool(BoardTool.Select);
+            BeginContainerGesture(screen);
+            _mouseAction = PointerAction.Container;
+            _mouseToolBorrowed = true;
             Mouse.Capture(InkSurface);
             e.Handled = true;
         }
         else if (e.ChangedButton == MouseButton.Left)
         {
-            SetActiveTool(BoardTool.Select);
-            BeginContainerGesture(screen);
-            _mouseAction = PointerAction.Container;
+            BeginMouseAction(screen);
             Mouse.Capture(InkSurface);
             e.Handled = true;
         }
@@ -1190,6 +1276,38 @@ public partial class MainWindow : Window
         {
             // No physical mouse button is allowed to enter InkCanvas' ink path.
             e.Handled = true;
+        }
+    }
+
+    // The left button under mouse drawing, branching on the tool exactly as
+    // InkSurface_PreviewStylusDown does for the pen. The tool is sticky here:
+    // there is nothing to hand it back to.
+    private void BeginMouseAction(PointD screen)
+    {
+        _mouseToolBorrowed = false;
+        if (EffectiveTool != BoardTool.Select)
+        {
+            ClearSelection();
+        }
+
+        switch (EffectiveTool)
+        {
+            case BoardTool.Eraser:
+                BeginErase(screen);
+                _mouseAction = PointerAction.Erase;
+                break;
+            case BoardTool.Pan:
+                _lastPanPoint = screen;
+                _mouseAction = PointerAction.Pan;
+                break;
+            case BoardTool.Select:
+                BeginContainerGesture(screen);
+                _mouseAction = PointerAction.Container;
+                break;
+            default:
+                BeginMouseInk(screen);
+                _mouseAction = PointerAction.Ink;
+                break;
         }
     }
 
@@ -1227,13 +1345,17 @@ public partial class MainWindow : Window
             return;
         }
 
-        HidePointerDot();
         var screen = ToPointD(e.GetPosition(InkSurface));
+        var mouseDraws = IsMouseModeEffective;
         if (EffectiveTool == BoardTool.Laser)
         {
+            HidePointerDot();
+
             // The laser hides the cursor for pen input. A physical mouse still
             // gets the arrow, matching pen, highlighter, and calligraphy. Hide
-            // it only while the mouse is drawing a trail.
+            // it only while the mouse is drawing a trail. The pen's hover comet
+            // is not borrowed here: it exists so the room can follow a pointer
+            // it cannot otherwise see, and a mouse arrow is already on screen.
             if (_mouseAction == PointerAction.Laser)
             {
                 InkSurface.Cursor = Cursors.None;
@@ -1246,11 +1368,29 @@ public partial class MainWindow : Window
         }
         else if (EffectiveTool == BoardTool.Select && _mouseAction == PointerAction.None)
         {
+            HidePointerDot();
             UpdateSelectHover(screen);
             InkSurface.Cursor = SelectCursorAt(screen);
         }
+        else if (mouseDraws && EffectiveTool == BoardTool.Eraser)
+        {
+            // What a click would erase is a patch of board rather than a point,
+            // and the patch has nothing to do with the shape of an arrow.
+            PointerDot.Visibility = Visibility.Collapsed;
+            ShowEraserHint(e.GetPosition(RootGrid));
+            InkSurface.Cursor = Cursors.None;
+        }
+        else if (mouseDraws && IsInkTool)
+        {
+            // The arrow's hotspot is its tip, so it is not inaccurate - but its
+            // body covers the canvas the ink is about to land on.
+            HideEraserHint();
+            ShowPointerDot(e.GetPosition(RootGrid));
+            InkSurface.Cursor = Cursors.None;
+        }
         else
         {
+            HidePointerDot();
             InkSurface.Cursor = Cursors.Arrow;
         }
 
@@ -1268,6 +1408,20 @@ public partial class MainWindow : Window
             case PointerAction.Laser:
                 UpdateLaser(e.GetPosition(LaserTrail), leaveTrail: true, MouseLaserPressure);
                 break;
+            case PointerAction.Ink:
+                UpdateMouseInk(screen);
+                break;
+        }
+    }
+
+    // Nothing else clears the mouse's own pointer dot or eraser patch: the
+    // hover watchdog is the pen's, and a mouse that has moved onto the toolbar
+    // simply stops reporting.
+    private void InkSurface_MouseLeave(object sender, MouseEventArgs e)
+    {
+        if (e.StylusDevice is null && _mouseAction == PointerAction.None)
+        {
+            HidePointerDot();
         }
     }
 
@@ -1309,20 +1463,35 @@ public partial class MainWindow : Window
             StopLaserSampling();
             LaserTrail.Lift();
         }
+        else if (_mouseAction == PointerAction.Ink)
+        {
+            EndMouseInk();
+        }
 
         _mouseAction = PointerAction.None;
-        if (hadMouseAction && EffectiveTool != BoardTool.Laser)
+        if (!hadMouseAction)
+        {
+            // CompleteMouseAction releases the capture itself and is still
+            // mid-way through deciding what to do with the tool. Nothing here
+            // may touch that decision.
+            return;
+        }
+
+        if (_mouseToolBorrowed && EffectiveTool != BoardTool.Laser)
         {
             SetActiveTool(_lastDrawingTool);
         }
-        else if (hadMouseAction)
+        else if (EffectiveTool == BoardTool.Laser)
         {
             InkSurface.Cursor = Cursors.Arrow;
         }
+
+        _mouseToolBorrowed = false;
     }
 
     private void CompleteMouseAction(PointD screen)
     {
+        var borrowed = _mouseToolBorrowed;
         switch (_mouseAction)
         {
             case PointerAction.Erase:
@@ -1340,6 +1509,10 @@ public partial class MainWindow : Window
                 StopLaserSampling();
                 LaserTrail.Lift();
                 break;
+            case PointerAction.Ink:
+                UpdateMouseInk(screen);
+                EndMouseInk();
+                break;
         }
 
         _mouseAction = PointerAction.None;
@@ -1348,14 +1521,16 @@ public partial class MainWindow : Window
             Mouse.Capture(null);
         }
 
-        if (EffectiveTool != BoardTool.Laser)
+        if (borrowed && EffectiveTool != BoardTool.Laser)
         {
             SetActiveTool(_lastDrawingTool);
         }
-        else
+        else if (EffectiveTool == BoardTool.Laser)
         {
             InkSurface.Cursor = Cursors.Arrow;
         }
+
+        _mouseToolBorrowed = false;
     }
 
     private void InkSurface_PreviewMouseWheel(object sender, MouseWheelEventArgs e)
@@ -1417,21 +1592,27 @@ public partial class MainWindow : Window
         return false;
     }
 
-    private void ApplyFingerMode()
+    // Finger drawing and mouse drawing are separate settings that need the same
+    // two toolbar buttons, for the same reason: erasing is the pen's reverse end
+    // and panning is touch or Space, and a device with neither has nowhere else
+    // to reach them.
+    private void ApplyPointerModes()
     {
-        var enabled = IsFingerModeEffective;
-        if (!enabled)
+        var fingerInk = IsFingerModeEffective;
+        if (!fingerInk)
         {
             CancelFingerTool();
         }
 
-        InkSurface.SetAllowTouchInk(enabled);
-        if (FingerToolsRow is not null)
+        InkSurface.SetAllowTouchInk(fingerInk);
+
+        var extraTools = fingerInk || IsMouseModeEffective;
+        if (ExtraToolsRow is not null)
         {
-            FingerToolsRow.Visibility = enabled ? Visibility.Visible : Visibility.Collapsed;
+            ExtraToolsRow.Visibility = extraTools ? Visibility.Visible : Visibility.Collapsed;
         }
 
-        if (!enabled && _activeTool is BoardTool.Eraser or BoardTool.Pan)
+        if (!extraTools && _activeTool is BoardTool.Eraser or BoardTool.Pan)
         {
             SetActiveTool(_lastDrawingTool);
         }
@@ -3115,7 +3296,7 @@ public partial class MainWindow : Window
         ApplyToolbarPlacement();
         ApplyCalligraphyAccess();
         ApplyLaserSettings();
-        ApplyFingerMode();
+        ApplyPointerModes();
         if (!_settings.CheckForUpdates)
         {
             SessionBar.HideUpdateNotice();
@@ -4934,6 +5115,7 @@ public partial class MainWindow : Window
 
         _stylusAction = PointerAction.None;
         _mouseAction = PointerAction.None;
+        _mouseToolBorrowed = false;
         _penInContact = false;
         _syntheticLaserContact = false;
         _barrelButton = null;

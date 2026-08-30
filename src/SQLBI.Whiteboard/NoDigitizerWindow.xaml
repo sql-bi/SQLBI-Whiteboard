@@ -21,25 +21,20 @@
                    FontSize="13"
                    Foreground="#FF374151"
                    TextWrapping="Wrap"
-                   Text="SQLBI Whiteboard is built for drawing with a pen or a finger. Windows reports no pen tablet and no touchscreen on this computer, so there is nothing here to draw with." />
-        <TextBlock Margin="0,10,0,0"
+                   Text="SQLBI Whiteboard is built for drawing with a pen or a finger. Windows reports no pen tablet and no touchscreen on this computer." />
+        <TextBlock x:Name="ModeText"
+                   Margin="0,10,0,0"
+                   FontFamily="Segoe UI"
+                   FontSize="13"
+                   Foreground="#FF374151"
+                   TextWrapping="Wrap" />
+        <TextBlock x:Name="LimitsText"
+                   Margin="0,10,0,0"
                    FontFamily="Segoe UI"
                    FontSize="13"
                    Foreground="#FF374151"
                    TextWrapping="Wrap"
-                   Text="A mouse can pan, zoom, and move containers, and the keyboard runs the rest, but there is no mouse drawing yet. The application will open, and everything that does not need ink will work." />
-        <TextBlock Margin="0,10,0,0"
-                   FontFamily="Segoe UI"
-                   FontSize="13"
-                   Foreground="#FF374151"
-                   TextWrapping="Wrap">
-            <Run Text="If you would like a mouse-only version, say so here:" />
-            <LineBreak />
-            <Hyperlink NavigateUri="https://github.com/sql-bi/SQLBI-Whiteboard/discussions/78"
-                       RequestNavigate="DiscussionLink_RequestNavigate">
-                <Run Text="Vote for mouse-only support" />
-            </Hyperlink>
-        </TextBlock>
+                   Text="A mouse reports no pressure, so a line is drawn at an even width — Calligraphy is the one tool that still varies, because its width comes from speed. A pen would add pressure, the rear eraser, palm rejection, and the hover indicator that shows what a tap would do." />
         <CheckBox x:Name="DoNotShowAgainBox"
                   Margin="0,20,0,0"
                   FontFamily="Segoe UI"

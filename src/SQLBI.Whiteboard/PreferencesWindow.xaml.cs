@@ -890,6 +890,7 @@ public partial class PreferencesWindow : Window
             SettingsCatalog.Ids.ToolbarPlacement => _settings.ToolbarPlacement.ToString(),
             SettingsCatalog.Ids.ToolbarLayout => _settings.CalligraphyAccess.ToString(),
             SettingsCatalog.Ids.FingerMode => _settings.FingerMode.ToString(),
+            SettingsCatalog.Ids.MouseMode => _settings.MouseMode.ToString(),
             SettingsCatalog.Ids.PenButton => _settings.PenButtons.Barrel.ToString(),
             _ => string.Empty,
         };
@@ -969,6 +970,10 @@ public partial class PreferencesWindow : Window
             case SettingsCatalog.Ids.FingerMode
                 when Enum.TryParse<FingerMode>(id, out var fingerMode):
                 _settings.FingerMode = fingerMode;
+                break;
+            case SettingsCatalog.Ids.MouseMode
+                when Enum.TryParse<MouseMode>(id, out var mouseMode):
+                _settings.MouseMode = mouseMode;
                 break;
             case SettingsCatalog.Ids.PenButton
                 when Enum.TryParse<PenButtonAction>(id, out var penButton):

@@ -68,6 +68,37 @@ public enum FingerMode
     WhenNoPen = 2,
 }
 
+/// <summary>
+/// Whether the mouse draws. It is a setting rather than pure detection because
+/// the digitizer list is unreliable in both directions, and because a mouse
+/// gets the tools, not the gestures: turning this on changes what the left
+/// button means, and that is the kind of change a person should be able to
+/// refuse.
+/// </summary>
+public enum MouseMode
+{
+    /// <summary>
+    /// The left button borrows Select for one gesture and hands the tool back.
+    /// The mouse pans, zooms, and moves containers, and does not draw.
+    /// </summary>
+    Off = 0,
+
+    /// <summary>
+    /// The left button does what the active tool does. The pen path is
+    /// untouched, so this is safe to turn on beside a pen.
+    /// </summary>
+    On = 1,
+
+    /// <summary>
+    /// Default for a new setup: treat as On only when Windows reports neither a
+    /// stylus nor a touchscreen. Deliberately stricter than
+    /// <see cref="FingerMode.WhenNoPen"/> - a touchscreen with no pen already
+    /// has something to draw with, so mouse drawing is the last resort rather
+    /// than the second choice.
+    /// </summary>
+    WhenNoDigitizer = 2,
+}
+
 public sealed class AppSettings
 {
     public int Version { get; set; } = AppSettingsSerializer.CurrentVersion;
@@ -83,6 +114,8 @@ public sealed class AppSettings
     public bool StartFullScreen { get; set; }
 
     public FingerMode FingerMode { get; set; } = FingerMode.WhenNoPen;
+
+    public MouseMode MouseMode { get; set; } = MouseMode.WhenNoDigitizer;
 
     public List<string> SnippetFormatOrder { get; set; } = [.. TextLanguageIds.All];
 
@@ -120,7 +153,7 @@ public sealed class AppSettings
 
 public static class AppSettingsSerializer
 {
-    public const int CurrentVersion = 12;
+    public const int CurrentVersion = 13;
 
     private static readonly JsonSerializerOptions JsonOptions = new()
     {
@@ -196,6 +229,11 @@ public static class AppSettingsSerializer
         if (!Enum.IsDefined(settings.FingerMode))
         {
             settings.FingerMode = FingerMode.WhenNoPen;
+        }
+
+        if (!Enum.IsDefined(settings.MouseMode))
+        {
+            settings.MouseMode = MouseMode.WhenNoDigitizer;
         }
 
         if (settings.StartupMonitor == StartupMonitorKind.Named)

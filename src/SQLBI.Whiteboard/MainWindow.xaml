@@ -72,6 +72,7 @@
                        StylusLeave="InkSurface_StylusLeave"
                        PreviewMouseDown="InkSurface_PreviewMouseDown"
                        PreviewMouseMove="InkSurface_PreviewMouseMove"
+                       MouseLeave="InkSurface_MouseLeave"
                        PreviewMouseUp="InkSurface_PreviewMouseUp"
                        PreviewMouseWheel="InkSurface_PreviewMouseWheel"
                        LostMouseCapture="InkSurface_LostMouseCapture"
@@ -464,7 +465,7 @@
                         </StackPanel>
                     </Border>
                 </DockPanel>
-                <StackPanel x:Name="FingerToolsRow"
+                <StackPanel x:Name="ExtraToolsRow"
                             Margin="0,4,0,0"
                             Orientation="Horizontal"
                             Visibility="Collapsed">
