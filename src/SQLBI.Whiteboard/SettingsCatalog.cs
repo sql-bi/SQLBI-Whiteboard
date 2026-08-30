@@ -84,6 +84,7 @@ internal static class SettingsCatalog
         public const string ToolbarLayout = "toolbar.layout";
         public const string WarnWhenNoDigitizer = "startup.noDigitizerNotice";
         public const string FingerMode = "input.fingerMode";
+        public const string MouseMode = "input.mouseMode";
         public const string PenButton = "input.penButton";
         public const string SnippetFormatOrder = "input.snippetFormatOrder";
         public const string CheckForUpdates = "updates.check";
@@ -123,7 +124,7 @@ internal static class SettingsCatalog
             Id = Ids.WarnWhenNoDigitizer,
             Category = Startup,
             Title = "Warn when there is nothing to draw with",
-            Description = "Say so at startup when Windows reports neither a pen tablet nor a touchscreen. The application opens either way; a mouse pans, zooms, and moves containers, but cannot draw. What Windows reports is a list of digitizers rather than what is plugged in, so a pen that has never been brought into range can be missing from it.",
+            Description = "Say so at startup when Windows reports neither a pen tablet nor a touchscreen, and describe what Mouse drawing does and does not give you in place of a pen. What Windows reports is a list of digitizers rather than what is plugged in, so a pen that has never been brought into range can be missing from it.",
             Keywords = ["pen", "touch", "touchscreen", "digitizer", "tablet", "mouse", "warning", "notice", "startup"],
             Editor = SettingEditorKind.BooleanSwitch,
         },
@@ -140,6 +141,21 @@ internal static class SettingsCatalog
                 new() { Id = nameof(Core.Settings.FingerMode.WhenNoPen), Title = "When no pen is detected" },
                 new() { Id = nameof(Core.Settings.FingerMode.Off), Title = "Off" },
                 new() { Id = nameof(Core.Settings.FingerMode.On), Title = "On" },
+            ],
+        },
+        new()
+        {
+            Id = Ids.MouseMode,
+            Category = Input,
+            Title = "Mouse drawing",
+            Description = "New installs default to When there is no pen or touchscreen. Off keeps the left button for moving containers, which is what it has always done. On makes the left button use the current tool, and puts Eraser and Pan on the toolbar; Ctrl and the left button then move and resize a container, and Ctrl with a double-click frames one. A mouse reports no pressure, so only Calligraphy still varies its width, and nothing about the pen changes when this is on.",
+            Keywords = ["mouse", "draw", "drawing", "pointer", "no pen", "digitizer", "left button", "ctrl"],
+            Editor = SettingEditorKind.EnumChoice,
+            Choices =
+            [
+                new() { Id = nameof(Core.Settings.MouseMode.WhenNoDigitizer), Title = "When there is no pen or touchscreen" },
+                new() { Id = nameof(Core.Settings.MouseMode.Off), Title = "Off" },
+                new() { Id = nameof(Core.Settings.MouseMode.On), Title = "On" },
             ],
         },
         new()

@@ -857,6 +857,33 @@ Assert(
     fingerModeRoundTrip.FingerMode == FingerMode.WhenNoPen,
     "Settings JSON should round-trip when-no-pen finger drawing.");
 Assert(
+    defaultSettings.MouseMode == MouseMode.WhenNoDigitizer,
+    "Missing settings should default mouse drawing to when there is no digitizer.");
+Assert(
+    AppSettingsSerializer.Parse("{ \"mouseMode\": \"Sideways\" }").MouseMode ==
+    MouseMode.WhenNoDigitizer,
+    "Unknown mouse-mode values should fall back to when-no-digitizer.");
+Assert(
+    AppSettingsSerializer.Parse("{ \"mouseMode\": \"Off\" }").MouseMode == MouseMode.Off &&
+    AppSettingsSerializer.Parse("{ \"mouseMode\": \"On\" }").MouseMode == MouseMode.On,
+    "Saved mouse drawing Off and On should still load.");
+var mouseModeRoundTrip = AppSettingsSerializer.Parse(
+    AppSettingsSerializer.Format(new AppSettings { MouseMode = MouseMode.On }));
+Assert(
+    mouseModeRoundTrip.MouseMode == MouseMode.On,
+    "Settings JSON should round-trip mouse drawing.");
+// Settings written before mouse drawing existed carry no mouseMode at all, and
+// have to arrive as the new default rather than as Off - the whole point is the
+// person who found nothing worked.
+var settingsFromVersion12 = AppSettingsSerializer.Parse(
+    "{ \"version\": 12, \"fingerMode\": \"Off\", \"toolbarPlacement\": \"BottomLeft\" }");
+Assert(
+    settingsFromVersion12.MouseMode == MouseMode.WhenNoDigitizer &&
+    settingsFromVersion12.FingerMode == FingerMode.Off &&
+    settingsFromVersion12.ToolbarPlacement == ToolbarPlacement.BottomLeft &&
+    settingsFromVersion12.Version == AppSettingsSerializer.CurrentVersion,
+    "Settings saved before mouse drawing existed should upgrade and keep their own choices.");
+Assert(
     defaultSettings.SnippetFormatOrder is ["plain", "dax", "sqlserver"],
     "Missing settings should keep Plain text first so paste stays plain text.");
 Assert(

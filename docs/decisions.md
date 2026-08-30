@@ -422,6 +422,61 @@ was several hundred lines and never converged.
 
 ---
 
+## 23. A mouse gets the tools, not the gestures
+
+**Implemented** in 1.2.0. The proposal it came from, with the alternatives that were
+weighed and rejected, is [mouse-mode.md](mouse-mode.md).
+
+The application was built so that no input device imitates another: the pen inks, touch
+navigates, and the mouse moves things. That was not a gap. It is why the pen path is as
+direct as it is, and it stays the rule for the pen.
+
+What it cost was people who downloaded a whiteboard onto a laptop with no pen and no
+touchscreen and found the toolbar did nothing. 1.1 conceded the point at startup and
+collected votes in
+[discussion 78](https://github.com/sql-bi/SQLBI-Whiteboard/discussions/78). So there is now
+a **Mouse drawing** setting, on by default when Windows reports neither a stylus nor a
+touchscreen, under which the left button does what the selected tool does.
+
+One sentence governs it, and any later change to it: **a mouse gets the tools, not the
+gestures.** Everything on the toolbar becomes reachable with a mouse. Nothing that exists
+because of what a hand and a pen can do — pressure, hover, the reverse end, the barrel
+button, palm rejection, two fingers — is simulated with modifiers and timers. Where a
+gesture has no honest mouse equivalent the mouse does without it, and the documentation
+says so. That is what stops mouse support becoming a tax on every future input feature.
+
+Four consequences are worth recording, because each was a choice with a live alternative:
+
+- **`Ctrl` is the old mouse.** Letting the left button draw takes away the one genuinely
+  good thing about mouse input — moving an image without leaving the Pen — so it is handed
+  straight back on a modifier rather than lost. Giving it to the right button instead was
+  rejected: right-drag pan is the only pan that needs no keyboard.
+- **Framing moves behind `Ctrl` too, but only where it has to.** Double-click is tested
+  before the tool branch, so two quick dabs with the Pen would otherwise reframe the board.
+  With Select or Pan active, and whenever Mouse drawing is off, a plain double-click still
+  frames.
+- **Pressure is the constant the straight-line constraint already uses.** Deriving it from
+  speed was rejected as a default: the width would vary for a reason the hand cannot feel,
+  and a wobble nobody asked for reads as a bug. Calligraphy is unaffected, because its width
+  comes from speed rather than from pressure, and the highlighter already ignores pressure.
+- **The tool becomes sticky.** Nothing is handed back after a mouse gesture that was not a
+  `Ctrl` borrow — including a right-button pan, which would otherwise take someone who chose
+  the Eraser and quietly leave them holding a pen.
+
+The reason this was a few hundred lines rather than a subsystem is decision 22. Because pen
+ink is collected from raw points rather than from the InkCanvas, `AppendInkPoint` takes a
+screen point and a pressure and has no idea what device it is serving; the mouse calls it,
+and gets the straight-line constraint and the calligraphy dynamics without a second
+implementation. The erase, pan and container paths already existed on the mouse handlers —
+`PointerAction.Erase` was written and unreachable.
+
+Not one line of the pen path changed, and that was the condition for building it at all.
+Every mouse handler already returned early on a non-null `StylusDevice`, so pen-promoted
+mouse events never enter the mouse path. Mouse drawing can therefore be left on beside a
+pen, which is why **On** is offered and not only the automatic default.
+
+---
+
 ## Open questions
 
 - arm64 is not built; add it if Surface devices matter for a pen application.

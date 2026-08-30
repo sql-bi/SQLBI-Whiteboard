@@ -11,9 +11,10 @@ How the project is developed and shipped is documented separately:
 
 - Low-latency, pressure-aware WPF wet ink, including rear-eraser detection on any pen that reports it
 - A normal cursor for physical mouse input, and a pen-hover indicator that shows what a tap would do: the laser with its halo and speed trail, a dashed square around what the eraser would clear, and a high-contrast dot for everything else. All of them disappear on contact
+- Optional mouse drawing (default when Windows reports neither a pen tablet nor a touchscreen): the left button uses the current tool, Ctrl and the left button move and resize a container, and Eraser and Pan appear on the toolbar. A mouse reports no pressure, so ink is drawn at an even width and Calligraphy is the one tool that still varies, because its width comes from speed. Nothing about the pen changes when it is on
 - Touch panning and two-finger pinch zoom
 - Optional finger drawing (default when no pen is detected): one finger uses the current tool, two fingers still pan and pinch-zoom, and Eraser and Pan appear on the toolbar
-- A notice at startup when Windows reports neither a pen tablet nor a touchscreen: the application still opens, but there is nothing to draw with, and [discussion 78](https://github.com/sql-bi/SQLBI-Whiteboard/discussions/78) collects votes for mouse-only drawing. Dismissable from the notice itself or from Preferences, since the tablet list Windows reports can miss a pen that has never been in range
+- A notice at startup when Windows reports neither a pen tablet nor a touchscreen, saying which pointing device the session is drawing with and what a pen would add. Dismissable from the notice itself or from Preferences, since the tablet list Windows reports can miss a pen that has never been in range
 - Basic palm rejection: touch navigation is suspended when the pen makes contact
 - Mouse-wheel zoom and middle-button or temporary Space-key panning
 - Whole-stroke erasing
@@ -30,7 +31,7 @@ How the project is developed and shipped is documented separately:
 - Markdown `.wimport` recipes that build image and text containers from headings
 - An intentionally small floating toolbar
 - A File / Edit / View / Help tab strip. Click a tab for a one-row command strip over the canvas
-- Preferences for the startup monitor, full-screen start, finger drawing, the pen button, snippet format order, laser trail timing and weight, toolbar position and layout, and (except Store installs) a daily new-version check
+- Preferences for the startup monitor, full-screen start, finger drawing, mouse drawing, the pen button, snippet format order, laser trail timing and weight, toolbar position and layout, and (except Store installs) a daily new-version check
 - About, with version and channel
 
 ## Build and run
@@ -179,8 +180,9 @@ Use **Copy settings** after finding a useful combination so the exact values can
 | Pen hover | Show the small red pointer dot and hide the arrow |
 | Pen contact | Hide both the pointer dot and arrow |
 | Physical mouse movement | Show the normal arrow |
-| Left mouse | Temporarily select/move/resize a container; return to the previous drawing tool on release |
-| Double-click container | Center and fit the image, text, or LiveView to the canvas |
+| Left mouse | With Mouse drawing off, temporarily select/move/resize a container and return to the previous drawing tool on release. With it on, the current tool: ink, erase, select, pan, or the laser |
+| Ctrl + left mouse | Select/move/resize a container and return to the previous drawing tool — what the left button does on its own when Mouse drawing is off |
+| Double-click container | Center and fit the image, text, or LiveView to the canvas. With Mouse drawing on and an ink or eraser tool selected, hold Ctrl: two plain clicks are two strokes |
 | Double-click empty canvas | Center and fit all board content, or reset an empty board |
 | Pen eraser | Erase complete strokes. The upper side button erases too: Windows reports it the same way as a pen turned round |
 | Pen barrel | Hold the barrel button for the action assigned in Preferences: Laser (default) or Straight line. Laser returns to the previous tool on release |
@@ -203,7 +205,7 @@ Use **Copy settings** after finding a useful combination so the exact values can
 | Delete | Delete the selected container and its linked strokes |
 | Alt+L | Laser pointer |
 | File / Edit / View / Help | Tab strip. Click a tab for a one-row command strip over the canvas. Click the canvas to hide it |
-| Help > Preferences | Searchable settings: startup monitor, full screen, no-pen warning, finger drawing, pen button, snippet format order, laser trail, toolbar, update checks |
+| Help > Preferences | Searchable settings: startup monitor, full screen, no-pen warning, finger drawing, mouse drawing, pen button, snippet format order, laser trail, toolbar, update checks |
 | View > Bring to front / Send to back | Reorder the selected image, text, or LiveView (and its linked strokes) |
 | Help > About | Version, channel, license, the product site, and a download link when a newer release is known |
 | View > LiveView | Capture, freeze, disconnect, or reconnect a window or display |
@@ -211,6 +213,8 @@ Use **Copy settings** after finding a useful combination so the exact values can
 | Ctrl+F11 | Hide title and tabs but keep this window’s size and place |
 
 With the mouse, selection is automatic: click a container to move it, or drag the circular bottom-right handle to resize it while preserving its aspect ratio. Double-click a container to center it and fit it to the canvas. Releasing the mouse returns to the previously selected drawing tool.
+
+**Help → Preferences → Mouse drawing** changes what the left button means, and it defaults to on when Windows reports neither a pen tablet nor a touchscreen. With it on the left button uses the selected tool, the tool stays selected rather than being handed back, and Eraser and Pan join the toolbar as they do for finger drawing. Everything above then moves to Ctrl: Ctrl and the left button select, move, and resize a container and return to the previous drawing tool, and Ctrl with a double-click centers and fits one. Two plain clicks with an ink tool are two strokes, which is why framing moves out of the way. Shift still constrains a stroke to horizontal or vertical, and Alt+L is still the laser. A mouse reports no pressure, so ink is drawn at an even width; Calligraphy still varies, because its width comes from speed. The pen path is untouched, so Mouse drawing can be left on beside a pen.
 
 Imported images, LiveViews, and text objects act as containers. A completed stroke is linked when it touches exactly one container, including crossing its edge; a stroke touching multiple containers remains independent. Moving or resizing a container transforms its linked strokes with it. **View → Bring to front** and **View → Send to back** reorder the selected container and those linked strokes. Deleting a container also deletes all of its linked strokes. Undo/redo treats each complete container operation as one action.
 
@@ -275,3 +279,20 @@ Test these on the target device before tuning stroke algorithms:
 5. Draw near all display edges and across the Windows display-scaling boundary, if multiple monitors use different scaling.
 
 Wacom driver settings can remap the barrel and eraser controls, so validate both Windows Ink mode and the intended application profile.
+
+## Mouse drawing validation
+
+Mouse drawing cannot be covered by the smoke tests, which are UI-free. Walk this after
+touching any mouse handler:
+
+1. On a machine with no pen and no touchscreen, confirm the default turns it on and the
+   startup notice describes it.
+2. Draw with Pen, Highlighter, and Calligraphy. Only Calligraphy should vary its width.
+3. Click without moving, and confirm a dot is drawn rather than nothing.
+4. Press and release Shift mid-stroke and confirm the constraint starts and ends there.
+5. Erase, and confirm the dashed square matches what is removed.
+6. Ctrl-drag a container, and confirm the drawing tool comes back on release.
+7. Two quick clicks with the Pen, and confirm the board does not reframe.
+8. Select the Eraser, pan with the right button, and confirm the Eraser is still selected.
+9. On a pen machine with Mouse drawing **On**, draw with the pen and confirm nothing about
+   it changed. This is the regression that matters.
