@@ -85,6 +85,7 @@ internal static class SettingsCatalog
         public const string WarnWhenNoDigitizer = "startup.noDigitizerNotice";
         public const string FingerMode = "input.fingerMode";
         public const string MouseMode = "input.mouseMode";
+        public const string SuggestMouseMode = "input.mouseModeOffer";
         public const string PenButton = "input.penButton";
         public const string SnippetFormatOrder = "input.snippetFormatOrder";
         public const string CheckForUpdates = "updates.check";
@@ -157,6 +158,15 @@ internal static class SettingsCatalog
                 new() { Id = nameof(Core.Settings.MouseMode.Off), Title = "Off" },
                 new() { Id = nameof(Core.Settings.MouseMode.On), Title = "On" },
             ],
+        },
+        new()
+        {
+            Id = Ids.SuggestMouseMode,
+            Category = Input,
+            Title = "Offer mouse drawing when the mouse picks a tool",
+            Description = "With Mouse drawing off, choosing a tool from the toolbar with the mouse offers to turn it on. Asked once a session, and not again once the offer has been declined for good.",
+            Keywords = ["mouse", "offer", "prompt", "dialog", "toolbar", "suggest", "ask"],
+            Editor = SettingEditorKind.BooleanSwitch,
         },
         new()
         {

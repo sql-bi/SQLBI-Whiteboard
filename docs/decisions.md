@@ -477,6 +477,41 @@ pen, which is why **On** is offered and not only the automatic default.
 
 ---
 
+## 24. The mouse mode offer has no default button
+
+**Implemented** in 1.2.1.
+
+Decision 23 left Mouse drawing discoverable only in Preferences, which is the one place
+someone who does not know the feature exists will not look. The signal that they might want
+it is unambiguous and already in the application: **picking a tool from the toolbar with the
+mouse.** A pen user reaches for the palette with the pen, so a mouse arriving there is
+someone whose next stroke is going to disappoint them. That is when the offer appears.
+
+Three properties of it were chosen rather than inherited, and each is the kind a later
+change would quietly undo:
+
+- **Neither button is `IsDefault`, and Enter is swallowed.** This is a question about how
+  the application behaves, not a confirmation, and the two answers are not
+  interchangeable — one changes what the left button means. A default button would let
+  Enter answer it for someone who was typing, and whichever button we picked would be the
+  wrong one half the time. `Window_PreviewKeyDown` therefore marks every Enter handled
+  before it can reach a button, and invokes one only when the person has deliberately moved
+  focus to it. Escape closes, because dismissing is always safe. Nothing is focused when
+  the dialog opens, so the first Tab reaches the checkbox rather than a primed button.
+- **Once a session, and the checkbox is unchecked.** Prompting on every toolbar click would
+  be intolerable, and prompting once and never again would lose the person who was not
+  ready to decide. A single Cancel answers this session; the checkbox answers every one
+  after it, and `Help → Preferences → Input` is the way back from that.
+- **The offer is queued, not shown from the click handler.** It is dispatched at background
+  priority so the click first does what it came to do. The tool is selected, and the dialog
+  then explains why it may not behave as expected — rather than intercepting the click and
+  leaving the person unsure whether their tool was chosen at all.
+
+**Enable mouse mode** sets `MouseMode.On` rather than `WhenNoDigitizer`, because the offer
+can only have appeared on a machine where the automatic default already decided not to.
+
+---
+
 ## Open questions
 
 - arm64 is not built; add it if Surface devices matter for a pen application.

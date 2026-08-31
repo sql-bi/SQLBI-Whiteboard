@@ -11,7 +11,7 @@ How the project is developed and shipped is documented separately:
 
 - Low-latency, pressure-aware WPF wet ink, including rear-eraser detection on any pen that reports it
 - A normal cursor for physical mouse input, and a pen-hover indicator that shows what a tap would do: the laser with its halo and speed trail, a dashed square around what the eraser would clear, and a high-contrast dot for everything else. All of them disappear on contact
-- Optional mouse drawing (default when Windows reports neither a pen tablet nor a touchscreen): the left button uses the current tool, Ctrl and the left button move and resize a container, and Eraser and Pan appear on the toolbar. A mouse reports no pressure, so ink is drawn at an even width and Calligraphy is the one tool that still varies, because its width comes from speed. Nothing about the pen changes when it is on
+- Optional mouse drawing (default when Windows reports neither a pen tablet nor a touchscreen): the left button uses the current tool, Ctrl and the left button move and resize a container, and Eraser and Pan appear on the toolbar. A mouse reports no pressure, so ink is drawn at an even width and Calligraphy is the one tool that still varies, because its width comes from speed. Nothing about the pen changes when it is on. With it off, picking a tool from the toolbar with the mouse offers to turn it on, once a session
 - Touch panning and two-finger pinch zoom
 - Optional finger drawing (default when no pen is detected): one finger uses the current tool, two fingers still pan and pinch-zoom, and Eraser and Pan appear on the toolbar
 - A notice at startup when Windows reports neither a pen tablet nor a touchscreen, saying which pointing device the session is drawing with and what a pen would add. Dismissable from the notice itself or from Preferences, since the tablet list Windows reports can miss a pen that has never been in range
@@ -296,3 +296,19 @@ touching any mouse handler:
 8. Select the Eraser, pan with the right button, and confirm the Eraser is still selected.
 9. On a pen machine with Mouse drawing **On**, draw with the pen and confirm nothing about
    it changed. This is the regression that matters.
+
+With Mouse drawing **Off**, the offer has its own list. Every one of these is about a key
+doing nothing, which is the part a later change is most likely to undo:
+
+1. Pick a tool from the toolbar with the mouse. The tool is selected, and the offer appears
+   after it rather than instead of it.
+2. Pick another tool. The offer does not appear again this session.
+3. Press Enter with nothing focused. Nothing happens and the dialog stays open.
+4. Tab to the checkbox and press Enter. Still nothing.
+5. Tab to a button and press Enter. That button, and only that button, acts.
+6. Press Escape. The dialog closes and Mouse drawing stays off.
+7. Choose **Enable mouse mode**. The left button draws immediately, and Eraser and Pan
+   appear on the toolbar.
+8. Tick **Don't show me this again**, choose **Cancel**, restart, and confirm the offer is
+   gone and **Help → Preferences → Input** can bring it back.
+9. Reach for the toolbar with the pen on a pen machine, and confirm no offer appears.

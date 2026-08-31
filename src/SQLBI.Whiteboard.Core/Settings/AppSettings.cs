@@ -117,6 +117,15 @@ public sealed class AppSettings
 
     public MouseMode MouseMode { get; set; } = MouseMode.WhenNoDigitizer;
 
+    /// <summary>
+    /// Whether to offer Mouse drawing the first time in a session that someone
+    /// picks a tool with the mouse while it is off. Reaching for the toolbar
+    /// with a mouse is the one moment the application can be sure the question
+    /// is worth asking, and the setting is what makes the offer refusable for
+    /// good.
+    /// </summary>
+    public bool SuggestMouseMode { get; set; } = true;
+
     public List<string> SnippetFormatOrder { get; set; } = [.. TextLanguageIds.All];
 
     public InkToolSettings Pen { get; set; } = InkToolSettings.From(InkPalettes.DefaultPen);
@@ -153,7 +162,7 @@ public sealed class AppSettings
 
 public static class AppSettingsSerializer
 {
-    public const int CurrentVersion = 13;
+    public const int CurrentVersion = 14;
 
     private static readonly JsonSerializerOptions JsonOptions = new()
     {
