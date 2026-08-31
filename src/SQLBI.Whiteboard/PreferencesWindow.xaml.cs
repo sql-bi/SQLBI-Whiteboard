@@ -728,6 +728,7 @@ public partial class PreferencesWindow : Window
             {
                 SettingsCatalog.Ids.StartFullScreen => _settings.StartFullScreen,
                 SettingsCatalog.Ids.WarnWhenNoDigitizer => _settings.WarnWhenNoDigitizer,
+                SettingsCatalog.Ids.SuggestMouseMode => _settings.SuggestMouseMode,
                 SettingsCatalog.Ids.CheckForUpdates => _settings.CheckForUpdates,
                 _ => false,
             },
@@ -909,6 +910,10 @@ public partial class PreferencesWindow : Window
         else if (setting.Id == SettingsCatalog.Ids.WarnWhenNoDigitizer)
         {
             _settings.WarnWhenNoDigitizer = value;
+        }
+        else if (setting.Id == SettingsCatalog.Ids.SuggestMouseMode)
+        {
+            _settings.SuggestMouseMode = value;
         }
         else if (setting.Id == SettingsCatalog.Ids.CheckForUpdates)
         {

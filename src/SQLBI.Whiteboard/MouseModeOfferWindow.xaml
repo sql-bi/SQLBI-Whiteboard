@@ -1,0 +1,59 @@
+<Window x:Class="SQLBI.Whiteboard.MouseModeOfferWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Draw with a mouse?"
+        Width="480"
+        SizeToContent="Height"
+        ResizeMode="NoResize"
+        WindowStartupLocation="CenterOwner"
+        ShowInTaskbar="False"
+        Focusable="True"
+        FocusManager.IsFocusScope="True"
+        Background="{DynamicResource ToolbarBackgroundBrush}"
+        Loaded="Window_Loaded"
+        PreviewKeyDown="Window_PreviewKeyDown">
+    <StackPanel Margin="28,24">
+        <TextBlock FontFamily="Segoe UI"
+                   FontSize="16"
+                   FontWeight="SemiBold"
+                   Foreground="#FF1F2937"
+                   TextWrapping="Wrap"
+                   Text="Draw with a mouse?" />
+        <TextBlock Margin="0,12,0,0"
+                   FontFamily="Segoe UI"
+                   FontSize="13"
+                   Foreground="#FF374151"
+                   TextWrapping="Wrap"
+                   Text="SQLBI Whiteboard is designed for a pen and a touchscreen. If you would rather use a mouse, Mouse drawing can be turned on in Preferences." />
+        <TextBlock Margin="0,10,0,0"
+                   FontFamily="Segoe UI"
+                   FontSize="13"
+                   Foreground="#FF374151"
+                   TextWrapping="Wrap"
+                   Text="The left button then uses the selected tool, and Ctrl with the left button moves and resizes a container. A mouse reports no pressure, so ink is drawn at an even width. Nothing about the pen changes." />
+        <CheckBox x:Name="DoNotShowAgainBox"
+                  Margin="0,20,0,0"
+                  FontFamily="Segoe UI"
+                  FontSize="13"
+                  Foreground="#FF374151"
+                  Content="Don't show me this again" />
+        <!-- Neither button is IsDefault or IsCancel. This is a question the
+             person is meant to answer, so Enter must not answer it for them by
+             landing on whichever button a dialog would normally favour. -->
+        <StackPanel Margin="0,16,0,0"
+                    Orientation="Horizontal"
+                    HorizontalAlignment="Right">
+            <Button x:Name="EnableButton"
+                    MinWidth="140"
+                    MinHeight="30"
+                    Margin="0,0,8,0"
+                    Content="Enable mouse mode"
+                    Click="EnableButton_Click" />
+            <Button x:Name="CancelButton"
+                    MinWidth="96"
+                    MinHeight="30"
+                    Content="Cancel"
+                    Click="CancelButton_Click" />
+        </StackPanel>
+    </StackPanel>
+</Window>

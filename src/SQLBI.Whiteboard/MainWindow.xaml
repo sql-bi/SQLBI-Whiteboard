@@ -229,6 +229,7 @@
                 BorderBrush="{StaticResource ToolbarBorderBrush}"
                 BorderThickness="1"
                 Background="{StaticResource ToolbarBackgroundBrush}"
+                PreviewMouseLeftButtonDown="ToolPalette_PreviewMouseLeftButtonDown"
                 PreviewMouseRightButtonDown="ToolPalette_PreviewMouseRightButtonDown"
                 PreviewStylusDown="ToolPalette_PreviewStylusDown"
                 Panel.ZIndex="10">

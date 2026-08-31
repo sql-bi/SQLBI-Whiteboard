@@ -82,6 +82,7 @@ public partial class MainWindow : Window
     private PointerAction _stylusAction;
     private PointerAction _mouseAction;
     private bool _mouseToolBorrowed;
+    private bool _mouseModeOffered;
     private PointD _lastPanPoint;
     private bool _penInContact;
     private bool _touchNavigationLocked;
@@ -1308,6 +1309,52 @@ public partial class MainWindow : Window
                 BeginMouseInk(screen);
                 _mouseAction = PointerAction.Ink;
                 break;
+        }
+    }
+
+    // Picking a tool from the toolbar with the mouse is the one moment the
+    // application can be sure the question is worth asking: a pen user reaches
+    // for the palette with the pen. The offer is queued rather than shown from
+    // here, so the click first does what it came to do - the tool is chosen,
+    // and the dialog then explains why it may not behave as expected.
+    private void ToolPalette_PreviewMouseLeftButtonDown(object sender, MouseButtonEventArgs e)
+    {
+        if (e.StylusDevice is not null ||
+            _mouseModeOffered ||
+            !_settings.SuggestMouseMode ||
+            IsMouseModeEffective)
+        {
+            return;
+        }
+
+        // Asked once a session however many tools are picked afterwards. The
+        // checkbox on the offer is what answers it for every session after
+        // this one.
+        _mouseModeOffered = true;
+        Dispatcher.BeginInvoke(DispatcherPriority.Background, new Action(OfferMouseMode));
+    }
+
+    private void OfferMouseMode()
+    {
+        var offer = new MouseModeOfferWindow { Owner = this };
+        offer.ShowDialog();
+        var changed = false;
+        if (offer.EnableRequested)
+        {
+            _settings.MouseMode = MouseMode.On;
+            ApplyPointerModes();
+            changed = true;
+        }
+
+        if (offer.DoNotShowAgain)
+        {
+            _settings.SuggestMouseMode = false;
+            changed = true;
+        }
+
+        if (changed)
+        {
+            PersistSettings();
         }
     }
 

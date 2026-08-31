@@ -884,6 +884,21 @@ Assert(
     settingsFromVersion12.Version == AppSettingsSerializer.CurrentVersion,
     "Settings saved before mouse drawing existed should upgrade and keep their own choices.");
 Assert(
+    defaultSettings.SuggestMouseMode,
+    "Missing settings should offer mouse drawing when the mouse picks a tool.");
+Assert(
+    settingsFromVersion12.SuggestMouseMode,
+    "Settings saved before the offer existed should get it, not lose it.");
+Assert(
+    AppSettingsSerializer.Parse("{ \"suggestMouseMode\": false }") is
+    { SuggestMouseMode: false },
+    "An offer declined for good should still be declined after a restart.");
+var offerRoundTrip = AppSettingsSerializer.Parse(
+    AppSettingsSerializer.Format(new AppSettings { SuggestMouseMode = false }));
+Assert(
+    !offerRoundTrip.SuggestMouseMode,
+    "Settings JSON should round-trip the mouse drawing offer.");
+Assert(
     defaultSettings.SnippetFormatOrder is ["plain", "dax", "sqlserver"],
     "Missing settings should keep Plain text first so paste stays plain text.");
 Assert(
