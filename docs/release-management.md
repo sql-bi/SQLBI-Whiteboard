@@ -12,7 +12,8 @@ itself. Do not run it to “release” anything.
 | You want to | Do this |
 | --- | --- |
 | Land a change | Open a pull request against `main`. The **Pull request** Action builds and tests; merge when it is green. |
-| Ship a Whiteboard pre-release | Merge to `main` (anything except `docs/`, `site/`, `vscode/`, and top-level markdown). Azure Pipelines **SQLBI Whiteboard** signs and publishes the GitHub prerelease. To rebuild an existing commit: Azure DevOps → that pipeline → **Run pipeline**. Do not use **Re-run**. |
+| Ship a Whiteboard pre-release | Merge to `main` (anything except `docs/`, `site/`, `vscode/`, `CHANGELOG.md`, and top-level markdown). Azure Pipelines **SQLBI Whiteboard** signs and publishes the GitHub prerelease. To rebuild an existing commit: Azure DevOps → that pipeline → **Run pipeline**. Do not use **Re-run**. |
+| Say what a release gives people | Add a `## <version> - <date>` section to `CHANGELOG.md`, in the same pull request that bumps `VersionPrefix`. The **Release notes** check fails without it. That one file becomes both the GitHub release body and the [What's new](https://whiteboard.sqlbi.com/changelog.html) page. |
 | Promote that build to a full release | Approve the **Release** stage of the same Azure run. Nothing is rebuilt. |
 | Ship a VS Code extension update | Bump `version` in `vscode/sqlbi-whiteboard/package.json` in a pull request and merge. The **Publish VS Code extension** Action publishes `sqlbi.sqlbi-whiteboard` if that version is not already on the Marketplace. To retry: Actions → **Publish VS Code extension** → **Run workflow**. |
 | Update whiteboard.sqlbi.com | Merge a change under `site/`. The **Publish site** Action deploys. To retry: Actions → **Publish site** → **Run workflow**. |
@@ -131,6 +132,37 @@ variables → Actions**. Forks never receive it.
 **Publish site** (`.github/workflows/publish-site.yml`) deploys `site/` to GitHub Pages
 when that tree changes on `main`, when a release is published, and on **Run workflow**.
 `site/CNAME` carries the custom domain.
+
+### Release notes
+
+`CHANGELOG.md` is the only place release notes are written, and `scripts/release-notes.ps1`
+is the only thing that reads it. One `## <version> - <date>` section per released version,
+one `###` heading per thing a person would notice.
+
+It has three readers, and none of them can be satisfied by the other two:
+
+- The **Release notes** check on every pull request fails when `Directory.Build.props`
+  changes `VersionPrefix` and no section exists for the new version. This is the gate that
+  matters: the notes get written while the change is fresh, by the person who made it.
+- **Azure Pipelines** writes that section into the GitHub release body. It used to be the
+  single line `SQLBI Whiteboard <version>.`, which told a reader nothing; `addChangeLog`
+  would have told them a list of commit subjects, which is not the same as what they get.
+  The step runs before the release is created, so an unwritten changelog stops the release
+  instead of being noticed afterwards.
+- **Publish site** renders every section into `site/changelog.html`, between its
+  `<!-- releases:start -->` and `<!-- releases:end -->` markers, and refuses to deploy a
+  published release that has no section. The page carries the notes as HTML rather than
+  fetching them from the GitHub API as it used to, so they are readable without scripting
+  and findable by a search engine.
+
+Pre-release **Dev** builds are deliberately absent: they come from every merge to `main`
+and would bury the releases people actually choose between. The release-time check exempts
+them.
+
+The renderer handles the subset the changelog is allowed to use — `###` headings,
+paragraphs, lists, links, `code`, and **bold**. Anything outside that subset appears as
+plain text rather than as broken markup, which for a file we write ourselves is a style
+rule rather than a limitation.
 
 Two settings outside the repository have to be right, and each fails in its own quiet way:
 

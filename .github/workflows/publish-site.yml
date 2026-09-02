@@ -25,8 +25,10 @@ on:
     branches: [main]
     paths:
       - 'site/**'
+      - 'CHANGELOG.md'
       - 'scripts/build-release-manifests.ps1'
       - 'scripts/verify-published-site.ps1'
+      - 'scripts/release-notes.ps1'
       - '.github/workflows/publish-site.yml'
   # A release changes what the manifests say without changing anything in site/, so it has
   # to redeploy the page as well. This is what keeps the download links current.
@@ -67,6 +69,25 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
           EXPECT_TAG: ${{ github.event.release.tag_name }}
+
+      # A released version with no entry in CHANGELOG.md would publish a What's new page
+      # that does not mention the version people are being offered. Checked here as well as
+      # on the pull request that bumps VersionPrefix, because a release does not have to
+      # have come from one. Pre-releases are exempt: Dev builds come from every merge and
+      # are deliberately not in the changelog.
+      - name: Check this release has notes
+        if: github.event_name == 'release' && github.event.release.prerelease == false
+        shell: pwsh
+        run: ./scripts/release-notes.ps1 -Mode Verify -Version "$env:RELEASE_TAG"
+        env:
+          RELEASE_TAG: ${{ github.event.release.tag_name }}
+
+      # Written into the page rather than fetched from the API by the page itself: the
+      # notes are then in the HTML that ships, so they are readable without scripting and
+      # findable by a search engine.
+      - name: Write the release notes into the page
+        shell: pwsh
+        run: ./scripts/release-notes.ps1 -Mode Html
 
       - uses: actions/configure-pages@v5
 

@@ -762,84 +762,38 @@ footer a:hover { color: var(--ink); text-decoration: underline; }
 .footlinks { display: flex; flex-wrap: wrap; gap: 4px 0; align-items: center; justify-content: flex-end; }
 .footlinks .sep { padding: 0 8px; }
 
-.releases {
-  list-style: none;
-  margin: 0 0 1.6em;
-  padding: 0;
+/* One released version. Written into changelog.html at deploy time from CHANGELOG.md,
+   so the markup here is only ever h2 / h3 / p / ul. */
+.release {
   border: 1px solid var(--line);
   border-radius: 14px;
-  overflow: hidden;
   background: var(--surface);
   box-shadow: var(--shadow-sm);
+  padding: 18px 22px 20px;
+  margin: 0 0 18px;
 }
-.releases li { border-bottom: 1px solid var(--line); padding: 16px 18px 18px; }
-.releases li:last-child { border-bottom: 0; }
-.reltop {
+.release h2 {
   display: flex;
   flex-wrap: wrap;
-  gap: 6px 16px;
+  gap: 4px 14px;
   align-items: baseline;
-  justify-content: space-between;
-}
-.releases .ver { font-weight: 640; color: var(--ink); text-decoration: none; }
-.releases .ver:hover { text-decoration: underline; }
-.releases .when { color: var(--muted); font-size: 14px; }
-.relsum {
-  margin: 6px 0 0;
-  color: var(--muted);
-  font-size: 14.5px;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-.releases details { margin: 10px 0 0 12px; }
-.releases summary {
-  cursor: pointer;
-  color: var(--brand-link);
-  font-size: 13.5px;
-  font-weight: 600;
-  list-style: none;
-}
-.releases summary::-webkit-details-marker { display: none; }
-.releases summary::after { content: " +"; font-weight: 500; }
-.releases details[open] summary::after { content: " \2212"; }
-.relbody {
-  margin: 8px 0 0;
-  padding: 12px 16px;
-  background: var(--surface-2);
-  border-radius: 10px;
-  font-size: 14.5px;
-  line-height: 1.55;
-  color: var(--muted);
-}
-.relbody > *:first-child { margin-top: 0; }
-.relbody > *:last-child { margin-bottom: 0; }
-.relbody h1, .relbody h2, .relbody h3 {
-  font-size: 14.5px;
-  font-weight: 650;
-  color: var(--ink);
-  margin: 1.05em 0 .35em;
-}
-.relbody p { margin: 0 0 .7em; }
-.relbody ul, .relbody ol { margin: 0 0 .7em; padding-left: 1.25em; }
-.relbody li { margin: .2em 0; }
-.relbody a { color: var(--brand-link); text-underline-offset: 2px; }
-.relbody hr {
+  margin: 0;
+  padding: 0;
   border: 0;
-  border-top: 1px solid var(--line);
-  margin: .9em 0;
 }
-.relbody pre {
-  margin: 0 0 .7em;
-  padding: 10px 12px;
-  font-size: 13px;
-  line-height: 1.45;
-  white-space: pre-wrap;
-  background: var(--surface);
-  border: 1px solid var(--line);
-  border-radius: 10px;
+.release .ver { font-weight: 640; color: var(--ink); }
+.release .relsep { color: var(--line); font-weight: 400; }
+.release .when { color: var(--muted); font-size: 14px; font-weight: 400; }
+.release h3 {
+  margin: 18px 0 0;
+  font-size: 16px;
+  font-weight: 620;
   color: var(--ink);
 }
+.release h3:first-of-type { margin-top: 14px; }
+.release p { margin: 6px 0 0; }
+.release ul { margin: 8px 0 0; padding-left: 1.25em; }
+.release li { margin: .2em 0; }
 
 .compare { font-size: 14.5px; }
 .compare th:nth-child(2),

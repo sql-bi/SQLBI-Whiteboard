@@ -64,6 +64,13 @@ need not be publication quality.
 an unsigned assembly would ship beside a signed executable unnoticed. This has happened once
 already.
 
+**Bumping the version means writing the release notes.** A pull request that changes
+`VersionPrefix` in `Directory.Build.props` must add a matching `## <version> - <date>`
+section to `CHANGELOG.md`, or the **Release notes** check fails. Write what a person gets
+by upgrading, not what the diff did — that file becomes the GitHub release body and the
+[What's new](https://whiteboard.sqlbi.com/changelog.html) page, so it is the only version
+history most people will ever read. Pre-release Dev builds need no entry.
+
 **Brand assets are generated.** Only `src/SQLBI.Whiteboard/Assets/SQLBI.Whiteboard.svg` is
 authored. Icons, installer artwork, and web assets come from `scripts/build-assets.ps1`, and
 hand edits are lost on the next run. Colors must change in both the SVG and

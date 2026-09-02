@@ -56,6 +56,42 @@ jobs:
             echo "-> nothing to build: only the site, docs, vscode extension or markdown changed"
           fi
 
+  # Release notes are written while the change is fresh, in the pull request that bumps the
+  # version, rather than remembered under pressure once the release is already public. The
+  # release itself is checked again in publish-site.yml.
+  notes:
+    name: Release notes
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+
+      - name: Check the version bump brings its notes
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          Set-StrictMode -Version Latest
+
+          $base = "origin/$env:BASE_REF"
+          function Get-VersionPrefix([string]$text) {
+              if ($text -match '<VersionPrefix>(.*?)</VersionPrefix>') { return $Matches[1].Trim() }
+              return ''
+          }
+
+          $before = Get-VersionPrefix (git show "${base}:Directory.Build.props" | Out-String)
+          $after = Get-VersionPrefix (Get-Content Directory.Build.props -Raw)
+
+          if ($before -eq $after) {
+              Write-Host "VersionPrefix is unchanged at $after, so no new notes are due."
+              return
+          }
+
+          Write-Host "VersionPrefix goes $before -> $after."
+          ./scripts/release-notes.ps1 -Mode Verify -Version $after
+        env:
+          BASE_REF: ${{ github.base_ref }}
+
   build:
     name: Build and test
     needs: changes
