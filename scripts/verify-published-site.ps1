@@ -16,15 +16,15 @@
     deployment leaves stable.json untouched, which is correct, and a check written
     against the newest release would fail on every one of them.
 
-    The usual cause is a release redeploying a commit Pages already holds: a Pages
-    deployment is identified by commit SHA, and the release tag, the pre-release tag and
-    main are all one commit, so the second deployment of it reports the first one's status
-    and is never served. The workflow answers that by deploying again, which is why this
-    runs twice there - once on a short timeout before the retry, once on the full one
-    after.
+    The cause was found in September 2026: a Pages deployment made from a tag is not served
+    unless it is the first deployment of that commit, and by the time a release is
+    published the commit has usually been deployed from main already. Deploying a second
+    time from the same tag does not help - dev 3286 did exactly that and the site took
+    neither. publish-site.yml therefore deploys from main and never from a release tag, so
+    a failure here should now mean something genuinely new.
 
-    Read-only. It cannot repair a deployment - the remedy is to deploy the same files
-    again - so its whole job is to make a silent staleness loud.
+    Read-only. It cannot repair a deployment - the remedy is to deploy again from main - so
+    its whole job is to make a silent staleness loud.
 
 .PARAMETER Folder
     Folder holding the manifests that were deployed, and the CNAME naming where they were
@@ -120,9 +120,11 @@ throw @"
 $BaseUrl is still serving an older deployment after $TimeoutSeconds seconds ($stale).
 
 The deployment this run made succeeded, so the files are right and the site has not
-picked them up. Deploying the same files again clears it, and the workflow already does
-that once by itself - so if this is the second attempt, the collision it works around is
-not the whole story. Run it again by hand - Actions -> Publish site -> Run workflow - and
-look for a deployment still in progress on this commit under the github-pages
-environment.
+picked them up.
+
+Deployments from a release tag behave this way and are the reason this check exists, but
+publish-site.yml no longer makes any - it deploys from main - so this is something else.
+Run it again by hand: Actions -> Publish site -> Run workflow, on main, leaving the tag
+empty. If that also fails, look under Settings -> Environments -> github-pages for a
+deployment still in progress on this commit.
 "@
