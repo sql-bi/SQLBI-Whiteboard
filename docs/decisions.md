@@ -512,6 +512,49 @@ can only have appeared on a machine where the automatic default already decided 
 
 ---
 
+## 25. Preferences says one line and keeps the rest behind a chevron
+
+**Implemented** in 1.2.2. Every setting carries two texts rather than one: a `Summary` of a
+single line that is always on the row, and a `Description` — the defaults, the reasoning,
+the consequences — that appears only when the row's chevron is pressed. A setting whose
+summary is the whole story leaves `Description` empty and gets no chevron at all.
+
+The dialog had grown to where the longest description ran to six wrapped lines, and a
+category was a wall of prose that had to be read to be skipped. The reasoning is worth
+keeping — it is the difference between a setting someone can decide about and one they
+guess at — so the answer was to stop showing it unasked rather than to delete it.
+
+Two parts of this are choices a later change could quietly undo:
+
+- **Not a tooltip.** A tooltip is the obvious way to hide text and the wrong one here. This
+  application is used with a pen and a finger, and neither hovers: on a Cintiq the
+  reasoning would simply be gone. The chevron is a real button because pressing is the one
+  gesture every input this application supports can perform.
+- **Search marks what it matched.** Every hit is highlighted where it lies — in the title,
+  in the summary, in the prose once that is open. A hit lying only in the prose has nothing
+  on the row to mark, so the chevron is marked instead: it says the answer is in here
+  without opening a row under the hands of someone still typing. Expanding those rows
+  automatically was built first and then removed, because the list jumps on every
+  keystroke. A row matched only by a keyword marks nothing, deliberately — the word is not
+  in the prose either, and a marked chevron would promise text that is not there.
+
+The chevron sits under the title and in front of the summary. The right-hand edge of the
+row was tried first and cannot have it: editors range from a switch to a wide combo, so the
+chevron landed somewhere different on every row; it took the width the summary needed to
+stay on one line; and on **Snippet format order** it came to rest in the same column as
+that editor's own reordering chevrons, where it read as one of them.
+
+**Always show the Eraser is drawn rather than switched.** It is one boolean and a switch was
+the ordinary answer, but the question it asks is where a button appears, so it is offered as
+two pictures of the toolbar — identical but for the Eraser, and redrawn to match whichever
+arrangement **Layout** has chosen, since that setting decides whether the Eraser joins the
+bar or takes a row beneath it. The Eraser is in the accent color because the difference
+between the two pictures is the whole question, and the Off picture reserves its space
+rather than closing up, so that turning it on adds the Eraser instead of moving everything
+else.
+
+---
+
 ## Open questions
 
 - arm64 is not built; add it if Surface devices matter for a pen application.

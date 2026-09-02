@@ -898,6 +898,19 @@ var offerRoundTrip = AppSettingsSerializer.Parse(
 Assert(
     !offerRoundTrip.SuggestMouseMode,
     "Settings JSON should round-trip the mouse drawing offer.");
+// The Eraser button costs the toolbar a row, so it stays off until asked for -
+// including for settings written before it could be asked for.
+Assert(
+    !defaultSettings.ShowEraserButton,
+    "Missing settings should leave the Eraser off the toolbar.");
+Assert(
+    !settingsFromVersion12.ShowEraserButton,
+    "Settings saved before the Eraser button existed should not grow a toolbar row.");
+var eraserButtonRoundTrip = AppSettingsSerializer.Parse(
+    AppSettingsSerializer.Format(new AppSettings { ShowEraserButton = true }));
+Assert(
+    eraserButtonRoundTrip.ShowEraserButton,
+    "Settings JSON should round-trip the always-show-the-Eraser choice.");
 Assert(
     defaultSettings.SnippetFormatOrder is ["plain", "dax", "sqlserver"],
     "Missing settings should keep Plain text first so paste stays plain text.");

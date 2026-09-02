@@ -1,7 +1,9 @@
 using System.Globalization;
 using System.Windows;
+using System.Windows.Automation;
 using System.Windows.Controls;
 using System.Windows.Controls.Primitives;
+using System.Windows.Documents;
 using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Shapes;
@@ -12,11 +14,19 @@ namespace SQLBI.Whiteboard;
 
 public partial class PreferencesWindow : Window
 {
+    private const double DisclosureColumnWidth = 24;
+
     private readonly AppSettings _settings;
     private readonly Action _applied;
     private readonly IReadOnlyList<DisplayMonitor> _monitors;
     private string? _selectedCategory;
     private bool _suppressChange;
+
+    // The Eraser's pictures are drawn from the Layout setting, which sits in the
+    // same list and can change under them. Held so that one editor can be
+    // redrawn where rebuilding the list would lose the scroll position and the
+    // rows anyone had opened.
+    private ContentControl? _eraserChoice;
 
     public PreferencesWindow(AppSettings settings, Action applied)
     {
@@ -44,10 +54,19 @@ public partial class PreferencesWindow : Window
 
     private void SearchBox_TextChanged(object sender, TextChangedEventArgs e)
     {
-        SearchPlaceholder.Visibility = string.IsNullOrEmpty(SearchBox.Text)
-            ? Visibility.Visible
-            : Visibility.Collapsed;
+        var empty = string.IsNullOrEmpty(SearchBox.Text);
+        SearchPlaceholder.Visibility = empty ? Visibility.Visible : Visibility.Collapsed;
+
+        // Nothing to clear while the box is empty, and a permanent cross beside
+        // the placeholder would read as a button that does nothing.
+        SearchClear.Visibility = empty ? Visibility.Collapsed : Visibility.Visible;
         Rebuild();
+    }
+
+    private void SearchClear_Click(object sender, RoutedEventArgs e)
+    {
+        SearchBox.Clear();
+        SearchBox.Focus();
     }
 
     private void Rebuild()
@@ -63,7 +82,7 @@ public partial class PreferencesWindow : Window
 
         var visible = SettingsCatalog.Filter(query, _selectedCategory);
         RebuildCategories(visibleCategories);
-        RebuildSettings(visible);
+        RebuildSettings(visible, query);
     }
 
     private void RebuildCategories(IReadOnlyList<string> categories)
@@ -94,9 +113,10 @@ public partial class PreferencesWindow : Window
         Rebuild();
     }
 
-    private void RebuildSettings(IReadOnlyList<SettingDescriptor> settings)
+    private void RebuildSettings(IReadOnlyList<SettingDescriptor> settings, string? query)
     {
         SettingsHost.Children.Clear();
+        _eraserChoice = null;
         var empty = settings.Count == 0;
         EmptyState.Visibility = empty ? Visibility.Visible : Visibility.Collapsed;
         if (empty)
@@ -129,7 +149,7 @@ public partial class PreferencesWindow : Window
                     lastCategory = setting.Category;
                 }
 
-                SettingsHost.Children.Add(CreateRow(setting));
+                SettingsHost.Children.Add(CreateRow(setting, query));
             }
         }
         finally
@@ -138,28 +158,109 @@ public partial class PreferencesWindow : Window
         }
     }
 
-    private Border CreateRow(SettingDescriptor setting)
+    // Search matches are marked where they are rather than only counted, so a
+    // row can say why it is in the list. The term is matched exactly as the
+    // search matched it - one case-insensitive substring - so what is marked is
+    // what was found, and nothing else.
+    private void FillText(TextBlock block, string text, string? query)
     {
-        var editor = CreateEditor(setting);
-        var copy = new StackPanel();
-        copy.Children.Add(new TextBlock
+        block.Inlines.Clear();
+        var term = query?.Trim();
+        if (string.IsNullOrEmpty(term))
         {
-            Style = (Style)FindResource("SettingsTitle"),
-            Text = setting.Title,
-        });
-        copy.Children.Add(new TextBlock
+            block.Text = text;
+            return;
+        }
+
+        var highlight = (Brush)FindResource("SettingsHighlightBrush");
+        var start = 0;
+        while (text.IndexOf(term, start, StringComparison.OrdinalIgnoreCase) is var hit && hit >= 0)
+        {
+            if (hit > start)
+            {
+                block.Inlines.Add(new Run(text[start..hit]));
+            }
+
+            block.Inlines.Add(new Run(text.Substring(hit, term.Length)) { Background = highlight });
+            start = hit + term.Length;
+        }
+
+        block.Inlines.Add(new Run(text[start..]));
+    }
+
+    // The row's own words: the title, the one line always under it, and the
+    // prose that appears only when the chevron is asked for it.
+    private StackPanel CreateCopy(SettingDescriptor setting, string? query)
+    {
+        var copy = new StackPanel();
+        var title = new TextBlock { Style = (Style)FindResource("SettingsTitle") };
+        FillText(title, setting.Title, query);
+        copy.Children.Add(title);
+
+        var summary = new TextBlock { Style = (Style)FindResource("SettingsSummary") };
+        FillText(summary, setting.Summary, query);
+
+        // The chevron goes under the title and in front of the summary, where it
+        // belongs to the words it opens. The right-hand edge of the row cannot
+        // have it: editors live there, and two of them carry chevrons of their
+        // own that a disclosure beside them would be mistaken for.
+        var summaryRow = new Grid();
+        summaryRow.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(DisclosureColumnWidth) });
+        summaryRow.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+        Grid.SetColumn(summary, 1);
+        summaryRow.Children.Add(summary);
+        copy.Children.Add(summaryRow);
+
+        // A setting whose summary is the whole story has nothing to disclose,
+        // and a chevron on it would promise something that is not there. Its
+        // summary still keeps the indent, so the column of them stays straight.
+        if (setting.Description.Length == 0)
+        {
+            return copy;
+        }
+
+        var detail = new TextBlock
         {
             Style = (Style)FindResource("SettingsDescription"),
-            Text = setting.Description,
-        });
+            Margin = new Thickness(DisclosureColumnWidth, 6, 0, 2),
+            Visibility = Visibility.Collapsed,
+        };
+        FillText(detail, setting.Description, query);
+        copy.Children.Add(detail);
 
+        var disclosure = new ToggleButton
+        {
+            Style = (Style)FindResource("SettingsDisclosure"),
+            ToolTip = $"More about {setting.Title}",
+        };
+        AutomationProperties.SetName(disclosure, $"More about {setting.Title}");
+        disclosure.Checked += (_, _) => detail.Visibility = Visibility.Visible;
+        disclosure.Unchecked += (_, _) => detail.Visibility = Visibility.Collapsed;
+
+        // The match is real but nothing on the row shows it. Marking the chevron
+        // says where it is, which is the whole of what the row can honestly say
+        // without opening itself while someone is still typing.
+        if (SettingsCatalog.MatchesDescriptionOnly(setting, query))
+        {
+            disclosure.Background = (Brush)FindResource("SettingsHighlightBrush");
+        }
+
+        summaryRow.Children.Add(disclosure);
+        return copy;
+    }
+
+    private Border CreateRow(SettingDescriptor setting, string? query)
+    {
+        var editor = CreateEditor(setting);
         var body = new Grid();
+        body.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+        body.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+        body.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+        body.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+        body.Children.Add(CreateCopy(setting, query));
+
         if (setting.Editor == SettingEditorKind.DoubleRange)
         {
-            body.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
-            body.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
-            body.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
-            body.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
             var slider = (Slider)editor;
             var value = new TextBlock
             {
@@ -170,7 +271,6 @@ public partial class PreferencesWindow : Window
             Grid.SetColumn(value, 1);
             Grid.SetRow(slider, 1);
             Grid.SetColumnSpan(slider, 2);
-            body.Children.Add(copy);
             body.Children.Add(value);
             body.Children.Add(slider);
         }
@@ -179,23 +279,19 @@ public partial class PreferencesWindow : Window
                  SettingEditorKind.LaserWeightChoice or
                  SettingEditorKind.PenButtonChoice or
                  SettingEditorKind.ToolbarPlacementChoice or
-                 SettingEditorKind.ToolbarLayoutChoice)
+                 SettingEditorKind.ToolbarLayoutChoice or
+                 SettingEditorKind.EraserButtonChoice)
         {
-            body.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
-            body.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
             Grid.SetRow(editor, 1);
+            Grid.SetColumnSpan(editor, 2);
             editor.Margin = new Thickness(0, 8, 0, 0);
-            body.Children.Add(copy);
             body.Children.Add(editor);
         }
         else
         {
-            body.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
-            body.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
             Grid.SetColumn(editor, 1);
             editor.Margin = new Thickness(16, 0, 0, 0);
             editor.VerticalAlignment = VerticalAlignment.Center;
-            body.Children.Add(copy);
             body.Children.Add(editor);
         }
 
@@ -220,6 +316,7 @@ public partial class PreferencesWindow : Window
                 CreateSampleChoice(setting, CreateToolbarPlacementSample),
             SettingEditorKind.ToolbarLayoutChoice =>
                 CreateSampleChoice(setting, CreateToolbarLayoutSample),
+            SettingEditorKind.EraserButtonChoice => CreateEraserButtonChoice(setting),
             _ => CreateEnumCombo(setting),
         };
 
@@ -494,13 +591,42 @@ public partial class PreferencesWindow : Window
     }
 
     // A miniature of the ink flyout each layout produces.
-    private FrameworkElement? CreateToolbarLayoutSample(string id)
+    private FrameworkElement? CreateToolbarLayoutSample(string id) =>
+        Enum.TryParse<CalligraphyAccess>(id, out var access)
+            ? SampleBoard(SampleToolbarRows(access))
+            : null;
+
+    // The Eraser's two pictures are the same toolbar twice, drawn in whichever
+    // arrangement Layout has chosen, differing only in the Eraser itself - which
+    // is in the accent color because that difference is the entire question.
+    private FrameworkElement CreateEraserButtonSample(string id)
     {
-        if (!Enum.TryParse<CalligraphyAccess>(id, out var access))
+        var access = _settings.CalligraphyAccess;
+        var rows = SampleToolbarRows(access);
+        var eraser = SampleEraser(shown: id == SettingsCatalog.EraserButton.On);
+        if (access == CalligraphyAccess.DualPalette)
         {
-            return null;
+            // Its own row under the palette, which is where it goes there. The
+            // row is added either way, so that turning the Eraser on adds the
+            // Eraser rather than moving everything else.
+            var row = new StackPanel
+            {
+                Orientation = Orientation.Horizontal,
+                Margin = new Thickness(0, 2, 0, 2),
+            };
+            row.Children.Add(eraser);
+            rows.Children.Add(row);
+        }
+        else
+        {
+            ((StackPanel)rows.Children[^1]).Children.Add(eraser);
         }
 
+        return SampleBoard(rows);
+    }
+
+    private static StackPanel SampleToolbarRows(CalligraphyAccess access)
+    {
         var rows = new StackPanel
         {
             HorizontalAlignment = HorizontalAlignment.Center,
@@ -524,17 +650,33 @@ public partial class PreferencesWindow : Window
                 break;
         }
 
-        return new Border
-        {
-            Width = 76,
-            Height = 46,
-            CornerRadius = new CornerRadius(6),
-            Background = SampleBoardBrush,
-            BorderBrush = SampleEdgeBrush,
-            BorderThickness = new Thickness(1),
-            Child = rows,
-        };
+        return rows;
     }
+
+    // Hidden rather than absent when the Eraser is off, so that the two pictures
+    // are the same picture in everything but the one icon.
+    private System.Windows.Shapes.Path SampleEraser(bool shown) => new()
+    {
+        Width = 10,
+        Height = 10,
+        Stretch = Stretch.Uniform,
+        Fill = SampleAccentBrush,
+        Data = (Geometry)FindResource("EraserGeometry"),
+        Margin = new Thickness(3, 0, 0, 0),
+        VerticalAlignment = VerticalAlignment.Center,
+        Visibility = shown ? Visibility.Visible : Visibility.Hidden,
+    };
+
+    private static Border SampleBoard(UIElement content) => new()
+    {
+        Width = 76,
+        Height = 46,
+        CornerRadius = new CornerRadius(6),
+        Background = SampleBoardBrush,
+        BorderBrush = SampleEdgeBrush,
+        BorderThickness = new Thickness(1),
+        Child = content,
+    };
 
     private static StackPanel SampleChipRow(int chips, bool chevron, bool nibs)
     {
@@ -593,6 +735,31 @@ public partial class PreferencesWindow : Window
     // Each option is drawn as the strokes it produces, at the same width and
     // opacity the trail itself would use, so the choice is made by looking
     // rather than by imagining what a word means.
+    private FrameworkElement CreateEraserButtonChoice(SettingDescriptor setting)
+    {
+        _eraserChoice = new ContentControl
+        {
+            Focusable = false,
+            Content = CreateSampleChoice(setting, CreateEraserButtonSample),
+        };
+        return _eraserChoice;
+    }
+
+    private void RefreshEraserChoice()
+    {
+        if (_eraserChoice is null)
+        {
+            return;
+        }
+
+        var setting = SettingsCatalog.All.FirstOrDefault(
+            item => item.Id == SettingsCatalog.Ids.ShowEraserButton);
+        if (setting is not null)
+        {
+            _eraserChoice.Content = CreateSampleChoice(setting, CreateEraserButtonSample);
+        }
+    }
+
     private FrameworkElement CreateLaserWeightChoice(SettingDescriptor setting) =>
         CreateSampleChoice(setting, id =>
         {
@@ -893,6 +1060,9 @@ public partial class PreferencesWindow : Window
             SettingsCatalog.Ids.FingerMode => _settings.FingerMode.ToString(),
             SettingsCatalog.Ids.MouseMode => _settings.MouseMode.ToString(),
             SettingsCatalog.Ids.PenButton => _settings.PenButtons.Barrel.ToString(),
+            SettingsCatalog.Ids.ShowEraserButton => _settings.ShowEraserButton
+                ? SettingsCatalog.EraserButton.On
+                : SettingsCatalog.EraserButton.Off,
             _ => string.Empty,
         };
 
@@ -984,8 +1154,18 @@ public partial class PreferencesWindow : Window
                 when Enum.TryParse<PenButtonAction>(id, out var penButton):
                 _settings.PenButtons.Barrel = penButton;
                 break;
+            case SettingsCatalog.Ids.ShowEraserButton:
+                _settings.ShowEraserButton = id == SettingsCatalog.EraserButton.On;
+                break;
             default:
                 return;
+        }
+
+        // The Eraser is drawn into whichever toolbar Layout has just chosen, so
+        // its two pictures are stale the moment that choice changes.
+        if (setting.Id == SettingsCatalog.Ids.ToolbarLayout)
+        {
+            RefreshEraserChoice();
         }
 
         NotifyApplied();

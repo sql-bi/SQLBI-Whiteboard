@@ -1639,10 +1639,6 @@ public partial class MainWindow : Window
         return false;
     }
 
-    // Finger drawing and mouse drawing are separate settings that need the same
-    // two toolbar buttons, for the same reason: erasing is the pen's reverse end
-    // and panning is touch or Space, and a device with neither has nowhere else
-    // to reach them.
     private void ApplyPointerModes()
     {
         var fingerInk = IsFingerModeEffective;
@@ -1652,16 +1648,76 @@ public partial class MainWindow : Window
         }
 
         InkSurface.SetAllowTouchInk(fingerInk);
+        ApplyExtraTools();
+    }
 
-        var extraTools = fingerInk || IsMouseModeEffective;
-        if (ExtraToolsRow is not null)
+    // Finger drawing and mouse drawing are separate settings that need the same
+    // two toolbar buttons, for the same reason: erasing is the pen's reverse end
+    // and panning is touch or Space, and a device with neither has nowhere else
+    // to reach them. The Eraser has a third reason of its own - a pen whose back
+    // end is not an eraser - so it can be asked for on its own, and Pan cannot.
+    private void ApplyExtraTools()
+    {
+        var extraTools = IsFingerModeEffective || IsMouseModeEffective;
+        var eraserTool = extraTools || _settings.ShowEraserButton;
+        var dual = IsDualLayout;
+        PlaceEraserButton(dual);
+        if (EraserToolButton is not null)
         {
-            ExtraToolsRow.Visibility = extraTools ? Visibility.Visible : Visibility.Collapsed;
+            EraserToolButton.Visibility = eraserTool ? Visibility.Visible : Visibility.Collapsed;
         }
 
-        if (!extraTools && _activeTool is BoardTool.Eraser or BoardTool.Pan)
+        if (PanToolButton is not null)
+        {
+            PanToolButton.Visibility = extraTools ? Visibility.Visible : Visibility.Collapsed;
+        }
+
+        if (ExtraToolsRow is not null)
+        {
+            // The row is Pan's alone once the Eraser has moved up into the bar,
+            // so it goes away with Pan rather than with either button.
+            var wanted = dual ? eraserTool : extraTools;
+            ExtraToolsRow.Visibility = wanted ? Visibility.Visible : Visibility.Collapsed;
+        }
+
+        if ((!eraserTool && _activeTool is BoardTool.Eraser) ||
+            (!extraTools && _activeTool is BoardTool.Pan))
         {
             SetActiveTool(_lastDrawingTool);
+        }
+    }
+
+    // Where the Eraser sits is a question about the layout, not about why it is
+    // there. The dual palette is stacked groups already, so a row beneath it
+    // reads as one more group; the compact bar is a single line of tools, and a
+    // second line holding one button doubles the toolbar's height to say very
+    // little.
+    private void PlaceEraserButton(bool dual)
+    {
+        if (EraserToolButton is null || ToolButtonsRow is null || ExtraToolsRow is null)
+        {
+            return;
+        }
+
+        Panel host = dual ? ExtraToolsRow : ToolButtonsRow;
+        if (ReferenceEquals(EraserToolButton.Parent, host))
+        {
+            return;
+        }
+
+        if (EraserToolButton.Parent is Panel previous)
+        {
+            previous.Children.Remove(EraserToolButton);
+        }
+
+        if (dual)
+        {
+            // Ahead of Pan, which is the order the two have always been in.
+            host.Children.Insert(0, EraserToolButton);
+        }
+        else
+        {
+            host.Children.Add(EraserToolButton);
         }
     }
 
@@ -2912,14 +2968,19 @@ public partial class MainWindow : Window
         {
             SetInkOptionsOpen(false);
             RebuildDualPalette();
-            return;
+        }
+        else
+        {
+            ApplyInkOptionsWidth();
+            if (_isInkOptionsOpen)
+            {
+                RebuildInkOptions();
+            }
         }
 
-        ApplyInkOptionsWidth();
-        if (_isInkOptionsOpen)
-        {
-            RebuildInkOptions();
-        }
+        // The Eraser sits in the bar in the compact layouts and under it in the
+        // dual palette, so changing the layout moves it.
+        ApplyExtraTools();
     }
 
     private void ApplyInkOptionsWidth()

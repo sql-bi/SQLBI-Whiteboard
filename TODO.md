@@ -16,7 +16,7 @@ The delivery chain works end to end: a merge to `main` builds, signs, and publis
 pre-release to GitHub Releases, and one approval promotes that same build to a release.
 <https://whiteboard.sqlbi.com> reads its download links from the release manifest
 deployed beside it and needs no edit per release. The current product version is `VersionPrefix` in `Directory.Build.props`
-(1.2.1). Identity version for the Store package is `VersionPrefix.0` (`1.2.1.0`).
+(1.2.2). Identity version for the Store package is `VersionPrefix.0` (`1.2.2.0`).
 
 Declaring that number is decision 20 in [docs/decisions.md](docs/decisions.md). What 1.0
 was waiting on shipped during 0.9.x: Preferences, `.wimport`, Explorer and VS Code
@@ -27,7 +27,8 @@ No numbered work remains. 1.2.0 answered
 [discussion 78](https://github.com/sql-bi/SQLBI-Whiteboard/discussions/78) with Mouse
 drawing — decision 23, with the alternatives kept in
 [docs/mouse-mode.md](docs/mouse-mode.md) — and 1.2.1 made it discoverable from the
-toolbar, decision 24. The video teaser is recorded and served from the landing page
+toolbar, decision 24. 1.2.2 puts the Eraser within reach of a pen whose back end is not
+one, as an option that is off by default. The video teaser is recorded and served from the landing page
 itself as `site/teaser-av1.mp4` / `site/teaser-h264.mp4` — the Vimeo-embed plan was
 reversed, see decision 19 in [docs/decisions.md](docs/decisions.md); the production
 script and staging assets are in `docs/teaser/`. The release manifests and the Store

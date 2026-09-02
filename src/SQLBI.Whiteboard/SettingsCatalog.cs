@@ -33,6 +33,14 @@ internal enum SettingEditorKind
     /// How the ink flyout is arranged, drawn as a miniature of the flyout.
     /// </summary>
     ToolbarLayoutChoice,
+
+    /// <summary>
+    /// Whether the Eraser is on the toolbar, drawn as the toolbar with and
+    /// without it. It is a boolean, but a switch says nothing about where the
+    /// button would appear, and that is the part worth seeing - so the two
+    /// pictures follow whatever <see cref="ToolbarLayoutChoice"/> has chosen.
+    /// </summary>
+    EraserButtonChoice,
 }
 
 internal sealed class SettingChoice
@@ -54,7 +62,20 @@ internal sealed class SettingDescriptor
 
     public required string Title { get; init; }
 
-    public required string Description { get; init; }
+    /// <summary>
+    /// The one line that is always on the row, under the title. It has to say
+    /// what the setting is for in a single line at the dialog's width, because
+    /// nothing else about the setting is visible until someone asks for it.
+    /// </summary>
+    public required string Summary { get; init; }
+
+    /// <summary>
+    /// The reasoning, the defaults, and the consequences - everything that will
+    /// not fit on one line, shown only when the row is expanded. Empty for a
+    /// setting whose summary is the whole story, and such a row has no
+    /// disclosure at all.
+    /// </summary>
+    public string Description { get; init; } = string.Empty;
 
     public required string[] Keywords { get; init; }
 
@@ -82,6 +103,7 @@ internal static class SettingsCatalog
         public const string LaserTrailWeight = "laser.trailWeight";
         public const string ToolbarPlacement = "toolbar.placement";
         public const string ToolbarLayout = "toolbar.layout";
+        public const string ShowEraserButton = "toolbar.eraserButton";
         public const string WarnWhenNoDigitizer = "startup.noDigitizerNotice";
         public const string FingerMode = "input.fingerMode";
         public const string MouseMode = "input.mouseMode";
@@ -89,6 +111,17 @@ internal static class SettingsCatalog
         public const string PenButton = "input.penButton";
         public const string SnippetFormatOrder = "input.snippetFormatOrder";
         public const string CheckForUpdates = "updates.check";
+    }
+
+    /// <summary>
+    /// The two states of <see cref="Ids.ShowEraserButton"/>. It is stored as a
+    /// boolean and offered as a pair of drawn choices, so it needs choice ids
+    /// where the other booleans need none.
+    /// </summary>
+    public static class EraserButton
+    {
+        public const string Off = "Off";
+        public const string On = "On";
     }
 
     public const string Startup = "Startup";
@@ -107,7 +140,7 @@ internal static class SettingsCatalog
             Id = Ids.StartupMonitor,
             Category = Startup,
             Title = "Open on",
-            Description = "Which display the window uses at launch.",
+            Summary = "Which display the window uses at launch",
             Keywords = ["monitor", "display", "cintiq", "wacom", "screen"],
             Editor = SettingEditorKind.MonitorChoice,
         },
@@ -116,6 +149,7 @@ internal static class SettingsCatalog
             Id = Ids.StartFullScreen,
             Category = Startup,
             Title = "Start full screen",
+            Summary = "Fill the monitor and hide the chrome at launch",
             Description = "Fill the current monitor and hide the title and tabs the next time the application starts. F11 still toggles this session. Ctrl+F11 hides chrome without filling the monitor.",
             Keywords = ["fullscreen", "full screen", "f11", "maximize"],
             Editor = SettingEditorKind.BooleanSwitch,
@@ -125,6 +159,7 @@ internal static class SettingsCatalog
             Id = Ids.WarnWhenNoDigitizer,
             Category = Startup,
             Title = "Warn when there is nothing to draw with",
+            Summary = "Say so at startup when Windows reports no digitizer",
             Description = "Say so at startup when Windows reports neither a pen tablet nor a touchscreen, and describe what Mouse drawing does and does not give you in place of a pen. What Windows reports is a list of digitizers rather than what is plugged in, so a pen that has never been brought into range can be missing from it.",
             Keywords = ["pen", "touch", "touchscreen", "digitizer", "tablet", "mouse", "warning", "notice", "startup"],
             Editor = SettingEditorKind.BooleanSwitch,
@@ -134,6 +169,7 @@ internal static class SettingsCatalog
             Id = Ids.FingerMode,
             Category = Input,
             Title = "Finger drawing",
+            Summary = "Whether one finger draws or pans",
             Description = "New installs default to When no pen is detected. Off keeps one-finger pan. On makes one finger use the current tool; two fingers still pan and pinch-zoom, and Eraser and Pan appear on the toolbar. \"When no pen is detected\" uses the digitizer list Windows reports, which is not the same as a pen being in the room.",
             Keywords = ["finger", "touch", "pen", "draw", "tablet", "stylus", "digitizer"],
             Editor = SettingEditorKind.EnumChoice,
@@ -149,6 +185,7 @@ internal static class SettingsCatalog
             Id = Ids.MouseMode,
             Category = Input,
             Title = "Mouse drawing",
+            Summary = "What the left mouse button does",
             Description = "New installs default to When there is no pen or touchscreen. Off keeps the left button for moving containers, which is what it has always done. On makes the left button use the current tool, and puts Eraser and Pan on the toolbar; Ctrl and the left button then move and resize a container, and Ctrl with a double-click frames one. A mouse reports no pressure, so only Calligraphy still varies its width, and nothing about the pen changes when this is on.",
             Keywords = ["mouse", "draw", "drawing", "pointer", "no pen", "digitizer", "left button", "ctrl"],
             Editor = SettingEditorKind.EnumChoice,
@@ -164,6 +201,7 @@ internal static class SettingsCatalog
             Id = Ids.SuggestMouseMode,
             Category = Input,
             Title = "Offer mouse drawing when the mouse picks a tool",
+            Summary = "Ask once a session while mouse drawing is off",
             Description = "With Mouse drawing off, choosing a tool from the toolbar with the mouse offers to turn it on. Asked once a session, and not again once the offer has been declined for good.",
             Keywords = ["mouse", "offer", "prompt", "dialog", "toolbar", "suggest", "ask"],
             Editor = SettingEditorKind.BooleanSwitch,
@@ -173,6 +211,7 @@ internal static class SettingsCatalog
             Id = Ids.PenButton,
             Category = Input,
             Title = "Pen button",
+            Summary = "What holding the barrel button does",
             Description = "The barrel button on the side of the pen. Hold it for the assigned action: Laser lasts only while the button is down, Straight line is the same constraint as holding Shift. The reverse end of the pen always erases, and so does the upper button, because Windows reports the two the same way.",
             Keywords = ["pen", "barrel", "button", "laser", "straight", "line", "shift", "stylus", "eraser", "wacom", "cintiq"],
             Editor = SettingEditorKind.PenButtonChoice,
@@ -187,6 +226,7 @@ internal static class SettingsCatalog
             Id = Ids.SnippetFormatOrder,
             Category = Input,
             Title = "Snippet format order",
+            Summary = "Which language pasted text is tried as first",
             Description = "Paste tries formats from top to bottom and uses the first that accepts the text. Plain text always accepts, so putting it first keeps every paste as plain text. Recognized file extensions (.dax, .sql, .txt) keep their language.",
             Keywords = ["snippet", "language", "dax", "sql", "paste", "format", "text", "order"],
             Editor = SettingEditorKind.OrderedList,
@@ -196,7 +236,7 @@ internal static class SettingsCatalog
             Id = Ids.LaserHoldSeconds,
             Category = Laser,
             Title = "Trail duration",
-            Description = "How long the laser stays fully visible after you lift.",
+            Summary = "How long the laser stays fully visible after you lift",
             Keywords = ["laser", "decay", "hold", "trail", "duration"],
             Editor = SettingEditorKind.DoubleRange,
             Minimum = LaserSettings.MinimumHoldSeconds,
@@ -207,7 +247,7 @@ internal static class SettingsCatalog
             Id = Ids.LaserFadeSeconds,
             Category = Laser,
             Title = "Fade duration",
-            Description = "How long the trail takes to disappear after the hold.",
+            Summary = "How long the trail takes to disappear after the hold",
             Keywords = ["laser", "fade", "decay", "trail"],
             Editor = SettingEditorKind.DoubleRange,
             Minimum = LaserSettings.MinimumFadeSeconds,
@@ -218,6 +258,7 @@ internal static class SettingsCatalog
             Id = Ids.LaserHoldMode,
             Category = Laser,
             Title = "Hold",
+            Summary = "Whether a new stroke keeps the previous trail alive",
             Description = "Whether a new stroke keeps the previous trail alive or starts its own timer.",
             Keywords = ["laser", "hold", "shared", "stroke"],
             Editor = SettingEditorKind.EnumChoice,
@@ -232,6 +273,7 @@ internal static class SettingsCatalog
             Id = Ids.LaserTrailWeight,
             Category = Laser,
             Title = "Trail weight",
+            Summary = "How much a light touch is thinned out",
             Description = "A pen reports little pressure on a quick tap. Each option shows that tap above a firm stroke: the firm stroke never changes, only how much the light one is thinned out.",
             Keywords = ["laser", "weight", "thickness", "width", "pressure", "trail"],
             Editor = SettingEditorKind.LaserWeightChoice,
@@ -247,6 +289,7 @@ internal static class SettingsCatalog
             Id = Ids.ToolbarPlacement,
             Category = Toolbar,
             Title = "Position",
+            Summary = "Which corner the toolbar sits in",
             Description = "Top right keeps the toolbar under a typical presenter picture-in-picture during recording.",
             Keywords = ["toolbar", "position", "placement", "pip"],
             Editor = SettingEditorKind.ToolbarPlacementChoice,
@@ -264,6 +307,7 @@ internal static class SettingsCatalog
             Id = Ids.ToolbarLayout,
             Category = Toolbar,
             Title = "Layout",
+            Summary = "How the colors and sizes are arranged",
             Description = "Dual palette keeps both tools’ colors and sizes visible. The other layouts use a compact bar and a single-tool panel.",
             Keywords = ["toolbar", "layout", "calligraphy", "palette", "chevron"],
             Editor = SettingEditorKind.ToolbarLayoutChoice,
@@ -276,9 +320,25 @@ internal static class SettingsCatalog
         },
         new()
         {
+            Id = Ids.ShowEraserButton,
+            Category = Toolbar,
+            Title = "Always show the Eraser",
+            Summary = "Keep it on the toolbar for a pen without one",
+            Description = "Off, the Eraser is on the toolbar only when finger or mouse drawing puts it there, because the pen's reverse end already erases. On, it stays there for the pen too, which is the only way to reach the Eraser with a pen that has no reverse end. It joins the row of tools in the compact layouts and sits under the palette in Dual palette. Pan is unaffected: it stays on the toolbar only when something else needs it.",
+            Keywords = ["eraser", "toolbar", "button", "pen", "rubber", "erase", "no eraser"],
+            Editor = SettingEditorKind.EraserButtonChoice,
+            Choices =
+            [
+                new() { Id = EraserButton.Off, Title = "Off" },
+                new() { Id = EraserButton.On, Title = "On" },
+            ],
+        },
+        new()
+        {
             Id = Ids.CheckForUpdates,
             Category = Updates,
             Title = "Check for new versions",
+            Summary = "Ask GitHub once a day whether a newer build exists",
             Description = "Once a day the application asks GitHub whether a newer released build exists. It does not send a machine identifier. Microsoft Store installs are updated by the Store and never make this request.",
             Keywords = ["update", "version", "github", "download", "release"],
             Editor = SettingEditorKind.BooleanSwitch,
@@ -320,9 +380,29 @@ internal static class SettingsCatalog
 
         var term = query.Trim();
         return Contains(setting.Title, term) ||
+               Contains(setting.Summary, term) ||
                Contains(setting.Description, term) ||
                Contains(setting.Category, term) ||
                setting.Keywords.Any(keyword => Contains(keyword, term));
+    }
+
+    /// <summary>
+    /// Whether a search found this setting only in the prose behind its
+    /// disclosure. Such a row marks its chevron, because a hit with nothing
+    /// marked on it reads as a fault in the search.
+    /// </summary>
+    public static bool MatchesDescriptionOnly(SettingDescriptor setting, string? query)
+    {
+        ArgumentNullException.ThrowIfNull(setting);
+        if (string.IsNullOrWhiteSpace(query))
+        {
+            return false;
+        }
+
+        var term = query.Trim();
+        return Contains(setting.Description, term) &&
+               !Contains(setting.Title, term) &&
+               !Contains(setting.Summary, term);
     }
 
     private static bool Contains(string value, string term) =>
