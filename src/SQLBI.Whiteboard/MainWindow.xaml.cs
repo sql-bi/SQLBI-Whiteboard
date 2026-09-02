@@ -1642,7 +1642,8 @@ public partial class MainWindow : Window
     // Finger drawing and mouse drawing are separate settings that need the same
     // two toolbar buttons, for the same reason: erasing is the pen's reverse end
     // and panning is touch or Space, and a device with neither has nowhere else
-    // to reach them.
+    // to reach them. The Eraser has a third reason of its own - a pen whose back
+    // end is not an eraser - so it can be asked for on its own, and Pan cannot.
     private void ApplyPointerModes()
     {
         var fingerInk = IsFingerModeEffective;
@@ -1654,12 +1655,19 @@ public partial class MainWindow : Window
         InkSurface.SetAllowTouchInk(fingerInk);
 
         var extraTools = fingerInk || IsMouseModeEffective;
+        var eraserTool = extraTools || _settings.ShowEraserButton;
         if (ExtraToolsRow is not null)
         {
-            ExtraToolsRow.Visibility = extraTools ? Visibility.Visible : Visibility.Collapsed;
+            ExtraToolsRow.Visibility = eraserTool ? Visibility.Visible : Visibility.Collapsed;
         }
 
-        if (!extraTools && _activeTool is BoardTool.Eraser or BoardTool.Pan)
+        if (PanToolButton is not null)
+        {
+            PanToolButton.Visibility = extraTools ? Visibility.Visible : Visibility.Collapsed;
+        }
+
+        if ((!eraserTool && _activeTool is BoardTool.Eraser) ||
+            (!extraTools && _activeTool is BoardTool.Pan))
         {
             SetActiveTool(_lastDrawingTool);
         }

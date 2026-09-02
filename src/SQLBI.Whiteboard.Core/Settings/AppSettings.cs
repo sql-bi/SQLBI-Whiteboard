@@ -126,6 +126,14 @@ public sealed class AppSettings
     /// </summary>
     public bool SuggestMouseMode { get; set; } = true;
 
+    /// <summary>
+    /// Whether the Eraser button stays on the toolbar when nothing else puts it
+    /// there. Off by default because the pen's reverse end already erases and
+    /// the row costs the toolbar its height; on for the pens that have no
+    /// reverse end, which otherwise cannot reach the Eraser at all.
+    /// </summary>
+    public bool ShowEraserButton { get; set; }
+
     public List<string> SnippetFormatOrder { get; set; } = [.. TextLanguageIds.All];
 
     public InkToolSettings Pen { get; set; } = InkToolSettings.From(InkPalettes.DefaultPen);
@@ -162,7 +170,7 @@ public sealed class AppSettings
 
 public static class AppSettingsSerializer
 {
-    public const int CurrentVersion = 14;
+    public const int CurrentVersion = 15;
 
     private static readonly JsonSerializerOptions JsonOptions = new()
     {

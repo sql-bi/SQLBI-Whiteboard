@@ -31,7 +31,7 @@ How the project is developed and shipped is documented separately:
 - Markdown `.wimport` recipes that build image and text containers from headings
 - An intentionally small floating toolbar
 - A File / Edit / View / Help tab strip. Click a tab for a one-row command strip over the canvas
-- Preferences for the startup monitor, full-screen start, finger drawing, mouse drawing, the pen button, snippet format order, laser trail timing and weight, toolbar position and layout, and (except Store installs) a daily new-version check
+- Preferences for the startup monitor, full-screen start, finger drawing, mouse drawing, the pen button, snippet format order, laser trail timing and weight, toolbar position and layout, keeping the Eraser on the toolbar for a pen that has no reverse end, and (except Store installs) a daily new-version check
 - About, with version and channel
 
 ## Build and run
@@ -184,7 +184,7 @@ Use **Copy settings** after finding a useful combination so the exact values can
 | Ctrl + left mouse | Select/move/resize a container and return to the previous drawing tool — what the left button does on its own when Mouse drawing is off |
 | Double-click container | Center and fit the image, text, or LiveView to the canvas. With Mouse drawing on and an ink or eraser tool selected, hold Ctrl: two plain clicks are two strokes |
 | Double-click empty canvas | Center and fit all board content, or reset an empty board |
-| Pen eraser | Erase complete strokes. The upper side button erases too: Windows reports it the same way as a pen turned round |
+| Pen eraser | Erase complete strokes. The upper side button erases too: Windows reports it the same way as a pen turned round. A pen with neither reaches the Eraser through **Help → Preferences → Toolbar → Always show the Eraser** |
 | Pen barrel | Hold the barrel button for the action assigned in Preferences: Laser (default) or Straight line. Laser returns to the previous tool on release |
 | One finger | Pan. With Finger drawing on, uses the current tool instead |
 | Two fingers | Pan and pinch zoom. Cancels an in-progress finger stroke when Finger drawing is on |
@@ -205,7 +205,7 @@ Use **Copy settings** after finding a useful combination so the exact values can
 | Delete | Delete the selected container and its linked strokes |
 | Alt+L | Laser pointer |
 | File / Edit / View / Help | Tab strip. Click a tab for a one-row command strip over the canvas. Click the canvas to hide it |
-| Help > Preferences | Searchable settings: startup monitor, full screen, no-pen warning, finger drawing, mouse drawing, pen button, snippet format order, laser trail, toolbar, update checks |
+| Help > Preferences | Searchable settings: startup monitor, full screen, no-pen warning, finger drawing, mouse drawing, pen button, snippet format order, laser trail, toolbar position and layout, always show the Eraser, update checks |
 | View > Bring to front / Send to back | Reorder the selected image, text, or LiveView (and its linked strokes) |
 | Help > About | Version, channel, license, the product site, and a download link when a newer release is known |
 | View > LiveView | Capture, freeze, disconnect, or reconnect a window or display |
@@ -277,6 +277,7 @@ Test these on the target device before tuning stroke algorithms:
 3. Rest a palm while drawing and verify the board does not pan.
 4. Lift the pen, then immediately pan and pinch with touch.
 5. Draw near all display edges and across the Windows display-scaling boundary, if multiple monitors use different scaling.
+6. Turn on **Always show the Eraser**: the Eraser joins the toolbar and Pan does not, the tip then erases while it is selected, and turning the setting back off returns to the last drawing tool.
 
 Wacom driver settings can remap the barrel and eraser controls, so validate both Windows Ink mode and the intended application profile.
 

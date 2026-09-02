@@ -82,6 +82,7 @@ internal static class SettingsCatalog
         public const string LaserTrailWeight = "laser.trailWeight";
         public const string ToolbarPlacement = "toolbar.placement";
         public const string ToolbarLayout = "toolbar.layout";
+        public const string ShowEraserButton = "toolbar.eraserButton";
         public const string WarnWhenNoDigitizer = "startup.noDigitizerNotice";
         public const string FingerMode = "input.fingerMode";
         public const string MouseMode = "input.mouseMode";
@@ -273,6 +274,15 @@ internal static class SettingsCatalog
                 new() { Id = nameof(CalligraphyAccess.Chevron), Title = "Chevron on the Pen button" },
                 new() { Id = nameof(CalligraphyAccess.SizeRow), Title = "Icons beside the size chips" },
             ],
+        },
+        new()
+        {
+            Id = Ids.ShowEraserButton,
+            Category = Toolbar,
+            Title = "Always show the Eraser",
+            Description = "Off, the Eraser is on the toolbar only when finger or mouse drawing puts it there, because the pen's reverse end already erases and the button costs the toolbar a row. On, it stays there for the pen too, which is the only way to reach the Eraser with a pen that has no reverse end. Pan is unaffected: it stays on the toolbar only when something else needs it.",
+            Keywords = ["eraser", "toolbar", "button", "pen", "rubber", "erase", "no eraser"],
+            Editor = SettingEditorKind.BooleanSwitch,
         },
         new()
         {
