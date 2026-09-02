@@ -9,6 +9,11 @@
     <SolidColorBrush x:Key="SettingsSwitchOffBrush"
                      Color="#22000000" />
 
+    <!-- Amber rather than the blue accent: the accent already means "this is
+         the choice in force", and a search hit is not a choice. -->
+    <SolidColorBrush x:Key="SettingsHighlightBrush"
+                     Color="#FFFDE68A" />
+
     <Style x:Key="SettingsSearchHost"
            TargetType="Border">
         <Setter Property="Background"
@@ -49,6 +54,55 @@
                     <ScrollViewer x:Name="PART_ContentHost"
                                   Margin="0"
                                   VerticalAlignment="Center" />
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+    <Geometry x:Key="SettingsClearGeometry">M0,0 L8,8 M8,0 L0,8</Geometry>
+
+    <Style x:Key="SettingsClearButton"
+           TargetType="Button">
+        <Setter Property="Width"
+                Value="22" />
+        <Setter Property="Height"
+                Value="22" />
+        <Setter Property="Background"
+                Value="Transparent" />
+        <Setter Property="BorderThickness"
+                Value="0" />
+        <Setter Property="Foreground"
+                Value="{DynamicResource SettingsHintBrush}" />
+        <Setter Property="VerticalAlignment"
+                Value="Center" />
+        <Setter Property="Cursor"
+                Value="Hand" />
+        <Setter Property="Stylus.IsPressAndHoldEnabled"
+                Value="False" />
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="Button">
+                    <Border x:Name="Root"
+                            Background="{TemplateBinding Background}"
+                            CornerRadius="11">
+                        <Path Width="8"
+                              Height="8"
+                              HorizontalAlignment="Center"
+                              VerticalAlignment="Center"
+                              Stroke="{TemplateBinding Foreground}"
+                              StrokeThickness="1.4"
+                              StrokeStartLineCap="Round"
+                              StrokeEndLineCap="Round"
+                              Data="{StaticResource SettingsClearGeometry}" />
+                    </Border>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsMouseOver"
+                                 Value="True">
+                            <Setter TargetName="Root"
+                                    Property="Background"
+                                    Value="{DynamicResource ToolbarHoverBrush}" />
+                        </Trigger>
+                    </ControlTemplate.Triggers>
                 </ControlTemplate>
             </Setter.Value>
         </Setter>
@@ -194,8 +248,11 @@
                 Value="{DynamicResource SettingsHintBrush}" />
         <Setter Property="TextWrapping"
                 Value="Wrap" />
+
+        <!-- The left indent is set in code, from the same constant as the
+             chevron's column, so the prose lines up under the summary. -->
         <Setter Property="Margin"
-                Value="12,6,0,2" />
+                Value="0,6,0,2" />
     </Style>
 
     <!-- The chevron that opens a row. It is a real button rather than a hover
@@ -204,9 +261,11 @@
     <Style x:Key="SettingsDisclosure"
            TargetType="ToggleButton">
         <Setter Property="Width"
-                Value="28" />
+                Value="20" />
         <Setter Property="Height"
-                Value="28" />
+                Value="20" />
+        <Setter Property="HorizontalAlignment"
+                Value="Left" />
         <Setter Property="Background"
                 Value="Transparent" />
         <Setter Property="BorderThickness"
@@ -214,7 +273,7 @@
         <Setter Property="Foreground"
                 Value="{DynamicResource SettingsHintBrush}" />
         <Setter Property="VerticalAlignment"
-                Value="Top" />
+                Value="Center" />
         <Setter Property="Cursor"
                 Value="Hand" />
         <Setter Property="Stylus.IsPressAndHoldEnabled"

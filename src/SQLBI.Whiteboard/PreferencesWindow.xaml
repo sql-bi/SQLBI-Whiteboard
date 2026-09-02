@@ -21,12 +21,23 @@
 
         <Border Style="{StaticResource SettingsSearchHost}">
             <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
                 <TextBlock x:Name="SearchPlaceholder"
                            Style="{StaticResource SettingsPlaceholder}"
                            Text="Search settings" />
                 <TextBox x:Name="SearchBox"
                          Style="{StaticResource SettingsSearchBox}"
                          TextChanged="SearchBox_TextChanged" />
+                <Button x:Name="SearchClear"
+                        Grid.Column="1"
+                        Style="{StaticResource SettingsClearButton}"
+                        ToolTip="Clear the search"
+                        AutomationProperties.Name="Clear the search"
+                        Visibility="Collapsed"
+                        Click="SearchClear_Click" />
             </Grid>
         </Border>
 

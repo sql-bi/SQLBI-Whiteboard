@@ -33,6 +33,14 @@ internal enum SettingEditorKind
     /// How the ink flyout is arranged, drawn as a miniature of the flyout.
     /// </summary>
     ToolbarLayoutChoice,
+
+    /// <summary>
+    /// Whether the Eraser is on the toolbar, drawn as the toolbar with and
+    /// without it. It is a boolean, but a switch says nothing about where the
+    /// button would appear, and that is the part worth seeing - so the two
+    /// pictures follow whatever <see cref="ToolbarLayoutChoice"/> has chosen.
+    /// </summary>
+    EraserButtonChoice,
 }
 
 internal sealed class SettingChoice
@@ -103,6 +111,17 @@ internal static class SettingsCatalog
         public const string PenButton = "input.penButton";
         public const string SnippetFormatOrder = "input.snippetFormatOrder";
         public const string CheckForUpdates = "updates.check";
+    }
+
+    /// <summary>
+    /// The two states of <see cref="Ids.ShowEraserButton"/>. It is stored as a
+    /// boolean and offered as a pair of drawn choices, so it needs choice ids
+    /// where the other booleans need none.
+    /// </summary>
+    public static class EraserButton
+    {
+        public const string Off = "Off";
+        public const string On = "On";
     }
 
     public const string Startup = "Startup";
@@ -307,7 +326,12 @@ internal static class SettingsCatalog
             Summary = "Keep it on the toolbar for a pen without one",
             Description = "Off, the Eraser is on the toolbar only when finger or mouse drawing puts it there, because the pen's reverse end already erases. On, it stays there for the pen too, which is the only way to reach the Eraser with a pen that has no reverse end. It joins the row of tools in the compact layouts and sits under the palette in Dual palette. Pan is unaffected: it stays on the toolbar only when something else needs it.",
             Keywords = ["eraser", "toolbar", "button", "pen", "rubber", "erase", "no eraser"],
-            Editor = SettingEditorKind.BooleanSwitch,
+            Editor = SettingEditorKind.EraserButtonChoice,
+            Choices =
+            [
+                new() { Id = EraserButton.Off, Title = "Off" },
+                new() { Id = EraserButton.On, Title = "On" },
+            ],
         },
         new()
         {
@@ -364,8 +388,8 @@ internal static class SettingsCatalog
 
     /// <summary>
     /// Whether a search found this setting only in the prose behind its
-    /// disclosure. Such a row opens on arrival, because a hit with nothing on
-    /// it to explain itself reads as a fault in the search.
+    /// disclosure. Such a row marks its chevron, because a hit with nothing
+    /// marked on it reads as a fault in the search.
     /// </summary>
     public static bool MatchesDescriptionOnly(SettingDescriptor setting, string? query)
     {

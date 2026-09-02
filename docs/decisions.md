@@ -530,15 +530,28 @@ Two parts of this are choices a later change could quietly undo:
   application is used with a pen and a finger, and neither hovers: on a Cintiq the
   reasoning would simply be gone. The chevron is a real button because pressing is the one
   gesture every input this application supports can perform.
-- **A search that matches only the hidden text opens the row.** Otherwise a hit arrives
-  looking like a mistake — a row with nothing on it containing what was typed. Matching on
-  the title or the summary leaves the row shut, because the reason it is there is already
-  visible.
+- **Search marks what it matched.** Every hit is highlighted where it lies — in the title,
+  in the summary, in the prose once that is open. A hit lying only in the prose has nothing
+  on the row to mark, so the chevron is marked instead: it says the answer is in here
+  without opening a row under the hands of someone still typing. Expanding those rows
+  automatically was built first and then removed, because the list jumps on every
+  keystroke. A row matched only by a keyword marks nothing, deliberately — the word is not
+  in the prose either, and a marked chevron would promise text that is not there.
 
-The chevrons occupy a fixed-width column of their own, to the right of the editors. Placing
-them between the title and the editor was tried and abandoned: editors range from a switch
-to a wide combo, so the chevron landed at a different place on every row, and the column it
-was borrowing from was exactly the one the summary needed in order to stay on one line.
+The chevron sits under the title and in front of the summary. The right-hand edge of the
+row was tried first and cannot have it: editors range from a switch to a wide combo, so the
+chevron landed somewhere different on every row; it took the width the summary needed to
+stay on one line; and on **Snippet format order** it came to rest in the same column as
+that editor's own reordering chevrons, where it read as one of them.
+
+**Always show the Eraser is drawn rather than switched.** It is one boolean and a switch was
+the ordinary answer, but the question it asks is where a button appears, so it is offered as
+two pictures of the toolbar — identical but for the Eraser, and redrawn to match whichever
+arrangement **Layout** has chosen, since that setting decides whether the Eraser joins the
+bar or takes a row beneath it. The Eraser is in the accent color because the difference
+between the two pictures is the whole question, and the Off picture reserves its space
+rather than closing up, so that turning it on adds the Eraser instead of moving everything
+else.
 
 ---
 
