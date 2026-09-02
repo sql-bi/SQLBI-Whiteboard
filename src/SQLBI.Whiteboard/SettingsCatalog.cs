@@ -280,7 +280,7 @@ internal static class SettingsCatalog
             Id = Ids.ShowEraserButton,
             Category = Toolbar,
             Title = "Always show the Eraser",
-            Description = "Off, the Eraser is on the toolbar only when finger or mouse drawing puts it there, because the pen's reverse end already erases and the button costs the toolbar a row. On, it stays there for the pen too, which is the only way to reach the Eraser with a pen that has no reverse end. Pan is unaffected: it stays on the toolbar only when something else needs it.",
+            Description = "Off, the Eraser is on the toolbar only when finger or mouse drawing puts it there, because the pen's reverse end already erases. On, it stays there for the pen too, which is the only way to reach the Eraser with a pen that has no reverse end. It joins the row of tools in the compact layouts and sits under the palette in Dual palette. Pan is unaffected: it stays on the toolbar only when something else needs it.",
             Keywords = ["eraser", "toolbar", "button", "pen", "rubber", "erase", "no eraser"],
             Editor = SettingEditorKind.BooleanSwitch,
         },

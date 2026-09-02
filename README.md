@@ -277,7 +277,7 @@ Test these on the target device before tuning stroke algorithms:
 3. Rest a palm while drawing and verify the board does not pan.
 4. Lift the pen, then immediately pan and pinch with touch.
 5. Draw near all display edges and across the Windows display-scaling boundary, if multiple monitors use different scaling.
-6. Turn on **Always show the Eraser**: the Eraser joins the toolbar and Pan does not, the tip then erases while it is selected, and turning the setting back off returns to the last drawing tool.
+6. Turn on **Always show the Eraser**: it joins the row of tools, and moves to its own row under the palette when the layout is Dual palette. Pan does not appear either way, the tip erases while the Eraser is selected, and turning the setting back off returns to the last drawing tool.
 
 Wacom driver settings can remap the barrel and eraser controls, so validate both Windows Ink mode and the intended application profile.
 
