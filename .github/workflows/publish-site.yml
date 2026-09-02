@@ -31,10 +31,16 @@ on:
       - 'scripts/release-notes.ps1'
       - '.github/workflows/publish-site.yml'
   # A release changes what the manifests say without changing anything in site/, so it has
-  # to redeploy the page as well. This is what keeps the download links current.
+  # to redeploy the page as well. This is what keeps the download links current. It does
+  # not deploy from here, though - see the redeploy job.
   release:
     types: [published]
   workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Release tag this deployment is for. Leave empty unless deploying for a release.'
+        required: false
+        type: string
 
 permissions:
   contents: read
@@ -48,8 +54,35 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
+  # A Pages deployment made from a tag does not become the one the site serves unless it is
+  # the first deployment of that commit - and by the time a release is published, that
+  # commit has almost always been deployed from main already. The deployment is created,
+  # reported as succeeded, and never served. Every release ran into this; deploying a second
+  # time from the same tag, which is what this workflow used to do, did not help either.
+  #
+  # A deployment from a branch supersedes whatever is live, first or not. So a release does
+  # not deploy: it asks this same workflow to run on main, and that run deploys. The tag
+  # goes with it, because the manifests still have to wait for the release to appear.
+  #
+  # workflow_dispatch is one of the two events GitHub deliberately exempts from the rule
+  # that GITHUB_TOKEN cannot start another workflow run, so this needs no personal token.
+  redeploy:
+    name: Redeploy the site from main
+    if: github.event_name == 'release'
+    runs-on: ubuntu-latest
+    permissions:
+      actions: write
+    steps:
+      - name: Ask for a deployment from main
+        shell: bash
+        run: gh workflow run publish-site.yml --repo "$GITHUB_REPOSITORY" --ref main --field "tag=$RELEASE_TAG"
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ github.event.release.tag_name }}
+
   deploy:
     name: Deploy to GitHub Pages
+    if: github.event_name != 'release'
     runs-on: ubuntu-latest
     environment:
       name: github-pages
@@ -59,28 +92,42 @@ jobs:
 
       # Generated into the checkout, so the manifests ship with the page in one
       # deployment. Both files are gitignored: this is the only thing that writes them.
-      # ExpectTag is empty for every trigger except a release, and that is the point: a
+      # ExpectTag is empty except when deploying for a release, and that is the point: the
       # release event fires seconds before the releases API lists the release, so without
       # it this step reads the previous version and writes a stale manifest while
-      # reporting success. That happened to 0.9.5.
+      # reporting success. That happened to 0.9.5. The tag arrives as an input because the
+      # release itself does not deploy - the redeploy job passes it here.
       - name: Generate the release manifests
         shell: pwsh
         run: ./scripts/build-release-manifests.ps1 -Repository "$env:GITHUB_REPOSITORY" -OutputFolder site -Token "$env:GH_TOKEN" -ExpectTag "$env:EXPECT_TAG"
         env:
           GH_TOKEN: ${{ github.token }}
-          EXPECT_TAG: ${{ github.event.release.tag_name }}
+          EXPECT_TAG: ${{ inputs.tag }}
 
       # A released version with no entry in CHANGELOG.md would publish a What's new page
       # that does not mention the version people are being offered. Checked here as well as
       # on the pull request that bumps VersionPrefix, because a release does not have to
-      # have come from one. Pre-releases are exempt: Dev builds come from every merge and
-      # are deliberately not in the changelog.
-      - name: Check this release has notes
-        if: github.event_name == 'release' && github.event.release.prerelease == false
+      # have come from one.
+      #
+      # The shape of the tag is what says whether it is a pre-release: the pipeline gives
+      # released versions v<major>.<minor>.<patch> and Dev builds a -dev.<build> suffix.
+      # Dev builds come from every merge and are deliberately not in the changelog.
+      - name: Check the released version has notes
         shell: pwsh
-        run: ./scripts/release-notes.ps1 -Mode Verify -Version "$env:RELEASE_TAG"
+        run: |
+          if (-not $env:RELEASE_TAG) {
+              Write-Host 'Not deploying for a release, so there is nothing to check.'
+              return
+          }
+
+          if ($env:RELEASE_TAG -notmatch '^v\d+\.\d+\.\d+$') {
+              Write-Host "$env:RELEASE_TAG is a pre-release; the changelog covers released versions only."
+              return
+          }
+
+          ./scripts/release-notes.ps1 -Mode Verify -Version $env:RELEASE_TAG
         env:
-          RELEASE_TAG: ${{ github.event.release.tag_name }}
+          RELEASE_TAG: ${{ inputs.tag }}
 
       # Written into the page rather than fetched from the API by the page itself: the
       # notes are then in the HTML that ships, so they are readable without scripting and
@@ -89,47 +136,26 @@ jobs:
         shell: pwsh
         run: ./scripts/release-notes.ps1 -Mode Html
 
-      - uses: actions/configure-pages@v5
+      - uses: actions/configure-pages@v6
 
-      - uses: actions/upload-pages-artifact@v3
+      # v4 of this action stopped putting dotfiles in the artifact. site/ has none, so
+      # nothing is silently dropped; if one is ever added, it needs include-hidden-files.
+      - uses: actions/upload-pages-artifact@v5
         with:
           path: site
 
       - id: deployment
-        uses: actions/deploy-pages@v4
+        uses: actions/deploy-pages@v5
 
       # A Pages deployment can report success, be recorded as the active deployment, and
       # still leave the site serving the previous one. Every step above went green for
       # 1.0.0 while the download page offered 0.9.5, and nothing said so. Reading the site
-      # back is the only place that failure is visible.
+      # back is the only place that failure is visible, so it fails the run that caused it
+      # rather than waiting to be noticed.
       #
-      # It is neither rare nor random: it is what a release does to itself. A Pages
-      # deployment is identified by commit SHA - deploy-pages sends the SHA as
-      # pages_build_version and then polls a status keyed on that same SHA - and a release
-      # redeploys a commit Pages already holds, because the release tag, the pre-release
-      # tag and main are all one commit. The second deployment of that commit is reported
-      # as succeeded, since the status read back belongs to the first one, and is then
-      # never served. That is why release-triggered runs failed while pushes and manual
-      # runs passed, and why re-running by hand always fixed it.
-      #
-      # So the first look is deliberately short - a deployment that is going to appear is
-      # serving within about ten seconds, and a long wait here only delays the thing that
-      # actually fixes it - and the deploy that a person used to do by hand is done here.
-      - id: firstlook
-        name: Verify the site is serving this deployment
-        continue-on-error: true
-        shell: pwsh
-        run: ./scripts/verify-published-site.ps1 -Folder site -TimeoutSeconds 90
-
-      - id: redeployment
-        name: Deploy again
-        if: steps.firstlook.outcome == 'failure'
-        uses: actions/deploy-pages@v4
-
-      # The full wait this time. If the same files are still not served after a second
-      # deployment then something other than the collision is wrong, and the run says so
-      # rather than passing quietly.
-      - name: Verify the second deployment
-        if: steps.firstlook.outcome == 'failure'
+      # Deploying a second time from the same run was tried as a way to recover from that
+      # and does not work: dev 3286 deployed twice from its tag and the site took neither.
+      # Only the ref matters, which is what the redeploy job is for.
+      - name: Verify the site is serving this deployment
         shell: pwsh
         run: ./scripts/verify-published-site.ps1 -Folder site

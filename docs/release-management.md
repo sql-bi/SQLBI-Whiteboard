@@ -190,21 +190,29 @@ from the live domain after deploying and fails if they are not the ones it just 
 release, because a pre-release deployment leaves `stable.json` untouched and that is
 correct.
 
-**Why that kept happening on releases, and what the workflow now does about it.** It was
-not bad luck. A Pages deployment is identified by commit SHA: `deploy-pages` sends the SHA
-as `pages_build_version` and then polls a deployment status keyed on that same SHA. A
-release redeploys a commit Pages already holds — the release tag, the pre-release tag and
-`main` are all one commit — so the second deployment of that commit reads the *first* one's
-status, reports success within seconds, and is then never served. The numbers said so
-plainly: pushes passed 9 out of 9 and manual runs 8 out of 8, while release-triggered runs
-passed 7 out of 23, and the stalled deployment sat at `in_progress` for five minutes where
-a healthy one reaches `success` in about ten seconds.
+**Why that kept happening on releases: the ref, not the repetition.** A Pages deployment
+made from a **tag** is not served unless it is the first deployment of that commit. A
+deployment from a **branch** supersedes whatever is live, first or not. By the time a
+release is published, its commit has usually been deployed from `main` already — the tag,
+the pre-release tag and `main` are all one commit — so the release's own deployment is
+created, reported as succeeded by `deploy-pages`, and never served.
 
-Deploying the same files again clears it, so the workflow does that itself rather than
-waiting to be asked: a short first check, a second `deploy-pages` if the site is still
-stale, then the full check. A run that fails now has failed twice, and the collision is not
-the explanation — look under **Settings → Environments → `github-pages`** for a deployment
-stuck in progress on that commit.
+The evidence, once the verify step existed to make it visible: pushes passed 9 of 9 and
+manual runs 8 of 8, while release-triggered runs passed 7 of 23. Commit `f169379` settles
+it — deployed from `main` at 13:59 it went live; deployed from tag `v1.2.2-dev.3286` at
+14:20 it stalled, and stalled again on a second attempt in the same run. Deploying twice
+was tried as a fix and does not work, because both attempts are on the same tag.
+
+So **a release does not deploy the site.** The `redeploy` job asks this same workflow to
+run on `main`, passing the release tag as an input so the manifests still wait for the
+release to appear. `workflow_dispatch` is one of the two events GitHub exempts from the
+rule that `GITHUB_TOKEN` cannot start another workflow run, so this needs no personal
+access token. A release therefore produces two runs: a three-line dispatcher on the tag,
+and the deployment on `main`.
+
+A failure in the verify step should now mean something genuinely new. Re-run **Publish
+site** on `main` with the tag left empty; if that fails too, look under **Settings →
+Environments → `github-pages`** for a deployment stuck in progress on that commit.
 
 ### Azure Pipelines
 
