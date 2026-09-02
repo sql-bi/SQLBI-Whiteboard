@@ -148,6 +148,8 @@ public sealed class AppSettings
 
     public PenButtonSettings PenButtons { get; set; } = new();
 
+    public ExportSettings Export { get; set; } = new();
+
     /// <summary>
     /// Whether to say at startup that Windows reports nothing to draw with. The
     /// tablet list this reads is a list of digitizers rather than an answer
@@ -275,6 +277,7 @@ public static class AppSettingsSerializer
         settings.Calligraphy = InkPalettes.Normalize(settings.Calligraphy, PenKind.Calligraphy);
         settings.Laser = LaserSettings.Normalize(settings.Laser);
         settings.PenButtons = PenButtonSettings.Normalize(settings.PenButtons);
+        settings.Export = ExportSettings.Normalize(settings.Export);
         settings.SnippetFormatOrder = [.. TextLanguageIds.NormalizeOrder(settings.SnippetFormatOrder)];
         settings.LatestKnownVersion = NormalizeVersionId(settings.LatestKnownVersion);
         settings.LastDismissedVersion = NormalizeVersionId(settings.LastDismissedVersion);

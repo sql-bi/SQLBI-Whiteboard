@@ -555,6 +555,39 @@ else.
 
 ---
 
+## 26. Export cuts the board where it is empty
+
+**Implemented for PowerPoint.** The plan, with the alternatives, is
+[export.md](export.md); the calls made while building it are in
+[export-decisions.md](export-decisions.md).
+
+A `.wboard` is one unbounded plane with no notion of a page, so exporting it to a deck is
+first a question of where the slides are. The answer taken is the recursive whitespace
+cut: a container and the strokes linked to it are one unit, every other stroke is a unit
+of its own, and a region is cut at the widest empty band between the units' projections
+on either axis, recursively, until it fits a slide or no band is wider than a threshold.
+Nothing can be cut through, a stroke that spans two containers keeps them together, and
+the cut tree gives a reading order. Bottom-up clustering produces nearly the same areas and
+still needs the cut for anything larger than a slide; a grid splits objects; manual frames
+on the board are the long-term answer for someone preparing a deck and are a later phase,
+because they change the file format.
+
+"Fits a slide" is defined by the smallest text the person will accept: a text container's
+body is 18 world units, a 16:9 slide is 960 points wide, so 12-point text caps an area at
+1440 world units. The same cap applies to areas with no text. An area that cannot be cut is
+scaled down and the dialog says by how much, rather than being tiled across slides.
+
+The slide is a picture rendered by the same `BoardSurface` that draws the screen, at twice
+full HD, so calligraphy, the highlighter, and SVG come out as they are seen. The text
+containers go in the speaker notes so DAX and SQL can still be copied. An editable deck,
+with native text boxes and images, is a later phase.
+
+`DocumentFormat.OpenXml` writes the file: Microsoft's own SDK, MIT, managed-only, so it
+passes the tests decision 21 set for a dependency. The writer lives in a new assembly,
+`SQLBI.Whiteboard.Export`, with no WPF dependency, which the signing step lists.
+
+---
+
 ## Open questions
 
 - arm64 is not built; add it if Surface devices matter for a pen application.

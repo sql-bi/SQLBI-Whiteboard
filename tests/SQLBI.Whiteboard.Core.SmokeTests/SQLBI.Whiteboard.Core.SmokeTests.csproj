@@ -6,6 +6,7 @@
   <ItemGroup>
     <ProjectReference Include="..\..\src\SQLBI.Whiteboard.Core\SQLBI.Whiteboard.Core.csproj" />
     <ProjectReference Include="..\..\src\SQLBI.Whiteboard.Dax\SQLBI.Whiteboard.Dax.csproj" />
+    <ProjectReference Include="..\..\src\SQLBI.Whiteboard.Export\SQLBI.Whiteboard.Export.csproj" />
     <ProjectReference Include="..\..\src\SQLBI.Whiteboard.SqlServer\SQLBI.Whiteboard.SqlServer.csproj" />
   </ItemGroup>
 </Project>

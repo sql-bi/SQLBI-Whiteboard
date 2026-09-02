@@ -21,6 +21,7 @@ using SQLBI.Whiteboard.Core.Persistence;
 using SQLBI.Whiteboard.Core.Settings;
 using SQLBI.Whiteboard.Core.Updates;
 using SQLBI.Whiteboard.Core.Viewport;
+using SQLBI.Whiteboard.Export;
 using SQLBI.Whiteboard.LiveView;
 using Windows.Graphics.Capture;
 
@@ -3509,6 +3510,9 @@ public partial class MainWindow : Window
             case SessionCommand.SaveAs:
                 SaveAsMenuItem_Click(this, new RoutedEventArgs());
                 break;
+            case SessionCommand.Export:
+                ShowExportDialog();
+                break;
             case SessionCommand.Close:
                 Close();
                 break;
@@ -3564,6 +3568,41 @@ public partial class MainWindow : Window
     }
 
     private void ShowAbout() => ShowOwnedDialog(new AboutWindow());
+
+    private void ShowExportDialog()
+    {
+        CommitTextEdit();
+        if (_document.ContentBounds is null)
+        {
+            MessageBox.Show(
+                this,
+                "There is nothing on the board to export.",
+                "Export",
+                MessageBoxButton.OK,
+                MessageBoxImage.Information);
+            return;
+        }
+
+        RefreshLiveViewSnapshots();
+        ShowOwnedDialog(new ExportWindow(
+            _document,
+            _settings.Export,
+            GetLiveViewImageSource,
+            ResolveExportTitle,
+            _currentBoardPath,
+            PersistSettings));
+    }
+
+    // The same title the container shows on screen: a DAX or SQL container is
+    // named after the object it defines when the language service finds one.
+    private static string? ResolveExportTitle(BoardObject item) => item switch
+    {
+        TextBoardObject text => TextLanguageRegistry
+            .Resolve(text.LanguageId)
+            .Analyze(text.Text, text.Title)
+            .Title,
+        _ => null,
+    };
 
     private void ShowOwnedDialog(Window dialog)
     {
@@ -4994,6 +5033,12 @@ public partial class MainWindow : Window
                 _ = SaveBoardAsync();
                 e.Handled = true;
             }
+            else if (controlDown && e.Key == Key.E)
+            {
+                CommitTextEdit();
+                ShowExportDialog();
+                e.Handled = true;
+            }
             else if (controlDown && e.Key == Key.O)
             {
                 CommitTextEdit();
@@ -5066,6 +5111,11 @@ public partial class MainWindow : Window
         else if (controlDown && e.Key == Key.O)
         {
             _ = OpenBoardAsync();
+            e.Handled = true;
+        }
+        else if (controlDown && e.Key == Key.E)
+        {
+            ShowExportDialog();
             e.Handled = true;
         }
         else if (e.Key == Key.Delete && _selectedObjectId is Guid selectedId)
