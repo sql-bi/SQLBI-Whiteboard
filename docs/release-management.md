@@ -156,7 +156,23 @@ from the live domain after deploying and fails if they are not the ones it just 
 (`scripts/verify-published-site.ps1`, which also runs by hand against any folder holding a
 `CNAME` and the manifests). It compares against the deployed files rather than the newest
 release, because a pre-release deployment leaves `stable.json` untouched and that is
-correct. When it fails, the fix is **Run workflow** — the files are already right.
+correct.
+
+**Why that kept happening on releases, and what the workflow now does about it.** It was
+not bad luck. A Pages deployment is identified by commit SHA: `deploy-pages` sends the SHA
+as `pages_build_version` and then polls a deployment status keyed on that same SHA. A
+release redeploys a commit Pages already holds — the release tag, the pre-release tag and
+`main` are all one commit — so the second deployment of that commit reads the *first* one's
+status, reports success within seconds, and is then never served. The numbers said so
+plainly: pushes passed 9 out of 9 and manual runs 8 out of 8, while release-triggered runs
+passed 7 out of 23, and the stalled deployment sat at `in_progress` for five minutes where
+a healthy one reaches `success` in about ten seconds.
+
+Deploying the same files again clears it, so the workflow does that itself rather than
+waiting to be asked: a short first check, a second `deploy-pages` if the site is still
+stale, then the full check. A run that fails now has failed twice, and the collision is not
+the explanation — look under **Settings → Environments → `github-pages`** for a deployment
+stuck in progress on that commit.
 
 ### Azure Pipelines
 

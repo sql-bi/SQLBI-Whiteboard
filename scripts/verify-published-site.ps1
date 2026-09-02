@@ -16,8 +16,15 @@
     deployment leaves stable.json untouched, which is correct, and a check written
     against the newest release would fail on every one of them.
 
-    Read-only. It cannot repair a deployment - the remedy is to run the workflow again,
-    which publishes the same files - so its whole job is to make a silent staleness loud.
+    The usual cause is a release redeploying a commit Pages already holds: a Pages
+    deployment is identified by commit SHA, and the release tag, the pre-release tag and
+    main are all one commit, so the second deployment of it reports the first one's status
+    and is never served. The workflow answers that by deploying again, which is why this
+    runs twice there - once on a short timeout before the retry, once on the full one
+    after.
+
+    Read-only. It cannot repair a deployment - the remedy is to deploy the same files
+    again - so its whole job is to make a silent staleness loud.
 
 .PARAMETER Folder
     Folder holding the manifests that were deployed, and the CNAME naming where they were
@@ -113,6 +120,9 @@ throw @"
 $BaseUrl is still serving an older deployment after $TimeoutSeconds seconds ($stale).
 
 The deployment this run made succeeded, so the files are right and the site has not
-picked them up. Run this workflow again - Actions -> Publish site -> Run workflow - and
-it will publish the same files. That has been enough every time so far.
+picked them up. Deploying the same files again clears it, and the workflow already does
+that once by itself - so if this is the second attempt, the collision it works around is
+not the whole story. Run it again by hand - Actions -> Publish site -> Run workflow - and
+look for a deployment still in progress on this commit under the github-pages
+environment.
 "@
