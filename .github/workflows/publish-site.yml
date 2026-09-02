@@ -79,10 +79,36 @@ jobs:
 
       # A Pages deployment can report success, be recorded as the active deployment, and
       # still leave the site serving the previous one. Every step above went green for
-      # 1.0.0 while the download page offered 0.9.5, and nothing said so; re-running this
-      # workflow published the same files and fixed it. Reading the site back is the only
-      # place that failure is visible, so it fails the run that caused it rather than
-      # waiting to be noticed.
-      - name: Verify the site is serving this deployment
+      # 1.0.0 while the download page offered 0.9.5, and nothing said so. Reading the site
+      # back is the only place that failure is visible.
+      #
+      # It is neither rare nor random: it is what a release does to itself. A Pages
+      # deployment is identified by commit SHA - deploy-pages sends the SHA as
+      # pages_build_version and then polls a status keyed on that same SHA - and a release
+      # redeploys a commit Pages already holds, because the release tag, the pre-release
+      # tag and main are all one commit. The second deployment of that commit is reported
+      # as succeeded, since the status read back belongs to the first one, and is then
+      # never served. That is why release-triggered runs failed while pushes and manual
+      # runs passed, and why re-running by hand always fixed it.
+      #
+      # So the first look is deliberately short - a deployment that is going to appear is
+      # serving within about ten seconds, and a long wait here only delays the thing that
+      # actually fixes it - and the deploy that a person used to do by hand is done here.
+      - id: firstlook
+        name: Verify the site is serving this deployment
+        continue-on-error: true
+        shell: pwsh
+        run: ./scripts/verify-published-site.ps1 -Folder site -TimeoutSeconds 90
+
+      - id: redeployment
+        name: Deploy again
+        if: steps.firstlook.outcome == 'failure'
+        uses: actions/deploy-pages@v4
+
+      # The full wait this time. If the same files are still not served after a second
+      # deployment then something other than the collision is wrong, and the run says so
+      # rather than passing quietly.
+      - name: Verify the second deployment
+        if: steps.firstlook.outcome == 'failure'
         shell: pwsh
         run: ./scripts/verify-published-site.ps1 -Folder site
