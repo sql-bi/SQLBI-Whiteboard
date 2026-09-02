@@ -16,7 +16,7 @@
 # release except the one it was copied from. `wingetcreate update` reads it out of the
 # downloaded MSI at submission time, which is the only way it can be right.
 PackageIdentifier: SQLBI.Whiteboard
-PackageVersion: 0.9.2
+PackageVersion: 1.2.2
 MinimumOSVersion: 10.0.19041.0
 InstallerType: wix
 InstallModes:
@@ -24,15 +24,15 @@ InstallModes:
 - silent
 - silentWithProgress
 UpgradeBehavior: install
-ReleaseDate: '2026-08-19'
+ReleaseDate: '2026-09-02'
 Installers:
 - Architecture: x64
   Scope: machine
-  InstallerUrl: https://github.com/sql-bi/SQLBI-Whiteboard/releases/download/v0.9.2/SQLBI.Whiteboard.0.9.2.x64.msi
-  InstallerSha256: CF7AC4C5F4AED82382811CE00B606D13E99BA08AB9804FD05E68D23E0689CBE9
+  InstallerUrl: https://github.com/sql-bi/SQLBI-Whiteboard/releases/download/v1.2.2/SQLBI.Whiteboard.1.2.2.x64.msi
+  InstallerSha256: 10574E89368DA3E56A4C739C44096A2570F8C1FB9355344BAED197F1E1AA9A21
 - Architecture: x64
   Scope: user
-  InstallerUrl: https://github.com/sql-bi/SQLBI-Whiteboard/releases/download/v0.9.2/SQLBI.Whiteboard.0.9.2.x64-userinstaller.msi
-  InstallerSha256: 9885733D3E0AAEBC39ABC0F142C7461EEA7DE0B5F20CD184A50EACAE19D5BE9B
+  InstallerUrl: https://github.com/sql-bi/SQLBI-Whiteboard/releases/download/v1.2.2/SQLBI.Whiteboard.1.2.2.x64-userinstaller.msi
+  InstallerSha256: 2D5E25F28AA9820DA6D20DDFB640456FB4F6D5034E1F932A6DD0637EB816B3ED
 ManifestType: installer
 ManifestVersion: 1.6.0
