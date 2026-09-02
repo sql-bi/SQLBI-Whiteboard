@@ -205,7 +205,7 @@ Use **Copy settings** after finding a useful combination so the exact values can
 | Delete | Delete the selected container and its linked strokes |
 | Alt+L | Laser pointer |
 | File / Edit / View / Help | Tab strip. Click a tab for a one-row command strip over the canvas. Click the canvas to hide it |
-| Help > Preferences | Searchable settings: startup monitor, full screen, no-pen warning, finger drawing, mouse drawing, pen button, snippet format order, laser trail, toolbar position and layout, always show the Eraser, update checks |
+| Help > Preferences | Searchable settings: startup monitor, full screen, no-pen warning, finger drawing, mouse drawing, pen button, snippet format order, laser trail, toolbar position and layout, always show the Eraser, update checks. Each setting is one line; its chevron opens the reasoning behind it, and a search that matches only that text opens the row for you |
 | View > Bring to front / Send to back | Reorder the selected image, text, or LiveView (and its linked strokes) |
 | Help > About | Version, channel, license, the product site, and a download link when a newer release is known |
 | View > LiveView | Capture, freeze, disconnect, or reconnect a window or display |

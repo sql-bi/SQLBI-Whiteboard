@@ -512,6 +512,36 @@ can only have appeared on a machine where the automatic default already decided 
 
 ---
 
+## 25. Preferences says one line and keeps the rest behind a chevron
+
+**Implemented** in 1.2.2. Every setting carries two texts rather than one: a `Summary` of a
+single line that is always on the row, and a `Description` — the defaults, the reasoning,
+the consequences — that appears only when the row's chevron is pressed. A setting whose
+summary is the whole story leaves `Description` empty and gets no chevron at all.
+
+The dialog had grown to where the longest description ran to six wrapped lines, and a
+category was a wall of prose that had to be read to be skipped. The reasoning is worth
+keeping — it is the difference between a setting someone can decide about and one they
+guess at — so the answer was to stop showing it unasked rather than to delete it.
+
+Two parts of this are choices a later change could quietly undo:
+
+- **Not a tooltip.** A tooltip is the obvious way to hide text and the wrong one here. This
+  application is used with a pen and a finger, and neither hovers: on a Cintiq the
+  reasoning would simply be gone. The chevron is a real button because pressing is the one
+  gesture every input this application supports can perform.
+- **A search that matches only the hidden text opens the row.** Otherwise a hit arrives
+  looking like a mistake — a row with nothing on it containing what was typed. Matching on
+  the title or the summary leaves the row shut, because the reason it is there is already
+  visible.
+
+The chevrons occupy a fixed-width column of their own, to the right of the editors. Placing
+them between the title and the editor was tried and abandoned: editors range from a switch
+to a wide combo, so the chevron landed at a different place on every row, and the column it
+was borrowing from was exactly the one the summary needed in order to stay on one line.
+
+---
+
 ## Open questions
 
 - arm64 is not built; add it if Surface devices matter for a pen application.

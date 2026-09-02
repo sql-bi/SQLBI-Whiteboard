@@ -1,5 +1,6 @@
 using System.Globalization;
 using System.Windows;
+using System.Windows.Automation;
 using System.Windows.Controls;
 using System.Windows.Controls.Primitives;
 using System.Windows.Input;
@@ -12,6 +13,8 @@ namespace SQLBI.Whiteboard;
 
 public partial class PreferencesWindow : Window
 {
+    private const double DisclosureColumnWidth = 32;
+
     private readonly AppSettings _settings;
     private readonly Action _applied;
     private readonly IReadOnlyList<DisplayMonitor> _monitors;
@@ -63,7 +66,7 @@ public partial class PreferencesWindow : Window
 
         var visible = SettingsCatalog.Filter(query, _selectedCategory);
         RebuildCategories(visibleCategories);
-        RebuildSettings(visible);
+        RebuildSettings(visible, query);
     }
 
     private void RebuildCategories(IReadOnlyList<string> categories)
@@ -94,7 +97,7 @@ public partial class PreferencesWindow : Window
         Rebuild();
     }
 
-    private void RebuildSettings(IReadOnlyList<SettingDescriptor> settings)
+    private void RebuildSettings(IReadOnlyList<SettingDescriptor> settings, string? query)
     {
         SettingsHost.Children.Clear();
         var empty = settings.Count == 0;
@@ -129,7 +132,8 @@ public partial class PreferencesWindow : Window
                     lastCategory = setting.Category;
                 }
 
-                SettingsHost.Children.Add(CreateRow(setting));
+                SettingsHost.Children.Add(
+                    CreateRow(setting, SettingsCatalog.MatchesDescriptionOnly(setting, query)));
             }
         }
         finally
@@ -138,9 +142,12 @@ public partial class PreferencesWindow : Window
         }
     }
 
-    private Border CreateRow(SettingDescriptor setting)
+    // The row's own words: the title, the one line always under it, and the
+    // prose that appears only when the chevron is asked for it.
+    private (StackPanel Copy, ToggleButton? Disclosure) CreateCopy(
+        SettingDescriptor setting,
+        bool expand)
     {
-        var editor = CreateEditor(setting);
         var copy = new StackPanel();
         copy.Children.Add(new TextBlock
         {
@@ -149,17 +156,60 @@ public partial class PreferencesWindow : Window
         });
         copy.Children.Add(new TextBlock
         {
-            Style = (Style)FindResource("SettingsDescription"),
-            Text = setting.Description,
+            Style = (Style)FindResource("SettingsSummary"),
+            Text = setting.Summary,
         });
 
+        // A setting whose summary is the whole story has nothing to disclose,
+        // and a chevron on it would promise something that is not there.
+        if (setting.Description.Length == 0)
+        {
+            return (copy, null);
+        }
+
+        var detail = new TextBlock
+        {
+            Style = (Style)FindResource("SettingsDescription"),
+            Text = setting.Description,
+            Visibility = expand ? Visibility.Visible : Visibility.Collapsed,
+        };
+        copy.Children.Add(detail);
+
+        var disclosure = new ToggleButton
+        {
+            Style = (Style)FindResource("SettingsDisclosure"),
+            IsChecked = expand,
+            ToolTip = $"More about {setting.Title}",
+        };
+        AutomationProperties.SetName(disclosure, $"More about {setting.Title}");
+        disclosure.Checked += (_, _) => detail.Visibility = Visibility.Visible;
+        disclosure.Unchecked += (_, _) => detail.Visibility = Visibility.Collapsed;
+        return (copy, disclosure);
+    }
+
+    private Border CreateRow(SettingDescriptor setting, bool expand)
+    {
+        var editor = CreateEditor(setting);
+        var (copy, disclosure) = CreateCopy(setting, expand);
+
         var body = new Grid();
+        body.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+        body.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+        body.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+        body.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+
+        // The chevron's column is reserved whether or not this row has one, so
+        // that the chevrons line up and, more importantly, so do the editors.
+        body.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(DisclosureColumnWidth) });
+        body.Children.Add(copy);
+        if (disclosure is not null)
+        {
+            Grid.SetColumn(disclosure, 2);
+            body.Children.Add(disclosure);
+        }
+
         if (setting.Editor == SettingEditorKind.DoubleRange)
         {
-            body.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
-            body.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
-            body.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
-            body.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
             var slider = (Slider)editor;
             var value = new TextBlock
             {
@@ -169,8 +219,7 @@ public partial class PreferencesWindow : Window
             slider.ValueChanged += (_, _) => value.Text = FormatSeconds(slider.Value);
             Grid.SetColumn(value, 1);
             Grid.SetRow(slider, 1);
-            Grid.SetColumnSpan(slider, 2);
-            body.Children.Add(copy);
+            Grid.SetColumnSpan(slider, 3);
             body.Children.Add(value);
             body.Children.Add(slider);
         }
@@ -181,21 +230,16 @@ public partial class PreferencesWindow : Window
                  SettingEditorKind.ToolbarPlacementChoice or
                  SettingEditorKind.ToolbarLayoutChoice)
         {
-            body.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
-            body.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
             Grid.SetRow(editor, 1);
+            Grid.SetColumnSpan(editor, 3);
             editor.Margin = new Thickness(0, 8, 0, 0);
-            body.Children.Add(copy);
             body.Children.Add(editor);
         }
         else
         {
-            body.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
-            body.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
             Grid.SetColumn(editor, 1);
             editor.Margin = new Thickness(16, 0, 0, 0);
             editor.VerticalAlignment = VerticalAlignment.Center;
-            body.Children.Add(copy);
             body.Children.Add(editor);
         }
 
