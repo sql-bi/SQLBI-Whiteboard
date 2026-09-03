@@ -367,8 +367,12 @@ public partial class ExportWindow : Window
         }
     }
 
-    private sealed record Choice(string Label, object Value)
+    // Title and IsSeparator are what the settings combo's item template binds,
+    // so a choice here is drawn like one in Preferences.
+    private sealed record Choice(string Title, object Value)
     {
-        public override string ToString() => Label;
+        public bool IsSeparator => false;
+
+        public override string ToString() => Title;
     }
 }
