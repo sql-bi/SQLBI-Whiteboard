@@ -33,7 +33,9 @@
             <Setter Property="FontFamily"
                     Value="Segoe UI" />
             <Setter Property="FontSize"
-                    Value="12" />
+                    Value="11.5" />
+            <Setter Property="Margin"
+                    Value="0,3,0,0" />
             <Setter Property="Foreground"
                     Value="{DynamicResource SettingsHintBrush}" />
             <Setter Property="TextWrapping"
@@ -136,6 +138,9 @@
                             IsSnapToTickEnabled="True"
                             ToolTip="Empty space this wide, in screen pixels at zoom 1, separates two areas."
                             ValueChanged="GapSlider_ValueChanged" />
+                    <TextBlock Style="{StaticResource ExportHint}"
+                               Margin="0"
+                               Text="Empty space this wide, at zoom 1, splits areas." />
 
                     <TextBlock x:Name="SmallestTextLabel"
                                Style="{StaticResource ExportLabel}"
@@ -145,6 +150,8 @@
                               ItemContainerStyle="{StaticResource SettingsComboBoxItem}"
                               ToolTip="Areas are cut until their text reads at this size. One that cannot be cut is shrunk and marked."
                               SelectionChanged="Option_Changed" />
+                    <TextBlock Style="{StaticResource ExportHint}"
+                               Text="Cut until text reads this large; else shrunk and marked." />
 
                     <TextBlock x:Name="AspectLabel"
                                Style="{StaticResource ExportLabel}"
