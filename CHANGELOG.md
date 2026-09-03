@@ -46,6 +46,14 @@ edited after the session.
 sharp at any zoom and DAX or SQL can be selected and copied from it. The fonts travel with
 the file.
 
+### Slides drawn on the board
+**View → Frame** adds a frame the size of the screen: a slide drawn by hand. Whatever sits
+inside a frame is that slide, frames come first, and the rest of the board is still cut
+automatically. A frame is selected by its edge or its title tab, never by its inside, so
+everything in it stays reachable; F2 renames it. A board with a frame is saved in a new
+format version, so it needs this release to open; a board without one still opens in the
+releases before it.
+
 ## 1.2.2 - 2 September 2026
 
 ### The Eraser, for a pen that has none

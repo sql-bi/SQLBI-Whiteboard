@@ -277,6 +277,21 @@
                         </Button>
                         <Border Style="{StaticResource SessionCommandSeparator}" />
                         <Button Style="{StaticResource SessionCommandButton}"
+                                ToolTip="Add a frame: a slide drawn on the board, which Export uses as it is"
+                                Tag="AddFrame"
+                                Click="Command_Click">
+                            <StackPanel HorizontalAlignment="Center">
+                                <Path Width="18"
+                                      Height="18"
+                                      Stretch="Uniform"
+                                      Fill="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"
+                                      Data="{StaticResource FrameGeometry}" />
+                                <TextBlock Margin="0,4,0,0"
+                                           HorizontalAlignment="Center"
+                                           Text="Frame" />
+                            </StackPanel>
+                        </Button>
+                        <Button Style="{StaticResource SessionCommandButton}"
                                 ToolTip="Add LiveView"
                                 Tag="AddLiveView"
                                 Click="Command_Click">

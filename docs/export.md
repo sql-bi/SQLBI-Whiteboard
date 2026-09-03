@@ -1,11 +1,13 @@
 # Export: PowerPoint, PDF, and Replay
 
-**Proposed. Nothing below is implemented.** This document is the plan for three ways of
-getting a board out of the application: a PowerPoint deck, a PDF, and a replay of the
-session. The first two share almost everything and are planned to be built; the third is
-sketched at the level of modules and file format so that it can be judged and scheduled,
-not started. When any part is accepted it becomes a numbered entry in
-[decisions.md](decisions.md), and this document is kept for the alternatives.
+**PowerPoint and PDF are implemented (phases E1 to E5); Replay is not.** This document is
+the plan for three ways of getting a board out of the application: a PowerPoint deck, a
+PDF, and a replay of the session. The first two are built as described here, with the
+recommendations below taken as decisions: decisions 26 and 27 in
+[decisions.md](decisions.md) are the summary, and [export-decisions.md](export-decisions.md)
+lists every smaller call made while implementing. The third is sketched at the level of
+modules and file format so that it can be judged and scheduled, not started. This document
+is kept for the reasoning and the alternatives.
 
 Background: [README.md](../README.md) for what the application does, and
 [decisions.md](decisions.md) for the constraints a new dependency has to meet — decision 21

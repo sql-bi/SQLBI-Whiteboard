@@ -43,6 +43,7 @@ internal static class BoardRasterizer
             LiveViewImageSourceProvider = liveViewImageSourceProvider,
             DrawBackground = drawBackground,
             ObjectFilter = objectFilter,
+            DrawFrames = false,
         };
         surface.Configure(document, camera);
         surface.Measure(new Size(pixelWidth, pixelHeight));

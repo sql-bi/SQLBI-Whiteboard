@@ -21,9 +21,31 @@ public static class BoardPartitioner
         options ??= ExportLayoutOptions.Default;
 
         var units = BuildUnits(document.Objects);
+        var areas = new List<ExportArea>();
+
+        // Frames win: whatever sits inside one belongs to it, and frames come
+        // first, in the order they were drawn or in reading order.
+        IEnumerable<FrameBoardObject> frames = options.Order == AreaOrder.Reading
+            ? document.Frames.OrderBy(frame => frame.Bounds.Top).ThenBy(frame => frame.Bounds.Left)
+            : document.Frames;
+        foreach (var frame in frames)
+        {
+            var inside = units.Where(unit => frame.Bounds.Contains(unit.Bounds.Center)).ToArray();
+            units.RemoveAll(inside.Contains);
+            var objects = inside.SelectMany(unit => unit.Objects).OrderBy(item => item.ZIndex).ToArray();
+            areas.Add(new ExportArea(
+                areas.Count + 1,
+                frame.Bounds,
+                objects,
+                string.IsNullOrWhiteSpace(frame.Title)
+                    ? ResolveTitle(document, objects, titleResolver)
+                    : frame.Title.Trim(),
+                TextScaleFor(frame.Bounds, options)));
+        }
+
         if (units.Count == 0)
         {
-            return [];
+            return areas;
         }
 
         var leaves = new List<Region>();
@@ -33,14 +55,17 @@ public static class BoardPartitioner
             ? leaves.OrderBy(region => region.MinZIndex)
             : leaves;
 
-        return ordered
-            .Select((region, index) => new ExportArea(
-                index + 1,
+        foreach (var region in ordered)
+        {
+            areas.Add(new ExportArea(
+                areas.Count + 1,
                 region.Bounds,
                 region.Objects,
                 ResolveTitle(document, region.Objects, titleResolver),
-                TextScaleFor(region.Bounds, options)))
-            .ToArray();
+                TextScaleFor(region.Bounds, options)));
+        }
+
+        return areas;
     }
 
     /// <summary>
@@ -119,7 +144,7 @@ public static class BoardPartitioner
             {
                 units.Add(Unit.Of([stroke]));
             }
-            else if (item is not InkStrokeObject && item is not IBoardContainer)
+            else if (item is not InkStrokeObject && item is not IBoardContainer && item is not FrameBoardObject)
             {
                 units.Add(Unit.Of([item]));
             }

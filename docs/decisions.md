@@ -604,6 +604,30 @@ later, because the driver, not the application, asks for the file name.
 
 ---
 
+## 27. A frame is a slide drawn on the board, and it is not a container
+
+**Implemented.** Phase E5 of [export.md](export.md); the smaller calls are under E5 in
+[export-decisions.md](export-decisions.md).
+
+The automatic cut (decision 26) serves a board that was drawn without a deck in mind.
+Someone preparing a board for a deck wants to say where the slides are, and the way to
+say it on a whiteboard is to draw a rectangle. **View → Frame** adds one the size of the
+screen; it can be moved, resized, renamed, and reordered like anything else selectable,
+and Export takes it as it is: whatever sits inside a frame is that slide, frames come
+first, and the rest of the board is cut automatically.
+
+A frame is deliberately not a container. The one rule the board has about containers is
+that a stroke touching exactly one of them is linked to it, and a frame around a picture
+would break that rule for every stroke on the picture. So a frame links nothing, is
+selected only by its edge or its title tab, and moving it moves nothing inside it: it is
+a label over content, read at export time.
+
+Frames are the first object to change the file format since 1.0, and the change is kept
+as small as it can be: a board is written as version 6 only when it holds a frame, so a
+board without one still opens in every release since format 5.
+
+---
+
 ## Open questions
 
 - arm64 is not built; add it if Surface devices matter for a pen application.

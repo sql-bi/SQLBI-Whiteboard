@@ -33,6 +33,7 @@ internal static class BoardPreviewRenderer
             Width = pixelSize.Width,
             Height = pixelSize.Height,
             LiveViewImageSourceProvider = liveViewImageSourceProvider,
+            DrawFrames = false,
         };
         surface.Configure(document, camera);
         surface.Measure(new Size(pixelSize.Width, pixelSize.Height));

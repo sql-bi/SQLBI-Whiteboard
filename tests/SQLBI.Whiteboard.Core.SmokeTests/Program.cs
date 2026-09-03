@@ -537,6 +537,18 @@ await BoardArchive.SaveAsync(document, archive);
 archive.Position = 0;
 var loaded = await BoardArchive.LoadAsync(archive);
 Assert(loaded.Objects.Count == 5, "Archive should round-trip scene objects.");
+Assert(BoardArchive.VersionFor(document) == BoardArchive.VersionBeforeFrames, "A board without frames is written in the version before them.");
+var archivedFrame = new FrameBoardObject(Guid.NewGuid(), document.NextZIndex, new RectD(-50, -50, 1000, 600), "Slide 1");
+document.AddObject(archivedFrame);
+await using var framedArchive = new MemoryStream();
+await BoardArchive.SaveAsync(document, framedArchive);
+framedArchive.Position = 0;
+var loadedWithFrame = await BoardArchive.LoadAsync(framedArchive);
+Assert(
+    BoardArchive.VersionFor(document) == BoardArchive.CurrentVersion &&
+    loadedWithFrame.Objects.OfType<FrameBoardObject>().Single() is { Title: "Slide 1", Bounds.Width: 1000 },
+    "A frame round-trips with its title, and asks for the current version.");
+document.RemoveObject(archivedFrame.Id);
 Assert(loaded.Assets[asset.Id].Data.SequenceEqual(asset.Data), "Archive should round-trip asset bytes.");
 Assert(
     loaded.Objects.OfType<InkStrokeObject>()
@@ -1230,6 +1242,28 @@ Assert(
         Math.Abs(ExportLayoutOptions.MaximumAreaWidthFor(9) - 1920) < 0.000001,
         "Smallest text decides how wide an area may be.");
     Assert(BoardPartitioner.Partition(new BoardDocument()).Count == 0, "An empty board has no areas.");
+
+    // Frames win: whatever sits inside one belongs to it, frames come first,
+    // and the rest of the board is still cut automatically.
+    var frame = new FrameBoardObject(Guid.NewGuid(), 50, new RectD(1900, -100, 800, 500), "Second cluster");
+    exportBoard.AddObject(frame);
+    var framed = BoardPartitioner.Partition(exportBoard);
+    Assert(framed.Count == 3, "A frame around a cluster keeps the area count.");
+    Assert(
+        framed[0].Title == "Second cluster" && framed[0].Bounds == frame.Bounds && framed[0].Objects.Count == 2 &&
+        framed[0].Objects.All(item => item.Bounds.Left > 1500),
+        "The frame is the first area, with its own bounds and title and the objects inside it.");
+    Assert(
+        framed.Skip(1).All(area => area.Objects.All(item => item is not FrameBoardObject && item.Bounds.Left < 1500)),
+        "Objects outside the frame are partitioned as before, and the frame itself is not an object of any area.");
+    Assert(
+        frame.HitTest(new PointD(1900, 150), 1) && !frame.HitTest(new PointD(2300, 150), 1) && frame.HitTest(new PointD(1950, -90), 1),
+        "A frame is hit on its edge and on its tab, not inside.");
+    Assert(
+        exportBoard.HitTestTopContainer(new PointD(2100, 50), 1) is null &&
+        exportBoard.HitTestTopContainer(new PointD(1900, 150), 1) is FrameBoardObject,
+        "Hit testing reaches a frame only by its edge.");
+    exportBoard.RemoveObject(frame.Id);
 
     var exportSettings = AppSettingsSerializer.Parse("""{ "export": { "gapThreshold": 9999, "smallestTextPoints": 11, "order": "Reading" } }""");
     Assert(
