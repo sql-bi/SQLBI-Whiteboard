@@ -1,6 +1,7 @@
 using System.IO.Compression;
 using System.Text;
 using SQLBI.Whiteboard.Core.Commands;
+using SQLBI.Whiteboard.Core.Export;
 using SQLBI.Whiteboard.Core.Geometry;
 using SQLBI.Whiteboard.Core.Import;
 using SQLBI.Whiteboard.Core.Model;
@@ -9,6 +10,7 @@ using SQLBI.Whiteboard.Core.Settings;
 using SQLBI.Whiteboard.Core.Updates;
 using SQLBI.Whiteboard.Core.Viewport;
 using SQLBI.Whiteboard.Dax;
+using SQLBI.Whiteboard.Export;
 using SQLBI.Whiteboard.SqlServer;
 
 var camera = new Camera2D();
@@ -1162,7 +1164,137 @@ Assert(
     TextLanguageIds.Normalize("SQLSERVER") == TextLanguageIds.SqlServer,
     "The SQL Server text language identifier should normalize for persistence.");
 
+// Export areas: the board is cut only where it is empty, a container keeps its
+// linked ink, a bridging stroke glues its neighbours, and the two orders differ.
+{
+    var exportBoard = new BoardDocument();
+    exportBoard.AddAsset(new BoardAsset("model", "Contoso model.png", "image/png", [1, 2, 3]));
+    var exportImage = new ImageBoardObject(Guid.NewGuid(), 0, new RectD(0, 0, 400, 300), "model");
+    exportBoard.AddObject(exportImage);
+    exportBoard.AddObject(ExportStroke(50, 50, 100, 60, 1, exportImage.Id));
+    exportBoard.AddObject(ExportStroke(2000, 0, 200, 100, 2));
+    exportBoard.AddObject(ExportStroke(2050, 150, 200, 100, 3));
+
+    var exportAreas = BoardPartitioner.Partition(exportBoard);
+    Assert(exportAreas.Count == 2, "Two clusters farther apart than the gap threshold give two areas.");
+    Assert(
+        exportAreas[0].Objects.Count == 2 && exportAreas[0].Objects.Contains(exportImage),
+        "A container and its linked stroke stay in one area.");
+    Assert(exportAreas[0].Title == "Contoso model", "An area is named after its dominant container.");
+    Assert(exportAreas[1].Title is null && exportAreas[1].Objects.Count == 2, "Free strokes near each other share an area with no title.");
+    Assert(exportAreas.All(area => !area.IsScaledDown), "Areas that fit are not marked as scaled.");
+
+    var bridge = ExportStroke(300, 100, 1800, 20, 4);
+    exportBoard.AddObject(bridge);
+    Assert(
+        BoardPartitioner.Partition(exportBoard).Count == 1,
+        "A stroke that spans two clusters keeps them on one area.");
+    exportBoard.RemoveObject(bridge.Id);
+
+    exportBoard.AddObject(ExportStroke(0, 650, 150, 300, -1));
+    var drawingOrder = BoardPartitioner.Partition(exportBoard);
+    Assert(drawingOrder.Count == 3, "A third cluster below the first is its own area.");
+    Assert(
+        drawingOrder[0].Bounds.Top > 600 && drawingOrder[0].Number == 1,
+        "Drawing order puts the area that was started first, by z-index, first.");
+    var readingOrder = BoardPartitioner.Partition(
+        exportBoard,
+        ExportLayoutOptions.Default with { Order = AreaOrder.Reading });
+    Assert(
+        readingOrder[0].Objects.Contains(exportImage) &&
+        readingOrder[1].Bounds.Top > 600 &&
+        readingOrder[2].Bounds.Left > 1500,
+        "Reading order walks the cuts: the left column top to bottom, then the right.");
+
+    var wideThreshold = BoardPartitioner.Partition(
+        exportBoard,
+        ExportLayoutOptions.Default with { GapThreshold = 400 });
+    Assert(wideThreshold.Count == 2, "Raising the threshold merges clusters separated by less than it.");
+
+    var closeBoard = new BoardDocument();
+    closeBoard.AddObject(ExportStroke(0, 0, 50, 50, 0));
+    closeBoard.AddObject(ExportStroke(300, 0, 50, 50, 1));
+    Assert(
+        BoardPartitioner.Partition(closeBoard).Count == 1,
+        "A region that already fits a slide is not cut, however wide its gaps.");
+
+    var denseBoard = new BoardDocument();
+    denseBoard.AddObject(ExportStroke(0, 0, 3000, 2000, 0));
+    var dense = BoardPartitioner.Partition(denseBoard);
+    Assert(
+        dense.Count == 1 && dense[0].IsScaledDown && dense[0].TextScalePercent == 40,
+        "An area that cannot be cut is scaled down and says by how much.");
+
+    Assert(
+        Math.Abs(ExportLayoutOptions.MaximumAreaWidthFor(12) - 1440) < 0.000001 &&
+        Math.Abs(ExportLayoutOptions.MaximumAreaWidthFor(9) - 1920) < 0.000001,
+        "Smallest text decides how wide an area may be.");
+    Assert(BoardPartitioner.Partition(new BoardDocument()).Count == 0, "An empty board has no areas.");
+
+    var exportSettings = AppSettingsSerializer.Parse("""{ "export": { "gapThreshold": 9999, "smallestTextPoints": 11, "order": "Reading" } }""");
+    Assert(
+        exportSettings.Export.GapThreshold == ExportLayoutOptions.MaximumGapThreshold &&
+        exportSettings.Export.SmallestTextPoints == ExportLayoutOptions.DefaultSmallestTextPoints &&
+        exportSettings.Export.Order == AreaOrder.Reading,
+        "Export settings are clamped to what the dialog offers.");
+}
+
+// PowerPoint deck: one slide per page, a notes slide only where there are notes,
+// and a package that opens as a ZIP with the parts where PowerPoint looks for them.
+{
+    byte[] onePixelPng =
+    [
+        0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A, 0x00, 0x00, 0x00, 0x0D, 0x49, 0x48, 0x44, 0x52,
+        0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x01, 0x08, 0x06, 0x00, 0x00, 0x00, 0x1F, 0x15, 0xC4,
+        0x89, 0x00, 0x00, 0x00, 0x0A, 0x49, 0x44, 0x41, 0x54, 0x78, 0x9C, 0x63, 0x00, 0x01, 0x00, 0x00,
+        0x05, 0x00, 0x01, 0x0D, 0x0A, 0x2D, 0xB4, 0x00, 0x00, 0x00, 0x00, 0x49, 0x45, 0x4E, 0x44, 0xAE,
+        0x42, 0x60, 0x82,
+    ];
+    ExportPage[] deckPages =
+    [
+        new("Overview", "1. Contoso model\n2. Area 2", onePixelPng, 1600, 900),
+        new("Contoso model", null, onePixelPng, 1200, 900),
+        new("Area 2 <&>", "Sales Amount :=\nSUM ( Sales[Amount] )", onePixelPng, 3840, 1000),
+    ];
+    using var deckStream = new MemoryStream();
+    PptxDeckWriter.Write(deckStream, deckPages, new DeckOptions(SlideAspect.Wide));
+    deckStream.Position = 0;
+    using (var deck = new ZipArchive(deckStream, ZipArchiveMode.Read, leaveOpen: true))
+    {
+        Assert(
+            deck.Entries.Count(entry =>
+                entry.FullName.StartsWith("ppt/slides/slide", StringComparison.Ordinal) &&
+                entry.FullName.EndsWith(".xml", StringComparison.Ordinal)) == 3,
+            "The deck has one slide per page.");
+        Assert(
+            deck.Entries.Count(entry =>
+                entry.FullName.StartsWith("ppt/notesSlides/notesSlide", StringComparison.Ordinal) &&
+                entry.FullName.EndsWith(".xml", StringComparison.Ordinal)) == 2,
+            "Only pages with notes get a notes slide.");
+        Assert(
+            deck.Entries.Count(entry => entry.FullName.StartsWith("ppt/media/", StringComparison.Ordinal)) == 3,
+            "Every slide carries its picture.");
+        Assert(
+            deck.GetEntry("ppt/presentation.xml") is not null && deck.GetEntry("[Content_Types].xml") is not null,
+            "The deck is a presentation package.");
+    }
+
+    using var standardStream = new MemoryStream();
+    PptxDeckWriter.Write(standardStream, deckPages[..1], new DeckOptions(SlideAspect.Standard));
+    Assert(standardStream.Length > 0, "A 4:3 deck is written too.");
+}
+
 Console.WriteLine("SQLBI.Whiteboard.Core smoke tests passed.");
+
+static InkStrokeObject ExportStroke(double x, double y, double width, double height, int zIndex, Guid? containerId = null) =>
+    InkStrokeObject.Create(
+        [
+            new InkPoint(new PointD(x, y), 0.5f, 0),
+            new InkPoint(new PointD(x + width, y + height), 0.5f, 1),
+        ],
+        PenStyle.Default,
+        zIndex,
+        containerId: containerId);
 
 static void Assert(bool condition, string message)
 {

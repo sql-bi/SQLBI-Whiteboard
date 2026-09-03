@@ -109,6 +109,23 @@
                                            Text="Shift+F12" />
                             </StackPanel>
                         </Button>
+                        <Button Style="{StaticResource SessionCommandButton}"
+                                ToolTip="Export to PowerPoint (Ctrl+E)"
+                                Tag="Export"
+                                Click="Command_Click">
+                            <StackPanel HorizontalAlignment="Center">
+                                <Path Width="18"
+                                      Height="18"
+                                      Stretch="Uniform"
+                                      Fill="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"
+                                      Data="{StaticResource ExportGeometry}" />
+                                <TextBlock Margin="0,4,0,0"
+                                           HorizontalAlignment="Center"
+                                           Text="Export" />
+                                <TextBlock Style="{StaticResource SessionShortcutHint}"
+                                           Text="Ctrl+E" />
+                            </StackPanel>
+                        </Button>
                     </StackPanel>
                     <StackPanel x:Name="EditRow"
                                 Orientation="Horizontal"

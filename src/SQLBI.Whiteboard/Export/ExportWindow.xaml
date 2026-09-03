@@ -1,0 +1,229 @@
+<Window x:Class="SQLBI.Whiteboard.Export.ExportWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Export"
+        Width="1000"
+        Height="720"
+        MinWidth="760"
+        MinHeight="560"
+        WindowStartupLocation="CenterOwner"
+        ResizeMode="CanResize"
+        ShowInTaskbar="False"
+        Background="{DynamicResource ToolbarBackgroundBrush}"
+        Stylus.IsPressAndHoldEnabled="False"
+        PreviewKeyDown="Window_PreviewKeyDown"
+        Loaded="Window_Loaded"
+        Closing="Window_Closing">
+    <Window.Resources>
+        <Style x:Key="ExportLabel"
+               TargetType="TextBlock">
+            <Setter Property="FontFamily"
+                    Value="Segoe UI" />
+            <Setter Property="FontSize"
+                    Value="13" />
+            <Setter Property="FontWeight"
+                    Value="SemiBold" />
+            <Setter Property="Foreground"
+                    Value="{DynamicResource SettingsTextBrush}" />
+            <Setter Property="Margin"
+                    Value="0,10,0,3" />
+        </Style>
+        <Style x:Key="ExportHint"
+               TargetType="TextBlock">
+            <Setter Property="FontFamily"
+                    Value="Segoe UI" />
+            <Setter Property="FontSize"
+                    Value="11.5" />
+            <Setter Property="Margin"
+                    Value="0,3,0,0" />
+            <Setter Property="Foreground"
+                    Value="{DynamicResource SettingsHintBrush}" />
+            <Setter Property="TextWrapping"
+                    Value="Wrap" />
+        </Style>
+        <Style x:Key="ExportSwitchRow"
+               TargetType="Grid">
+            <Setter Property="Margin"
+                    Value="0,8,0,0" />
+        </Style>
+        <Style x:Key="ExportSwitchLabel"
+               TargetType="TextBlock">
+            <Setter Property="FontFamily"
+                    Value="Segoe UI" />
+            <Setter Property="FontSize"
+                    Value="13" />
+            <Setter Property="Foreground"
+                    Value="{DynamicResource SettingsTextBrush}" />
+            <Setter Property="VerticalAlignment"
+                    Value="Center" />
+        </Style>
+    </Window.Resources>
+    <Grid Margin="20">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="*" />
+            <RowDefinition Height="Auto" />
+        </Grid.RowDefinitions>
+
+        <Grid>
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="300" />
+            </Grid.ColumnDefinitions>
+
+            <Border Background="White"
+                    BorderBrush="{DynamicResource ToolbarBorderBrush}"
+                    BorderThickness="1">
+                <Grid>
+                    <Image x:Name="PreviewImage"
+                           Margin="8"
+                           Stretch="Uniform"
+                           StretchDirection="DownOnly"
+                           RenderOptions.BitmapScalingMode="HighQuality" />
+                    <TextBlock x:Name="PreviewPlaceholder"
+                               Style="{StaticResource ExportHint}"
+                               HorizontalAlignment="Center"
+                               VerticalAlignment="Center"
+                               Text="Preparing the preview" />
+                </Grid>
+            </Border>
+
+            <ScrollViewer Grid.Column="1"
+                          Margin="20,0,0,0"
+                          HorizontalScrollBarVisibility="Disabled"
+                          VerticalScrollBarVisibility="Auto">
+                <StackPanel x:Name="Options"
+                            Margin="0,0,12,0">
+                    <TextBlock Style="{StaticResource ExportLabel}"
+                               Margin="0,0,0,4"
+                               Text="Format" />
+                    <ComboBox x:Name="FormatCombo"
+                              Style="{StaticResource SettingsComboBox}"
+                              ItemContainerStyle="{StaticResource SettingsComboBoxItem}"
+                              SelectionChanged="Option_Changed" />
+
+                    <TextBlock Style="{StaticResource ExportLabel}"
+                               Text="Slides" />
+                    <ComboBox x:Name="PageModelCombo"
+                              Style="{StaticResource SettingsComboBox}"
+                              ItemContainerStyle="{StaticResource SettingsComboBoxItem}"
+                              SelectionChanged="Option_Changed" />
+
+                    <TextBlock Style="{StaticResource ExportLabel}"
+                               Text="Order" />
+                    <ComboBox x:Name="OrderCombo"
+                              Style="{StaticResource SettingsComboBox}"
+                              ItemContainerStyle="{StaticResource SettingsComboBoxItem}"
+                              SelectionChanged="Option_Changed" />
+
+                    <Grid Margin="0,14,0,0">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <TextBlock Style="{StaticResource ExportLabel}"
+                                   Margin="0"
+                                   Text="Gap between areas" />
+                        <TextBlock x:Name="GapValue"
+                                   Grid.Column="1"
+                                   Style="{StaticResource SettingsValueLabel}" />
+                    </Grid>
+                    <Slider x:Name="GapSlider"
+                            Style="{StaticResource SettingsSlider}"
+                            Minimum="20"
+                            Maximum="400"
+                            SmallChange="10"
+                            LargeChange="40"
+                            TickFrequency="10"
+                            IsSnapToTickEnabled="True"
+                            ToolTip="Empty space this wide, in screen pixels at zoom 1, separates two areas."
+                            ValueChanged="GapSlider_ValueChanged" />
+                    <TextBlock Style="{StaticResource ExportHint}"
+                               Margin="0"
+                               Text="Empty space this wide, at zoom 1, splits areas." />
+
+                    <TextBlock Style="{StaticResource ExportLabel}"
+                               Text="Smallest text on a slide" />
+                    <ComboBox x:Name="SmallestTextCombo"
+                              Style="{StaticResource SettingsComboBox}"
+                              ItemContainerStyle="{StaticResource SettingsComboBoxItem}"
+                              ToolTip="Areas are cut until their text reads at this size. One that cannot be cut is shrunk and marked."
+                              SelectionChanged="Option_Changed" />
+                    <TextBlock Style="{StaticResource ExportHint}"
+                               Text="Cut until text reads this large; else shrunk and marked." />
+
+                    <TextBlock Style="{StaticResource ExportLabel}"
+                               Text="Slide size" />
+                    <ComboBox x:Name="AspectCombo"
+                              Style="{StaticResource SettingsComboBox}"
+                              ItemContainerStyle="{StaticResource SettingsComboBoxItem}"
+                              SelectionChanged="Option_Changed" />
+
+                    <Grid Style="{StaticResource ExportSwitchRow}"
+                          Margin="0,14,0,0">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <TextBlock Style="{StaticResource ExportSwitchLabel}"
+                                   Text="Overview slide first" />
+                        <ToggleButton x:Name="OverviewSwitch"
+                                      Grid.Column="1"
+                                      Style="{StaticResource SettingsSwitch}"
+                                      Checked="Option_Changed"
+                                      Unchecked="Option_Changed" />
+                    </Grid>
+                    <Grid Style="{StaticResource ExportSwitchRow}">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <TextBlock Style="{StaticResource ExportSwitchLabel}"
+                                   Text="Text containers in the notes" />
+                        <ToggleButton x:Name="NotesSwitch"
+                                      Grid.Column="1"
+                                      Style="{StaticResource SettingsSwitch}"
+                                      Checked="Option_Changed"
+                                      Unchecked="Option_Changed" />
+                    </Grid>
+                </StackPanel>
+            </ScrollViewer>
+        </Grid>
+
+        <Grid Grid.Row="1"
+              Margin="0,16,0,0">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="Auto" />
+                <ColumnDefinition Width="Auto" />
+            </Grid.ColumnDefinitions>
+            <StackPanel VerticalAlignment="Center">
+                <TextBlock x:Name="Summary"
+                           Style="{StaticResource ExportSwitchLabel}" />
+                <TextBlock x:Name="Warning"
+                           Style="{StaticResource ExportHint}"
+                           Margin="0,2,0,0"
+                           Visibility="Collapsed" />
+                <ProgressBar x:Name="Progress"
+                             Height="6"
+                             Margin="0,6,20,0"
+                             Visibility="Collapsed" />
+            </StackPanel>
+            <Button x:Name="ExportButton"
+                    Grid.Column="1"
+                    Width="110"
+                    Height="32"
+                    Margin="12,0,0,0"
+                    IsDefault="True"
+                    Content="Export…"
+                    Click="ExportButton_Click" />
+            <Button x:Name="CancelButton"
+                    Grid.Column="2"
+                    Width="88"
+                    Height="32"
+                    Margin="8,0,0,0"
+                    IsCancel="True"
+                    Content="Cancel"
+                    Click="CancelButton_Click" />
+        </Grid>
+    </Grid>
+</Window>
