@@ -579,8 +579,12 @@ scaled down and the dialog says by how much, rather than being tiled across slid
 
 The slide is a picture rendered by the same `BoardSurface` that draws the screen, at twice
 full HD, so calligraphy, the highlighter, and SVG come out as they are seen. The text
-containers go in the speaker notes so DAX and SQL can still be copied. An editable deck,
-with native text boxes and images, is a later phase.
+containers go in the speaker notes so DAX and SQL can still be copied. **Editable** is the
+other slide content: images as pictures, text containers as text boxes carrying the
+syntax colors the screen shows, and all the ink as one transparent picture on top, placed
+through the same camera the picture would have used. It is best effort where the picture
+is exact, which is why the picture stays the default. Ink as freeform shapes was left
+out: it would be a second stroke renderer to keep in step with the first.
 
 `DocumentFormat.OpenXml` writes the deck and `PdfSharp` the PDF: Microsoft's own SDK and
 a long-lived MIT library, both managed-only, so they pass the tests decision 21 set for a

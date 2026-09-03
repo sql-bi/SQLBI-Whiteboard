@@ -22,6 +22,9 @@ public static class PptxDeckWriter
     private const long TitleTop = 228600;
     private const long TitleHeight = 548640;
     private const long PictureTop = 914400;
+    private const long EmuPerPoint = 12700;
+    private const int TextBoxBorderWidth = 9525;
+    private const double TextBoxCornerRadius = 4;
 
     private const int TitleFontSize = 2000;
     private const string TitleColor = "1F2937";
@@ -104,16 +107,24 @@ public static class PptxDeckWriter
         var slidePart = presentationPart.AddNewPart<SlidePart>();
         slidePart.AddPart(layoutPart);
 
-        var imagePart = slidePart.AddImagePart(ImagePartType.Png);
-        using (var png = new MemoryStream(page.Png, writable: false))
+        var fit = PageFit.Of(slideWidth, page.PixelWidth, page.PixelHeight);
+        var shapes = new List<OpenXmlElement> { TitleShape(slideWidth, page.Title) };
+        if (page.Elements is null)
         {
-            imagePart.FeedData(png);
+            var imageId = AddImage(slidePart, page.Png, ImagePartType.Png);
+            shapes.Add(PictureShape(PictureShapeId, "Picture", imageId, fit.Frame()));
+        }
+        else
+        {
+            // Elements are listed back to front, which is also the shape tree's z-order.
+            for (var index = 0; index < page.Elements.Count; index++)
+            {
+                shapes.Add(ElementShape(slidePart, page.Elements[index], PictureShapeId + (uint)index, fit));
+            }
         }
 
         slidePart.Slide = DeclareNamespaces(new P.Slide(
-            new P.CommonSlideData(ShapeTree(
-                TitleShape(slideWidth, page.Title),
-                PictureShape(slidePart.GetIdOfPart(imagePart), slideWidth, page.PixelWidth, page.PixelHeight))),
+            new P.CommonSlideData(ShapeTree(shapes.ToArray())),
             new P.ColorMapOverride(new A.MasterColorMapping())));
 
         if (!string.IsNullOrEmpty(page.Notes))
@@ -127,23 +138,178 @@ public static class PptxDeckWriter
         return slidePart;
     }
 
-    private static P.Picture PictureShape(string imageRelationshipId, long slideWidth, int pixelWidth, int pixelHeight)
+    private static OpenXmlElement ElementShape(SlidePart slidePart, SlideElement element, uint id, PageFit fit) => element switch
     {
-        var boxWidth = slideWidth - 2 * Margin;
-        var boxHeight = SlideHeight - PictureTop - Margin;
-        var scale = Math.Min((double)boxWidth / pixelWidth, (double)boxHeight / pixelHeight);
-        var width = (long)Math.Round(pixelWidth * scale);
-        var height = (long)Math.Round(pixelHeight * scale);
+        SlideImageElement image => PictureShape(
+            id,
+            $"Picture {id}",
+            AddImage(slidePart, image.Data, ImageType(image.ContentType)),
+            fit.Frame(image.Bounds)),
+        SlideTextElement text => TextBoxShape(id, text, fit),
+        _ => throw new ArgumentException($"Unsupported slide element {element.GetType().Name}.", nameof(element)),
+    };
 
-        return new P.Picture(
-            new P.NonVisualPictureProperties(
-                new P.NonVisualDrawingProperties { Id = PictureShapeId, Name = "Picture" },
-                new P.NonVisualPictureDrawingProperties(new A.PictureLocks { NoChangeAspect = true }),
+    private static string AddImage(SlidePart slidePart, byte[] data, PartTypeInfo type)
+    {
+        var imagePart = slidePart.AddImagePart(type);
+        using (var stream = new MemoryStream(data, writable: false))
+        {
+            imagePart.FeedData(stream);
+        }
+
+        return slidePart.GetIdOfPart(imagePart);
+    }
+
+    private static PartTypeInfo ImageType(string contentType) =>
+        string.Equals(contentType, "image/jpeg", StringComparison.OrdinalIgnoreCase)
+            ? ImagePartType.Jpeg
+            : ImagePartType.Png;
+
+    private static P.Picture PictureShape(uint id, string name, string imageRelationshipId, A.Transform2D frame) => new(
+        new P.NonVisualPictureProperties(
+            new P.NonVisualDrawingProperties { Id = id, Name = name },
+            new P.NonVisualPictureDrawingProperties(new A.PictureLocks { NoChangeAspect = true }),
+            new P.ApplicationNonVisualDrawingProperties()),
+        new P.BlipFill(new A.Blip { Embed = imageRelationshipId }, new A.Stretch(new A.FillRectangle())),
+        new P.ShapeProperties(frame, Rectangle()));
+
+    /// <summary>
+    /// A text container as a plain text box: the title line in the deck's title face, then
+    /// the body runs. Autofit is off so that PowerPoint keeps the sizes the screen used.
+    /// </summary>
+    private static P.Shape TextBoxShape(uint id, SlideTextElement text, PageFit fit)
+    {
+        var titleSize = fit.Points(text.TitleFontSize);
+        var bodySize = fit.Points(text.BodyFontSize);
+        var inset = (int)fit.Emu(text.Padding);
+
+        var body = new P.TextBody(
+            new A.BodyProperties(new A.NoAutoFit())
+            {
+                Wrap = A.TextWrappingValues.Square,
+                LeftInset = inset,
+                TopInset = inset,
+                RightInset = inset,
+                BottomInset = inset,
+                Anchor = A.TextAnchoringTypeValues.Top,
+            },
+            new A.ListStyle());
+
+        var title = new A.Paragraph(new A.ParagraphProperties(
+            new A.SpaceAfter(new A.SpacingPoints { Val = (int)Math.Round(0.4 * bodySize) })));
+        if (text.Title.Length > 0)
+        {
+            title.Append(new A.Run(RunProperties(text.TextArgb, TitleFont, titleSize), new A.Text(text.Title)));
+        }
+
+        title.Append(new A.EndParagraphRunProperties { Language = Language, FontSize = titleSize });
+        body.Append(title);
+
+        var paragraph = new A.Paragraph();
+        foreach (var run in text.Runs)
+        {
+            var lines = run.Text.Split('\n');
+            for (var index = 0; index < lines.Length; index++)
+            {
+                if (index > 0)
+                {
+                    paragraph.Append(new A.EndParagraphRunProperties { Language = Language, FontSize = bodySize });
+                    body.Append(paragraph);
+                    paragraph = new A.Paragraph();
+                }
+
+                var fragment = lines[index].TrimEnd('\r');
+                if (fragment.Length > 0)
+                {
+                    paragraph.Append(new A.Run(
+                        RunProperties(run.Argb, text.FontFamily, bodySize, run.Bold, run.Italic),
+                        new A.Text(fragment)));
+                }
+            }
+        }
+
+        if (text.Runs.Count > 0)
+        {
+            paragraph.Append(new A.EndParagraphRunProperties { Language = Language, FontSize = bodySize });
+            body.Append(paragraph);
+        }
+
+        return new P.Shape(
+            new P.NonVisualShapeProperties(
+                new P.NonVisualDrawingProperties { Id = id, Name = $"Text {id}" },
+                new P.NonVisualShapeDrawingProperties { TextBox = true },
                 new P.ApplicationNonVisualDrawingProperties()),
-            new P.BlipFill(new A.Blip { Embed = imageRelationshipId }, new A.Stretch(new A.FillRectangle())),
             new P.ShapeProperties(
-                Transform(Margin + (boxWidth - width) / 2, PictureTop + (boxHeight - height) / 2, width, height),
-                Rectangle()));
+                fit.Frame(text.Bounds),
+                RoundedRectangle(text.Bounds),
+                new A.SolidFill(Rgb(text.BackgroundArgb)),
+                new A.Outline(new A.SolidFill(Rgb(text.BorderArgb))) { Width = TextBoxBorderWidth }),
+            body);
+    }
+
+    private static A.RunProperties RunProperties(uint argb, string typeface, int size, bool bold = false, bool italic = false)
+    {
+        var properties = new A.RunProperties(new A.SolidFill(Rgb(argb)), new A.LatinFont { Typeface = typeface })
+        {
+            Language = Language,
+            FontSize = size,
+        };
+        if (bold)
+        {
+            properties.Bold = true;
+        }
+
+        if (italic)
+        {
+            properties.Italic = true;
+        }
+
+        return properties;
+    }
+
+    // The adjust value is the corner radius as a fraction of the shorter side, in
+    // 1/100000, so it is derived from the bounds to keep the radius the screen shows.
+    private static A.PresetGeometry RoundedRectangle(SlideRect bounds)
+    {
+        var side = Math.Min(bounds.Width, bounds.Height);
+        var adjust = side > 0 ? Math.Clamp((int)Math.Round(TextBoxCornerRadius / side * 100000), 0, 50000) : 0;
+        return new A.PresetGeometry(new A.AdjustValueList(new A.ShapeGuide { Name = "adj", Formula = $"val {adjust}" }))
+        {
+            Preset = A.ShapeTypeValues.RoundRectangle,
+        };
+    }
+
+    /// <summary>
+    /// How a page's pixels land on the slide: scaled uniformly to fit the picture box and
+    /// centred in it. The single picture and every element go through the same mapping.
+    /// </summary>
+    private readonly record struct PageFit(double Scale, long OffsetX, long OffsetY, long Width, long Height)
+    {
+        public static PageFit Of(long slideWidth, int pixelWidth, int pixelHeight)
+        {
+            var boxWidth = slideWidth - 2 * Margin;
+            var boxHeight = SlideHeight - PictureTop - Margin;
+            var scale = Math.Min((double)boxWidth / pixelWidth, (double)boxHeight / pixelHeight);
+            var width = (long)Math.Round(pixelWidth * scale);
+            var height = (long)Math.Round(pixelHeight * scale);
+            return new PageFit(scale, Margin + (boxWidth - width) / 2, PictureTop + (boxHeight - height) / 2, width, height);
+        }
+
+        public A.Transform2D Frame() => Transform(OffsetX, OffsetY, Width, Height);
+
+        // Edges are rounded rather than sizes, so that a rectangle inside the page stays
+        // inside the picture box after rounding.
+        public A.Transform2D Frame(SlideRect rect)
+        {
+            var left = OffsetX + Emu(rect.X);
+            var top = OffsetY + Emu(rect.Y);
+            return Transform(left, top, OffsetX + Emu(rect.X + rect.Width) - left, OffsetY + Emu(rect.Y + rect.Height) - top);
+        }
+
+        public long Emu(double pixels) => (long)Math.Round(pixels * Scale);
+
+        // Hundredths of a point, the unit of sz and spcPts; never below 1 pt.
+        public int Points(double pixels) => Math.Max(100, (int)Math.Round(pixels * Scale / EmuPerPoint * 100));
     }
 
     /// <summary>
@@ -398,4 +564,7 @@ public static class PptxDeckWriter
         new(new A.AdjustValueList()) { Preset = A.ShapeTypeValues.Rectangle };
 
     private static A.RgbColorModelHex Rgb(string hex) => new() { Val = hex };
+
+    // DrawingML has no alpha in the hex; the screen's transparency is dropped.
+    private static A.RgbColorModelHex Rgb(uint argb) => Rgb((argb & 0xFFFFFF).ToString("X6"));
 }

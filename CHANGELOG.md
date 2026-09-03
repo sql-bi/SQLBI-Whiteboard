@@ -35,6 +35,12 @@ page in landscape, each with a bookmark and a footer with the board name, the da
 the page number. **Whole board on one page** writes a single page the shape of the board,
 to be read by zooming, for a board that is one drawing.
 
+### A deck you can rework
+**Slide content → Editable** puts images and text containers on the slide as PowerPoint
+objects, keeps the DAX and SQL colors as text runs, and lays all the ink over them as one
+transparent picture. Picture, the default, stays exact; Editable is for a deck that will be
+edited after the session.
+
 ## 1.2.2 - 2 September 2026
 
 ### The Eraser, for a pen that has none

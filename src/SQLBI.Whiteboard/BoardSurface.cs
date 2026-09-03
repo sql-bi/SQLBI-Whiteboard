@@ -29,6 +29,18 @@ internal sealed class BoardSurface : FrameworkElement
     public Func<Guid, ImageSource?>? LiveViewImageSourceProvider { get; set; }
 
     /// <summary>
+    /// Off for an export overlay, which is composed over the slide's own
+    /// objects and so must be transparent where nothing is drawn.
+    /// </summary>
+    public bool DrawBackground { get; set; } = true;
+
+    /// <summary>
+    /// When set, only the objects it accepts are drawn. An export uses it to
+    /// render the ink alone, once the containers have gone out as objects.
+    /// </summary>
+    public Func<BoardObject, bool>? ObjectFilter { get; set; }
+
+    /// <summary>
     /// The stroke the pen is drawing right now, before it is committed. Pen ink
     /// is collected here rather than by the InkCanvas, so the wet stroke is
     /// drawn here too.
@@ -54,7 +66,10 @@ internal sealed class BoardSurface : FrameworkElement
     protected override void OnRender(DrawingContext drawingContext)
     {
         base.OnRender(drawingContext);
-        drawingContext.DrawRectangle(BackgroundBrush, null, new Rect(RenderSize));
+        if (DrawBackground)
+        {
+            drawingContext.DrawRectangle(BackgroundBrush, null, new Rect(RenderSize));
+        }
 
         if (_document is null || _camera is null)
         {
@@ -63,7 +78,7 @@ internal sealed class BoardSurface : FrameworkElement
 
         foreach (var item in _document.Query(_camera.VisibleWorldBounds))
         {
-            if (item.Id == HiddenObjectId)
+            if (item.Id == HiddenObjectId || ObjectFilter?.Invoke(item) == false)
             {
                 continue;
             }
