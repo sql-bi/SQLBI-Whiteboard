@@ -1343,6 +1343,39 @@ Assert(
         Assert(pdf.Outlines.Count == 3, "Every page has a bookmark.");
     }
 
+    // A vector page: the same elements as the editable slide, with the ink as
+    // strokes rather than a picture, drawn as paths and text.
+    SlidePoint[] sine = Enumerable.Range(0, 40)
+        .Select(i => new SlidePoint(100 + (i * 20), 600 + (80 * Math.Sin(i / 4.0)), (float)(0.2 + (0.6 * Math.Abs(Math.Sin(i / 3.0))))))
+        .ToArray();
+    SlideElement[] vectorElements =
+    [
+        elements[0],
+        elements[1],
+        new SlideInkElement(
+            new SlideRect(0, 0, 1600, 900),
+            [
+                new SlideStroke(sine, 0xFFE64B3D, 4, SlideStrokeKind.Pen),
+                new SlideStroke([new SlidePoint(580, 150, 0.5f), new SlidePoint(1120, 160, 0.5f)], 0xFFFACC15, 6, SlideStrokeKind.Highlighter),
+                new SlideStroke([new SlidePoint(200, 300, 0.3f), new SlidePoint(300, 260, 0.8f), new SlidePoint(420, 330, 0.5f)], 0xFF1F2937, 4, SlideStrokeKind.Calligraphy),
+                new SlideStroke([new SlidePoint(50, 50, 0.5f)], 0xFF1F2937, 8, SlideStrokeKind.Pen),
+            ]),
+    ];
+    using var vectorStream = new MemoryStream();
+    PdfDocumentWriter.Write(
+        vectorStream,
+        [new ExportPage("Vector", null, onePixelPng, 1600, 900, vectorElements)],
+        new PdfOptions(BoardName: "Contoso workshop"));
+    var vectorBytes = vectorStream.ToArray();
+    Assert(
+        System.Text.Encoding.Latin1.GetString(vectorBytes).Contains("Consolas", StringComparison.Ordinal),
+        "A vector page embeds the text's font, so the text is text.");
+    vectorStream.Position = 0;
+    using (var vector = PdfSharp.Pdf.IO.PdfReader.Open(vectorStream, PdfSharp.Pdf.IO.PdfDocumentOpenMode.Import))
+    {
+        Assert(vector.PageCount == 1, "A vector page is one page.");
+    }
+
     using var posterStream = new MemoryStream();
     PdfDocumentWriter.Write(posterStream, deckPages[..1], new PdfOptions(FitPageToPicture: true));
     posterStream.Position = 0;
