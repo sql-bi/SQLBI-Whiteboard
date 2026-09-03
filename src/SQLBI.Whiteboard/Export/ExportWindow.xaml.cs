@@ -100,7 +100,13 @@ public partial class ExportWindow : Window
     private void PopulateOptions()
     {
         FormatCombo.Items.Add(new Choice("PowerPoint", ExportFormat.PowerPoint));
-        FormatCombo.SelectedIndex = 0;
+        FormatCombo.Items.Add(new Choice("PDF", ExportFormat.Pdf));
+        Select(FormatCombo, _settings.Format);
+
+        PageSizeCombo.Items.Add(new Choice("A4, landscape", ExportPageSize.A4));
+        PageSizeCombo.Items.Add(new Choice("Letter, landscape", ExportPageSize.Letter));
+        Select(PageSizeCombo, _settings.PageSize);
+        FooterSwitch.IsChecked = _settings.IncludeFooter;
 
         PageModelCombo.Items.Add(new Choice("One slide per area", ExportPageModel.OnePerArea));
         PageModelCombo.Items.Add(new Choice("Whole board on one slide", ExportPageModel.WholeBoard));
@@ -169,9 +175,11 @@ public partial class ExportWindow : Window
         _settings.Order = Selected(OrderCombo, AreaOrder.Drawing);
         _settings.SmallestTextPoints = Selected(SmallestTextCombo, ExportLayoutOptions.DefaultSmallestTextPoints);
         _settings.SlideAspect = Selected(AspectCombo, ExportSlideAspect.Wide);
+        _settings.PageSize = Selected(PageSizeCombo, ExportPageSize.A4);
         _settings.GapThreshold = GapSlider.Value;
         _settings.IncludeOverview = OverviewSwitch.IsChecked == true;
         _settings.IncludeNotes = NotesSwitch.IsChecked == true;
+        _settings.IncludeFooter = FooterSwitch.IsChecked == true;
     }
 
     private void Rebuild()
@@ -179,16 +187,29 @@ public partial class ExportWindow : Window
         GapValue.Text = ((int)Math.Round(GapSlider.Value)).ToString(CultureInfo.CurrentCulture);
         _areas = BoardExporter.Areas(_document, _settings, _titleResolver);
 
+        var pdf = _settings.Format == ExportFormat.Pdf;
+        var unit = pdf ? "page" : "slide";
+        PageModelLabel.Text = pdf ? "Pages" : "Slides";
+        RelabelPageModel(unit);
+        SmallestTextLabel.Text = "Smallest text on a " + unit;
+        OverviewLabel.Text = "Overview " + unit + " first";
+        AspectLabel.Visibility = pdf ? Visibility.Collapsed : Visibility.Visible;
+        AspectCombo.Visibility = AspectLabel.Visibility;
+        NotesRow.Visibility = AspectLabel.Visibility;
+        PageSizeLabel.Visibility = pdf ? Visibility.Visible : Visibility.Collapsed;
+        PageSizeCombo.Visibility = PageSizeLabel.Visibility;
+        FooterRow.Visibility = PageSizeLabel.Visibility;
+
         var perArea = _settings.PageModel == ExportPageModel.OnePerArea;
         OrderCombo.IsEnabled = perArea;
         GapSlider.IsEnabled = perArea;
         SmallestTextCombo.IsEnabled = perArea;
         OverviewSwitch.IsEnabled = perArea && _areas.Count > 1;
 
-        var slides = _areas.Count + (BoardExporter.HasOverview(_settings, _areas) ? 1 : 0);
-        Summary.Text = slides == 1
-            ? "1 slide"
-            : $"{slides} slides" + (BoardExporter.HasOverview(_settings, _areas) ? ", the first an overview" : "");
+        var count = _areas.Count + (BoardExporter.HasOverview(_settings, _areas) ? 1 : 0);
+        Summary.Text = count == 1
+            ? "1 " + unit
+            : $"{count} {unit}s" + (BoardExporter.HasOverview(_settings, _areas) ? ", the first an overview" : "");
 
         var scaled = _areas.Where(area => area.IsScaledDown).ToArray();
         if (scaled.Length == 0)
@@ -218,6 +239,18 @@ public partial class ExportWindow : Window
         }
 
         RefreshPreview();
+    }
+
+    // The page-model choices name the unit, so their labels follow the format.
+    private void RelabelPageModel(string unit)
+    {
+        _suppressChange = true;
+        var selected = Selected(PageModelCombo, ExportPageModel.OnePerArea);
+        PageModelCombo.Items.Clear();
+        PageModelCombo.Items.Add(new Choice($"One {unit} per area", ExportPageModel.OnePerArea));
+        PageModelCombo.Items.Add(new Choice($"Whole board on one {unit}", ExportPageModel.WholeBoard));
+        Select(PageModelCombo, selected);
+        _suppressChange = false;
     }
 
     private void RefreshPreview()
@@ -256,13 +289,14 @@ public partial class ExportWindow : Window
         var boardName = string.IsNullOrWhiteSpace(_boardPath)
             ? "Untitled board"
             : Path.GetFileNameWithoutExtension(_boardPath);
+        var pdf = _settings.Format == ExportFormat.Pdf;
         var dialog = new SaveFileDialog
         {
-            Title = "Export to PowerPoint",
-            Filter = "PowerPoint presentation|*.pptx",
-            DefaultExt = ".pptx",
+            Title = pdf ? "Export to PDF" : "Export to PowerPoint",
+            Filter = pdf ? "PDF document|*.pdf" : "PowerPoint presentation|*.pptx",
+            DefaultExt = pdf ? ".pdf" : ".pptx",
             AddExtension = true,
-            FileName = boardName + ".pptx",
+            FileName = boardName + (pdf ? ".pdf" : ".pptx"),
             InitialDirectory = string.IsNullOrWhiteSpace(_boardPath)
                 ? null
                 : Path.GetDirectoryName(_boardPath),
