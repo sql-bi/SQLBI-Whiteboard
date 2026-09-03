@@ -17,6 +17,18 @@ broke. The heading is parsed by `scripts/release-notes.ps1`, so keep its shape; 
 under it is ordinary Markdown, and the renderer handles paragraphs, lists, links, `code`
 and **bold**.
 
+## 1.3.0 - 3 September 2026
+
+### Export a board to PowerPoint
+**File → Export** (Ctrl+E) turns the board into a deck. The board is cut into areas
+wherever it is empty: a picture or a note keeps the ink drawn on it, and a stroke that
+spans two of them keeps them together. Each area becomes a slide, drawn exactly as the
+screen draws it, with the text containers in the speaker notes so that DAX and SQL can be
+copied, and an overview slide first shows where every slide sits on the board. The dialog
+previews the areas, numbered, and updates as you move the gap and text-size settings.
+[How areas are chosen](https://github.com/sql-bi/SQLBI-Whiteboard/blob/main/docs/export.md)
+is written down, with the alternatives.
+
 ## 1.2.2 - 2 September 2026
 
 ### The Eraser, for a pen that has none
