@@ -54,6 +54,13 @@ everything in it stays reachable; F2 renames it. A board with a frame is saved i
 format version, so it needs this release to open; a board without one still opens in the
 releases before it.
 
+### An SVG with a picture inside draws the picture where it belongs
+An SVG that embeds a bitmap and clips it, the way an illustration frames a screenshot,
+drew the bitmap shifted and partly missing. The renderer applied the clip inside the
+scaling it builds for the picture, so a clip written in page coordinates moved with the
+picture. The clip is now lifted onto a group around the picture before drawing, which is
+what the markup means, and the picture lands where the author put it.
+
 ## 1.2.2 - 2 September 2026
 
 ### The Eraser, for a pen that has none

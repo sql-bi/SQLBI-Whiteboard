@@ -3,6 +3,7 @@ using System.Windows.Media;
 using SharpVectors.Converters;
 using SharpVectors.Dom;
 using SharpVectors.Renderers.Wpf;
+using SQLBI.Whiteboard.Core.Import;
 
 namespace SQLBI.Whiteboard;
 
@@ -31,7 +32,7 @@ internal static class SvgImageCodec
         };
 
         using var reader = new FileSvgReader(settings);
-        using var stream = new MemoryStream(bytes, writable: false);
+        using var stream = new MemoryStream(SvgMarkup.HoistImageClips(bytes), writable: false);
         var drawing = reader.Read(stream)
             ?? throw new InvalidDataException("The SVG has nothing to draw.");
 

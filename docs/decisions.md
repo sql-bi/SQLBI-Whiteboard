@@ -382,6 +382,14 @@ The renderer is given `ExternalResourcesAccessModes.Ignore`. Its default is to f
 the markup names, which would let a pasted or dropped file turn opening a board into an
 outbound request.
 
+One rendering defect is worked around in the markup rather than in the drawing it
+produces (issue 98): SharpVectors puts an `<image>`'s own `clip-path` on the same drawing
+group as the scale and offset it builds for the image's size, so the clip is transformed
+along with the bitmap. `SvgMarkup.HoistImageClips` moves the clip, and the image's
+transform with it, onto a `<g>` around the image before decoding, which the renderer
+handles as the author meant. The stored asset is untouched; only what is handed to the
+renderer changes.
+
 ---
 
 ## 22. Pen ink is collected from the pen, not from the InkCanvas
