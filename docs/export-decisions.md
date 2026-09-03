@@ -50,3 +50,22 @@ which phase made it and why.
   the pipeline's signing step. The smoke test project references it to open the produced
   deck, which means the core-only verification now restores the Open XML SDK package; it
   still needs no WPF.
+
+## E2 — PDF
+
+- **PDF is a choice in the same dialog**, not a second command. The dialog relabels itself
+  (pages rather than slides), hides the slide size and the notes switch, and shows the
+  page size and the footer switch. The preview and the areas are the same.
+- **Pages are landscape only**, A4 or Letter. Boards are landscape; a portrait option
+  was left out until someone asks.
+- **Each page has a header line with the area's title** as well as the bookmark, so a
+  printed page says what it is. The footer (board name, date, page n of m) is a switch, on
+  by default.
+- **No notes in a PDF.** There is nowhere for them that is not the page, and the text is
+  in the picture already. Selectable text is what the vector phase brings.
+- **The whole-board page is rendered at up to 6000 pixels on the longer edge** and sized
+  at 144 dpi, so a 6000-pixel board becomes a 41-inch page, under the 200-inch limit
+  viewers enforce. It has no header or footer: the page is the board.
+- **The overview page** works as for the deck: first, only with two or more areas.
+- **`PdfSharp` 6.2.4** is the writer, MIT and managed-only. Fonts come from the Windows
+  fonts folder through its platform resolver; the export runs only on Windows.

@@ -5,6 +5,13 @@ namespace SQLBI.Whiteboard.Core.Settings;
 public enum ExportFormat
 {
     PowerPoint = 0,
+    Pdf = 1,
+}
+
+public enum ExportPageSize
+{
+    A4 = 0,
+    Letter = 1,
 }
 
 public enum ExportPageModel
@@ -50,6 +57,13 @@ public sealed class ExportSettings
 
     public ExportSlideAspect SlideAspect { get; set; } = ExportSlideAspect.Wide;
 
+    public ExportPageSize PageSize { get; set; } = ExportPageSize.A4;
+
+    /// <summary>
+    /// The board name, the date, and "n of m" at the foot of every PDF page.
+    /// </summary>
+    public bool IncludeFooter { get; set; } = true;
+
     public ExportLayoutOptions LayoutOptions => ExportLayoutOptions.ForSmallestText(
         SmallestTextPoints,
         GapThreshold,
@@ -76,6 +90,11 @@ public sealed class ExportSettings
         if (!Enum.IsDefined(result.SlideAspect))
         {
             result.SlideAspect = ExportSlideAspect.Wide;
+        }
+
+        if (!Enum.IsDefined(result.PageSize))
+        {
+            result.PageSize = ExportPageSize.A4;
         }
 
         result.GapThreshold = double.IsFinite(result.GapThreshold)

@@ -22,6 +22,13 @@ internal static class BoardExporter
     public const int PageBoxWidth = 3840;
     public const int PageBoxHeight = 2160;
 
+    /// <summary>
+    /// A whole board on one PDF page is read by zooming, so it is rendered
+    /// larger than a slide would be. Six thousand pixels on the longer edge is
+    /// a 144 MB transient bitmap, the most this is willing to ask for.
+    /// </summary>
+    public const int PosterBoxEdge = 6000;
+
     public static IReadOnlyList<ExportArea> Areas(
         BoardDocument document,
         ExportSettings settings,
@@ -61,6 +68,9 @@ internal static class BoardExporter
         var pages = new List<ExportPage>();
         var overview = HasOverview(settings, areas);
         var total = areas.Count + (overview ? 1 : 0);
+        var pdf = settings.Format == ExportFormat.Pdf;
+        var poster = pdf && settings.PageModel == ExportPageModel.WholeBoard;
+        var unit = pdf ? "page" : "slide";
 
         if (overview && document.ContentBounds is { } content)
         {
@@ -75,7 +85,7 @@ internal static class BoardExporter
             progress.Report(new ExportProgress(
                 pages.Count,
                 total,
-                $"Rendering slide {pages.Count + 1} of {total}"));
+                $"Rendering {unit} {pages.Count + 1} of {total}"));
             await Task.Yield();
             pages.Add(RenderArea(
                 document,
@@ -83,14 +93,22 @@ internal static class BoardExporter
                 settings,
                 areas.Count == 1 ? boardName : null,
                 liveViewImageSourceProvider,
-                titleResolver));
+                titleResolver,
+                poster ? PosterBoxEdge : PageBoxWidth,
+                poster ? PosterBoxEdge : PageBoxHeight));
         }
 
         progress.Report(new ExportProgress(total, total, "Writing the file"));
-        var options = new DeckOptions(settings.SlideAspect == ExportSlideAspect.Standard
-            ? SlideAspect.Standard
-            : SlideAspect.Wide);
-        await Task.Run(() => WriteAtomically(filePath, stream => PptxDeckWriter.Write(stream, pages, options)), cancellationToken);
+        Action<Stream> write = pdf
+            ? stream => PdfDocumentWriter.Write(stream, pages, new PdfOptions(
+                settings.PageSize == ExportPageSize.Letter ? PdfPageSize.Letter : PdfPageSize.A4,
+                Landscape: true,
+                Footer: settings.IncludeFooter,
+                BoardName: boardName,
+                FitPageToPicture: poster))
+            : stream => PptxDeckWriter.Write(stream, pages, new DeckOptions(
+                settings.SlideAspect == ExportSlideAspect.Standard ? SlideAspect.Standard : SlideAspect.Wide));
+        await Task.Run(() => WriteAtomically(filePath, write), cancellationToken);
     }
 
     public static string PageTitle(ExportArea area, string? singlePageTitle) =>
@@ -127,9 +145,11 @@ internal static class BoardExporter
         ExportSettings settings,
         string? singlePageTitle,
         Func<Guid, ImageSource?>? liveViewImageSourceProvider,
-        Func<BoardObject, string?>? titleResolver)
+        Func<BoardObject, string?>? titleResolver,
+        int boxWidth,
+        int boxHeight)
     {
-        var (width, height) = BoardRasterizer.FitPixelSize(area.Bounds, PageBoxWidth, PageBoxHeight);
+        var (width, height) = BoardRasterizer.FitPixelSize(area.Bounds, boxWidth, boxHeight);
         var bitmap = BoardRasterizer.Render(
             document,
             area.Bounds,

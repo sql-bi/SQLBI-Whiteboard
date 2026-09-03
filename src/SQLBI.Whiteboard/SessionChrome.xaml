@@ -110,7 +110,7 @@
                             </StackPanel>
                         </Button>
                         <Button Style="{StaticResource SessionCommandButton}"
-                                ToolTip="Export to PowerPoint (Ctrl+E)"
+                                ToolTip="Export to PowerPoint or PDF (Ctrl+E)"
                                 Tag="Export"
                                 Click="Command_Click">
                             <StackPanel HorizontalAlignment="Center">

@@ -8,5 +8,7 @@
   <ItemGroup>
     <!-- Microsoft's Open XML SDK: MIT, managed-only, no native binary to sign. -->
     <PackageReference Include="DocumentFormat.OpenXml" Version="3.5.1" />
+    <!-- PDFsharp (Core build): MIT, managed-only, no native binary to sign. -->
+    <PackageReference Include="PdfSharp" Version="6.2.4" />
   </ItemGroup>
 </Project>

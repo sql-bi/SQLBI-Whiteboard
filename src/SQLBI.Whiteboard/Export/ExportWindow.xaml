@@ -98,7 +98,8 @@
                               ItemContainerStyle="{StaticResource SettingsComboBoxItem}"
                               SelectionChanged="Option_Changed" />
 
-                    <TextBlock Style="{StaticResource ExportLabel}"
+                    <TextBlock x:Name="PageModelLabel"
+                               Style="{StaticResource ExportLabel}"
                                Text="Slides" />
                     <ComboBox x:Name="PageModelCombo"
                               Style="{StaticResource SettingsComboBox}"
@@ -136,7 +137,8 @@
                     <TextBlock Style="{StaticResource ExportHint}"
                                Text="Empty space at least this wide separates one area from the next. The unit is a screen pixel at zoom 1." />
 
-                    <TextBlock Style="{StaticResource ExportLabel}"
+                    <TextBlock x:Name="SmallestTextLabel"
+                               Style="{StaticResource ExportLabel}"
                                Text="Smallest text on a slide" />
                     <ComboBox x:Name="SmallestTextCombo"
                               Style="{StaticResource SettingsComboBox}"
@@ -146,9 +148,18 @@
                                Margin="0,4,0,0"
                                Text="An area is cut until its text containers read at this size. An area that cannot be cut is shrunk instead, and marked." />
 
-                    <TextBlock Style="{StaticResource ExportLabel}"
+                    <TextBlock x:Name="AspectLabel"
+                               Style="{StaticResource ExportLabel}"
                                Text="Slide size" />
                     <ComboBox x:Name="AspectCombo"
+                              Style="{StaticResource SettingsComboBox}"
+                              ItemContainerStyle="{StaticResource SettingsComboBoxItem}"
+                              SelectionChanged="Option_Changed" />
+
+                    <TextBlock x:Name="PageSizeLabel"
+                               Style="{StaticResource ExportLabel}"
+                               Text="Page size" />
+                    <ComboBox x:Name="PageSizeCombo"
                               Style="{StaticResource SettingsComboBox}"
                               ItemContainerStyle="{StaticResource SettingsComboBoxItem}"
                               SelectionChanged="Option_Changed" />
@@ -159,7 +170,8 @@
                             <ColumnDefinition Width="*" />
                             <ColumnDefinition Width="Auto" />
                         </Grid.ColumnDefinitions>
-                        <TextBlock Style="{StaticResource ExportSwitchLabel}"
+                        <TextBlock x:Name="OverviewLabel"
+                                   Style="{StaticResource ExportSwitchLabel}"
                                    Text="Overview slide first" />
                         <ToggleButton x:Name="OverviewSwitch"
                                       Grid.Column="1"
@@ -167,7 +179,8 @@
                                       Checked="Option_Changed"
                                       Unchecked="Option_Changed" />
                     </Grid>
-                    <Grid Style="{StaticResource ExportSwitchRow}">
+                    <Grid x:Name="NotesRow"
+                          Style="{StaticResource ExportSwitchRow}">
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="*" />
                             <ColumnDefinition Width="Auto" />
@@ -175,6 +188,20 @@
                         <TextBlock Style="{StaticResource ExportSwitchLabel}"
                                    Text="Text containers in the notes" />
                         <ToggleButton x:Name="NotesSwitch"
+                                      Grid.Column="1"
+                                      Style="{StaticResource SettingsSwitch}"
+                                      Checked="Option_Changed"
+                                      Unchecked="Option_Changed" />
+                    </Grid>
+                    <Grid x:Name="FooterRow"
+                          Style="{StaticResource ExportSwitchRow}">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <TextBlock Style="{StaticResource ExportSwitchLabel}"
+                                   Text="Board name, date, and page number at the foot" />
+                        <ToggleButton x:Name="FooterSwitch"
                                       Grid.Column="1"
                                       Style="{StaticResource SettingsSwitch}"
                                       Checked="Option_Changed"

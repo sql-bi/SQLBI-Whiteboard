@@ -1282,6 +1282,30 @@ Assert(
     using var standardStream = new MemoryStream();
     PptxDeckWriter.Write(standardStream, deckPages[..1], new DeckOptions(SlideAspect.Standard));
     Assert(standardStream.Length > 0, "A 4:3 deck is written too.");
+
+    // The same pages as a PDF: one page each, a bookmark each, and the page
+    // size following the picture when asked.
+    using var pdfStream = new MemoryStream();
+    PdfDocumentWriter.Write(pdfStream, deckPages, new PdfOptions(PdfPageSize.A4, Landscape: true, Footer: true, BoardName: "Contoso workshop"));
+    pdfStream.Position = 0;
+    using (var pdf = PdfSharp.Pdf.IO.PdfReader.Open(pdfStream, PdfSharp.Pdf.IO.PdfDocumentOpenMode.Import))
+    {
+        Assert(pdf.PageCount == 3, "The PDF has one page per export page.");
+        Assert(
+            Math.Abs(pdf.Pages[0].Width.Point - 841.9) < 1 && Math.Abs(pdf.Pages[0].Height.Point - 595.3) < 1,
+            "A4 landscape pages are 842 by 595 points.");
+        Assert(pdf.Outlines.Count == 3, "Every page has a bookmark.");
+    }
+
+    using var posterStream = new MemoryStream();
+    PdfDocumentWriter.Write(posterStream, deckPages[..1], new PdfOptions(FitPageToPicture: true));
+    posterStream.Position = 0;
+    using (var poster = PdfSharp.Pdf.IO.PdfReader.Open(posterStream, PdfSharp.Pdf.IO.PdfDocumentOpenMode.Import))
+    {
+        Assert(
+            poster.PageCount == 1 && Math.Abs(poster.Pages[0].Width.Point - 800) < 1 && Math.Abs(poster.Pages[0].Height.Point - 450) < 1,
+            "A whole-board page takes the picture's aspect at 144 dpi.");
+    }
 }
 
 Console.WriteLine("SQLBI.Whiteboard.Core smoke tests passed.");

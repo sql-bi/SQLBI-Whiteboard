@@ -29,7 +29,7 @@ How the project is developed and shipped is documented separately:
 - Undo and redo for strokes, erasing, containers, text edits, and transformations
 - Versioned ZIP-based `.wboard` documents with an embedded `preview.png`. Explorer shows that picture as the file thumbnail in the released install. The VS Code extension in `vscode/sqlbi-whiteboard` opens the same picture instead of the ZIP.
 - Markdown `.wimport` recipes that build image and text containers from headings
-- **File → Export** to PowerPoint: the board is cut into areas where it is empty, one slide per area with the text containers in the speaker notes and an overview slide first. The dialog shows the areas numbered on the board and updates as the settings change. [docs/export.md](docs/export.md) explains how areas are chosen
+- **File → Export** to PowerPoint or PDF: the board is cut into areas where it is empty, one slide or page per area, with an overview first. A deck carries the text containers in the speaker notes; a PDF has a bookmark per page and can put the whole board on one page to zoom into. The dialog shows the areas numbered on the board and updates as the settings change. [docs/export.md](docs/export.md) explains how areas are chosen
 - An intentionally small floating toolbar
 - A File / Edit / View / Help tab strip. Click a tab for a one-row command strip over the canvas
 - Preferences for the startup monitor, full-screen start, finger drawing, mouse drawing, the pen button, snippet format order, laser trail timing and weight, toolbar position and layout, keeping the Eraser on the toolbar for a pen that has no reverse end, and (except Store installs) a daily new-version check
@@ -203,7 +203,7 @@ Use **Copy settings** after finding a useful combination so the exact values can
 | Escape | Cancel the active text edit, close the command strip, or leave full screen or canvas only |
 | Ctrl+S / Ctrl+O | Save / open a board |
 | Shift+F12 | Save As |
-| Ctrl+E | Export the board to PowerPoint |
+| Ctrl+E | Export the board to PowerPoint or PDF |
 | Delete | Delete the selected container and its linked strokes |
 | Alt+L | Laser pointer |
 | File / Edit / View / Help | Tab strip. Click a tab for a one-row command strip over the canvas. Click the canvas to hide it |
