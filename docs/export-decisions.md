@@ -94,3 +94,32 @@ which phase made it and why.
   exported as a placeholder.
 - **The picture is still rendered for an editable page** and kept as the page's own
   picture in the model, so a page can fall back to it; PowerPoint does not receive it.
+
+## E4 — Vector PDF
+
+- **Page content is a choice on the dialog, Picture or Vector**, for PDF only, with
+  Picture the default for the same reason as the deck: exact beats best effort until
+  someone needs to select text.
+- **The vector page reuses the editable slide's elements**, with one difference: the ink
+  goes out as strokes in their own z-order between the containers, not as one overlay,
+  because a path costs nothing to layer correctly.
+- **A stroke is the sweep of its nib.** For each pair of points the writer fills the
+  convex hull of the two nib polygons, which is exactly the area a convex nib sweeps
+  along a segment, and joins every hull into one path filled once with the non-zero rule,
+  so a translucent stroke does not darken where its own segments overlap. The nibs follow
+  WPF: a pen is an ellipse of diameter thickness × 2 × pressure (pressure 0.5 is the
+  nominal width, which is also why a mouse draws at an even width), a highlighter a flat
+  rectangle four thicknesses wide and two tall with no pressure, calligraphy a tall bar
+  three thicknesses high and 0.65 wide following pressure.
+- **An opaque highlighter is drawn at half opacity**, which is how WPF renders an ink
+  highlighter whose color has no alpha; the board's highlighter swatches are opaque.
+- **Text is laid out line by line in the writer**: paragraphs on line breaks, runs
+  measured left to right, wrapped at the last space that fits and then at a character, in
+  the language's font at the size the board used. It approximates WPF's layout rather than
+  reproducing it, so a line may wrap a character earlier or later than on screen.
+- **Fonts are embedded as subsets** from the Windows fonts folder: Segoe UI and Consolas,
+  with Arial and Courier New standing in when they are missing. Segoe UI and Consolas
+  both allow editable embedding, which covers a subset in a document. Any other family
+  a future language service names falls back to Segoe UI until it is added to the
+  resolver.
+- **The overview page stays a picture** in both modes; it is a map, not content.

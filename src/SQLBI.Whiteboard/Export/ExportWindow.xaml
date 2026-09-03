@@ -173,6 +173,18 @@
                                Style="{StaticResource ExportHint}"
                                Text="Editable: images and text as objects, ink on top." />
 
+                    <TextBlock x:Name="PageContentLabel"
+                               Style="{StaticResource ExportLabel}"
+                               Text="Page content" />
+                    <ComboBox x:Name="PageContentCombo"
+                              Style="{StaticResource SettingsComboBox}"
+                              ItemContainerStyle="{StaticResource SettingsComboBoxItem}"
+                              ToolTip="Picture is exact. Vector draws the ink as paths and the text as selectable text, sharp at any zoom."
+                              SelectionChanged="Option_Changed" />
+                    <TextBlock x:Name="PageContentHint"
+                               Style="{StaticResource ExportHint}"
+                               Text="Vector: ink as paths, text selectable, sharp at any zoom." />
+
                     <TextBlock x:Name="PageSizeLabel"
                                Style="{StaticResource ExportLabel}"
                                Text="Page size" />

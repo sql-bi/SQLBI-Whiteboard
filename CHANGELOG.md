@@ -41,6 +41,11 @@ objects, keeps the DAX and SQL colors as text runs, and lays all the ink over th
 transparent picture. Picture, the default, stays exact; Editable is for a deck that will be
 edited after the session.
 
+### PDF pages that stay sharp
+**Page content → Vector** draws the ink as paths and the text as text, so a page stays
+sharp at any zoom and DAX or SQL can be selected and copied from it. The fonts travel with
+the file.
+
 ## 1.2.2 - 2 September 2026
 
 ### The Eraser, for a pen that has none

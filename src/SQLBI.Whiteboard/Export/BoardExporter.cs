@@ -158,6 +158,8 @@ internal static class BoardExporter
             liveViewImageSourceProvider);
         var editable = settings.Format == ExportFormat.PowerPoint &&
                        settings.SlideContent == ExportSlideContent.Editable;
+        var vector = settings.Format == ExportFormat.Pdf &&
+                     settings.PageContent == ExportPageContent.Vector;
 
         return new ExportPage(
             PageTitle(area, singlePageTitle),
@@ -165,8 +167,8 @@ internal static class BoardExporter
             WpfImageCodec.EncodePng(bitmap),
             width,
             height,
-            editable
-                ? EditableSlide.Build(document, area, width, height, liveViewImageSourceProvider)
+            editable || vector
+                ? EditableSlide.Build(document, area, width, height, liveViewImageSourceProvider, inkAsStrokes: vector)
                 : null);
     }
 

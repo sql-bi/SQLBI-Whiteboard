@@ -33,6 +33,20 @@ public enum ExportSlideAspect
     Standard = 1,
 }
 
+public enum ExportPageContent
+{
+    /// <summary>
+    /// One picture of the area per page, exactly as the screen draws it.
+    /// </summary>
+    Picture = 0,
+
+    /// <summary>
+    /// Ink as paths, text as text, images as images: selectable, and sharp
+    /// at any zoom.
+    /// </summary>
+    Vector = 1,
+}
+
 public enum ExportSlideContent
 {
     /// <summary>
@@ -75,6 +89,8 @@ public sealed class ExportSettings
 
     public ExportPageSize PageSize { get; set; } = ExportPageSize.A4;
 
+    public ExportPageContent PageContent { get; set; } = ExportPageContent.Picture;
+
     /// <summary>
     /// The board name, the date, and "n of m" at the foot of every PDF page.
     /// </summary>
@@ -116,6 +132,11 @@ public sealed class ExportSettings
         if (!Enum.IsDefined(result.SlideContent))
         {
             result.SlideContent = ExportSlideContent.Picture;
+        }
+
+        if (!Enum.IsDefined(result.PageContent))
+        {
+            result.PageContent = ExportPageContent.Picture;
         }
 
         result.GapThreshold = double.IsFinite(result.GapThreshold)

@@ -103,6 +103,10 @@ public partial class ExportWindow : Window
         FormatCombo.Items.Add(new Choice("PDF", ExportFormat.Pdf));
         Select(FormatCombo, _settings.Format);
 
+        PageContentCombo.Items.Add(new Choice("Picture", ExportPageContent.Picture));
+        PageContentCombo.Items.Add(new Choice("Vector", ExportPageContent.Vector));
+        Select(PageContentCombo, _settings.PageContent);
+
         PageSizeCombo.Items.Add(new Choice("A4, landscape", ExportPageSize.A4));
         PageSizeCombo.Items.Add(new Choice("Letter, landscape", ExportPageSize.Letter));
         Select(PageSizeCombo, _settings.PageSize);
@@ -181,6 +185,7 @@ public partial class ExportWindow : Window
         _settings.SlideAspect = Selected(AspectCombo, ExportSlideAspect.Wide);
         _settings.SlideContent = Selected(ContentCombo, ExportSlideContent.Picture);
         _settings.PageSize = Selected(PageSizeCombo, ExportPageSize.A4);
+        _settings.PageContent = Selected(PageContentCombo, ExportPageContent.Picture);
         _settings.GapThreshold = GapSlider.Value;
         _settings.IncludeOverview = OverviewSwitch.IsChecked == true;
         _settings.IncludeNotes = NotesSwitch.IsChecked == true;
@@ -206,6 +211,9 @@ public partial class ExportWindow : Window
         NotesRow.Visibility = AspectLabel.Visibility;
         PageSizeLabel.Visibility = pdf ? Visibility.Visible : Visibility.Collapsed;
         PageSizeCombo.Visibility = PageSizeLabel.Visibility;
+        PageContentLabel.Visibility = PageSizeLabel.Visibility;
+        PageContentCombo.Visibility = PageSizeLabel.Visibility;
+        PageContentHint.Visibility = PageSizeLabel.Visibility;
         FooterRow.Visibility = PageSizeLabel.Visibility;
 
         var perArea = _settings.PageModel == ExportPageModel.OnePerArea;

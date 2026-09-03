@@ -24,17 +24,40 @@ internal static class EditableSlide
     private const uint TextBorderArgb = 0xFFD6D9DE;
     private const uint TextArgb = 0xFF1F2937;
 
+    /// <summary>
+    /// With <paramref name="inkAsStrokes"/> the ink goes out as vector strokes in
+    /// their own z-order between the containers, for a writer that draws paths;
+    /// otherwise as one transparent picture over everything.
+    /// </summary>
     public static IReadOnlyList<SlideElement> Build(
         BoardDocument document,
         ExportArea area,
         int pixelWidth,
         int pixelHeight,
-        Func<Guid, ImageSource?>? liveViewImageSourceProvider)
+        Func<Guid, ImageSource?>? liveViewImageSourceProvider,
+        bool inkAsStrokes = false)
     {
         var camera = BoardRasterizer.CameraFor(area.Bounds, pixelWidth, pixelHeight);
         var elements = new List<SlideElement>();
+        var strokes = new List<SlideStroke>();
         foreach (var item in area.Objects)
         {
+            if (item is InkStrokeObject stroke)
+            {
+                if (inkAsStrokes)
+                {
+                    strokes.Add(Stroke(stroke, camera));
+                }
+
+                continue;
+            }
+
+            if (strokes.Count > 0)
+            {
+                elements.Add(InkElement(strokes, pixelWidth, pixelHeight));
+                strokes = [];
+            }
+
             var element = item switch
             {
                 ImageBoardObject image => ImageElement(document, image, camera),
@@ -48,7 +71,12 @@ internal static class EditableSlide
             }
         }
 
-        if (area.Objects.OfType<InkStrokeObject>().Any())
+        if (strokes.Count > 0)
+        {
+            elements.Add(InkElement(strokes, pixelWidth, pixelHeight));
+        }
+
+        if (!inkAsStrokes && area.Objects.OfType<InkStrokeObject>().Any())
         {
             var ink = BoardRasterizer.Render(
                 document,
@@ -66,6 +94,24 @@ internal static class EditableSlide
 
         return elements;
     }
+
+    private static SlideInkElement InkElement(List<SlideStroke> strokes, int pixelWidth, int pixelHeight) =>
+        new(new SlideRect(0, 0, pixelWidth, pixelHeight), strokes);
+
+    private static SlideStroke Stroke(InkStrokeObject stroke, Camera2D camera) => new(
+        stroke.Points.Select(point =>
+        {
+            var screen = camera.WorldToScreen(point.Position);
+            return new SlidePoint(screen.X, screen.Y, Math.Clamp(point.Pressure, 0f, 1f));
+        }).ToArray(),
+        stroke.Style.Argb,
+        stroke.Style.Thickness * camera.Zoom,
+        stroke.Style.Kind switch
+        {
+            PenKind.Highlighter => SlideStrokeKind.Highlighter,
+            PenKind.Calligraphy => SlideStrokeKind.Calligraphy,
+            _ => SlideStrokeKind.Pen,
+        });
 
     private static SlideElement? ImageElement(BoardDocument document, ImageBoardObject image, Camera2D camera)
     {
