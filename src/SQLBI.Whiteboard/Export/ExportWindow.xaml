@@ -205,7 +205,7 @@
                             <ColumnDefinition Width="Auto" />
                         </Grid.ColumnDefinitions>
                         <TextBlock Style="{StaticResource ExportSwitchLabel}"
-                                   Text="Footer: board name, date, page number" />
+                                   Text="Footer: board name, date, page" />
                         <ToggleButton x:Name="FooterSwitch"
                                       Grid.Column="1"
                                       Style="{StaticResource SettingsSwitch}"
