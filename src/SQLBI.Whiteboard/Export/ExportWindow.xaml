@@ -161,6 +161,18 @@
                               ItemContainerStyle="{StaticResource SettingsComboBoxItem}"
                               SelectionChanged="Option_Changed" />
 
+                    <TextBlock x:Name="ContentLabel"
+                               Style="{StaticResource ExportLabel}"
+                               Text="Slide content" />
+                    <ComboBox x:Name="ContentCombo"
+                              Style="{StaticResource SettingsComboBox}"
+                              ItemContainerStyle="{StaticResource SettingsComboBoxItem}"
+                              ToolTip="Picture is exact. Editable puts images and text containers on the slide as objects, with the ink as one picture over them."
+                              SelectionChanged="Option_Changed" />
+                    <TextBlock x:Name="ContentHint"
+                               Style="{StaticResource ExportHint}"
+                               Text="Editable: images and text as objects, ink on top." />
+
                     <TextBlock x:Name="PageSizeLabel"
                                Style="{StaticResource ExportLabel}"
                                Text="Page size" />

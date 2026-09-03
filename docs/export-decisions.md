@@ -69,3 +69,28 @@ which phase made it and why.
 - **The overview page** works as for the deck: first, only with two or more areas.
 - **`PdfSharp` 6.2.4** is the writer, MIT and managed-only. Fonts come from the Windows
   fonts folder through its platform resolver; the export runs only on Windows.
+
+## E3 — Editable deck
+
+- **Slide content is a choice on the dialog, Picture or Editable**, shown for PowerPoint
+  only. Picture stays the default: it is exact, and Editable is best effort by design.
+- **Elements are placed in the picture's own pixel space.** The rasterizer exposes the
+  camera it would have used, and every image, text box, and the ink overlay is mapped
+  through it, so switching between the two modes moves nothing.
+- **Bitmaps go in as they are when they are PNG or JPEG**, sniffed from the bytes rather
+  than trusted to the stored content type, because boards written before SVG support have
+  none. SVG, BMP, and GIF are rasterized at the size they take on the slide, through the
+  same code the clipboard uses.
+- **A text container is one rounded text box**: the language service's title as the first
+  paragraph in Segoe UI semibold, then the body in the language's monospace font, with the
+  syntax colors and weights carried over as runs. The text box has PowerPoint autofit
+  switched off, so the text keeps the size it had on the board; a container that has
+  been resized smaller than its text on the board is clipped there, and overflows here.
+- **The ink is one transparent PNG over everything**, rendered by the same surface with
+  the background off and only strokes drawn. It sits above every container, which is
+  wrong only for a stroke drawn before an image was dropped on top of it.
+- **A LiveView goes in as its current frame**, or its saved snapshot when nothing is
+  connected. A missing image (an asset the board no longer has) is left out rather than
+  exported as a placeholder.
+- **The picture is still rendered for an editable page** and kept as the page's own
+  picture in the model, so a page can fall back to it; PowerPoint does not receive it.

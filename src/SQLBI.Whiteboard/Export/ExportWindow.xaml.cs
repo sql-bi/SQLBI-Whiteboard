@@ -125,6 +125,10 @@ public partial class ExportWindow : Window
 
         Select(SmallestTextCombo, _settings.SmallestTextPoints);
 
+        ContentCombo.Items.Add(new Choice("Picture", ExportSlideContent.Picture));
+        ContentCombo.Items.Add(new Choice("Editable", ExportSlideContent.Editable));
+        Select(ContentCombo, _settings.SlideContent);
+
         AspectCombo.Items.Add(new Choice("Widescreen (16:9)", ExportSlideAspect.Wide));
         AspectCombo.Items.Add(new Choice("Standard (4:3)", ExportSlideAspect.Standard));
         Select(AspectCombo, _settings.SlideAspect);
@@ -175,6 +179,7 @@ public partial class ExportWindow : Window
         _settings.Order = Selected(OrderCombo, AreaOrder.Drawing);
         _settings.SmallestTextPoints = Selected(SmallestTextCombo, ExportLayoutOptions.DefaultSmallestTextPoints);
         _settings.SlideAspect = Selected(AspectCombo, ExportSlideAspect.Wide);
+        _settings.SlideContent = Selected(ContentCombo, ExportSlideContent.Picture);
         _settings.PageSize = Selected(PageSizeCombo, ExportPageSize.A4);
         _settings.GapThreshold = GapSlider.Value;
         _settings.IncludeOverview = OverviewSwitch.IsChecked == true;
@@ -195,6 +200,9 @@ public partial class ExportWindow : Window
         OverviewLabel.Text = "Overview " + unit + " first";
         AspectLabel.Visibility = pdf ? Visibility.Collapsed : Visibility.Visible;
         AspectCombo.Visibility = AspectLabel.Visibility;
+        ContentLabel.Visibility = AspectLabel.Visibility;
+        ContentCombo.Visibility = AspectLabel.Visibility;
+        ContentHint.Visibility = AspectLabel.Visibility;
         NotesRow.Visibility = AspectLabel.Visibility;
         PageSizeLabel.Visibility = pdf ? Visibility.Visible : Visibility.Collapsed;
         PageSizeCombo.Visibility = PageSizeLabel.Visibility;

@@ -156,13 +156,18 @@ internal static class BoardExporter
             width,
             height,
             liveViewImageSourceProvider);
+        var editable = settings.Format == ExportFormat.PowerPoint &&
+                       settings.SlideContent == ExportSlideContent.Editable;
 
         return new ExportPage(
             PageTitle(area, singlePageTitle),
             settings.IncludeNotes ? Notes(area, titleResolver) : null,
             WpfImageCodec.EncodePng(bitmap),
             width,
-            height);
+            height,
+            editable
+                ? EditableSlide.Build(document, area, width, height, liveViewImageSourceProvider)
+                : null);
     }
 
     /// <summary>

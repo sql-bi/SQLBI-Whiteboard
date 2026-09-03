@@ -1283,6 +1283,52 @@ Assert(
     PptxDeckWriter.Write(standardStream, deckPages[..1], new DeckOptions(SlideAspect.Standard));
     Assert(standardStream.Length > 0, "A 4:3 deck is written too.");
 
+    // An editable slide: the picture gives way to a picture per image, a text
+    // box per text container, and the ink overlay on top.
+    SlideElement[] elements =
+    [
+        new SlideImageElement(new SlideRect(100, 100, 400, 300), onePixelPng, "image/png"),
+        new SlideTextElement(
+            new SlideRect(600, 100, 500, 200),
+            "DAX Code of Sales Amount",
+            [
+                new SlideTextRun("Sales Amount", 0xFF202020, true, false),
+                new SlideTextRun(" :=\n", 0xFF5E6470, false, false),
+                new SlideTextRun("SUM", 0xFF035ACA, true, false),
+                new SlideTextRun(" ( Sales[Amount] )\n\n-- done", 0xFF333333, false, true),
+            ],
+            "Consolas",
+            13,
+            18,
+            10,
+            0xFFFCFCFC,
+            0xFFD6D9DE,
+            0xFF1F2937),
+        new SlideImageElement(new SlideRect(0, 0, 1600, 900), onePixelPng, "image/png"),
+    ];
+    using var editableStream = new MemoryStream();
+    PptxDeckWriter.Write(
+        editableStream,
+        [new ExportPage("Editable", null, onePixelPng, 1600, 900, elements)],
+        new DeckOptions());
+    editableStream.Position = 0;
+    using (var editable = new ZipArchive(editableStream, ZipArchiveMode.Read, leaveOpen: true))
+    {
+        using var reader = new StreamReader(editable.GetEntry("ppt/slides/slide1.xml")!.Open());
+        var slideXml = reader.ReadToEnd();
+        Assert(
+            slideXml.Split("<p:pic>").Length - 1 == 2 && slideXml.Split("<p:sp>").Length - 1 == 2,
+            "An editable slide holds two pictures, the title, and one text box.");
+        Assert(
+            slideXml.Contains("Sales Amount", StringComparison.Ordinal) &&
+            slideXml.Contains("035ACA", StringComparison.Ordinal) &&
+            slideXml.Contains("Consolas", StringComparison.Ordinal),
+            "Text runs keep their words, colors, and typeface.");
+        Assert(
+            editable.Entries.Count(entry => entry.FullName.StartsWith("ppt/media/", StringComparison.Ordinal)) == 2,
+            "Each picture element has its own image part.");
+    }
+
     // The same pages as a PDF: one page each, a bookmark each, and the page
     // size following the picture when asked.
     using var pdfStream = new MemoryStream();

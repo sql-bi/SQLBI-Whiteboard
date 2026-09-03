@@ -27,21 +27,22 @@ internal static class BoardRasterizer
         int pixelHeight,
         Func<Guid, ImageSource?>? liveViewImageSourceProvider = null,
         double paddingFraction = DefaultPaddingFraction,
-        Action<DrawingContext, Camera2D>? overlay = null)
+        Action<DrawingContext, Camera2D>? overlay = null,
+        bool drawBackground = true,
+        Func<BoardObject, bool>? objectFilter = null)
     {
         ArgumentNullException.ThrowIfNull(document);
         pixelWidth = Math.Max(1, pixelWidth);
         pixelHeight = Math.Max(1, pixelHeight);
 
-        var camera = new Camera2D();
-        camera.Resize(pixelWidth, pixelHeight);
-        camera.Frame(world, paddingFraction);
-
+        var camera = CameraFor(world, pixelWidth, pixelHeight, paddingFraction);
         var surface = new BoardSurface
         {
             Width = pixelWidth,
             Height = pixelHeight,
             LiveViewImageSourceProvider = liveViewImageSourceProvider,
+            DrawBackground = drawBackground,
+            ObjectFilter = objectFilter,
         };
         surface.Configure(document, camera);
         surface.Measure(new Size(pixelWidth, pixelHeight));
@@ -64,6 +65,23 @@ internal static class BoardRasterizer
 
         bitmap.Freeze();
         return bitmap;
+    }
+
+    /// <summary>
+    /// The camera a render of <paramref name="world"/> at this pixel size uses,
+    /// so that anything placed beside the picture lands where the picture
+    /// would have drawn it.
+    /// </summary>
+    public static Camera2D CameraFor(
+        RectD world,
+        int pixelWidth,
+        int pixelHeight,
+        double paddingFraction = DefaultPaddingFraction)
+    {
+        var camera = new Camera2D();
+        camera.Resize(Math.Max(1, pixelWidth), Math.Max(1, pixelHeight));
+        camera.Frame(world, paddingFraction);
+        return camera;
     }
 
     /// <summary>

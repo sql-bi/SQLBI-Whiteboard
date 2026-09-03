@@ -33,6 +33,20 @@ public enum ExportSlideAspect
     Standard = 1,
 }
 
+public enum ExportSlideContent
+{
+    /// <summary>
+    /// One picture of the area, exactly as the screen draws it.
+    /// </summary>
+    Picture = 0,
+
+    /// <summary>
+    /// Images and text containers as PowerPoint objects, with the ink as one
+    /// transparent picture over them.
+    /// </summary>
+    Editable = 1,
+}
+
 /// <summary>
 /// What the export dialog remembers between uses. These are not in Preferences:
 /// they belong to the dialog that shows their effect.
@@ -56,6 +70,8 @@ public sealed class ExportSettings
     public bool IncludeNotes { get; set; } = true;
 
     public ExportSlideAspect SlideAspect { get; set; } = ExportSlideAspect.Wide;
+
+    public ExportSlideContent SlideContent { get; set; } = ExportSlideContent.Picture;
 
     public ExportPageSize PageSize { get; set; } = ExportPageSize.A4;
 
@@ -95,6 +111,11 @@ public sealed class ExportSettings
         if (!Enum.IsDefined(result.PageSize))
         {
             result.PageSize = ExportPageSize.A4;
+        }
+
+        if (!Enum.IsDefined(result.SlideContent))
+        {
+            result.SlideContent = ExportSlideContent.Picture;
         }
 
         result.GapThreshold = double.IsFinite(result.GapThreshold)
