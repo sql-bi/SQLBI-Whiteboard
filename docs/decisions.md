@@ -557,7 +557,7 @@ else.
 
 ## 26. Export cuts the board where it is empty
 
-**Implemented for PowerPoint.** The plan, with the alternatives, is
+**Implemented for PowerPoint and PDF.** The plan, with the alternatives, is
 [export.md](export.md); the calls made while building it are in
 [export-decisions.md](export-decisions.md).
 
@@ -582,9 +582,18 @@ full HD, so calligraphy, the highlighter, and SVG come out as they are seen. The
 containers go in the speaker notes so DAX and SQL can still be copied. An editable deck,
 with native text boxes and images, is a later phase.
 
-`DocumentFormat.OpenXml` writes the file: Microsoft's own SDK, MIT, managed-only, so it
-passes the tests decision 21 set for a dependency. The writer lives in a new assembly,
-`SQLBI.Whiteboard.Export`, with no WPF dependency, which the signing step lists.
+`DocumentFormat.OpenXml` writes the deck and `PdfSharp` the PDF: Microsoft's own SDK and
+a long-lived MIT library, both managed-only, so they pass the tests decision 21 set for a
+dependency. The writers live in a new assembly, `SQLBI.Whiteboard.Export`, with no WPF
+dependency, which the signing step lists.
+
+A PDF page is also a picture, for now. PDF has one freedom a slide lacks, a page of any
+size, and the export uses it: the whole board can go on one page the shape of the board,
+rendered at up to six thousand pixels on the longer edge, for a reader who zooms. Pages get
+a bookmark each and a footer with the board name, date, and page number. Vector pages,
+with selectable text and ink as paths, are a later phase, and so is Print through
+Microsoft Print to PDF, which was weighed as the zero-dependency route and kept for later
+because the driver, not the application, asks for the file name.
 
 ---
 

@@ -29,6 +29,12 @@ previews the areas, numbered, and updates as you move the gap and text-size sett
 [How areas are chosen](https://github.com/sql-bi/SQLBI-Whiteboard/blob/main/docs/export.md)
 is written down, with the alternatives.
 
+### Export a board to PDF
+Choose **PDF** in the same dialog for a document: the same areas, one per A4 or Letter
+page in landscape, each with a bookmark and a footer with the board name, the date, and
+the page number. **Whole board on one page** writes a single page the shape of the board,
+to be read by zooming, for a board that is one drawing.
+
 ## 1.2.2 - 2 September 2026
 
 ### The Eraser, for a pen that has none
