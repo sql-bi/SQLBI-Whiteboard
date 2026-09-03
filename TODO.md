@@ -16,7 +16,7 @@ The delivery chain works end to end: a merge to `main` builds, signs, and publis
 pre-release to GitHub Releases, and one approval promotes that same build to a release.
 <https://whiteboard.sqlbi.com> reads its download links from the release manifest
 deployed beside it and needs no edit per release. The current product version is `VersionPrefix` in `Directory.Build.props`
-(1.3.0). Identity version for the Store package is `VersionPrefix.0` (`1.2.2.0`).
+(1.3.0). Identity version for the Store package is `VersionPrefix.0` (`1.3.0.0`).
 
 Declaring that number is decision 20 in [docs/decisions.md](docs/decisions.md). What 1.0
 was waiting on shipped during 0.9.x: Preferences, `.wimport`, Explorer and VS Code
