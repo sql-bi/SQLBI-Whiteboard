@@ -15,6 +15,13 @@ internal sealed class BoardSurface : FrameworkElement
     private static readonly Brush SelectionHandleBrush = CreateFrozenBrush(0xFFFFFFFF);
     private static readonly Brush MissingImageBrush = CreateFrozenBrush(0xFFE5E7EB);
     private static readonly Pen MissingImagePen = CreateFrozenPen(0xFF9CA3AF, 1);
+    private static readonly Brush FrameBrush = CreateFrozenBrush(0xFF64748B);
+    private static readonly Brush FrameTitleBrush = CreateFrozenBrush(0xFFFFFFFF);
+    private static readonly Typeface FrameTypeface = new(
+        new FontFamily("Segoe UI"),
+        FontStyles.Normal,
+        FontWeights.SemiBold,
+        FontStretches.Normal);
 
     private readonly Dictionary<string, ImageSource> _imageCache = new(StringComparer.Ordinal);
     private BoardDocument? _document;
@@ -39,6 +46,12 @@ internal sealed class BoardSurface : FrameworkElement
     /// render the ink alone, once the containers have gone out as objects.
     /// </summary>
     public Func<BoardObject, bool>? ObjectFilter { get; set; }
+
+    /// <summary>
+    /// Frames are guides for the author, drawn over everything on screen and
+    /// left out of every export and preview.
+    /// </summary>
+    public bool DrawFrames { get; set; } = true;
 
     /// <summary>
     /// The stroke the pen is drawing right now, before it is committed. Pen ink
@@ -102,6 +115,17 @@ internal sealed class BoardSurface : FrameworkElement
                         VisualTreeHelper.GetDpi(this).PixelsPerDip,
                         LanguageChipTitleReserve(text));
                     break;
+            }
+        }
+
+        if (DrawFrames)
+        {
+            foreach (var frame in _document.Frames)
+            {
+                if (frame.Id != HiddenObjectId && frame.Bounds.Intersects(_camera.VisibleWorldBounds))
+                {
+                    DrawFrame(drawingContext, frame, _camera);
+                }
             }
         }
 
@@ -200,6 +224,36 @@ internal sealed class BoardSurface : FrameworkElement
         {
             drawingContext.DrawRectangle(MissingImageBrush, MissingImagePen, destination);
         }
+    }
+
+    private void DrawFrame(DrawingContext drawingContext, FrameBoardObject frame, Camera2D camera)
+    {
+        var rectangle = ToScreenRectangle(frame.Bounds, camera);
+        var pen = new Pen(FrameBrush, 1.5)
+        {
+            DashStyle = new DashStyle([6, 4], 0),
+        };
+        pen.Freeze();
+        drawingContext.DrawRoundedRectangle(null, pen, rectangle, 3, 3);
+
+        var tab = ToScreenRectangle(frame.TabRect(camera.Zoom), camera);
+        drawingContext.DrawRectangle(FrameBrush, null, tab);
+        var title = new FormattedText(
+            string.IsNullOrWhiteSpace(frame.Title) ? "Slide" : frame.Title,
+            System.Globalization.CultureInfo.CurrentUICulture,
+            FlowDirection.LeftToRight,
+            FrameTypeface,
+            12,
+            FrameTitleBrush,
+            VisualTreeHelper.GetDpi(this).PixelsPerDip)
+        {
+            MaxTextWidth = Math.Max(1, tab.Width - 12),
+            MaxTextHeight = Math.Max(1, tab.Height),
+            Trimming = TextTrimming.CharacterEllipsis,
+        };
+        drawingContext.DrawText(
+            title,
+            new Point(tab.Left + 6, tab.Top + Math.Max(0, (tab.Height - title.Height) / 2)));
     }
 
     private static Rect ToScreenRectangle(RectD bounds, Camera2D camera)

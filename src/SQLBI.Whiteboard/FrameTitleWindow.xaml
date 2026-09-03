@@ -1,0 +1,42 @@
+<Window x:Class="SQLBI.Whiteboard.FrameTitleWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Frame title"
+        Width="420"
+        Height="170"
+        ResizeMode="NoResize"
+        WindowStartupLocation="CenterOwner"
+        ShowInTaskbar="False"
+        Background="{DynamicResource ToolbarBackgroundBrush}"
+        Stylus.IsPressAndHoldEnabled="False"
+        PreviewKeyDown="Window_PreviewKeyDown"
+        Loaded="Window_Loaded">
+    <StackPanel Margin="24,20">
+        <TextBlock FontFamily="Segoe UI"
+                   FontSize="13"
+                   Foreground="{DynamicResource SettingsTextBrush}"
+                   Text="The slide's title, on its tab and on the exported slide." />
+        <TextBox x:Name="TitleBox"
+                 Margin="0,10,0,0"
+                 Height="30"
+                 Padding="6,4"
+                 FontFamily="Segoe UI"
+                 FontSize="13"
+                 VerticalContentAlignment="Center" />
+        <StackPanel Margin="0,18,0,0"
+                    Orientation="Horizontal"
+                    HorizontalAlignment="Right">
+            <Button Width="88"
+                    Height="32"
+                    IsDefault="True"
+                    Content="OK"
+                    Click="OkButton_Click" />
+            <Button Width="88"
+                    Height="32"
+                    Margin="8,0,0,0"
+                    IsCancel="True"
+                    Content="Cancel"
+                    Click="CancelButton_Click" />
+        </StackPanel>
+    </StackPanel>
+</Window>

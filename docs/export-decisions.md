@@ -123,3 +123,36 @@ which phase made it and why.
   a future language service names falls back to Segoe UI until it is added to the
   resolver.
 - **The overview page stays a picture** in both modes; it is a map, not content.
+
+## E5 — Frames
+
+- **A frame is not a container.** It implements no container interface, so strokes never
+  link to it and it never takes part in the single-container test: a frame drawn around
+  a picture does not stop ink from linking to the picture. Deleting a frame deletes only
+  the frame.
+- **A frame is selected by its edge or its title tab, never by its inside**, so
+  everything inside it stays reachable to the pen and the mouse. The band is 8 screen
+  pixels either side of the edge and the tab 160 by 22 screen pixels at the top-left
+  corner, both divided by the zoom so they feel the same at any magnification.
+- **View → Frame** (mnemonic A) adds a frame the size of the visible board, inset by 8%
+  so its edge is under the pen and not under the window's edge, titled "Slide n", and
+  selects it. F2 on a selected frame renames it through a small dialog. There is no
+  shortcut for adding one; the command strip is reachable with Alt+V.
+- **Moving or resizing a frame moves nothing inside it.** A frame is a label over
+  content, and the export reads what it covers at export time. Resizing keeps the
+  aspect, as the resize gesture does for everything else, which for a frame created at
+  the screen's shape means it stays slide-shaped.
+- **Frames are drawn over everything on screen** as a dashed outline with a filled tab,
+  and left out of every export picture, the overview, and `preview.png`.
+- **Frames win in the partitioner.** Every unit whose center lies inside a frame belongs
+  to that frame, frames come first (creation order under Drawing order, top-left to
+  bottom-right under Reading order), the frame's own rectangle is the area, its title is
+  the slide title when it has one, and whatever is left is partitioned as before. A frame
+  is never an object of an area, so it never appears in an export.
+- **Bring to front and Send to back work on a frame**, and since drawing order sorts
+  frames by z-index, they are also how the slide order is changed.
+- **The archive version moves to 6 only for a board that holds a frame.** A board
+  without one is still written as version 5 and keeps opening in every release since
+  format 5; a board with frames asks for this release. The frame's title travels in the
+  DTO's text title field rather than a new one.
+- **A frame is not copied** by Ctrl+C: there is nothing on the clipboard a frame could be.

@@ -314,6 +314,45 @@ public sealed record LiveViewBoardObject(
     bool CaptureCursor = false,
     bool IsFrozen = false) : BoardObject(Id, ZIndex, Bounds), IBoardContainer;
 
+/// <summary>
+/// A rectangle the author draws to say "this is a slide". It is not a container:
+/// strokes never link to it, and it never takes part in the single-container
+/// test, so a frame around a picture does not stop ink from linking to the
+/// picture. It is selected by its edge or its title tab, not by its inside,
+/// which is how the things inside it stay reachable.
+/// </summary>
+public sealed record FrameBoardObject(
+    Guid Id,
+    int ZIndex,
+    RectD Bounds,
+    string Title) : BoardObject(Id, ZIndex, Bounds)
+{
+    /// <summary>
+    /// Screen pixels, divided by the zoom when hit testing, so the band and the
+    /// tab stay the same size under the pen whatever the zoom.
+    /// </summary>
+    public const double EdgeBand = 8;
+    public const double TabWidth = 160;
+    public const double TabHeight = 22;
+
+    public RectD TabRect(double zoom) => new(
+        Bounds.Left,
+        Bounds.Top,
+        Math.Min(Bounds.Width, TabWidth / Math.Max(zoom, 0.000001)),
+        Math.Min(Bounds.Height, TabHeight / Math.Max(zoom, 0.000001)));
+
+    public bool HitTest(PointD worldPoint, double zoom)
+    {
+        var band = EdgeBand / Math.Max(zoom, 0.000001);
+        if (!Bounds.Inflate(band).Contains(worldPoint))
+        {
+            return false;
+        }
+
+        return !Bounds.Inflate(-band).Contains(worldPoint) || TabRect(zoom).Contains(worldPoint);
+    }
+}
+
 public sealed record BoardAsset(
     string Id,
     string OriginalFileName,

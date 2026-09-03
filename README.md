@@ -29,7 +29,7 @@ How the project is developed and shipped is documented separately:
 - Undo and redo for strokes, erasing, containers, text edits, and transformations
 - Versioned ZIP-based `.wboard` documents with an embedded `preview.png`. Explorer shows that picture as the file thumbnail in the released install. The VS Code extension in `vscode/sqlbi-whiteboard` opens the same picture instead of the ZIP.
 - Markdown `.wimport` recipes that build image and text containers from headings
-- **File → Export** to PowerPoint or PDF: the board is cut into areas where it is empty, one slide or page per area, with an overview first. A deck carries the text containers in the speaker notes, or, as Editable slides, puts images and text containers on the slide as objects with the ink over them; a PDF has a bookmark per page, can put the whole board on one page to zoom into, and as Vector pages carries the ink as paths and the text as selectable text. The dialog shows the areas numbered on the board and updates as the settings change. [docs/export.md](docs/export.md) explains how areas are chosen
+- **File → Export** to PowerPoint or PDF: the board is cut into areas where it is empty, one slide or page per area, with an overview first. A deck carries the text containers in the speaker notes, or, as Editable slides, puts images and text containers on the slide as objects with the ink over them; a PDF has a bookmark per page, can put the whole board on one page to zoom into, and as Vector pages carries the ink as paths and the text as selectable text. The dialog shows the areas numbered on the board and updates as the settings change. **View → Frame** draws a slide on the board by hand: whatever sits inside a frame is that slide, and the rest of the board is cut automatically. [docs/export.md](docs/export.md) explains how areas are chosen
 - An intentionally small floating toolbar
 - A File / Edit / View / Help tab strip. Click a tab for a one-row command strip over the canvas
 - Preferences for the startup monitor, full-screen start, finger drawing, mouse drawing, the pen button, snippet format order, laser trail timing and weight, toolbar position and layout, keeping the Eraser on the toolbar for a pen that has no reverse end, and (except Store installs) a daily new-version check
@@ -196,7 +196,8 @@ Use **Copy settings** after finding a useful combination so the exact values can
 | Ctrl+Z / Ctrl+Y | Undo / redo |
 | Ctrl+C | Copy the selection. Copying a LiveView copies its last frame as a bitmap |
 | Ctrl+V | Paste prefers an image (including a file on the clipboard) over text. Otherwise create a text container from plain text |
-| F2 | Edit the selected text container |
+| F2 | Edit the selected text container, or rename the selected frame |
+| View > Frame | Add a frame the size of the screen: a slide drawn on the board, selected by its edge or its tab, which Export takes as it is |
 | Language chip | Choose Plain text, DAX, or SQL Server on a selected text container |
 | F6 | Format DAX or SQL on the selected text container. In F2, formats in place |
 | Ctrl+Enter | Commit the F2 edit, including an F6 format done in that session, and return to display mode |

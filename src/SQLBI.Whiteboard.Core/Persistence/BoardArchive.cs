@@ -7,7 +7,17 @@ namespace SQLBI.Whiteboard.Core.Persistence;
 
 public static class BoardArchive
 {
-    public const int CurrentVersion = 5;
+    public const int CurrentVersion = 6;
+
+    /// <summary>
+    /// Frames arrived in version 6. A board without one is still written as
+    /// version 5, so it keeps opening in a release that predates them; only
+    /// a board that needs the new object asks for the new reader.
+    /// </summary>
+    public const int VersionBeforeFrames = 5;
+
+    public static int VersionFor(BoardDocument document) =>
+        document.Objects.Any(item => item is FrameBoardObject) ? CurrentVersion : VersionBeforeFrames;
     private const string SceneEntryName = "scene.json";
     public const string PreviewEntryName = "preview.png";
 
@@ -49,7 +59,7 @@ public static class BoardArchive
         }
 
         var scene = new SceneDto(
-            CurrentVersion,
+            VersionFor(document),
             document.Objects.Select(ToDto).ToArray(),
             assetDtos.ToArray());
 
@@ -187,6 +197,18 @@ public static class BoardArchive
             liveView.DesiredFrameRate,
             liveView.CaptureCursor,
             liveView.IsFrozen),
+        // The frame's title travels in the text title field: one field for
+        // "what this is called" rather than a second that means the same.
+        FrameBoardObject frame => new ObjectDto(
+            "frame",
+            frame.Id,
+            frame.ZIndex,
+            frame.Bounds,
+            null,
+            null,
+            null,
+            null,
+            TextTitle: frame.Title),
         _ => throw new NotSupportedException($"Unsupported board object type {item.GetType().Name}."),
     };
 
@@ -223,6 +245,7 @@ public static class BoardArchive
                 NormalizeFrameRate(dto.DesiredFrameRate),
                 dto.CaptureCursor ?? false,
                 dto.IsFrozen ?? true),
+        "frame" => new FrameBoardObject(dto.Id, dto.ZIndex, dto.Bounds, dto.TextTitle ?? ""),
         _ => throw new InvalidDataException($"Invalid board object type '{dto.Type}'."),
     };
 

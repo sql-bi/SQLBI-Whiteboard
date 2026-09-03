@@ -1930,7 +1930,7 @@ public partial class MainWindow : Window
 
     private void FrameContentAt(PointD screenPoint)
     {
-        var container = _document.HitTestTopContainer(_camera.ScreenToWorld(screenPoint));
+        var container = _document.HitTestTopContainer(_camera.ScreenToWorld(screenPoint), _camera.Zoom);
         if (container is not null)
         {
             _selectedObjectId = container.Id;
@@ -1994,12 +1994,12 @@ public partial class MainWindow : Window
     private void BeginContainerGesture(PointD screenPoint)
     {
         var worldPoint = _camera.ScreenToWorld(screenPoint);
-        var selected = _document.HitTestTopContainer(worldPoint);
+        var selected = _document.HitTestTopContainer(worldPoint, _camera.Zoom);
         _containerGestureIsResize = false;
 
         if (_selectedObjectId is Guid existingId &&
             _document.Objects.FirstOrDefault(item => item.Id == existingId) is { } existing &&
-            existing is IBoardContainer)
+            IsSelectable(existing))
         {
             var handle = _camera.WorldToScreen(
                 new PointD(existing.Bounds.Right, existing.Bounds.Bottom));
@@ -2105,8 +2105,12 @@ public partial class MainWindow : Window
             VisualScale = text.VisualScale * (bounds.Width / Math.Max(0.000001, text.Bounds.Width)),
         },
         LiveViewBoardObject liveView => liveView with { Bounds = bounds },
+        FrameBoardObject frame => frame with { Bounds = bounds },
         _ => throw new NotSupportedException($"Unsupported container type {item.GetType().Name}."),
     };
+
+    // What a select gesture can take hold of: a container, or a frame by its edge.
+    private static bool IsSelectable(BoardObject item) => item is IBoardContainer or FrameBoardObject;
 
     private static BoardObject WithZIndex(BoardObject item, int zIndex) => item switch
     {
@@ -2114,6 +2118,7 @@ public partial class MainWindow : Window
         TextBoardObject text => text with { ZIndex = zIndex },
         LiveViewBoardObject liveView => liveView with { ZIndex = zIndex },
         InkStrokeObject stroke => stroke with { ZIndex = zIndex },
+        FrameBoardObject frame => frame with { ZIndex = zIndex },
         _ => throw new NotSupportedException($"Unsupported object type {item.GetType().Name}."),
     };
 
@@ -2125,7 +2130,7 @@ public partial class MainWindow : Window
         }
 
         BoardObject? item = _document.Objects.FirstOrDefault(candidate => candidate.Id == selectedId);
-        return item is IBoardContainer ? item : null;
+        return item is not null && IsSelectable(item) ? item : null;
     }
 
     private void UpdateZOrderCommands()
@@ -3343,7 +3348,7 @@ public partial class MainWindow : Window
             return;
         }
 
-        var container = _document.HitTestTopContainer(_camera.ScreenToWorld(screen));
+        var container = _document.HitTestTopContainer(_camera.ScreenToWorld(screen), _camera.Zoom);
         var hoveredId = container?.Id;
         if (SceneSurface.HoveredObjectId == hoveredId)
         {
@@ -3361,7 +3366,7 @@ public partial class MainWindow : Window
             return Cursors.SizeNWSE;
         }
 
-        return _document.HitTestTopContainer(_camera.ScreenToWorld(screen)) is null
+        return _document.HitTestTopContainer(_camera.ScreenToWorld(screen), _camera.Zoom) is null
             ? Cursors.Arrow
             : Cursors.SizeAll;
     }
@@ -3370,7 +3375,7 @@ public partial class MainWindow : Window
     {
         if (_selectedObjectId is not Guid existingId ||
             _document.Objects.FirstOrDefault(item => item.Id == existingId) is not { } existing ||
-            existing is not IBoardContainer)
+            !IsSelectable(existing))
         {
             return false;
         }
@@ -3549,6 +3554,9 @@ public partial class MainWindow : Window
             case SessionCommand.AddLiveView:
                 AddLiveViewMenuItem_Click(this, new RoutedEventArgs());
                 break;
+            case SessionCommand.AddFrame:
+                AddFrame();
+                break;
             case SessionCommand.FreezeLiveView:
                 FreezeLiveViewMenuItem_Click(this, new RoutedEventArgs());
                 break;
@@ -3568,6 +3576,48 @@ public partial class MainWindow : Window
     }
 
     private void ShowAbout() => ShowOwnedDialog(new AboutWindow());
+
+    /// <summary>
+    /// A frame the size of what is on screen, inset so that its edge is under
+    /// the pen rather than under the window's own edge. It is selected on
+    /// arrival, so the next gesture moves or resizes it.
+    /// </summary>
+    private void AddFrame()
+    {
+        CommitTextEdit();
+        var visible = _camera.VisibleWorldBounds;
+        const double inset = 0.08;
+        var bounds = new RectD(
+            visible.Left + (visible.Width * inset),
+            visible.Top + (visible.Height * inset),
+            visible.Width * (1 - (2 * inset)),
+            visible.Height * (1 - (2 * inset)));
+        var frame = new FrameBoardObject(
+            Guid.NewGuid(),
+            _document.NextZIndex,
+            bounds,
+            $"Slide {_document.Frames.Count() + 1}");
+        _history.Execute(new AddObjectCommand(frame), _document);
+        _selectedObjectId = frame.Id;
+        SceneSurface.SelectedObjectId = frame.Id;
+        SetActiveTool(BoardTool.Select);
+        SceneSurface.InvalidateVisual();
+        UpdateZOrderCommands();
+        UpdateLiveViewActionOverlay();
+    }
+
+    private void RenameFrame(FrameBoardObject frame)
+    {
+        var dialog = new FrameTitleWindow(frame.Title);
+        ShowOwnedDialog(dialog);
+        if (dialog.Result is not { } title || title == frame.Title)
+        {
+            return;
+        }
+
+        _history.Execute(new ReplaceObjectCommand(frame, frame with { Title = title }), _document);
+        SceneSurface.InvalidateVisual();
+    }
 
     private void ShowExportDialog()
     {
@@ -5076,6 +5126,13 @@ public partial class MainWindow : Window
             _document.Objects.FirstOrDefault(item => item.Id == textObjectId) is TextBoardObject textObject)
         {
             BeginTextEdit(textObject);
+            e.Handled = true;
+        }
+        else if (e.Key == Key.F2 &&
+            _selectedObjectId is Guid frameId &&
+            _document.Objects.FirstOrDefault(item => item.Id == frameId) is FrameBoardObject selectedFrame)
+        {
+            RenameFrame(selectedFrame);
             e.Handled = true;
         }
         else if (shiftDown && e.Key == Key.F12)

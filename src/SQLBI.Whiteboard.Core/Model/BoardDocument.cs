@@ -122,10 +122,18 @@ public sealed class BoardDocument
             .OrderByDescending(image => image.ZIndex)
             .FirstOrDefault();
 
-    public BoardObject? HitTestTopContainer(PointD worldPoint) =>
-        _objects.Where(item => item is IBoardContainer && item.Bounds.Contains(worldPoint))
+    /// <summary>
+    /// The topmost thing a select gesture lands on: a container anywhere inside
+    /// it, or a frame by its edge or tab. The zoom sizes the frame's band.
+    /// </summary>
+    public BoardObject? HitTestTopContainer(PointD worldPoint, double zoom = 1) =>
+        _objects.Where(item =>
+                (item is IBoardContainer && item.Bounds.Contains(worldPoint)) ||
+                (item is FrameBoardObject frame && frame.HitTest(worldPoint, zoom)))
             .OrderByDescending(item => item.ZIndex)
             .FirstOrDefault();
+
+    public IEnumerable<FrameBoardObject> Frames => _objects.OfType<FrameBoardObject>();
 
     public BoardObject? FindSingleTouchedContainer(InkStrokeObject stroke)
     {
