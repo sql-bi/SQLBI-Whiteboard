@@ -3,9 +3,9 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         Title="Export"
         Width="1000"
-        Height="640"
+        Height="700"
         MinWidth="760"
-        MinHeight="480"
+        MinHeight="560"
         WindowStartupLocation="CenterOwner"
         ResizeMode="CanResize"
         ShowInTaskbar="False"
@@ -26,7 +26,7 @@
             <Setter Property="Foreground"
                     Value="{DynamicResource SettingsTextBrush}" />
             <Setter Property="Margin"
-                    Value="0,14,0,4" />
+                    Value="0,12,0,4" />
         </Style>
         <Style x:Key="ExportHint"
                TargetType="TextBlock">
@@ -89,7 +89,8 @@
                           Margin="20,0,0,0"
                           HorizontalScrollBarVisibility="Disabled"
                           VerticalScrollBarVisibility="Auto">
-                <StackPanel x:Name="Options">
+                <StackPanel x:Name="Options"
+                            Margin="0,0,12,0">
                     <TextBlock Style="{StaticResource ExportLabel}"
                                Margin="0,0,0,4"
                                Text="Format" />
@@ -134,7 +135,7 @@
                             IsSnapToTickEnabled="True"
                             ValueChanged="GapSlider_ValueChanged" />
                     <TextBlock Style="{StaticResource ExportHint}"
-                               Text="Empty space at least this wide separates one area from the next. The unit is a screen pixel at zoom 1." />
+                               Text="Empty space this wide, in screen pixels at zoom 1, separates two areas." />
 
                     <TextBlock Style="{StaticResource ExportLabel}"
                                Text="Smallest text on a slide" />
@@ -144,7 +145,7 @@
                               SelectionChanged="Option_Changed" />
                     <TextBlock Style="{StaticResource ExportHint}"
                                Margin="0,4,0,0"
-                               Text="An area is cut until its text containers read at this size. An area that cannot be cut is shrunk instead, and marked." />
+                               Text="Areas are cut until their text reads at this size. One that cannot be cut is shrunk and marked." />
 
                     <TextBlock Style="{StaticResource ExportLabel}"
                                Text="Slide size" />
