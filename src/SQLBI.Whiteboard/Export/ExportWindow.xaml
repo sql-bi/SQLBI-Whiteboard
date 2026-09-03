@@ -3,7 +3,7 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         Title="Export"
         Width="1000"
-        Height="700"
+        Height="720"
         MinWidth="760"
         MinHeight="560"
         WindowStartupLocation="CenterOwner"
@@ -26,7 +26,7 @@
             <Setter Property="Foreground"
                     Value="{DynamicResource SettingsTextBrush}" />
             <Setter Property="Margin"
-                    Value="0,12,0,4" />
+                    Value="0,10,0,3" />
         </Style>
         <Style x:Key="ExportHint"
                TargetType="TextBlock">
@@ -42,7 +42,7 @@
         <Style x:Key="ExportSwitchRow"
                TargetType="Grid">
             <Setter Property="Margin"
-                    Value="0,10,0,0" />
+                    Value="0,8,0,0" />
         </Style>
         <Style x:Key="ExportSwitchLabel"
                TargetType="TextBlock">
@@ -134,9 +134,8 @@
                             LargeChange="40"
                             TickFrequency="10"
                             IsSnapToTickEnabled="True"
+                            ToolTip="Empty space this wide, in screen pixels at zoom 1, separates two areas."
                             ValueChanged="GapSlider_ValueChanged" />
-                    <TextBlock Style="{StaticResource ExportHint}"
-                               Text="Empty space this wide, in screen pixels at zoom 1, separates two areas." />
 
                     <TextBlock x:Name="SmallestTextLabel"
                                Style="{StaticResource ExportLabel}"
@@ -144,10 +143,8 @@
                     <ComboBox x:Name="SmallestTextCombo"
                               Style="{StaticResource SettingsComboBox}"
                               ItemContainerStyle="{StaticResource SettingsComboBoxItem}"
+                              ToolTip="Areas are cut until their text reads at this size. One that cannot be cut is shrunk and marked."
                               SelectionChanged="Option_Changed" />
-                    <TextBlock Style="{StaticResource ExportHint}"
-                               Margin="0,4,0,0"
-                               Text="Areas are cut until their text reads at this size. One that cannot be cut is shrunk and marked." />
 
                     <TextBlock x:Name="AspectLabel"
                                Style="{StaticResource ExportLabel}"
@@ -166,7 +163,7 @@
                               SelectionChanged="Option_Changed" />
 
                     <Grid Style="{StaticResource ExportSwitchRow}"
-                          Margin="0,18,0,0">
+                          Margin="0,14,0,0">
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="*" />
                             <ColumnDefinition Width="Auto" />
