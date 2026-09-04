@@ -3,15 +3,17 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         Title="Export"
         Width="1000"
-        Height="720"
+        SizeToContent="Height"
         MinWidth="760"
-        MinHeight="560"
+        MinHeight="420"
         WindowStartupLocation="CenterOwner"
         ResizeMode="CanResize"
         ShowInTaskbar="False"
         Background="{DynamicResource ToolbarBackgroundBrush}"
         Stylus.IsPressAndHoldEnabled="False"
         PreviewKeyDown="Window_PreviewKeyDown"
+        SourceInitialized="Window_SourceInitialized"
+        SizeChanged="Window_SizeChanged"
         Loaded="Window_Loaded"
         Closing="Window_Closing">
     <Window.Resources>
@@ -70,9 +72,12 @@
                 <ColumnDefinition Width="300" />
             </Grid.ColumnDefinitions>
 
+            <!-- The options decide the height; the preview takes what they leave,
+                 so a tall board does not make a tall dialog. -->
             <Border Background="White"
                     BorderBrush="{DynamicResource ToolbarBorderBrush}"
-                    BorderThickness="1">
+                    BorderThickness="1"
+                    MaxHeight="{Binding ActualHeight, ElementName=Options}">
                 <Grid>
                     <Image x:Name="PreviewImage"
                            Margin="8"

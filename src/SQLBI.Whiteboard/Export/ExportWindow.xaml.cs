@@ -57,13 +57,23 @@ public partial class ExportWindow : Window
         _persistSettings = persistSettings;
         _content = document.ContentBounds ?? new RectD(0, 0, 1, 1);
         InitializeComponent();
-
-        // Tall enough for every option to show without scrolling, on any screen
-        // that has the room; a small screen keeps the scrollbar.
-        Height = Math.Max(MinHeight, Math.Min(820, SystemParameters.WorkArea.Height - 60));
         PopulateOptions();
         _suppressChange = false;
         Rebuild();
+    }
+
+    // The height follows the options, up to the working area of the monitor the
+    // board is on; past that the options scroll. A change of format regrows the
+    // window in place, downward, so it is moved back inside the screen after.
+    private void Window_SourceInitialized(object sender, EventArgs e) =>
+        MaxHeight = Math.Max(MinHeight, MonitorStartupPlacement.WorkAreaHeight(this) - 24);
+
+    private void Window_SizeChanged(object sender, SizeChangedEventArgs e)
+    {
+        if (e.HeightChanged && IsLoaded)
+        {
+            MonitorStartupPlacement.KeepWithinWorkArea(this);
+        }
     }
 
     private void Window_Loaded(object sender, RoutedEventArgs e)

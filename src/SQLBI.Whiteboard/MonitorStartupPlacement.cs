@@ -3,6 +3,7 @@ using System.Runtime.InteropServices;
 using System.Text;
 using System.Windows;
 using System.Windows.Interop;
+using System.Windows.Media;
 using Microsoft.Win32;
 using SQLBI.Whiteboard.Core.Settings;
 
@@ -22,6 +23,7 @@ internal static class MonitorStartupPlacement
     private const uint SwpNoZOrder = 0x0004;
     private const uint SwpNoActivate = 0x0010;
     private const uint SwpFrameChanged = 0x0020;
+    private const uint SwpNoSize = 0x0001;
 
     public static IReadOnlyList<DisplayMonitor> Enumerate() =>
         EnumerateMonitors()
@@ -115,6 +117,79 @@ internal static class MonitorStartupPlacement
             Math.Max(1, area.Right - area.Left),
             Math.Max(1, area.Bottom - area.Top),
             SwpNoZOrder | SwpNoActivate | SwpFrameChanged);
+    }
+
+    /// <summary>
+    /// The height of the working area, in this window's device-independent
+    /// units, of the monitor the window (or, before it has a handle, its owner)
+    /// is on. A dialog sizes itself against this rather than the primary
+    /// monitor's, which is the wrong screen whenever the board is on another.
+    /// </summary>
+    public static double WorkAreaHeight(Window window)
+    {
+        ArgumentNullException.ThrowIfNull(window);
+
+        var anchor = new WindowInteropHelper(window).Handle == 0 && window.Owner is { } owner ? owner : window;
+        if (!TryGetWorkArea(anchor, out var area))
+        {
+            return SystemParameters.WorkArea.Height;
+        }
+
+        var scale = VisualTreeHelper.GetDpi(anchor).DpiScaleY;
+        return (area.Bottom - area.Top) / Math.Max(scale, 0.01);
+    }
+
+    /// <summary>
+    /// Moves the window up or left as far as needed for the whole of it to sit
+    /// inside its monitor's working area. Called after a window grows in place,
+    /// which WPF does downward from wherever it was centred.
+    /// </summary>
+    public static void KeepWithinWorkArea(Window window)
+    {
+        ArgumentNullException.ThrowIfNull(window);
+
+        var windowHandle = new WindowInteropHelper(window).Handle;
+        if (windowHandle == 0 ||
+            !TryGetWorkArea(window, out var area) ||
+            !GetWindowRect(windowHandle, out var bounds))
+        {
+            return;
+        }
+
+        var left = Math.Max(area.Left, Math.Min(bounds.Left, area.Right - (bounds.Right - bounds.Left)));
+        var top = Math.Max(area.Top, Math.Min(bounds.Top, area.Bottom - (bounds.Bottom - bounds.Top)));
+        if (left != bounds.Left || top != bounds.Top)
+        {
+            SetWindowPos(windowHandle, 0, left, top, 0, 0, SwpNoZOrder | SwpNoActivate | SwpNoSize);
+        }
+    }
+
+    private static bool TryGetWorkArea(Window window, out NativeRectangle area)
+    {
+        area = default;
+        var windowHandle = new WindowInteropHelper(window).Handle;
+        if (windowHandle == 0)
+        {
+            return false;
+        }
+
+        var monitorHandle = MonitorFromWindow(windowHandle, MonitorDefaultToNearest);
+        if (monitorHandle == 0)
+        {
+            return false;
+        }
+
+        var monitorInfo = new NativeMonitorInfo
+        {
+            Size = (uint)Marshal.SizeOf<NativeMonitorInfo>(),
+        };
+        if (!GetMonitorInfo(monitorHandle, ref monitorInfo))
+        {
+            return false;
+        }
+
+        area = monitorInfo.WorkingArea;
+        return true;
     }
 
     private static IReadOnlyList<MonitorDescriptor> EnumerateMonitors()
@@ -326,6 +401,10 @@ internal static class MonitorStartupPlacement
         uint deviceNumber,
         ref NativeDisplayDevice displayDevice,
         uint flags);
+
+    [DllImport("user32.dll")]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    private static extern bool GetWindowRect(nint windowHandle, out NativeRectangle rectangle);
 
     [DllImport("user32.dll")]
     private static extern nint MonitorFromWindow(
