@@ -54,12 +54,23 @@ everything in it stays reachable; F2 renames it. A board with a frame is saved i
 format version, so it needs this release to open; a board without one still opens in the
 releases before it.
 
-### An SVG with a picture inside draws the picture where it belongs
+### An SVG with pictures inside draws them where, and as large as, the author placed them
 An SVG that embeds a bitmap and clips it, the way an illustration frames a screenshot,
 drew the bitmap shifted and partly missing. The renderer applied the clip inside the
 scaling it builds for the picture, so a clip written in page coordinates moved with the
 picture. The clip is now lifted onto a group around the picture before drawing, which is
 what the markup means, and the picture lands where the author put it.
+
+An embedded logo saved at 72 or 216 DPI came out a third larger, or less than half the
+size, of the box the SVG gave it, because the renderer measured the picture in screen
+units rather than pixels. The pictures are now measured in pixels, as browsers do, so a
+logo fills exactly the box it was given.
+
+### A centred, letter-spaced label no longer collapses
+A heading such as `THE INTERFACE` set with `letter-spacing` and centred with
+`text-anchor="middle"` piled its letters up in half the width, or all on one spot when
+anchored at the end. The letter-spacing is dropped for such text before drawing, so the
+label appears where it was placed, set a little tighter than the author asked.
 
 ## 1.2.2 - 2 September 2026
 
