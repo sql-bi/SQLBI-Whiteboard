@@ -38,8 +38,8 @@ to be read by zooming, for a board that is one drawing.
 ### A deck you can rework
 **Slide content → Editable** puts images and text containers on the slide as PowerPoint
 objects, keeps the DAX and SQL colors as text runs, and lays all the ink over them as one
-transparent picture. Picture, the default, stays exact; Editable is for a deck that will be
-edited after the session.
+transparent picture. It is the default; Picture, one choice away, is the exact rendering
+for a deck that will be shown as is.
 
 ### PDF pages that stay sharp
 **Page content → Vector** draws the ink as paths and the text as text, so a page stays

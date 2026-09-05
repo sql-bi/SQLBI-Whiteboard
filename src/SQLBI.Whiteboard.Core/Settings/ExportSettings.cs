@@ -73,7 +73,7 @@ public sealed class ExportSettings
 
     public ExportPageModel PageModel { get; set; } = ExportPageModel.OnePerArea;
 
-    public AreaOrder Order { get; set; } = AreaOrder.Drawing;
+    public AreaOrder Order { get; set; } = AreaOrder.Reading;
 
     public double GapThreshold { get; set; } = ExportLayoutOptions.DefaultGapThreshold;
 
@@ -85,7 +85,7 @@ public sealed class ExportSettings
 
     public ExportSlideAspect SlideAspect { get; set; } = ExportSlideAspect.Wide;
 
-    public ExportSlideContent SlideContent { get; set; } = ExportSlideContent.Picture;
+    public ExportSlideContent SlideContent { get; set; } = ExportSlideContent.Editable;
 
     public ExportPageSize PageSize { get; set; } = ExportPageSize.A4;
 
@@ -116,7 +116,7 @@ public sealed class ExportSettings
 
         if (!Enum.IsDefined(result.Order))
         {
-            result.Order = AreaOrder.Drawing;
+            result.Order = AreaOrder.Reading;
         }
 
         if (!Enum.IsDefined(result.SlideAspect))
@@ -131,7 +131,7 @@ public sealed class ExportSettings
 
         if (!Enum.IsDefined(result.SlideContent))
         {
-            result.SlideContent = ExportSlideContent.Picture;
+            result.SlideContent = ExportSlideContent.Editable;
         }
 
         if (!Enum.IsDefined(result.PageContent))

@@ -606,8 +606,11 @@ containers go in the speaker notes so DAX and SQL can still be copied. **Editabl
 other slide content: images as pictures, text containers as text boxes carrying the
 syntax colors the screen shows, and all the ink as one transparent picture on top, placed
 through the same camera the picture would have used. It is best effort where the picture
-is exact, which is why the picture stays the default. Ink as freeform shapes was left
-out: it would be a second stroke renderer to keep in step with the first.
+is exact, and it is nonetheless the default for a new setup, because a deck is exported to
+be reworked more often than to be shown as is; the picture is one choice away. Slides are
+in reading order by default, for the same reason it is the order a reader would guess.
+Ink as freeform shapes was left out: it would be a second stroke renderer to keep in step
+with the first.
 
 `DocumentFormat.OpenXml` writes the deck and `PdfSharp` the PDF: Microsoft's own SDK and
 a long-lived MIT library, both managed-only, so they pass the tests decision 21 set for a

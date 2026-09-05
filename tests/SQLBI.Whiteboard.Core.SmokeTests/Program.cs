@@ -1306,12 +1306,20 @@ Assert(
         "Hit testing reaches a frame only by its edge.");
     exportBoard.RemoveObject(frame.Id);
 
-    var exportSettings = AppSettingsSerializer.Parse("""{ "export": { "gapThreshold": 9999, "smallestTextPoints": 11, "order": "Reading" } }""");
+    var exportSettings = AppSettingsSerializer.Parse("""{ "export": { "gapThreshold": 9999, "smallestTextPoints": 11, "order": "Drawing" } }""");
     Assert(
         exportSettings.Export.GapThreshold == ExportLayoutOptions.MaximumGapThreshold &&
         exportSettings.Export.SmallestTextPoints == ExportLayoutOptions.DefaultSmallestTextPoints &&
-        exportSettings.Export.Order == AreaOrder.Reading,
+        exportSettings.Export.Order == AreaOrder.Drawing,
         "Export settings are clamped to what the dialog offers.");
+    var freshExport = new AppSettings().Export;
+    Assert(
+        freshExport.Format == ExportFormat.PowerPoint &&
+        freshExport.PageModel == ExportPageModel.OnePerArea &&
+        freshExport.Order == AreaOrder.Reading &&
+        freshExport.SlideAspect == ExportSlideAspect.Wide &&
+        freshExport.SlideContent == ExportSlideContent.Editable,
+        "A new setup exports an editable 16:9 deck, one slide per area, in reading order.");
 }
 
 // PowerPoint deck: one slide per page, a notes slide only where there are notes,
