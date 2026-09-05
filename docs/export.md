@@ -102,11 +102,13 @@ PowerPoint can zoom.
 
 Two orders are offered:
 
-- **Drawing order** (default): areas sorted by the smallest z-index they contain. Since
-  z-index is creation order, this is the order in which the author started each area — the
-  order of the lecture. Bring to front and Send to back disturb it only for the container
-  they touched, which is rare and visible in the preview.
-- **Reading order**: the cut-tree order, top-left to bottom-right.
+- **Drawing order**: areas sorted by the smallest z-index they contain. Since z-index is
+  creation order, this is the order in which the author started each area — the order of
+  the lecture. Bring to front and Send to back disturb it only for the container they
+  touched, which is rare and visible in the preview.
+- **Reading order** (default): the cut-tree order, top-left to bottom-right. The plan
+  proposed drawing order as the default; the maintainers chose reading order after using
+  both, because it is predictable from the board alone.
 
 ### Alternatives considered
 

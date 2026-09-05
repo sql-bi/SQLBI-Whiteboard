@@ -73,7 +73,9 @@ which phase made it and why.
 ## E3 — Editable deck
 
 - **Slide content is a choice on the dialog, Picture or Editable**, shown for PowerPoint
-  only. Picture stays the default: it is exact, and Editable is best effort by design.
+  only. Editable is the default for a new setup, by the maintainers' call after trying
+  both: a deck is exported to be reworked more often than to be shown as is. Picture stays
+  one choice away for the exact rendering.
 - **Elements are placed in the picture's own pixel space.** The rasterizer exposes the
   camera it would have used, and every image, text box, and the ink overlay is mapped
   through it, so switching between the two modes moves nothing.
