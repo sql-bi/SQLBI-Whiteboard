@@ -17,6 +17,17 @@ broke. The heading is parsed by `scripts/release-notes.ps1`, so keep its shape; 
 under it is ordinary Markdown, and the renderer handles paragraphs, lists, links, `code`
 and **bold**.
 
+## 1.3.1 - 5 September 2026
+
+### KQL joins DAX and SQL in text containers
+A text container can now be Kusto Query Language. Paste a query or drop a `.kql` file,
+choose **KQL** from the title-bar chip, and it is highlighted like the rest: operators,
+functions, columns, string literals, and the comments between them. **F6** formats it,
+and a query that does not parse is left exactly as it was rather than half rewritten.
+The spacing you chose around a join hint, as in `kind=inner`, survives formatting, because
+that is how the queries people bring to a session are usually written. Highlighting and
+formatting both read Kusto through Microsoft's own parser, and both run locally.
+
 ## 1.3.0 - 3 September 2026
 
 ### Export a board to PowerPoint

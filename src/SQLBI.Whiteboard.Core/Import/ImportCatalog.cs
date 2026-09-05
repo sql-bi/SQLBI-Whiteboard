@@ -27,6 +27,12 @@ public sealed class ImportCatalog
                 FenceTags = ["sql", "tsql"],
                 Extensions = [".sql"],
             },
+            new ImportLanguage
+            {
+                Id = TextLanguageIds.Kql,
+                FenceTags = ["kql", "kusto"],
+                Extensions = [".kql"],
+            },
         ],
         [".png", ".jpg", ".jpeg", ".bmp", ".gif", ".svg"]);
 

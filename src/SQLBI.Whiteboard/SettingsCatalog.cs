@@ -227,8 +227,9 @@ internal static class SettingsCatalog
             Category = Input,
             Title = "Snippet format order",
             Summary = "Which language pasted text is tried as first",
-            Description = "Paste tries formats from top to bottom and uses the first that accepts the text. Plain text always accepts, so putting it first keeps every paste as plain text. Recognized file extensions (.dax, .sql, .txt) keep their language.",
-            Keywords = ["snippet", "language", "dax", "sql", "paste", "format", "text", "order"],
+            Description = "Paste tries formats from top to bottom and uses the first that accepts the text. Plain text always accepts, so putting it first keeps every paste as plain text. Recognized file extensions (.dax, .sql, .kql, .txt) keep their language.",
+            Keywords =
+                ["snippet", "language", "dax", "sql", "kql", "paste", "format", "text", "order"],
             Editor = SettingEditorKind.OrderedList,
         },
         new()

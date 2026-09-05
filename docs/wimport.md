@@ -73,6 +73,7 @@ container. The whole body, fence included, becomes plain text.
 | --- | --- | --- |
 | DAX | `dax` | `.dax` |
 | SQL Server | `sql`, `tsql` | `.sql` |
+| KQL | `kql`, `kusto` | `.kql` |
 
 Further languages (Python, C#, TypeScript, …) will be extra rows in this table. Do not invent
 fence tags Whiteboard does not list here: they import as plain text.
@@ -134,8 +135,8 @@ A complete sample is `docs/samples/contoso-workshop.wimport`.
 - File name ends in `.wimport`.
 - Every container is a `##` heading with exactly one payload.
 - Images and linked code exist next to the file, using relative paths.
-- Image files are png/jpeg/bmp/gif/svg. Code files you link are `.dax` or `.sql`, or the code is
-  embedded in a `dax` / `sql` / `tsql` fence.
+- Image files are png/jpeg/bmp/gif/svg. Code files you link are `.dax`, `.sql`, or `.kql`, or the
+  code is embedded in a `dax` / `sql` / `tsql` / `kql` fence.
 - Row breaks are a thematic break on its own line, not a fake heading.
 - You did not use `http://`, YAML, or explicit positions.
 - Opening the file in a Markdown preview still reads as a normal document.
