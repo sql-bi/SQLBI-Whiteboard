@@ -382,13 +382,28 @@ The renderer is given `ExternalResourcesAccessModes.Ignore`. Its default is to f
 the markup names, which would let a pasted or dropped file turn opening a board into an
 outbound request.
 
-One rendering defect is worked around in the markup rather than in the drawing it
-produces (issue 98): SharpVectors puts an `<image>`'s own `clip-path` on the same drawing
-group as the scale and offset it builds for the image's size, so the clip is transformed
-along with the bitmap. `SvgMarkup.HoistImageClips` moves the clip, and the image's
-transform with it, onto a `<g>` around the image before decoding, which the renderer
-handles as the author meant. The stored asset is untouched; only what is handed to the
-renderer changes.
+Three rendering defects are worked around before the drawing is produced rather than in
+the drawing itself. The stored asset is untouched in every case; only what is handed to
+the renderer changes.
+
+- SharpVectors puts an `<image>`'s own `clip-path` on the same drawing group as the scale
+  and offset it builds for the image's size, so the clip is transformed along with the
+  bitmap (issue 98). `SvgMarkup.Rewrite` moves the clip, and the image's transform with
+  it, onto a `<g>` around the image, which the renderer handles as the author meant.
+- Text with `letter-spacing` is drawn one glyph at a time, and each glyph is given the
+  text's own anchor, so with `text-anchor="middle"` every glyph is centred on the pen and
+  the pen advances half a glyph; with `end` it does not advance at all. A centred label
+  piles up in half its width. `SvgMarkup.Rewrite` removes the spacing from text that is
+  not anchored at its start, so the whole string is measured and placed at once. The
+  label is set a little tighter than the author asked, and where they asked. A tracked
+  heading anchored at its start is left as written, since that path draws correctly.
+- An embedded bitmap is fitted into its `<image>` by the WPF `Width` and `Height` of the
+  decoded picture, which are device-independent units and scale with the DPI the file
+  declares. A 72-DPI PNG comes out a third larger than its pixels, a 216-DPI logo less
+  than half its size, while the browsers measure pixels. `SvgImageCodec` gives the
+  renderer an image visitor that decodes base64 data URIs itself and hands back the same
+  pixels at 96 DPI, so a unit is a pixel. Anything else is left to the renderer's reader,
+  still under `ExternalResourcesAccessModes.Ignore`.
 
 ---
 

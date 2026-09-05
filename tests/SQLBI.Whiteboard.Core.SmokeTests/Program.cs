@@ -1176,22 +1176,45 @@ Assert(
     TextLanguageIds.Normalize("SQLSERVER") == TextLanguageIds.SqlServer,
     "The SQL Server text language identifier should normalize for persistence.");
 
-// An image's own clip-path is hoisted onto a group around it before the SVG is
-// drawn, with its transform, so that the renderer's clip lands where the author
-// put it (issue 98). Markup with nothing to hoist is passed through untouched.
+// The SVG handed to the renderer is rewritten around its blind spots. An image's own
+// clip-path is hoisted onto a group around it, with its transform, so the clip lands
+// where the author put it (issue 98); letter-spacing comes off text that is anchored at
+// its middle or end, which the renderer would otherwise pile up in half its width.
+// Markup with nothing to rewrite is passed through untouched.
 {
     byte[] clippedSvg = Encoding.UTF8.GetBytes(
         "<svg xmlns=\"http://www.w3.org/2000/svg\"><defs><clipPath id=\"c\"><rect width=\"1\" height=\"1\"/></clipPath></defs>" +
         "<image x=\"1\" clip-path=\"url(#c)\" transform=\"scale(2)\" href=\"data:image/png;base64,AA==\"/><rect width=\"2\" height=\"2\"/></svg>");
-    string hoisted = Encoding.UTF8.GetString(SvgMarkup.HoistImageClips(clippedSvg));
+    string hoisted = Encoding.UTF8.GetString(SvgMarkup.Rewrite(clippedSvg));
     Assert(
         hoisted.Contains("<g clip-path=\"url(#c)\" transform=\"scale(2)\"><image x=\"1\" href=\"data:image/png;base64,AA==\" /></g>", StringComparison.Ordinal) &&
         hoisted.Contains("<rect width=\"2\" height=\"2\" />", StringComparison.Ordinal),
         "An image's clip-path and transform move to a group around it; the rest is untouched.");
     byte[] plainSvg = Encoding.UTF8.GetBytes("<svg xmlns=\"http://www.w3.org/2000/svg\"><image href=\"data:image/png;base64,AA==\"/></svg>");
-    Assert(ReferenceEquals(SvgMarkup.HoistImageClips(plainSvg), plainSvg), "Markup with no clipped image is the same bytes.");
+    Assert(ReferenceEquals(SvgMarkup.Rewrite(plainSvg), plainSvg), "Markup with no clipped image is the same bytes.");
     byte[] brokenSvg = Encoding.UTF8.GetBytes("<svg><image clip-path='u'");
-    Assert(ReferenceEquals(SvgMarkup.HoistImageClips(brokenSvg), brokenSvg), "Markup that does not parse is left for the renderer.");
+    Assert(ReferenceEquals(SvgMarkup.Rewrite(brokenSvg), brokenSvg), "Markup that does not parse is left for the renderer.");
+
+    byte[] spacedSvg = Encoding.UTF8.GetBytes(
+        "<svg xmlns=\"http://www.w3.org/2000/svg\">" +
+        "<g text-anchor=\"middle\"><text x=\"1\" letter-spacing=\"0.8\">A</text><text letter-spacing=\"0\">B</text></g>" +
+        "<text style=\"fill:red; text-anchor : end\"><tspan letter-spacing=\"1\">C</tspan></text>" +
+        "<text text-anchor=\"middle\" letter-spacing=\"0.1em\">D</text>" +
+        "<text letter-spacing=\"1.5\">E</text>" +
+        "<g text-anchor=\"middle\"><text text-anchor=\"start\" letter-spacing=\"1.5\">F</text></g></svg>");
+    string unspaced = Encoding.UTF8.GetString(SvgMarkup.Rewrite(spacedSvg));
+    Assert(
+        unspaced.Contains("<text x=\"1\">A</text>", StringComparison.Ordinal) &&
+        unspaced.Contains("<tspan>C</tspan>", StringComparison.Ordinal),
+        "Letter-spacing comes off text whose anchor, inherited or in a style, is middle or end.");
+    Assert(
+        unspaced.Contains("<text letter-spacing=\"0\">B</text>", StringComparison.Ordinal) &&
+        unspaced.Contains("<text text-anchor=\"middle\" letter-spacing=\"0.1em\">D</text>", StringComparison.Ordinal) &&
+        unspaced.Contains("<text letter-spacing=\"1.5\">E</text>", StringComparison.Ordinal) &&
+        unspaced.Contains("<text text-anchor=\"start\" letter-spacing=\"1.5\">F</text>", StringComparison.Ordinal),
+        "Spacing the renderer ignores, and spacing on start-anchored text, is kept.");
+    byte[] startSpacedSvg = Encoding.UTF8.GetBytes("<svg xmlns=\"http://www.w3.org/2000/svg\"><text letter-spacing=\"2\">E</text></svg>");
+    Assert(ReferenceEquals(SvgMarkup.Rewrite(startSpacedSvg), startSpacedSvg), "Start-anchored spaced text leaves the bytes as they were.");
 }
 
 // Export areas: the board is cut only where it is empty, a container keeps its
