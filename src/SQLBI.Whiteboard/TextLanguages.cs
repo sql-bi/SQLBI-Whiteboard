@@ -2,6 +2,7 @@ using System.Windows;
 using System.Windows.Media;
 using SQLBI.Whiteboard.Core.Model;
 using SQLBI.Whiteboard.Dax;
+using SQLBI.Whiteboard.Kql;
 using SQLBI.Whiteboard.SqlServer;
 
 namespace SQLBI.Whiteboard;
@@ -40,8 +41,10 @@ internal static class TextLanguageRegistry
     private static readonly ITextLanguageService Plain = new PlainTextLanguageService();
     private static readonly ITextLanguageService Dax = new DaxTextLanguageService();
     private static readonly ITextLanguageService SqlServer = new SqlServerTextLanguageService();
+    private static readonly ITextLanguageService Kql = new KqlTextLanguageService();
 
-    public static IReadOnlyList<ITextLanguageService> All { get; } = [Plain, Dax, SqlServer];
+    public static IReadOnlyList<ITextLanguageService> All { get; } =
+        [Plain, Dax, SqlServer, Kql];
 
     public static ITextLanguageService Resolve(string? languageId)
     {
@@ -273,6 +276,113 @@ internal static class TextLanguageRegistry
                 SqlServerTextClassification.DefinitionName =>
                     new TextRunStyle(DefinitionName, FontWeights.Bold, FontStyles.Normal),
                 SqlServerTextClassification.Operator =>
+                    new TextRunStyle(Operator, FontWeights.SemiBold, FontStyles.Normal),
+                _ => new TextRunStyle(DefaultText, FontWeights.Normal, FontStyles.Normal),
+            };
+    }
+
+    private sealed class KqlTextLanguageService : ITextLanguageService
+    {
+        private readonly object _cacheLock = new();
+        private string? _cachedSource;
+        private TextLanguageAnalysis? _cachedAnalysis;
+        private static readonly Brush DefaultText = CreateBrush(0xFF333333);
+        private static readonly Brush Keyword = CreateBrush(0xFF035ACA);
+        private static readonly Brush Function = CreateBrush(0xFF795E26);
+        private static readonly Brush StringLiteral = CreateBrush(0xFFA31515);
+        private static readonly Brush Number = CreateBrush(0xFFEE7F18);
+        private static readonly Brush Comment = CreateBrush(0xFF268E26);
+        private static readonly Brush Variable = CreateBrush(0xFF168C8B);
+        private static readonly Brush DataType = CreateBrush(0xFF267F99);
+        private static readonly Brush TableName = CreateBrush(0xFF005A70);
+        private static readonly Brush QueryParameter = CreateBrush(0xFF6F42C1);
+        private static readonly Brush Parenthesis = CreateBrush(0xFF808080);
+        private static readonly Brush DefinitionName = CreateBrush(0xFF202020);
+        private static readonly Brush Operator = CreateBrush(0xFF5E6470);
+
+        public string Id => TextLanguageIds.Kql;
+        public string DisplayName => "KQL";
+        public string FontFamilyName => "Consolas";
+        public bool CanFormat => true;
+        public bool ShowLineNumbers => false;
+        public bool WordWrap => true;
+        public bool UseBackgroundAnalysis => true;
+
+        public TextLanguageAnalysis Analyze(string source, string fallbackTitle)
+        {
+            lock (_cacheLock)
+            {
+                if (_cachedAnalysis is not null &&
+                    string.Equals(_cachedSource, source, StringComparison.Ordinal))
+                {
+                    return _cachedAnalysis;
+                }
+            }
+
+            KqlTextAnalysis analysis = KqlLanguageEngine.Analyze(source);
+            string title = string.IsNullOrWhiteSpace(analysis.DefinedObjectName)
+                ? "KQL Code"
+                : $"KQL Code of {analysis.DefinedObjectName}";
+            StyledTextSpan[] spans = analysis.Spans
+                .Select(span => new StyledTextSpan(
+                    span.Start,
+                    span.Length,
+                    StyleOf(span.Classification)))
+                .ToArray();
+            var result = new TextLanguageAnalysis(title, spans);
+            lock (_cacheLock)
+            {
+                _cachedSource = source;
+                _cachedAnalysis = result;
+            }
+
+            return result;
+        }
+
+        public bool TryFormat(string source, out string formatted) =>
+            KqlLanguageEngine.TryFormat(source, out formatted);
+
+        public bool TryAccept(string source)
+        {
+            try
+            {
+                return TryFormat(source, out _);
+            }
+            catch (Exception)
+            {
+                return false;
+            }
+        }
+
+        public override string ToString() => DisplayName;
+
+        private static TextRunStyle StyleOf(KqlTextClassification classification) =>
+            classification switch
+            {
+                KqlTextClassification.Keyword or KqlTextClassification.QueryOperator or
+                    KqlTextClassification.Command =>
+                    new TextRunStyle(Keyword, FontWeights.Bold, FontStyles.Normal),
+                KqlTextClassification.Function =>
+                    new TextRunStyle(Function, FontWeights.SemiBold, FontStyles.Normal),
+                KqlTextClassification.StringLiteral =>
+                    new TextRunStyle(StringLiteral, FontWeights.Normal, FontStyles.Normal),
+                KqlTextClassification.Number =>
+                    new TextRunStyle(Number, FontWeights.Normal, FontStyles.Normal),
+                KqlTextClassification.Comment =>
+                    new TextRunStyle(Comment, FontWeights.Normal, FontStyles.Italic),
+                KqlTextClassification.Variable or KqlTextClassification.Parameter =>
+                    new TextRunStyle(Variable, FontWeights.SemiBold, FontStyles.Normal),
+                KqlTextClassification.DataType =>
+                    new TextRunStyle(DataType, FontWeights.SemiBold, FontStyles.Normal),
+                KqlTextClassification.TableName =>
+                    new TextRunStyle(TableName, FontWeights.Normal, FontStyles.Normal),
+                KqlTextClassification.QueryParameter =>
+                    new TextRunStyle(QueryParameter, FontWeights.SemiBold, FontStyles.Normal),
+                KqlTextClassification.Punctuation =>
+                    new TextRunStyle(Parenthesis, FontWeights.Normal, FontStyles.Normal),
+                KqlTextClassification.DefinitionName =>
+                    new TextRunStyle(DefinitionName, FontWeights.Bold, FontStyles.Normal),
+                KqlTextClassification.Operator =>
                     new TextRunStyle(Operator, FontWeights.SemiBold, FontStyles.Normal),
                 _ => new TextRunStyle(DefaultText, FontWeights.Normal, FontStyles.Normal),
             };

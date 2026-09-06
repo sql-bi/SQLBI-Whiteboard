@@ -11,6 +11,7 @@ using SQLBI.Whiteboard.Core.Updates;
 using SQLBI.Whiteboard.Core.Viewport;
 using SQLBI.Whiteboard.Dax;
 using SQLBI.Whiteboard.Export;
+using SQLBI.Whiteboard.Kql;
 using SQLBI.Whiteboard.SqlServer;
 
 var camera = new Camera2D();
@@ -108,6 +109,7 @@ Assert(
     DroppedFileImport.Classify("notes.txt") == DroppedFileKind.Text &&
     DroppedFileImport.Classify("measure.dax") == DroppedFileKind.Text &&
     DroppedFileImport.Classify("query.sql") == DroppedFileKind.Text &&
+    DroppedFileImport.Classify("alerts.kql") == DroppedFileKind.Text &&
     DroppedFileImport.Classify("lesson.wimport") == DroppedFileKind.Import &&
     DroppedFileImport.Classify("board.wboard") == DroppedFileKind.Unsupported &&
     DroppedFileImport.Classify("notes.md") == DroppedFileKind.Text,
@@ -125,6 +127,7 @@ Assert(
 Assert(
     DroppedFileImport.LanguageIdFor("measure.dax") == TextLanguageIds.Dax &&
     DroppedFileImport.LanguageIdFor("query.sql") == TextLanguageIds.SqlServer &&
+    DroppedFileImport.LanguageIdFor("alerts.kql") == TextLanguageIds.Kql &&
     DroppedFileImport.LanguageIdFor("notes.txt") == TextLanguageIds.Plain,
     "Dropped text files should pick a language from the extension.");
 Assert(
@@ -247,6 +250,27 @@ Assert(
     parsedImport.Items[4] is { LanguageId: TextLanguageIds.Plain } &&
     parsedImport.Items[4].Text!.Contains("print", StringComparison.Ordinal),
     "An unknown fence should fall through to plain text.");
+
+var kqlFromFence = ImportDocument.Parse(
+    """
+    ## Failed logons
+    ```kql
+    SecurityEvent | where EventID == 4625
+    ```
+
+    ## Alerts
+    [alerts](./queries/alerts.kql)
+    """);
+Assert(
+    kqlFromFence.Items is
+    [
+        { LanguageId: TextLanguageIds.Kql, Text: "SecurityEvent | where EventID == 4625" },
+        { LanguageId: TextLanguageIds.Kql, SourcePath: "./queries/alerts.kql" },
+    ],
+    "A kql fence and a .kql link should both import as KQL.");
+Assert(
+    ImportCatalog.Default.LanguageForFence("kusto")?.Id == TextLanguageIds.Kql,
+    "Kusto is the other name the same fence is written under.");
 
 var pythonCatalog = ImportCatalog.Default.WithLanguage(
     new ImportLanguage
@@ -926,11 +950,11 @@ Assert(
     eraserButtonRoundTrip.ShowEraserButton,
     "Settings JSON should round-trip the always-show-the-Eraser choice.");
 Assert(
-    defaultSettings.SnippetFormatOrder is ["plain", "dax", "sqlserver"],
+    defaultSettings.SnippetFormatOrder is ["plain", "dax", "sqlserver", "kql"],
     "Missing settings should keep Plain text first so paste stays plain text.");
 Assert(
     TextLanguageIds.NormalizeOrder(["sqlserver", "plain", "dax", "plain", "python"]) is
-        ["sqlserver", "plain", "dax"],
+        ["sqlserver", "plain", "dax", "kql"],
     "Snippet format order should drop unknowns, keep first-seen order, and fill missing languages.");
 var snippetOrderRoundTrip = AppSettingsSerializer.Parse(
     AppSettingsSerializer.Format(new AppSettings
@@ -938,10 +962,11 @@ var snippetOrderRoundTrip = AppSettingsSerializer.Parse(
         SnippetFormatOrder = ["dax", "sqlserver", "plain"],
     }));
 Assert(
-    snippetOrderRoundTrip.SnippetFormatOrder is ["dax", "sqlserver", "plain"],
-    "Settings JSON should round-trip snippet format order.");
+    snippetOrderRoundTrip.SnippetFormatOrder is ["dax", "sqlserver", "plain", "kql"],
+    "A language added after a board was saved should join the order last, not displace it.");
 Assert(
-    AppSettingsSerializer.Parse("{ }").SnippetFormatOrder is ["plain", "dax", "sqlserver"],
+    AppSettingsSerializer.Parse("{ }").SnippetFormatOrder is
+        ["plain", "dax", "sqlserver", "kql"],
     "Partial settings should fill the default snippet format order.");
 Assert(
     defaultSettings.PenButtons.Barrel == PenButtonAction.Laser,
@@ -1175,6 +1200,90 @@ Assert(
 Assert(
     TextLanguageIds.Normalize("SQLSERVER") == TextLanguageIds.SqlServer,
     "The SQL Server text language identifier should normalize for persistence.");
+
+// KQL rides on Microsoft's own parser, so what is checked here is the adapter: that a
+// snippet without a database still classifies and formats, that formatting leaves the
+// code alone, and that the spacing an author chose around a join hint survives it.
+var kqlSource = """
+let Threshold = 10;
+let ErrorSummary = (T:(UserId:string, EventType:string)) {
+    T
+    | where EventType == "Error"
+    | summarize ErrorCount = count() by UserId
+};
+// Main query execution combining optimization hints
+ErrorSummary(AppLogs)
+| where ErrorCount > Threshold
+| join kind=inner hint.strategy=broadcast UserMetadata on UserId
+| project UserId, ErrorCount, Region
+""";
+KqlTextAnalysis kqlAnalysis = KqlLanguageEngine.Analyze(kqlSource);
+Assert(
+    kqlAnalysis.Diagnostics.Count == 0,
+    "A KQL snippet naming tables it cannot resolve should still parse without complaint.");
+string KqlText(KqlClassifiedSpan span) => kqlSource.Substring(span.Start, span.Length);
+bool KqlHas(KqlTextClassification classification, string text) =>
+    kqlAnalysis.Spans.Any(span =>
+        span.Classification == classification &&
+        KqlText(span).Equals(text, StringComparison.Ordinal));
+Assert(
+    KqlHas(KqlTextClassification.QueryOperator, "summarize") &&
+    KqlHas(KqlTextClassification.Function, "count") &&
+    KqlHas(KqlTextClassification.Variable, "Threshold") &&
+    KqlHas(KqlTextClassification.Parameter, "T") &&
+    KqlHas(KqlTextClassification.ColumnName, "UserId") &&
+    KqlHas(KqlTextClassification.DataType, "string") &&
+    KqlHas(KqlTextClassification.QueryParameter, "kind"),
+    "KQL classification should tell operators, functions, and names apart.");
+Assert(
+    KqlHas(KqlTextClassification.StringLiteral, "\"Error\"") &&
+    kqlAnalysis.Spans.Any(span =>
+        span.Classification == KqlTextClassification.Comment &&
+        KqlText(span).StartsWith("// Main query", StringComparison.Ordinal)),
+    "KQL strings and comments should be classified.");
+Assert(
+    KqlLanguageEngine.TryFormat(kqlSource, out string formattedKql),
+    "Valid KQL should format successfully.");
+Assert(
+    formattedKql.Contains(
+        "| join kind=inner hint.strategy=broadcast UserMetadata on UserId",
+        StringComparison.Ordinal),
+    "Formatting should leave the spacing an author chose around a join hint alone.");
+Assert(
+    formattedKql.Contains(
+        "// Main query execution combining optimization hints",
+        StringComparison.Ordinal) &&
+    formattedKql.Contains("\"Error\"", StringComparison.Ordinal),
+    "KQL formatting should keep comments and string literals.");
+Assert(
+    KqlLanguageEngine.TryFormat(formattedKql, out string formattedKqlAgain) &&
+    formattedKqlAgain == formattedKql,
+    "KQL formatting should be idempotent.");
+Assert(
+    KqlLanguageEngine.TryFormat(
+        kqlSource.Replace("\r\n", "\n").Replace("\n", "\r\n"),
+        out string formattedCrlfKql) &&
+    formattedCrlfKql == formattedKql,
+    "Text stored with carriage returns should format to the same code as text without.");
+const string invalidKql = "let Threshold =";
+Assert(
+    !KqlLanguageEngine.TryFormat(invalidKql, out string unchangedInvalidKql) &&
+    unchangedInvalidKql == invalidKql,
+    "Invalid KQL should be left untouched by formatting.");
+Assert(
+    KqlLanguageEngine.Analyze(invalidKql).Diagnostics.Count > 0,
+    "Invalid KQL should expose parser diagnostics without interrupting highlighting.");
+Assert(
+    KqlLanguageEngine.DefinedObjectName(
+        ".create-or-alter function with (docstring = 'Errors per user') " +
+        "PerUserErrors() { AppLogs | count }") == "PerUserErrors",
+    "The name a command defines should be the function's, not its first property's.");
+Assert(
+    KqlLanguageEngine.DefinedObjectName(kqlSource) is null,
+    "An ordinary KQL query should use the generic KQL Code title.");
+Assert(
+    TextLanguageIds.Normalize("KQL") == TextLanguageIds.Kql,
+    "The KQL text language identifier should normalize for persistence.");
 
 // The SVG handed to the renderer is rewritten around its blind spots. An image's own
 // clip-path is hoisted onto a group around it, with its transform, so the clip lands

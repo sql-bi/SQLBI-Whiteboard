@@ -1,0 +1,10 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <AssemblyName>SQLBI.Whiteboard.Kql</AssemblyName>
+    <RootNamespace>SQLBI.Whiteboard.Kql</RootNamespace>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Azure.Kusto.Language" Version="12.4.1" />
+  </ItemGroup>
+</Project>

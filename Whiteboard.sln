@@ -9,6 +9,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SQLBI.Whiteboard.Dax", "src
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SQLBI.Whiteboard.SqlServer", "src\SQLBI.Whiteboard.SqlServer\SQLBI.Whiteboard.SqlServer.csproj", "{B2B15228-5085-4652-B7C7-F82F3781A486}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SQLBI.Whiteboard.Kql", "src\SQLBI.Whiteboard.Kql\SQLBI.Whiteboard.Kql.csproj", "{2BDED826-A102-4601-910E-15E3243ADCA2}"
+EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SQLBI.Whiteboard.Core.SmokeTests", "tests\SQLBI.Whiteboard.Core.SmokeTests\SQLBI.Whiteboard.Core.SmokeTests.csproj", "{53EF7855-88C7-4D6A-A194-4AF36CF10615}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SQLBI.Whiteboard", "src\SQLBI.Whiteboard\SQLBI.Whiteboard.csproj", "{C9300257-0FA9-47E5-B719-F8C957FE5427}"
@@ -67,6 +69,18 @@ Global
 		{B2B15228-5085-4652-B7C7-F82F3781A486}.Release|Any CPU.Build.0 = Release|Any CPU
 		{B2B15228-5085-4652-B7C7-F82F3781A486}.Release|x86.ActiveCfg = Release|Any CPU
 		{B2B15228-5085-4652-B7C7-F82F3781A486}.Release|x86.Build.0 = Release|Any CPU
+		{2BDED826-A102-4601-910E-15E3243ADCA2}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{2BDED826-A102-4601-910E-15E3243ADCA2}.Debug|x64.Build.0 = Debug|Any CPU
+		{2BDED826-A102-4601-910E-15E3243ADCA2}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{2BDED826-A102-4601-910E-15E3243ADCA2}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{2BDED826-A102-4601-910E-15E3243ADCA2}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{2BDED826-A102-4601-910E-15E3243ADCA2}.Debug|x86.Build.0 = Debug|Any CPU
+		{2BDED826-A102-4601-910E-15E3243ADCA2}.Release|x64.ActiveCfg = Release|Any CPU
+		{2BDED826-A102-4601-910E-15E3243ADCA2}.Release|x64.Build.0 = Release|Any CPU
+		{2BDED826-A102-4601-910E-15E3243ADCA2}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{2BDED826-A102-4601-910E-15E3243ADCA2}.Release|Any CPU.Build.0 = Release|Any CPU
+		{2BDED826-A102-4601-910E-15E3243ADCA2}.Release|x86.ActiveCfg = Release|Any CPU
+		{2BDED826-A102-4601-910E-15E3243ADCA2}.Release|x86.Build.0 = Release|Any CPU
 		{53EF7855-88C7-4D6A-A194-4AF36CF10615}.Debug|x64.ActiveCfg = Debug|Any CPU
 		{53EF7855-88C7-4D6A-A194-4AF36CF10615}.Debug|x64.Build.0 = Debug|Any CPU
 		{53EF7855-88C7-4D6A-A194-4AF36CF10615}.Debug|Any CPU.ActiveCfg = Debug|Any CPU

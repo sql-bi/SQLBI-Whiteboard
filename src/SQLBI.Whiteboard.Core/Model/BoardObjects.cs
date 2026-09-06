@@ -245,16 +245,18 @@ public static class TextLanguageIds
     public const string Plain = "plain";
     public const string Dax = "dax";
     public const string SqlServer = "sqlserver";
+    public const string Kql = "kql";
 
     public static string Normalize(string? languageId) =>
         languageId?.Trim().ToLowerInvariant() switch
         {
             Dax => Dax,
             SqlServer => SqlServer,
+            Kql => Kql,
             _ => Plain,
         };
 
-    public static IReadOnlyList<string> All { get; } = [Plain, Dax, SqlServer];
+    public static IReadOnlyList<string> All { get; } = [Plain, Dax, SqlServer, Kql];
 
     public static IReadOnlyList<string> NormalizeOrder(IEnumerable<string>? languageIds)
     {
