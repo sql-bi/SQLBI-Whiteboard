@@ -29,12 +29,9 @@ that is how the queries people bring to a session are usually written. Highlight
 formatting both read Kusto through Microsoft's own parser, and both run locally.
 
 ### Pasted code is recognized without a setting
-Plain text now comes last in the snippet format order, so a pasted DAX, SQL, or KQL
-snippet arrives as code, highlighted and ready to format, without a visit to Preferences.
-A language claims a snippet only when it carries a real signal, an operator, a function, a
-keyword, a pipe, so a bare word or a number pasted as a note stays a note. A setup that
-never changed the order takes the new one; an order you chose is kept, and a language
-added by an update joins it in front of Plain text unless you put Plain text first.
+Plain text now comes last in the snippet format order, so pasted DAX, SQL, or KQL arrives
+as code. A bare word or a number still pastes as a note. An order you chose in
+Preferences is kept; a language added by an update joins it in front of Plain text.
 
 ## 1.3.0 - 3 September 2026
 
