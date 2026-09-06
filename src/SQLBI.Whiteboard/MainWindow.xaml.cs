@@ -2017,6 +2017,13 @@ public partial class MainWindow : Window
             }
         }
 
+        if (!_containerGestureIsResize && FindTextContainerAtRightEdge(screenPoint) is { } edged)
+        {
+            selected = edged;
+            _containerGestureIsResize = true;
+            _containerGestureReflow = true;
+        }
+
         _selectedObjectId = selected?.Id;
         SceneSurface.SelectedObjectId = _selectedObjectId;
         if (selected is null)
@@ -3391,7 +3398,8 @@ public partial class MainWindow : Window
             return;
         }
 
-        var container = _document.HitTestTopContainer(_camera.ScreenToWorld(screen), _camera.Zoom);
+        var container = _document.HitTestTopContainer(_camera.ScreenToWorld(screen), _camera.Zoom)
+            ?? FindTextContainerAtRightEdge(screen);
         var hoveredId = container?.Id;
         if (SceneSurface.HoveredObjectId == hoveredId)
         {
@@ -3409,9 +3417,43 @@ public partial class MainWindow : Window
             return Cursors.SizeNWSE;
         }
 
+        if (FindTextContainerAtRightEdge(screen) is not null)
+        {
+            return Cursors.SizeWE;
+        }
+
         return _document.HitTestTopContainer(_camera.ScreenToWorld(screen), _camera.Zoom) is null
             ? Cursors.Arrow
             : Cursors.SizeAll;
+    }
+
+    /// <summary>
+    /// The right edge of a text container is its width handle: dragging it
+    /// changes the columns and reflows, as Shift on the corner does, but with
+    /// a cursor that says so on hover. The corner itself stays the scale handle.
+    /// </summary>
+    private const double EdgeHandleTolerance = 8;
+
+    private TextBoardObject? FindTextContainerAtRightEdge(PointD screen)
+    {
+        if (IsOverResizeHandle(screen))
+        {
+            return null;
+        }
+
+        foreach (var text in _document.Objects.OfType<TextBoardObject>().OrderByDescending(item => item.ZIndex))
+        {
+            var topRight = _camera.WorldToScreen(new PointD(text.Bounds.Right, text.Bounds.Top));
+            var bottom = _camera.WorldToScreen(new PointD(text.Bounds.Right, text.Bounds.Bottom)).Y;
+            if (Math.Abs(screen.X - topRight.X) <= EdgeHandleTolerance &&
+                screen.Y >= topRight.Y - EdgeHandleTolerance &&
+                screen.Y <= bottom - 16)
+            {
+                return text;
+            }
+        }
+
+        return null;
     }
 
     private bool IsOverResizeHandle(PointD screen)

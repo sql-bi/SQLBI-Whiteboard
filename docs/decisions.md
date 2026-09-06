@@ -706,8 +706,9 @@ to make it the line width the formatter uses too:
   rejected: making a snippet bigger for the room is the resize a presenter needs, it is
   what every other container does with the same gesture, and reflowing on a drag would
   change line breaks while someone is only making space. Shift already means "constrain"
-  for strokes, so it reads as the narrower version of the gesture. A second handle on the
-  right edge would be more discoverable and can be added if the modifier is not found.
+  for strokes, so it reads as the narrower version of the gesture. The right edge of a text
+  container is the same width handle without the modifier: the cursor says so on hover,
+  which is what makes it discoverable, and the corner stays the scale handle.
 
 Structural switches for SQL and KQL, one column per line or one pipe per line, are the
 levers those languages have, and can come as yes-or-no settings when someone asks.

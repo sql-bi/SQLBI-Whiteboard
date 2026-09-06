@@ -200,7 +200,7 @@ Use **Copy settings** after finding a useful combination so the exact values can
 | View > Frame | Add a frame the size of the screen: a slide drawn on the board, selected by its edge or its tab, which Export takes as it is |
 | Language chip | Choose Plain text, DAX, or SQL Server on a selected text container |
 | F6 | Format DAX, SQL, or KQL on the selected text container; DAX wraps to the container's columns. In F2, formats in place |
-| Shift + drag handle | Change a text container's width in columns and reflow it; the handle shows the count. A plain drag scales it |
+| Drag right edge, or Shift + drag handle | Change a text container's width in columns and reflow it; the handle shows the count. A plain drag of the corner scales it |
 | Ctrl+Enter | Commit the F2 edit, including an F6 format done in that session, and return to display mode |
 | Escape | Cancel the active text edit, close the command strip, or leave full screen or canvas only |
 | Ctrl+S / Ctrl+O | Save / open a board |
