@@ -29,6 +29,11 @@ Plain text now comes last in the snippet format order, so pasted DAX, SQL, or KQ
 as code. A bare word or a number still pastes as a note. An order you chose in
 Preferences is kept; a language added by an update joins it in front of Plain text.
 
+### A snippet's width is its line width
+Hold **Shift** while dragging a text container's handle to change its width in columns;
+the handle shows the count, and a plain drag still scales the container. **F6** wraps
+DAX to that width. A new container is 65 columns wide, where the DAX formatter wraps.
+
 ## 1.3.0 - 3 September 2026
 
 ### Export a board to PowerPoint

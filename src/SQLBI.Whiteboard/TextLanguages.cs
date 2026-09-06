@@ -32,7 +32,11 @@ internal interface ITextLanguageService
     bool UseBackgroundAnalysis { get; }
 
     TextLanguageAnalysis Analyze(string source, string fallbackTitle);
-    bool TryFormat(string source, out string formatted);
+    /// <summary>
+    /// Formats to at most <paramref name="columns"/> characters a line where the
+    /// language wraps by width; the others break by structure and ignore it.
+    /// </summary>
+    bool TryFormat(string source, int columns, out string formatted);
     bool TryAccept(string source);
 }
 
@@ -82,7 +86,7 @@ internal static class TextLanguageRegistry
             string.IsNullOrWhiteSpace(fallbackTitle) ? "Text" : fallbackTitle,
             []);
 
-        public bool TryFormat(string source, out string formatted)
+        public bool TryFormat(string source, int columns, out string formatted)
         {
             formatted = source;
             return false;
@@ -129,10 +133,10 @@ internal static class TextLanguageRegistry
             return new TextLanguageAnalysis(title, spans);
         }
 
-        public bool TryFormat(string source, out string formatted) =>
+        public bool TryFormat(string source, int columns, out string formatted) =>
             DaxLanguageEngine.TryFormat(
                 source,
-                DaxLanguageEngine.DefaultMaximumLineLength,
+                Math.Clamp(columns, TextContainerVisual.MinimumColumns, TextContainerVisual.MaximumColumns),
                 out formatted);
 
         // The parser alone is too welcoming: a bare name or a number parses in
@@ -141,7 +145,7 @@ internal static class TextLanguageRegistry
         {
             try
             {
-                return DaxLanguageEngine.LooksLike(source) && TryFormat(source, out _);
+                return DaxLanguageEngine.LooksLike(source) && TryFormat(source, DaxLanguageEngine.DefaultMaximumLineLength, out _);
             }
             catch (Exception)
             {
@@ -234,7 +238,7 @@ internal static class TextLanguageRegistry
             return result;
         }
 
-        public bool TryFormat(string source, out string formatted) =>
+        public bool TryFormat(string source, int columns, out string formatted) =>
             SqlServerLanguageEngine.TryFormat(source, out formatted);
 
         // The parser alone is too welcoming: a bare name or a number parses in
@@ -243,7 +247,7 @@ internal static class TextLanguageRegistry
         {
             try
             {
-                return SqlServerLanguageEngine.LooksLike(source) && TryFormat(source, out _);
+                return SqlServerLanguageEngine.LooksLike(source) && TryFormat(source, DaxLanguageEngine.DefaultMaximumLineLength, out _);
             }
             catch (Exception)
             {
@@ -343,7 +347,7 @@ internal static class TextLanguageRegistry
             return result;
         }
 
-        public bool TryFormat(string source, out string formatted) =>
+        public bool TryFormat(string source, int columns, out string formatted) =>
             KqlLanguageEngine.TryFormat(source, out formatted);
 
         // The parser alone is too welcoming: a bare name or a number parses in
@@ -352,7 +356,7 @@ internal static class TextLanguageRegistry
         {
             try
             {
-                return KqlLanguageEngine.LooksLike(source) && TryFormat(source, out _);
+                return KqlLanguageEngine.LooksLike(source) && TryFormat(source, DaxLanguageEngine.DefaultMaximumLineLength, out _);
             }
             catch (Exception)
             {

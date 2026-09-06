@@ -54,6 +54,12 @@ internal sealed class BoardSurface : FrameworkElement
     public bool DrawFrames { get; set; } = true;
 
     /// <summary>
+    /// A word or two beside the resize handle while a gesture needs one, such
+    /// as the column count of a text container being reflowed.
+    /// </summary>
+    public string? HandleLabel { get; set; }
+
+    /// <summary>
     /// The stroke the pen is drawing right now, before it is committed. Pen ink
     /// is collected here rather than by the InkCanvas, so the wet stroke is
     /// drawn here too.
@@ -311,7 +317,7 @@ internal sealed class BoardSurface : FrameworkElement
         }
     }
 
-    private static void DrawSelection(
+    private void DrawSelection(
         DrawingContext drawingContext,
         RectD bounds,
         Camera2D camera,
@@ -333,6 +339,21 @@ internal sealed class BoardSurface : FrameworkElement
                 new Point(bottomRight.X, bottomRight.Y),
                 7,
                 7);
+        }
+
+        if (includeHandle && HandleLabel is { Length: > 0 } label)
+        {
+            var text = new FormattedText(
+                label,
+                System.Globalization.CultureInfo.CurrentUICulture,
+                FlowDirection.LeftToRight,
+                FrameTypeface,
+                12,
+                FrameTitleBrush,
+                VisualTreeHelper.GetDpi(this).PixelsPerDip);
+            var badge = new Rect(bottomRight.X + 12, bottomRight.Y - (text.Height / 2) - 3, text.Width + 12, text.Height + 6);
+            drawingContext.DrawRoundedRectangle(SelectionPen.Brush, null, badge, 4, 4);
+            drawingContext.DrawText(text, new Point(badge.Left + 6, badge.Top + 3));
         }
     }
 

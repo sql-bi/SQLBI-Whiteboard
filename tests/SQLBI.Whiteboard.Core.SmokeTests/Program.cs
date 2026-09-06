@@ -985,6 +985,13 @@ Assert(
     AppSettingsSerializer.Parse("""{ "version": 16, "snippetFormatOrder": ["plain", "dax", "sqlserver", "kql"] }""").SnippetFormatOrder is
         ["plain", "dax", "sqlserver", "kql"],
     "A current file that puts plain text first chose to, and is left alone.");
+const string longMeasure = "Sales Amount := SUMX ( Sales, Sales[Quantity] * Sales[Net Price] * ( 1 - Sales[Discount] ) )";
+Assert(
+    DaxLanguageEngine.TryFormat(longMeasure, 65, out string narrowDax) &&
+    DaxLanguageEngine.TryFormat(longMeasure, 160, out string wideDax) &&
+    narrowDax.Split('\n').Length > wideDax.Split('\n').Length &&
+    narrowDax.Split('\n').All(line => line.TrimEnd().Length <= 65),
+    "The DAX formatter wraps to the columns it is given, so a wider container gets longer lines.");
 Assert(
     !DaxLanguageEngine.LooksLike("Sales") && !DaxLanguageEngine.LooksLike("42") && !DaxLanguageEngine.LooksLike("Why does December spike?") &&
     DaxLanguageEngine.LooksLike("Sales Amount := SUM ( Sales[Amount] )") && DaxLanguageEngine.LooksLike("[Amount] * 2"),
