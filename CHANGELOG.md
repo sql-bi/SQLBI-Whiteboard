@@ -83,6 +83,14 @@ A heading such as `THE INTERFACE` set with `letter-spacing` and centred with
 anchored at the end. The letter-spacing is dropped for such text before drawing, so the
 label appears where it was placed, set a little tighter than the author asked.
 
+### Pasted code is recognized without a setting
+Plain text now comes last in the snippet format order, so a pasted DAX, SQL, or KQL
+snippet arrives as code, highlighted and ready to format, without a visit to Preferences.
+A language claims a snippet only when it carries a real signal, an operator, a function, a
+keyword, a pipe, so a bare word or a number pasted as a note stays a note. A setup that
+never changed the order takes the new one; an order you chose is kept, and a language
+added by an update joins it in front of Plain text unless you put Plain text first.
+
 ## 1.2.2 - 2 September 2026
 
 ### The Eraser, for a pen that has none

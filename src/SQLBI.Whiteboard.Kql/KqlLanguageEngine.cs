@@ -99,6 +99,37 @@ public static class KqlLanguageEngine
         }
     }
 
+    /// <summary>
+    /// Whether the text has something only KQL would have: a pipe, a query
+    /// operator, a keyword, a command, or a function. A bare table name is a
+    /// valid query to the parser, and pasted as a note it must stay a note.
+    /// </summary>
+    public static bool LooksLike(string source)
+    {
+        if (string.IsNullOrWhiteSpace(source))
+        {
+            return false;
+        }
+
+        if (source.Contains('|'))
+        {
+            return true;
+        }
+
+        try
+        {
+            return Classify(source).Any(span => span.Classification is
+                KqlTextClassification.Keyword or
+                KqlTextClassification.QueryOperator or
+                KqlTextClassification.Command or
+                KqlTextClassification.Function);
+        }
+        catch (Exception)
+        {
+            return false;
+        }
+    }
+
     public static IReadOnlyList<KqlClassifiedSpan> Classify(string source) =>
         Analyze(source).Spans;
 

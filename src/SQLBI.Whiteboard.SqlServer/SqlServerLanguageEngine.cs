@@ -107,6 +107,30 @@ public static class SqlServerLanguageEngine
         }
     }
 
+    /// <summary>
+    /// Whether the text has something only T-SQL would have: a keyword or a
+    /// function. The parser rejects most prose on its own; this keeps the
+    /// acceptance rule the same shape as the other languages'.
+    /// </summary>
+    public static bool LooksLike(string source)
+    {
+        if (string.IsNullOrWhiteSpace(source))
+        {
+            return false;
+        }
+
+        try
+        {
+            return Classify(source).Any(span => span.Classification is
+                SqlServerTextClassification.Keyword or
+                SqlServerTextClassification.Function);
+        }
+        catch (Exception)
+        {
+            return false;
+        }
+    }
+
     public static IReadOnlyList<SqlServerClassifiedSpan> Classify(string source) =>
         Analyze(source).Spans;
 

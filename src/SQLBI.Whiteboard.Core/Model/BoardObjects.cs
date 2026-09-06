@@ -256,8 +256,43 @@ public static class TextLanguageIds
             _ => Plain,
         };
 
-    public static IReadOnlyList<string> All { get; } = [Plain, Dax, SqlServer, Kql];
+    /// <summary>
+    /// The default snippet format order, which is also the order a language
+    /// missing from a saved order joins it in. Plain text accepts everything,
+    /// so it comes last: a paste is code if any language says it is, and text
+    /// otherwise, with no setting to change.
+    /// </summary>
+    public static IReadOnlyList<string> All { get; } = [Dax, SqlServer, Kql, Plain];
 
+    /// <summary>
+    /// The default orders earlier releases wrote into settings, with plain text
+    /// first. A saved order equal to one of these was never chosen by anyone, so
+    /// an upgrade may replace it with <see cref="All"/>.
+    /// </summary>
+    public static IReadOnlyList<IReadOnlyList<string>> LegacyDefaultOrders { get; } =
+    [
+        [Plain, Dax, SqlServer],
+        [Plain, Dax, SqlServer, Kql],
+    ];
+
+    public static bool IsLegacyDefaultOrder(IEnumerable<string>? languageIds)
+    {
+        if (languageIds is null)
+        {
+            return false;
+        }
+
+        var order = languageIds.Select(Normalize).ToArray();
+        return LegacyDefaultOrders.Any(legacy => legacy.SequenceEqual(order, StringComparer.Ordinal));
+    }
+
+    /// <summary>
+    /// Drops unknown names and duplicates, and adds the languages the saved
+    /// order does not know. Those go in front of plain text wherever it sits,
+    /// because an order that puts plain text after some languages means "try
+    /// the languages first"; only an order that starts with plain text means
+    /// "keep my pastes plain", and there they go last.
+    /// </summary>
     public static IReadOnlyList<string> NormalizeOrder(IEnumerable<string>? languageIds)
     {
         var ordered = new List<string>();
@@ -273,12 +308,15 @@ public static class TextLanguageIds
             }
         }
 
-        foreach (var languageId in All)
+        var missing = All.Where(languageId => !ordered.Contains(languageId, StringComparer.Ordinal)).ToArray();
+        var plainIndex = ordered.IndexOf(Plain);
+        if (plainIndex > 0)
         {
-            if (!ordered.Contains(languageId, StringComparer.Ordinal))
-            {
-                ordered.Add(languageId);
-            }
+            ordered.InsertRange(plainIndex, missing);
+        }
+        else
+        {
+            ordered.AddRange(missing);
         }
 
         return ordered;

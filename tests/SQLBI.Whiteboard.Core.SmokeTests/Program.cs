@@ -950,24 +950,53 @@ Assert(
     eraserButtonRoundTrip.ShowEraserButton,
     "Settings JSON should round-trip the always-show-the-Eraser choice.");
 Assert(
-    defaultSettings.SnippetFormatOrder is ["plain", "dax", "sqlserver", "kql"],
-    "Missing settings should keep Plain text first so paste stays plain text.");
+    defaultSettings.SnippetFormatOrder is ["dax", "sqlserver", "kql", "plain"],
+    "A new setup tries every language before plain text, so pasted code is code without a setting.");
 Assert(
     TextLanguageIds.NormalizeOrder(["sqlserver", "plain", "dax", "plain", "python"]) is
-        ["sqlserver", "plain", "dax", "kql"],
-    "Snippet format order should drop unknowns, keep first-seen order, and fill missing languages.");
+        ["sqlserver", "kql", "plain", "dax"],
+    "Snippet format order should drop unknowns, keep first-seen order, and put a missing language in front of plain text.");
 var snippetOrderRoundTrip = AppSettingsSerializer.Parse(
     AppSettingsSerializer.Format(new AppSettings
     {
         SnippetFormatOrder = ["dax", "sqlserver", "plain"],
     }));
 Assert(
-    snippetOrderRoundTrip.SnippetFormatOrder is ["dax", "sqlserver", "plain", "kql"],
-    "A language added after a board was saved should join the order last, not displace it.");
+    snippetOrderRoundTrip.SnippetFormatOrder is ["dax", "sqlserver", "kql", "plain"],
+    "A language added by an upgrade joins in front of plain text when plain text is not first.");
+Assert(
+    TextLanguageIds.NormalizeOrder(["plain", "dax"]) is ["plain", "dax", "sqlserver", "kql"],
+    "An order that starts with plain text keeps pastes plain: added languages go last.");
 Assert(
     AppSettingsSerializer.Parse("{ }").SnippetFormatOrder is
-        ["plain", "dax", "sqlserver", "kql"],
+        ["dax", "sqlserver", "kql", "plain"],
     "Partial settings should fill the default snippet format order.");
+Assert(
+    AppSettingsSerializer.Parse("""{ "version": 15, "snippetFormatOrder": ["plain", "dax", "sqlserver"] }""").SnippetFormatOrder is
+        ["dax", "sqlserver", "kql", "plain"] &&
+    AppSettingsSerializer.Parse("""{ "version": 15, "snippetFormatOrder": ["plain", "dax", "sqlserver", "kql"] }""").SnippetFormatOrder is
+        ["dax", "sqlserver", "kql", "plain"],
+    "An older file still holding a shipped default was never customized and takes the new default.");
+Assert(
+    AppSettingsSerializer.Parse("""{ "version": 15, "snippetFormatOrder": ["sqlserver", "plain", "dax"] }""").SnippetFormatOrder is
+        ["sqlserver", "kql", "plain", "dax"],
+    "An older file with a chosen order keeps it, with the new language in front of plain text.");
+Assert(
+    AppSettingsSerializer.Parse("""{ "version": 16, "snippetFormatOrder": ["plain", "dax", "sqlserver", "kql"] }""").SnippetFormatOrder is
+        ["plain", "dax", "sqlserver", "kql"],
+    "A current file that puts plain text first chose to, and is left alone.");
+Assert(
+    !DaxLanguageEngine.LooksLike("Sales") && !DaxLanguageEngine.LooksLike("42") && !DaxLanguageEngine.LooksLike("Why does December spike?") &&
+    DaxLanguageEngine.LooksLike("Sales Amount := SUM ( Sales[Amount] )") && DaxLanguageEngine.LooksLike("[Amount] * 2"),
+    "DAX claims a snippet only when it has a function, operator, keyword, or column reference.");
+Assert(
+    !SqlServerLanguageEngine.LooksLike("Sales") && !SqlServerLanguageEngine.LooksLike("42") &&
+    SqlServerLanguageEngine.LooksLike("SELECT 1") && SqlServerLanguageEngine.LooksLike("SELECT COUNT(*) FROM dbo.Sales"),
+    "SQL claims a snippet only when it has a keyword or function.");
+Assert(
+    !KqlLanguageEngine.LooksLike("Sales") && !KqlLanguageEngine.LooksLike("42") && !KqlLanguageEngine.LooksLike("Open questions") &&
+    KqlLanguageEngine.LooksLike("Sales | count") && KqlLanguageEngine.LooksLike("print 1"),
+    "KQL claims a snippet only when it has a pipe, operator, keyword, command, or function.");
 Assert(
     defaultSettings.PenButtons.Barrel == PenButtonAction.Laser,
     "Missing settings should assign Laser to the pen barrel button.");
