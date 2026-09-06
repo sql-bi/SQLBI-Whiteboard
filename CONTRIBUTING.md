@@ -90,6 +90,25 @@ channels and a tested build can be promoted without rebuilding.
 anything else naming internal infrastructure. Signing coordinates belong in the team's
 internal notes, not here.
 
+## Writing for people
+
+Three places carry text read by people who did not write the code, and each has its own
+length. Internal documentation under `docs/` is where reasoning, alternatives, and
+mechanism belong, at whatever length they need. The other two are short:
+
+- **The site (`site/*.html`)** speaks to the person using the application: what they do
+  and what they get. A feature is one paragraph of two to four sentences, in the voice
+  and at the length of the paragraphs around it. No reasoning, no alternatives, no
+  mechanism, no history.
+- **`CHANGELOG.md`**, which becomes the GitHub release body and the What's new page, is
+  plain and technically accurate: one `###` per thing a person notices, two to four lines
+  each, saying what changed and what it is for. A bug entry names the symptom and the fix,
+  not the diagnosis. Link to `docs/` for anything longer.
+
+The test is the neighbours: if a new paragraph is noticeably longer than the ones beside
+it, cut it. This has been asked for twice; the 1.3.0 notes as first written are what it
+looks like when it slips, and their shortened form is what was wanted.
+
 ## Code style
 
 Match the surrounding code. Nullable reference types and implicit usings are enabled.
