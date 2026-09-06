@@ -135,11 +135,13 @@ internal static class TextLanguageRegistry
                 DaxLanguageEngine.DefaultMaximumLineLength,
                 out formatted);
 
+        // The parser alone is too welcoming: a bare name or a number parses in
+        // more than one language. The engine says whether there is a real signal.
         public bool TryAccept(string source)
         {
             try
             {
-                return TryFormat(source, out _);
+                return DaxLanguageEngine.LooksLike(source) && TryFormat(source, out _);
             }
             catch (Exception)
             {
@@ -235,11 +237,13 @@ internal static class TextLanguageRegistry
         public bool TryFormat(string source, out string formatted) =>
             SqlServerLanguageEngine.TryFormat(source, out formatted);
 
+        // The parser alone is too welcoming: a bare name or a number parses in
+        // more than one language. The engine says whether there is a real signal.
         public bool TryAccept(string source)
         {
             try
             {
-                return TryFormat(source, out _);
+                return SqlServerLanguageEngine.LooksLike(source) && TryFormat(source, out _);
             }
             catch (Exception)
             {
@@ -342,11 +346,13 @@ internal static class TextLanguageRegistry
         public bool TryFormat(string source, out string formatted) =>
             KqlLanguageEngine.TryFormat(source, out formatted);
 
+        // The parser alone is too welcoming: a bare name or a number parses in
+        // more than one language. The engine says whether there is a real signal.
         public bool TryAccept(string source)
         {
             try
             {
-                return TryFormat(source, out _);
+                return KqlLanguageEngine.LooksLike(source) && TryFormat(source, out _);
             }
             catch (Exception)
             {

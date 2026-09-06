@@ -654,6 +654,36 @@ board without one still opens in every release since format 5.
 
 ---
 
+## 28. Plain text is the last snippet format, and a language must earn a snippet
+
+**Implemented.**
+
+Snippet format order decides which language a paste becomes: the first that accepts the
+text wins, and plain text accepts everything. With plain text first, the shipped default
+since 1.0, every paste was a note until someone found the setting; a language added by an
+update (KQL in 1.3.0) joined the end of the list, behind plain text, and so never applied.
+The goal is that a new language works on the day it ships, with no visit to Preferences.
+
+Two things were changed together, and the second is what makes the first safe:
+
+- **Plain text comes last** in the default order: DAX, SQL, KQL, Plain text. A saved order
+  equal to a default the application ever shipped was never chosen by anyone, so an
+  upgrade replaces it (the settings version moved to 16 to do this once). A chosen order
+  is kept, and a language it does not know joins it in front of plain text wherever plain
+  text sits, unless plain text is first, which is the one order that means "keep my pastes
+  plain"; there the new language goes last. The order itself carries the intent, so the
+  checkbox that was considered, "new languages go before plain text", was not added: it
+  would say the same thing twice and allow the contradictory state of plain text first with
+  languages jumping ahead of it.
+- **A language claims a snippet only when it carries a signal** of its own. Every parser
+  accepts a bare name or a number: `Sales` is a DAX table expression and a KQL query. With
+  plain text last that would have turned a one-word note into code. So DAX needs a
+  function, operator, keyword, column reference, or variable; T-SQL a keyword or function;
+  KQL a pipe, query operator, keyword, command, or function. The parser still has the last
+  word after the signal.
+
+---
+
 ## Open questions
 
 - arm64 is not built; add it if Surface devices matter for a pen application.

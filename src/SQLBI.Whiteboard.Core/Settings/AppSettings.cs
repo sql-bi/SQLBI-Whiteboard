@@ -172,7 +172,14 @@ public sealed class AppSettings
 
 public static class AppSettingsSerializer
 {
-    public const int CurrentVersion = 15;
+    public const int CurrentVersion = 16;
+
+    /// <summary>
+    /// The version that moved plain text to the end of the default snippet
+    /// format order. A file older than this whose order is still a shipped
+    /// default was never customized, and takes the new default.
+    /// </summary>
+    private const int VersionWithPlainTextLast = 16;
 
     private static readonly JsonSerializerOptions JsonOptions = new()
     {
@@ -278,6 +285,12 @@ public static class AppSettingsSerializer
         settings.Laser = LaserSettings.Normalize(settings.Laser);
         settings.PenButtons = PenButtonSettings.Normalize(settings.PenButtons);
         settings.Export = ExportSettings.Normalize(settings.Export);
+        if (settings.Version < VersionWithPlainTextLast &&
+            TextLanguageIds.IsLegacyDefaultOrder(settings.SnippetFormatOrder))
+        {
+            settings.SnippetFormatOrder = [.. TextLanguageIds.All];
+        }
+
         settings.SnippetFormatOrder = [.. TextLanguageIds.NormalizeOrder(settings.SnippetFormatOrder)];
         settings.LatestKnownVersion = NormalizeVersionId(settings.LatestKnownVersion);
         settings.LastDismissedVersion = NormalizeVersionId(settings.LastDismissedVersion);

@@ -24,6 +24,11 @@ A text container can now be KQL: paste a query or drop a `.kql` file and choose 
 from the title-bar chip. It is highlighted, **F6** formats it, and a query that does not
 parse is left unchanged. Both use Microsoft's Kusto parser and run locally.
 
+### Pasted code is recognized without a setting
+Plain text now comes last in the snippet format order, so pasted DAX, SQL, or KQL arrives
+as code. A bare word or a number still pastes as a note. An order you chose in
+Preferences is kept; a language added by an update joins it in front of Plain text.
+
 ## 1.3.0 - 3 September 2026
 
 ### Export a board to PowerPoint

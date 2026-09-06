@@ -51,6 +51,33 @@ public static class DaxLanguageEngine
         }
     }
 
+    /// <summary>
+    /// Whether the text has something only DAX would have: a function, a
+    /// keyword, an operator, a column reference, or a variable. A bare name or
+    /// a number parses as DAX too, and pasted as a note it must stay a note.
+    /// </summary>
+    public static bool LooksLike(string source)
+    {
+        if (string.IsNullOrWhiteSpace(source))
+        {
+            return false;
+        }
+
+        try
+        {
+            return Classify(source).Any(span => span.Classification is
+                DaxTextClassification.Keyword or
+                DaxTextClassification.Function or
+                DaxTextClassification.Operator or
+                DaxTextClassification.ColumnReference or
+                DaxTextClassification.Variable);
+        }
+        catch (Exception)
+        {
+            return false;
+        }
+    }
+
     public static IReadOnlyList<DaxClassifiedSpan> Classify(string source) =>
         DaxClassifier.Classify(source)
             .Select(span => new DaxClassifiedSpan(
