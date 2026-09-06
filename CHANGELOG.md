@@ -20,68 +20,44 @@ and **bold**.
 ## 1.3.1 - 5 September 2026
 
 ### KQL joins DAX and SQL in text containers
-A text container can now be Kusto Query Language. Paste a query or drop a `.kql` file,
-choose **KQL** from the title-bar chip, and it is highlighted like the rest: operators,
-functions, columns, string literals, and the comments between them. **F6** formats it,
-and a query that does not parse is left exactly as it was rather than half rewritten.
-The spacing you chose around a join hint, as in `kind=inner`, survives formatting, because
-that is how the queries people bring to a session are usually written. Highlighting and
-formatting both read Kusto through Microsoft's own parser, and both run locally.
+A text container can now be KQL: paste a query or drop a `.kql` file and choose **KQL**
+from the title-bar chip. It is highlighted, **F6** formats it, and a query that does not
+parse is left unchanged. Both use Microsoft's Kusto parser and run locally.
 
 ## 1.3.0 - 3 September 2026
 
 ### Export a board to PowerPoint
-**File → Export** (Ctrl+E) turns the board into a deck. The board is cut into areas
-wherever it is empty: a picture or a note keeps the ink drawn on it, and a stroke that
-spans two of them keeps them together. Each area becomes a slide, drawn exactly as the
-screen draws it, with the text containers in the speaker notes so that DAX and SQL can be
-copied, and an overview slide first shows where every slide sits on the board. The dialog
-previews the areas, numbered, and updates as you move the gap and text-size settings.
-[How areas are chosen](https://github.com/sql-bi/SQLBI-Whiteboard/blob/main/docs/export.md)
-is written down, with the alternatives.
+**File → Export** (Ctrl+E) turns the board into a deck. The board is cut into areas where
+it is empty, one slide per area, with an overview slide first. Text containers go in the
+speaker notes. The dialog shows the areas on the board and updates as you change the
+settings.
 
 ### Export a board to PDF
-Choose **PDF** in the same dialog for a document: the same areas, one per A4 or Letter
-page in landscape, each with a bookmark and a footer with the board name, the date, and
-the page number. **Whole board on one page** writes a single page the shape of the board,
-to be read by zooming, for a board that is one drawing.
+Choose **PDF** in the same dialog: one A4 or Letter page per area, with a bookmark and a
+footer, or the whole board on one page to zoom into.
 
 ### A deck you can rework
-**Slide content → Editable** puts images and text containers on the slide as PowerPoint
-objects, keeps the DAX and SQL colors as text runs, and lays all the ink over them as one
-transparent picture. It is the default; Picture, one choice away, is the exact rendering
-for a deck that will be shown as is.
+**Slide content → Editable**, the default, puts images and text containers on the slide
+as objects, keeps DAX and SQL colors, and lays the ink over them as one picture.
+**Picture** is one exact picture of the area.
 
 ### PDF pages that stay sharp
-**Page content → Vector** draws the ink as paths and the text as text, so a page stays
-sharp at any zoom and DAX or SQL can be selected and copied from it. The fonts travel with
-the file.
+**Page content → Vector** draws the ink as paths and the text as text, so the page stays
+sharp at any zoom and code can be selected and copied.
 
 ### Slides drawn on the board
-**View → Frame** adds a frame the size of the screen: a slide drawn by hand. Whatever sits
-inside a frame is that slide, frames come first, and the rest of the board is still cut
-automatically. A frame is selected by its edge or its title tab, never by its inside, so
-everything in it stays reachable; F2 renames it. A board with a frame is saved in a new
-format version, so it needs this release to open; a board without one still opens in the
-releases before it.
+**View → Frame** adds a frame the size of the screen. Whatever is inside a frame is that
+slide; the rest of the board is still cut automatically. Select a frame by its edge or its
+title tab, and press F2 to rename it. A board with a frame needs this release to open.
 
-### An SVG with pictures inside draws them where, and as large as, the author placed them
-An SVG that embeds a bitmap and clips it, the way an illustration frames a screenshot,
-drew the bitmap shifted and partly missing. The renderer applied the clip inside the
-scaling it builds for the picture, so a clip written in page coordinates moved with the
-picture. The clip is now lifted onto a group around the picture before drawing, which is
-what the markup means, and the picture lands where the author put it.
-
-An embedded logo saved at 72 or 216 DPI came out a third larger, or less than half the
-size, of the box the SVG gave it, because the renderer measured the picture in screen
-units rather than pixels. The pictures are now measured in pixels, as browsers do, so a
-logo fills exactly the box it was given.
+### SVG pictures land where the author put them
+An SVG with an embedded, clipped bitmap drew it shifted and partly missing, and an
+embedded picture saved at a DPI other than 96 came out the wrong size. Both now draw where,
+and as large as, the SVG says.
 
 ### A centred, letter-spaced label no longer collapses
-A heading such as `THE INTERFACE` set with `letter-spacing` and centred with
-`text-anchor="middle"` piled its letters up in half the width, or all on one spot when
-anchored at the end. The letter-spacing is dropped for such text before drawing, so the
-label appears where it was placed, set a little tighter than the author asked.
+A label with `letter-spacing` and `text-anchor="middle"` or `end` piled its letters up.
+It now appears where it was placed, set slightly tighter.
 
 ## 1.2.2 - 2 September 2026
 
