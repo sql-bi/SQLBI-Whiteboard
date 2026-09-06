@@ -684,6 +684,37 @@ Two things were changed together, and the second is what makes the first safe:
 
 ---
 
+## 29. A text container's width in columns is the line width of its snippet
+
+**Implemented.**
+
+The DAX formatter wraps to a maximum line length; the SQL and KQL formatters break by
+structure and have no width at all. A "line width" setting shared by the three languages
+was therefore not added: it would be honoured by one of them. What every snippet already
+has is a width, and a text container wraps its lines at that width on screen, so the
+container's width in columns is the line width the reader sees. Two things were changed
+to make it the line width the formatter uses too:
+
+- **F6 formats DAX to the columns the container shows.** Columns are invariant under the
+  display-mode scaling, so this works whether or not the container has been enlarged for
+  the room. A new container is 65 columns wide, which is also the formatter's default, so
+  a pasted and formatted snippet has no visual wraps; before, the default width showed
+  about 58 columns and formatted DAX wrapped on screen at once.
+- **Shift while dragging the handle changes the width in columns** and reflows the text,
+  keeping the font size; the handle shows the count while dragging. A plain drag keeps
+  scaling the container like a picture. Replacing scaling with reflow was considered and
+  rejected: making a snippet bigger for the room is the resize a presenter needs, it is
+  what every other container does with the same gesture, and reflowing on a drag would
+  change line breaks while someone is only making space. Shift already means "constrain"
+  for strokes, so it reads as the narrower version of the gesture. The right edge of a text
+  container is the same width handle without the modifier: the cursor says so on hover,
+  which is what makes it discoverable, and the corner stays the scale handle.
+
+Structural switches for SQL and KQL, one column per line or one pipe per line, are the
+levers those languages have, and can come as yes-or-no settings when someone asks.
+
+---
+
 ## Open questions
 
 - arm64 is not built; add it if Surface devices matter for a pen application.

@@ -5,12 +5,20 @@ using System.Windows.Media;
 using SQLBI.Whiteboard.Core.Geometry;
 using SQLBI.Whiteboard.Core.Model;
 using SQLBI.Whiteboard.Core.Viewport;
+using SQLBI.Whiteboard.Dax;
 
 namespace SQLBI.Whiteboard;
 
 internal static class TextContainerVisual
 {
-    public const double DefaultWidth = 600;
+    /// <summary>
+    /// The columns a new container shows, which is also the line length the
+    /// DAX formatter wraps to, so a freshly pasted and formatted snippet has
+    /// no visual wraps. The width in pixels follows from the font.
+    /// </summary>
+    public const int DefaultColumns = DaxLanguageEngine.DefaultMaximumLineLength;
+    public const int MinimumColumns = 40;
+    public const int MaximumColumns = 200;
     public const double MinimumWidth = 160;
     public const double BodyFontSize = 18;
     public const double TitleFontSize = 13;
@@ -34,6 +42,59 @@ internal static class TextContainerVisual
     private static readonly Pen BorderPen = CreateFrozenPen(0xFFD6D9DE, BorderThickness);
     private static readonly Pen DividerPen = CreateFrozenPen(0xFFE4E6EA, BorderThickness);
     private static readonly ConditionalWeakTable<TextBoardObject, CachedTextVisual> VisualCache = new();
+    private static readonly Dictionary<string, double> CharacterWidths = new(StringComparer.Ordinal);
+
+    /// <summary>
+    /// The advance of one character of the language's font at the body size and
+    /// default scale. Code fonts are monospace, so this is the column width; for
+    /// plain text it is the width of a digit, which is as good a column as a
+    /// proportional face has.
+    /// </summary>
+    public static double CharacterWidth(string languageId, double pixelsPerDip)
+    {
+        ITextLanguageService language = TextLanguageRegistry.Resolve(languageId);
+        lock (CharacterWidths)
+        {
+            if (!CharacterWidths.TryGetValue(language.Id, out double width))
+            {
+                width = CreateBodyText("0", BodyFontSize, pixelsPerDip, language).WidthIncludingTrailingWhitespace;
+                CharacterWidths[language.Id] = Math.Max(1, width);
+            }
+
+            return CharacterWidths[language.Id];
+        }
+    }
+
+    /// <summary>
+    /// The width, at default scale, that shows <paramref name="columns"/>
+    /// characters of the language's font without wrapping.
+    /// </summary>
+    public static double WidthForColumns(int columns, string languageId, double pixelsPerDip) =>
+        (2 * ContentPadding) + (columns * CharacterWidth(languageId, pixelsPerDip)) + 1;
+
+    /// <summary>
+    /// The width a new container takes: <see cref="DefaultColumns"/> of code, so
+    /// it agrees with the formatter. Measured in the code font whatever the
+    /// language, so every new container is the same width.
+    /// </summary>
+    public static double DefaultWidth(double pixelsPerDip) =>
+        WidthForColumns(DefaultColumns, TextLanguageIds.Dax, pixelsPerDip);
+
+    /// <summary>
+    /// How many characters fit on a line of the container. Scaling a container
+    /// in display mode changes its size, not its columns, so this is the
+    /// same number at every zoom of the picture.
+    /// </summary>
+    public static int ColumnsFor(double width, double visualScale, string languageId, double pixelsPerDip)
+    {
+        double scale = NormalizeScale(visualScale);
+        double available = (width / scale) - (2 * ContentPadding);
+        int columns = (int)Math.Floor(available / CharacterWidth(languageId, pixelsPerDip));
+        return Math.Clamp(columns, MinimumColumns, MaximumColumns);
+    }
+
+    public static int ColumnsFor(TextBoardObject textObject, double pixelsPerDip) =>
+        ColumnsFor(textObject.Bounds.Width, textObject.VisualScale, textObject.LanguageId, pixelsPerDip);
 
     public static double MeasureDesiredHeight(
         string text,

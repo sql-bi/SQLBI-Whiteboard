@@ -96,6 +96,7 @@ public partial class MainWindow : Window
     private InkStrokeObject[] _containerGestureLinkedCurrent = [];
     private PointD _containerGestureStartWorld;
     private bool _containerGestureIsResize;
+    private bool _containerGestureReflow;
     private TextBoardObject? _textEditBefore;
     private InkStrokeObject[] _textEditLinkedBefore = [];
     private RectD _textEditBounds;
@@ -2007,7 +2008,20 @@ public partial class MainWindow : Window
             {
                 selected = existing;
                 _containerGestureIsResize = true;
+
+                // Shift on the handle of a text container changes its width in
+                // columns and reflows the text, keeping the size; a plain drag
+                // scales it like a picture, as it does every container.
+                _containerGestureReflow = existing is TextBoardObject &&
+                                          Keyboard.Modifiers.HasFlag(ModifierKeys.Shift);
             }
+        }
+
+        if (!_containerGestureIsResize && FindTextContainerAtRightEdge(screenPoint) is { } edged)
+        {
+            selected = edged;
+            _containerGestureIsResize = true;
+            _containerGestureReflow = true;
         }
 
         _selectedObjectId = selected?.Id;
@@ -2037,6 +2051,28 @@ public partial class MainWindow : Window
         }
 
         var bounds = _containerGestureBefore.Bounds;
+        if (_containerGestureReflow && _containerGestureBefore is TextBoardObject reflowed)
+        {
+            double pixelsPerDip = VisualTreeHelper.GetDpi(SceneSurface).PixelsPerDip;
+            double width = Math.Max(
+                TextContainerVisual.MinimumWidth * reflowed.VisualScale,
+                worldPoint.X - bounds.Left);
+            double height = TextContainerVisual.MeasureDesiredHeight(
+                reflowed.Text,
+                width,
+                reflowed.VisualScale,
+                pixelsPerDip,
+                reflowed.LanguageId);
+            bounds = new RectD(bounds.Left, bounds.Top, width, height);
+            SceneSurface.HandleLabel = TextContainerVisual.ColumnsFor(width, reflowed.VisualScale, reflowed.LanguageId, pixelsPerDip) + " columns";
+            _containerGestureCurrent = reflowed with { Bounds = bounds };
+            _containerGestureLinkedCurrent = _containerGestureLinkedBefore
+                .Select(stroke => stroke.TransformWithContainer(_containerGestureBefore.Bounds, bounds))
+                .ToArray();
+            _document.ReplaceObjects([_containerGestureCurrent, .. _containerGestureLinkedCurrent]);
+            return;
+        }
+
         if (_containerGestureIsResize)
         {
             var minimumWorldSize = 32 / _camera.Zoom;
@@ -2094,6 +2130,12 @@ public partial class MainWindow : Window
         _containerGestureLinkedBefore = [];
         _containerGestureLinkedCurrent = [];
         _containerGestureIsResize = false;
+        _containerGestureReflow = false;
+        if (SceneSurface.HandleLabel is not null)
+        {
+            SceneSurface.HandleLabel = null;
+            SceneSurface.InvalidateVisual();
+        }
     }
 
     private static BoardObject WithBounds(BoardObject item, RectD bounds) => item switch
@@ -2441,8 +2483,13 @@ public partial class MainWindow : Window
         }
 
         ITextLanguageService language = TextLanguageRegistry.Resolve(_textEditLanguageId);
+        int editColumns = TextContainerVisual.ColumnsFor(
+            _textEditBounds.Width,
+            _textEditBefore.VisualScale,
+            _textEditLanguageId,
+            VisualTreeHelper.GetDpi(SceneSurface).PixelsPerDip);
         if (!language.CanFormat ||
-            !language.TryFormat(TextEditor.Text, out string formatted) ||
+            !language.TryFormat(TextEditor.Text, editColumns, out string formatted) ||
             string.Equals(TextEditor.Text, formatted, StringComparison.Ordinal))
         {
             return;
@@ -2469,9 +2516,12 @@ public partial class MainWindow : Window
             return;
         }
 
+        // Formatted to the columns the container shows, so the lines fit it:
+        // the container's width is the line width of the snippet.
         ITextLanguageService language = TextLanguageRegistry.Resolve(textObject.LanguageId);
+        int columns = TextContainerVisual.ColumnsFor(textObject, VisualTreeHelper.GetDpi(SceneSurface).PixelsPerDip);
         if (!language.CanFormat ||
-            !language.TryFormat(textObject.Text, out string formatted) ||
+            !language.TryFormat(textObject.Text, columns, out string formatted) ||
             string.Equals(textObject.Text, formatted, StringComparison.Ordinal))
         {
             return;
@@ -3348,7 +3398,8 @@ public partial class MainWindow : Window
             return;
         }
 
-        var container = _document.HitTestTopContainer(_camera.ScreenToWorld(screen), _camera.Zoom);
+        var container = _document.HitTestTopContainer(_camera.ScreenToWorld(screen), _camera.Zoom)
+            ?? FindTextContainerAtRightEdge(screen);
         var hoveredId = container?.Id;
         if (SceneSurface.HoveredObjectId == hoveredId)
         {
@@ -3366,9 +3417,43 @@ public partial class MainWindow : Window
             return Cursors.SizeNWSE;
         }
 
+        if (FindTextContainerAtRightEdge(screen) is not null)
+        {
+            return Cursors.SizeWE;
+        }
+
         return _document.HitTestTopContainer(_camera.ScreenToWorld(screen), _camera.Zoom) is null
             ? Cursors.Arrow
             : Cursors.SizeAll;
+    }
+
+    /// <summary>
+    /// The right edge of a text container is its width handle: dragging it
+    /// changes the columns and reflows, as Shift on the corner does, but with
+    /// a cursor that says so on hover. The corner itself stays the scale handle.
+    /// </summary>
+    private const double EdgeHandleTolerance = 8;
+
+    private TextBoardObject? FindTextContainerAtRightEdge(PointD screen)
+    {
+        if (IsOverResizeHandle(screen))
+        {
+            return null;
+        }
+
+        foreach (var text in _document.Objects.OfType<TextBoardObject>().OrderByDescending(item => item.ZIndex))
+        {
+            var topRight = _camera.WorldToScreen(new PointD(text.Bounds.Right, text.Bounds.Top));
+            var bottom = _camera.WorldToScreen(new PointD(text.Bounds.Right, text.Bounds.Bottom)).Y;
+            if (Math.Abs(screen.X - topRight.X) <= EdgeHandleTolerance &&
+                screen.Y >= topRight.Y - EdgeHandleTolerance &&
+                screen.Y <= bottom - 16)
+            {
+                return text;
+            }
+        }
+
+        return null;
     }
 
     private bool IsOverResizeHandle(PointD screen)
@@ -4064,15 +4149,16 @@ public partial class MainWindow : Window
         }
 
         double visibleWidth = _camera.VisibleWorldBounds.Width;
+        double pixelsPerDip = VisualTreeHelper.GetDpi(SceneSurface).PixelsPerDip;
         double width = Math.Min(
-            TextContainerVisual.DefaultWidth,
+            TextContainerVisual.DefaultWidth(pixelsPerDip),
             Math.Max(320, visibleWidth * 0.7));
         string resolvedLanguageId = TextLanguageIds.Normalize(languageId);
         double height = TextContainerVisual.MeasureDesiredHeight(
             text,
             width,
             1,
-            VisualTreeHelper.GetDpi(SceneSurface).PixelsPerDip,
+            pixelsPerDip,
             resolvedLanguageId);
         PointD center = worldCenter ?? _camera.Center;
         var textObject = new TextBoardObject(
@@ -4942,7 +5028,7 @@ public partial class MainWindow : Window
                 }
 
                 var width = Math.Min(
-                    TextContainerVisual.DefaultWidth,
+                    TextContainerVisual.DefaultWidth(dpi),
                     Math.Max(320, _camera.VisibleWorldBounds.Width * 0.7));
                 var height = TextContainerVisual.MeasureDesiredHeight(text, width, 1, dpi);
                 sizes.Add((width, height, item.StartNewRow));
