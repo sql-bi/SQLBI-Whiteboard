@@ -28,6 +28,14 @@ The spacing you chose around a join hint, as in `kind=inner`, survives formattin
 that is how the queries people bring to a session are usually written. Highlighting and
 formatting both read Kusto through Microsoft's own parser, and both run locally.
 
+### Pasted code is recognized without a setting
+Plain text now comes last in the snippet format order, so a pasted DAX, SQL, or KQL
+snippet arrives as code, highlighted and ready to format, without a visit to Preferences.
+A language claims a snippet only when it carries a real signal, an operator, a function, a
+keyword, a pipe, so a bare word or a number pasted as a note stays a note. A setup that
+never changed the order takes the new one; an order you chose is kept, and a language
+added by an update joins it in front of Plain text unless you put Plain text first.
+
 ## 1.3.0 - 3 September 2026
 
 ### Export a board to PowerPoint
@@ -82,14 +90,6 @@ A heading such as `THE INTERFACE` set with `letter-spacing` and centred with
 `text-anchor="middle"` piled its letters up in half the width, or all on one spot when
 anchored at the end. The letter-spacing is dropped for such text before drawing, so the
 label appears where it was placed, set a little tighter than the author asked.
-
-### Pasted code is recognized without a setting
-Plain text now comes last in the snippet format order, so a pasted DAX, SQL, or KQL
-snippet arrives as code, highlighted and ready to format, without a visit to Preferences.
-A language claims a snippet only when it carries a real signal, an operator, a function, a
-keyword, a pipe, so a bare word or a number pasted as a note stays a note. A setup that
-never changed the order takes the new one; an order you chose is kept, and a language
-added by an update joins it in front of Plain text unless you put Plain text first.
 
 ## 1.2.2 - 2 September 2026
 
