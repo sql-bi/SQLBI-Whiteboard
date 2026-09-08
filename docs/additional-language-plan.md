@@ -1,9 +1,11 @@
 # Additional languages: highlighting and manual selection
 
-Status: step 1 of the delivery sequence is implemented — the capability split, its
-persistence tests, the highlighting spike recorded below, and the F6 voting prompt.
-No language is colored yet. The eleven formatting/detection voting issues below were
-created on 8 September 2026.
+Status: steps 1 and 2 of the delivery sequence are implemented. Step 1 built the
+capability split, its persistence tests, the highlighting spike recorded below, and the
+F6 voting prompt. Step 2 added the highlighting adapter and the definitions for C, C++,
+C#, Java and Visual Basic .NET, with a WPF test host for them. JavaScript, TypeScript,
+Python, R, Rust and PHP are selectable but not yet colored. The eleven
+formatting/detection voting issues below were created on 8 September 2026.
 
 ## Outcome and scope
 
@@ -171,8 +173,20 @@ What our own XSHD can and cannot express, tested by writing three definitions:
 
 So: reuse the AvalonEdit engine and the flattening adapter, ship our own definitions under
 `Highlighting/` rather than the bundled ones, and keep a small stateful scanner behind the
-same adapter for the three constructs XSHD cannot reach — C# raw string delimiters,
-JavaScript regex versus division, and Rust raw strings past a bounded hash count.
+same adapter for the constructs XSHD cannot reach.
+
+Writing the first five definitions narrowed that last list. C# needs no scanner: three
+rules, longest delimiter first, cover raw strings at three, four and five quotes, and a
+snippet with six is not a snippet anyone writes. The same bounded trick serves C++ raw
+string delimiters and Rust hashes. What is left for a scanner is JavaScript, where regex
+versus division is not a matter of counting, and the same rule regex is right or wrong
+depending only on where the previous rule stopped.
+
+Two lexical hazards showed up that the spike had not: an apostrophe is a digit separator
+in C and C++, so the character literal has to be a rule that runs after the number rather
+than a span that runs before it; and an angle bracket opens a Visual Basic XML literal or
+a comparison, so the literal is recognized only where a value belongs. Both are recorded
+in the definitions themselves.
 
 ## 3. Add the F6 voting prompt
 

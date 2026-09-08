@@ -2,6 +2,7 @@ using System.Windows;
 using System.Windows.Media;
 using SQLBI.Whiteboard.Core.Model;
 using SQLBI.Whiteboard.Dax;
+using SQLBI.Whiteboard.Highlighting;
 using SQLBI.Whiteboard.Kql;
 using SQLBI.Whiteboard.SqlServer;
 
@@ -69,13 +70,13 @@ internal static class TextLanguageRegistry
         SqlServer,
         Kql,
         new ManualTextLanguageService(TextLanguageIds.Python, "Python"),
-        new ManualTextLanguageService(TextLanguageIds.C, "C"),
-        new ManualTextLanguageService(TextLanguageIds.Cpp, "C++"),
-        new ManualTextLanguageService(TextLanguageIds.Java, "Java"),
-        new ManualTextLanguageService(TextLanguageIds.CSharp, "C#"),
+        new ManualTextLanguageService(TextLanguageIds.C, "C", "C"),
+        new ManualTextLanguageService(TextLanguageIds.Cpp, "C++", "Cpp"),
+        new ManualTextLanguageService(TextLanguageIds.Java, "Java", "Java"),
+        new ManualTextLanguageService(TextLanguageIds.CSharp, "C#", "CSharp"),
         new ManualTextLanguageService(TextLanguageIds.JavaScript, "JavaScript"),
         new ManualTextLanguageService(TextLanguageIds.TypeScript, "TypeScript"),
-        new ManualTextLanguageService(TextLanguageIds.VbNet, "Visual Basic .NET"),
+        new ManualTextLanguageService(TextLanguageIds.VbNet, "Visual Basic .NET", "VisualBasic"),
         new ManualTextLanguageService(TextLanguageIds.R, "R"),
         new ManualTextLanguageService(TextLanguageIds.Rust, "Rust"),
         new ManualTextLanguageService(TextLanguageIds.Php, "PHP"),
@@ -438,14 +439,23 @@ internal static class TextLanguageRegistry
     }
 
     /// <summary>
-    /// A language a text container can be set to, which Whiteboard does not
-    /// color or format yet. It keeps the source exactly as written, shows it in
-    /// the code font, and sends F6 to the issue collecting votes for it.
+    /// A language a text container can be set to, which Whiteboard colors from
+    /// an embedded syntax definition rather than a parser of its own, and does
+    /// not format. Without a definition it still keeps the source exactly as
+    /// written and shows it in the code font; either way F6 sends the reader to
+    /// the issue collecting votes for the language.
     /// </summary>
-    private sealed class ManualTextLanguageService(string id, string displayName) : ITextLanguageService
+    private sealed class ManualTextLanguageService(
+        string id,
+        string displayName,
+        string? definitionName = null) : ITextLanguageService
     {
         private readonly Uri? _formattingRequestUri =
             TextLanguageIds.FormattingRequestUrl(id) is { } url ? new Uri(url) : null;
+        private readonly string _title = $"{displayName} Code";
+        private readonly object _cacheLock = new();
+        private string? _cachedSource;
+        private TextLanguageAnalysis? _cachedAnalysis;
 
         public string Id => id;
         public string DisplayName => displayName;
@@ -454,11 +464,36 @@ internal static class TextLanguageRegistry
         public bool CanDetect => false;
         public bool ShowLineNumbers => false;
         public bool WordWrap => true;
-        public bool UseBackgroundAnalysis => false;
+        public bool UseBackgroundAnalysis => definitionName is not null;
         public Uri? FormattingRequestUri => _formattingRequestUri;
 
-        public TextLanguageAnalysis Analyze(string source, string fallbackTitle) =>
-            new($"{displayName} Code", []);
+        public TextLanguageAnalysis Analyze(string source, string fallbackTitle)
+        {
+            if (definitionName is null)
+            {
+                return new TextLanguageAnalysis(_title, []);
+            }
+
+            lock (_cacheLock)
+            {
+                if (_cachedAnalysis is not null &&
+                    string.Equals(_cachedSource, source, StringComparison.Ordinal))
+                {
+                    return _cachedAnalysis;
+                }
+            }
+
+            var result = new TextLanguageAnalysis(
+                _title,
+                SyntaxHighlighter.Analyze(source, definitionName));
+            lock (_cacheLock)
+            {
+                _cachedSource = source;
+                _cachedAnalysis = result;
+            }
+
+            return result;
+        }
 
         public bool TryFormat(string source, int columns, out string formatted)
         {

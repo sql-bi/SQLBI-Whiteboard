@@ -26,6 +26,16 @@
              CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
   <ItemGroup>
+    <!-- The highlighting adapter and the language registry are internal, and
+         the tests that cover them need WPF, so they live in their own host. -->
+    <InternalsVisibleTo Include="SQLBI.Whiteboard.SmokeTests" />
+  </ItemGroup>
+  <ItemGroup>
+    <!-- The syntax definitions for the languages Whiteboard colors lexically.
+         Embedded so nothing is loaded from disk or the network at run time. -->
+    <EmbeddedResource Include="Highlighting\*.xshd" />
+  </ItemGroup>
+  <ItemGroup>
     <ProjectReference Include="..\SQLBI.Whiteboard.Core\SQLBI.Whiteboard.Core.csproj" />
     <ProjectReference Include="..\SQLBI.Whiteboard.Dax\SQLBI.Whiteboard.Dax.csproj" />
     <ProjectReference Include="..\SQLBI.Whiteboard.Export\SQLBI.Whiteboard.Export.csproj" />

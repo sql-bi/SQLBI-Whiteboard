@@ -1,0 +1,85 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  C. A color name here is a category, not a color: SyntaxHighlighter maps the
+  names to the palette every language shares, so nothing in this file decides
+  what anything looks like.
+-->
+<SyntaxDefinition name="C" extensions=".c;.h" xmlns="http://icsharpcode.net/sharpdevelop/syntaxdefinition/2008">
+  <Color name="Comment" />
+  <Color name="String" />
+  <Color name="Character" />
+  <Color name="Number" />
+  <Color name="Keyword" />
+  <Color name="TypeKeyword" />
+  <Color name="Preprocessor" />
+  <Color name="Function" />
+  <Color name="Operator" />
+  <Color name="Punctuation" />
+
+  <RuleSet ignoreCase="false">
+    <!-- A directive runs to the end of its line unless the line is continued. -->
+    <Span color="Preprocessor" multiline="true">
+      <Begin>\#</Begin>
+      <End>(?&lt;!\\)$</End>
+      <RuleSet>
+        <Span color="Comment" multiline="true"><Begin>/\*</Begin><End>\*/</End></Span>
+        <Span color="Comment"><Begin>//</Begin></Span>
+        <Span color="String"><Begin>"</Begin><End>"</End></Span>
+        <Rule color="String">&lt;[^&gt;\n]*&gt;</Rule>
+      </RuleSet>
+    </Span>
+
+    <Span color="Comment" multiline="true"><Begin>/\*</Begin><End>\*/</End></Span>
+    <Span color="Comment"><Begin>//</Begin></Span>
+
+    <Span color="String" multiline="true">
+      <Begin>"</Begin>
+      <End>"</End>
+      <RuleSet><Span begin="\\" end="." /></RuleSet>
+    </Span>
+
+    <Keywords color="Keyword">
+      <Word>auto</Word><Word>break</Word><Word>case</Word><Word>const</Word>
+      <Word>constexpr</Word><Word>continue</Word><Word>default</Word><Word>do</Word>
+      <Word>else</Word><Word>enum</Word><Word>extern</Word><Word>for</Word>
+      <Word>goto</Word><Word>if</Word><Word>inline</Word><Word>register</Word>
+      <Word>restrict</Word><Word>return</Word><Word>sizeof</Word><Word>static</Word>
+      <Word>static_assert</Word><Word>struct</Word><Word>switch</Word><Word>typedef</Word>
+      <Word>typeof</Word><Word>union</Word><Word>volatile</Word><Word>while</Word>
+      <Word>alignas</Word><Word>alignof</Word><Word>thread_local</Word>
+      <Word>_Alignas</Word><Word>_Alignof</Word><Word>_Atomic</Word><Word>_Generic</Word>
+      <Word>_Noreturn</Word><Word>_Static_assert</Word><Word>_Thread_local</Word>
+      <Word>NULL</Word><Word>nullptr</Word><Word>true</Word><Word>false</Word>
+    </Keywords>
+
+    <Keywords color="TypeKeyword">
+      <Word>void</Word><Word>char</Word><Word>short</Word><Word>int</Word>
+      <Word>long</Word><Word>float</Word><Word>double</Word><Word>signed</Word>
+      <Word>unsigned</Word><Word>bool</Word><Word>_Bool</Word><Word>_Complex</Word>
+      <Word>_Imaginary</Word><Word>size_t</Word><Word>ssize_t</Word><Word>ptrdiff_t</Word>
+      <Word>wchar_t</Word><Word>char8_t</Word><Word>char16_t</Word><Word>char32_t</Word>
+      <Word>int8_t</Word><Word>int16_t</Word><Word>int32_t</Word><Word>int64_t</Word>
+      <Word>uint8_t</Word><Word>uint16_t</Word><Word>uint32_t</Word><Word>uint64_t</Word>
+      <Word>intptr_t</Word><Word>uintptr_t</Word><Word>FILE</Word>
+    </Keywords>
+
+    <!-- Hexadecimal, octal, binary and decimal, with digit separators and the
+         width, sign and floating suffixes a literal is allowed to carry. -->
+    <Rule color="Number">
+      \b(
+        0[xX][0-9a-fA-F']+
+      | 0[bB][01']+
+      | (\d[\d']*)?\.\d[\d']*([eE][+-]?\d+)?
+      | \d[\d']*\.?([eE][+-]?\d+)?
+      )([uUlLfFzZ]|[wW][bB])*
+    </Rule>
+
+    <!-- After the number, so the apostrophe in 1'000 is a digit separator
+         rather than the start of a character literal. -->
+    <Rule color="Character">'(\\.|[^\\'\n]){1,10}?'</Rule>
+
+    <Rule color="Function">\b[A-Za-z_]\w*(?=\s*\()</Rule>
+    <Rule color="Operator">[+\-*/%=!&lt;&gt;&amp;|^~?:]+</Rule>
+    <Rule color="Punctuation">[{}()\[\];,.]</Rule>
+  </RuleSet>
+</SyntaxDefinition>

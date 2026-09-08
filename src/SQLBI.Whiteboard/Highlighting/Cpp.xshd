@@ -1,0 +1,115 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  C++. A color name here is a category, not a color: SyntaxHighlighter maps the
+  names to the palette every language shares.
+
+  A raw string's delimiter cannot be matched back to its opening, because a span
+  ends on its own regex with no memory of how it began. The closing rule accepts
+  a short delimiter of word characters, which covers R"(...)" and R"json(...)json"
+  and stops at the first plausible close in the rare snippet that nests them.
+-->
+<SyntaxDefinition name="C++" extensions=".cpp;.cxx;.cc;.hpp;.h" xmlns="http://icsharpcode.net/sharpdevelop/syntaxdefinition/2008">
+  <Color name="Comment" />
+  <Color name="String" />
+  <Color name="Character" />
+  <Color name="Number" />
+  <Color name="Keyword" />
+  <Color name="TypeKeyword" />
+  <Color name="Preprocessor" />
+  <Color name="Attribute" />
+  <Color name="Function" />
+  <Color name="Operator" />
+  <Color name="Punctuation" />
+
+  <RuleSet ignoreCase="false">
+    <Span color="Preprocessor" multiline="true">
+      <Begin>\#</Begin>
+      <End>(?&lt;!\\)$</End>
+      <RuleSet>
+        <Span color="Comment" multiline="true"><Begin>/\*</Begin><End>\*/</End></Span>
+        <Span color="Comment"><Begin>//</Begin></Span>
+        <Span color="String"><Begin>"</Begin><End>"</End></Span>
+        <Rule color="String">&lt;[^&gt;\n]*&gt;</Rule>
+      </RuleSet>
+    </Span>
+
+    <Span color="Comment" multiline="true"><Begin>/\*</Begin><End>\*/</End></Span>
+    <Span color="Comment"><Begin>//</Begin></Span>
+
+    <!-- Raw strings first: R"(...)" would otherwise open an ordinary string. -->
+    <Span color="String" multiline="true">
+      <Begin>(?:u8|u|U|L)?R"\w{0,16}\(</Begin>
+      <End>\)\w{0,16}"</End>
+    </Span>
+    <Span color="String" multiline="true">
+      <Begin>(?:u8|u|U|L)?"</Begin>
+      <End>"</End>
+      <RuleSet><Span begin="\\" end="." /></RuleSet>
+    </Span>
+
+    <!-- [[nodiscard]] and friends; an ordinary subscript is one bracket. -->
+    <Span color="Attribute">
+      <Begin>\[\[</Begin>
+      <End>\]\]</End>
+    </Span>
+
+    <Keywords color="Keyword">
+      <Word>alignas</Word><Word>alignof</Word><Word>and</Word><Word>and_eq</Word>
+      <Word>asm</Word><Word>break</Word><Word>case</Word><Word>catch</Word>
+      <Word>class</Word><Word>co_await</Word><Word>co_return</Word><Word>co_yield</Word>
+      <Word>compl</Word><Word>concept</Word><Word>const</Word><Word>consteval</Word>
+      <Word>constexpr</Word><Word>constinit</Word><Word>const_cast</Word><Word>continue</Word>
+      <Word>decltype</Word><Word>default</Word><Word>delete</Word><Word>do</Word>
+      <Word>dynamic_cast</Word><Word>else</Word><Word>enum</Word><Word>explicit</Word>
+      <Word>export</Word><Word>extern</Word><Word>false</Word><Word>final</Word>
+      <Word>friend</Word><Word>for</Word><Word>goto</Word><Word>if</Word>
+      <Word>import</Word><Word>inline</Word><Word>module</Word><Word>mutable</Word>
+      <Word>namespace</Word><Word>new</Word><Word>noexcept</Word><Word>not</Word>
+      <Word>not_eq</Word><Word>nullptr</Word><Word>operator</Word><Word>or</Word>
+      <Word>or_eq</Word><Word>override</Word><Word>private</Word><Word>protected</Word>
+      <Word>public</Word><Word>register</Word><Word>reinterpret_cast</Word><Word>requires</Word>
+      <Word>return</Word><Word>sizeof</Word><Word>static</Word><Word>static_assert</Word>
+      <Word>static_cast</Word><Word>struct</Word><Word>switch</Word><Word>template</Word>
+      <Word>this</Word><Word>thread_local</Word><Word>throw</Word><Word>true</Word>
+      <Word>try</Word><Word>typedef</Word><Word>typeid</Word><Word>typename</Word>
+      <Word>union</Word><Word>using</Word><Word>virtual</Word><Word>volatile</Word>
+      <Word>while</Word><Word>xor</Word><Word>xor_eq</Word>
+    </Keywords>
+
+    <Keywords color="TypeKeyword">
+      <Word>auto</Word><Word>void</Word><Word>bool</Word><Word>char</Word>
+      <Word>char8_t</Word><Word>char16_t</Word><Word>char32_t</Word><Word>wchar_t</Word>
+      <Word>short</Word><Word>int</Word><Word>long</Word><Word>float</Word>
+      <Word>double</Word><Word>signed</Word><Word>unsigned</Word><Word>size_t</Word>
+      <Word>ptrdiff_t</Word><Word>nullptr_t</Word><Word>string</Word><Word>string_view</Word>
+      <Word>vector</Word><Word>map</Word><Word>unordered_map</Word><Word>set</Word>
+      <Word>array</Word><Word>span</Word><Word>optional</Word><Word>variant</Word>
+      <Word>tuple</Word><Word>pair</Word><Word>unique_ptr</Word><Word>shared_ptr</Word>
+      <Word>weak_ptr</Word><Word>int8_t</Word><Word>int16_t</Word><Word>int32_t</Word>
+      <Word>int64_t</Word><Word>uint8_t</Word><Word>uint16_t</Word><Word>uint32_t</Word>
+      <Word>uint64_t</Word>
+    </Keywords>
+
+    <!-- Digit separators, and both the standard and user-defined suffixes. -->
+    <Rule color="Number">
+      \b(
+        0[xX][0-9a-fA-F']+
+      | 0[bB][01']+
+      | (\d[\d']*)?\.\d[\d']*([eE][+-]?\d+)?
+      | \d[\d']*\.?([eE][+-]?\d+)?
+      )([uUlLfFzZ]|_?[A-Za-z]\w*)*
+    </Rule>
+
+    <!-- After the number, so the apostrophe in 1'000 is a digit separator
+         rather than the start of a character literal. -->
+    <Rule color="Character">(?:u8|u|U|L)?'(\\.|[^\\'\n]){1,10}?'</Rule>
+
+    <!-- A call, or a call through explicit template arguments. Requiring the
+         closing angle keeps a plain comparison from reading as a call. -->
+    <Rule color="Function">
+      \b[A-Za-z_]\w* (?= \s* ( \( | &lt; [\w:,\s*&amp;]+ &gt; \s* \( ) )
+    </Rule>
+    <Rule color="Operator">[+\-*/%=!&lt;&gt;&amp;|^~?:]+</Rule>
+    <Rule color="Punctuation">::|[{}()\[\];,.]</Rule>
+  </RuleSet>
+</SyntaxDefinition>
