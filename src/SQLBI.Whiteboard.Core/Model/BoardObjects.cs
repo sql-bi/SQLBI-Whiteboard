@@ -246,28 +246,52 @@ public static class TextLanguageIds
     public const string Dax = "dax";
     public const string SqlServer = "sqlserver";
     public const string Kql = "kql";
-
-    public static string Normalize(string? languageId) =>
-        languageId?.Trim().ToLowerInvariant() switch
-        {
-            Dax => Dax,
-            SqlServer => SqlServer,
-            Kql => Kql,
-            _ => Plain,
-        };
+    public const string Python = "python";
+    public const string C = "c";
+    public const string Cpp = "cpp";
+    public const string Java = "java";
+    public const string CSharp = "csharp";
+    public const string JavaScript = "javascript";
+    public const string TypeScript = "typescript";
+    public const string VbNet = "vbnet";
+    public const string R = "r";
+    public const string Rust = "rust";
+    public const string Php = "php";
 
     /// <summary>
-    /// The default snippet format order, which is also the order a language
-    /// missing from a saved order joins it in. Plain text accepts everything,
-    /// so it comes last: a paste is code if any language says it is, and text
-    /// otherwise, with no setting to change.
+    /// Every language a text container can be set to, in the order the selector
+    /// offers them. Choosing a language is not the same as recognizing one: all
+    /// of these are saved and restored, and only <see cref="DetectionOrder"/>
+    /// ever claims a paste of its own.
     /// </summary>
-    public static IReadOnlyList<string> All { get; } = [Dax, SqlServer, Kql, Plain];
+    public static IReadOnlyList<string> All { get; } =
+    [
+        Plain, Dax, SqlServer, Kql,
+        Python, C, Cpp, Java, CSharp, JavaScript, TypeScript, VbNet, R, Rust, Php,
+    ];
+
+    /// <summary>
+    /// The languages that can recognize a snippet, in the default snippet
+    /// format order, which is also the order a language missing from a saved
+    /// order joins it in. Plain text accepts everything, so it comes last: a
+    /// paste is code if any language says it is, and text otherwise, with no
+    /// setting to change.
+    /// </summary>
+    public static IReadOnlyList<string> DetectionOrder { get; } = [Dax, SqlServer, Kql, Plain];
+
+    /// <summary>
+    /// Whether the language can claim a paste. The rest are chosen by hand, so
+    /// they take no part in the snippet format order.
+    /// </summary>
+    public static bool CanDetect(string? languageId) =>
+        Known(languageId) is { } id && DetectionOrder.Contains(id, StringComparer.Ordinal);
+
+    public static string Normalize(string? languageId) => Known(languageId) ?? Plain;
 
     /// <summary>
     /// The default orders earlier releases wrote into settings, with plain text
     /// first. A saved order equal to one of these was never chosen by anyone, so
-    /// an upgrade may replace it with <see cref="All"/>.
+    /// an upgrade may replace it with <see cref="DetectionOrder"/>.
     /// </summary>
     public static IReadOnlyList<IReadOnlyList<string>> LegacyDefaultOrders { get; } =
     [
@@ -291,7 +315,9 @@ public static class TextLanguageIds
     /// order does not know. Those go in front of plain text wherever it sits,
     /// because an order that puts plain text after some languages means "try
     /// the languages first"; only an order that starts with plain text means
-    /// "keep my pastes plain", and there they go last.
+    /// "keep my pastes plain", and there they go last. A language that is only
+    /// ever chosen by hand is skipped rather than read as plain text, which
+    /// would move plain text up an order it was never part of.
     /// </summary>
     public static IReadOnlyList<string> NormalizeOrder(IEnumerable<string>? languageIds)
     {
@@ -300,6 +326,12 @@ public static class TextLanguageIds
         {
             foreach (var languageId in languageIds)
             {
+                if (Known(languageId) is { } known &&
+                    !DetectionOrder.Contains(known, StringComparer.Ordinal))
+                {
+                    continue;
+                }
+
                 var normalized = Normalize(languageId);
                 if (!ordered.Contains(normalized, StringComparer.Ordinal))
                 {
@@ -308,7 +340,7 @@ public static class TextLanguageIds
             }
         }
 
-        var missing = All.Where(languageId => !ordered.Contains(languageId, StringComparer.Ordinal)).ToArray();
+        var missing = DetectionOrder.Where(languageId => !ordered.Contains(languageId, StringComparer.Ordinal)).ToArray();
         var plainIndex = ordered.IndexOf(Plain);
         if (plainIndex > 0)
         {
@@ -321,6 +353,35 @@ public static class TextLanguageIds
 
         return ordered;
     }
+
+    /// <summary>
+    /// The issue collecting votes for formatting and automatic detection of a
+    /// language Whiteboard only colors. The languages that already format have
+    /// none, and neither has plain text: F6 answers those itself.
+    /// </summary>
+    public static string? FormattingRequestUrl(string? languageId) => Normalize(languageId) switch
+    {
+        Python => Issue(108),
+        C => Issue(109),
+        Cpp => Issue(110),
+        Java => Issue(111),
+        CSharp => Issue(112),
+        JavaScript => Issue(113),
+        TypeScript => Issue(114),
+        VbNet => Issue(115),
+        R => Issue(116),
+        Rust => Issue(117),
+        Php => Issue(118),
+        _ => null,
+    };
+
+    private static string Issue(int number) =>
+        $"https://github.com/sql-bi/SQLBI-Whiteboard/issues/{number}";
+
+    private static string? Known(string? languageId) =>
+        languageId?.Trim().ToLowerInvariant() is { } id && All.Contains(id, StringComparer.Ordinal)
+            ? id
+            : null;
 }
 
 public record TextBoardObject(

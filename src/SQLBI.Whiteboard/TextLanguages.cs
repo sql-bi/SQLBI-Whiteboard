@@ -27,9 +27,19 @@ internal interface ITextLanguageService
     string DisplayName { get; }
     string FontFamilyName { get; }
     bool CanFormat { get; }
+    /// <summary>
+    /// Whether the language may claim a paste. Separate from <see cref="CanFormat"/>:
+    /// a language can be chosen by hand long before it recognizes anything.
+    /// </summary>
+    bool CanDetect { get; }
     bool ShowLineNumbers { get; }
     bool WordWrap { get; }
     bool UseBackgroundAnalysis { get; }
+    /// <summary>
+    /// Where F6 sends someone whose language cannot format yet. Null for the
+    /// languages that format, and for plain text, which has nothing to ask for.
+    /// </summary>
+    Uri? FormattingRequestUri { get; }
 
     TextLanguageAnalysis Analyze(string source, string fallbackTitle);
     /// <summary>
@@ -47,8 +57,29 @@ internal static class TextLanguageRegistry
     private static readonly ITextLanguageService SqlServer = new SqlServerTextLanguageService();
     private static readonly ITextLanguageService Kql = new KqlTextLanguageService();
 
+    /// <summary>
+    /// Every language the selectors offer. The four that recognize a snippet
+    /// come first, in the order they always had; the rest are chosen by hand,
+    /// in the order the language inventory lists them.
+    /// </summary>
     public static IReadOnlyList<ITextLanguageService> All { get; } =
-        [Plain, Dax, SqlServer, Kql];
+    [
+        Plain,
+        Dax,
+        SqlServer,
+        Kql,
+        new ManualTextLanguageService(TextLanguageIds.Python, "Python"),
+        new ManualTextLanguageService(TextLanguageIds.C, "C"),
+        new ManualTextLanguageService(TextLanguageIds.Cpp, "C++"),
+        new ManualTextLanguageService(TextLanguageIds.Java, "Java"),
+        new ManualTextLanguageService(TextLanguageIds.CSharp, "C#"),
+        new ManualTextLanguageService(TextLanguageIds.JavaScript, "JavaScript"),
+        new ManualTextLanguageService(TextLanguageIds.TypeScript, "TypeScript"),
+        new ManualTextLanguageService(TextLanguageIds.VbNet, "Visual Basic .NET"),
+        new ManualTextLanguageService(TextLanguageIds.R, "R"),
+        new ManualTextLanguageService(TextLanguageIds.Rust, "Rust"),
+        new ManualTextLanguageService(TextLanguageIds.Php, "PHP"),
+    ];
 
     public static ITextLanguageService Resolve(string? languageId)
     {
@@ -63,7 +94,7 @@ internal static class TextLanguageRegistry
         foreach (string languageId in TextLanguageIds.NormalizeOrder(languageIds))
         {
             ITextLanguageService language = Resolve(languageId);
-            if (language.TryAccept(source))
+            if (language.CanDetect && language.TryAccept(source))
             {
                 return language.Id;
             }
@@ -78,9 +109,11 @@ internal static class TextLanguageRegistry
         public string DisplayName => "Plain text";
         public string FontFamilyName => "Segoe UI";
         public bool CanFormat => false;
+        public bool CanDetect => true;
         public bool ShowLineNumbers => false;
         public bool WordWrap => true;
         public bool UseBackgroundAnalysis => false;
+        public Uri? FormattingRequestUri => null;
 
         public TextLanguageAnalysis Analyze(string source, string fallbackTitle) => new(
             string.IsNullOrWhiteSpace(fallbackTitle) ? "Text" : fallbackTitle,
@@ -114,9 +147,11 @@ internal static class TextLanguageRegistry
         public string DisplayName => "DAX";
         public string FontFamilyName => "Consolas";
         public bool CanFormat => true;
+        public bool CanDetect => true;
         public bool ShowLineNumbers => false;
         public bool WordWrap => true;
         public bool UseBackgroundAnalysis => false;
+        public Uri? FormattingRequestUri => null;
 
         public TextLanguageAnalysis Analyze(string source, string fallbackTitle)
         {
@@ -203,9 +238,11 @@ internal static class TextLanguageRegistry
         public string DisplayName => "SQL Server";
         public string FontFamilyName => "Consolas";
         public bool CanFormat => true;
+        public bool CanDetect => true;
         public bool ShowLineNumbers => false;
         public bool WordWrap => true;
         public bool UseBackgroundAnalysis => true;
+        public Uri? FormattingRequestUri => null;
 
         public TextLanguageAnalysis Analyze(string source, string fallbackTitle)
         {
@@ -312,9 +349,11 @@ internal static class TextLanguageRegistry
         public string DisplayName => "KQL";
         public string FontFamilyName => "Consolas";
         public bool CanFormat => true;
+        public bool CanDetect => true;
         public bool ShowLineNumbers => false;
         public bool WordWrap => true;
         public bool UseBackgroundAnalysis => true;
+        public Uri? FormattingRequestUri => null;
 
         public TextLanguageAnalysis Analyze(string source, string fallbackTitle)
         {
@@ -396,6 +435,40 @@ internal static class TextLanguageRegistry
                     new TextRunStyle(Operator, FontWeights.SemiBold, FontStyles.Normal),
                 _ => new TextRunStyle(DefaultText, FontWeights.Normal, FontStyles.Normal),
             };
+    }
+
+    /// <summary>
+    /// A language a text container can be set to, which Whiteboard does not
+    /// color or format yet. It keeps the source exactly as written, shows it in
+    /// the code font, and sends F6 to the issue collecting votes for it.
+    /// </summary>
+    private sealed class ManualTextLanguageService(string id, string displayName) : ITextLanguageService
+    {
+        private readonly Uri? _formattingRequestUri =
+            TextLanguageIds.FormattingRequestUrl(id) is { } url ? new Uri(url) : null;
+
+        public string Id => id;
+        public string DisplayName => displayName;
+        public string FontFamilyName => "Consolas";
+        public bool CanFormat => false;
+        public bool CanDetect => false;
+        public bool ShowLineNumbers => false;
+        public bool WordWrap => true;
+        public bool UseBackgroundAnalysis => false;
+        public Uri? FormattingRequestUri => _formattingRequestUri;
+
+        public TextLanguageAnalysis Analyze(string source, string fallbackTitle) =>
+            new($"{displayName} Code", []);
+
+        public bool TryFormat(string source, int columns, out string formatted)
+        {
+            formatted = source;
+            return false;
+        }
+
+        public bool TryAccept(string source) => false;
+
+        public override string ToString() => DisplayName;
     }
 
     private static SolidColorBrush CreateBrush(uint argb)

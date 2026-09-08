@@ -682,6 +682,15 @@ Two things were changed together, and the second is what makes the first safe:
   KQL a pipe, query operator, keyword, command, or function. The parser still has the last
   word after the signal.
 
+Both rules are about the languages that can read a snippet. Choosing a language by hand
+and recognizing one automatically are now two separate lists: a text container can be set
+to any of fifteen languages, while only DAX, T-SQL, KQL, and plain text take part in the
+snippet format order. A language that only colors never claims a paste, never joins a
+saved order, and is ignored if one is written into settings by hand — reading it as plain
+text instead would move plain text up an order it was never part of. The archive format is
+unchanged by this: a board saved with one of the new languages opens in an older release
+as plain text, with its source intact.
+
 ---
 
 ## 29. A text container's width in columns is the line width of its snippet

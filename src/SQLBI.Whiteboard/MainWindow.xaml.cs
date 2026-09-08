@@ -106,6 +106,7 @@ public partial class MainWindow : Window
     private readonly TextClassificationColorizer _textColorizer = new();
     private readonly DispatcherTimer _textHighlightTimer;
     private CancellationTokenSource? _textAnalysisCancellation;
+    private bool _formattingRequestOpen;
     private enum SessionChromeMode
     {
         Windowed,
@@ -2475,6 +2476,47 @@ public partial class MainWindow : Window
         cancellation.Dispose();
     }
 
+    /// <summary>
+    /// The one answer F6 gives a language with no formatter, shared by both
+    /// entry points. A language that is only colored offers its voting issue;
+    /// the rest fall through to their own formatter, so invalid DAX stays a
+    /// format that did nothing rather than a prompt.
+    /// </summary>
+    private bool OfferFormattingRequest(ITextLanguageService language)
+    {
+        if (language.FormattingRequestUri is not { } requestUri)
+        {
+            return false;
+        }
+
+        if (_formattingRequestOpen)
+        {
+            return true;
+        }
+
+        _formattingRequestOpen = true;
+        try
+        {
+            new FormattingRequestWindow(language.DisplayName, requestUri) { Owner = this }.ShowDialog();
+        }
+        finally
+        {
+            _formattingRequestOpen = false;
+        }
+
+        if (_textEditBefore is not null)
+        {
+            TextEditor.Focus();
+            Keyboard.Focus(TextEditor);
+        }
+        else
+        {
+            InkSurface.Focus();
+        }
+
+        return true;
+    }
+
     private void FormatTextEdit()
     {
         if (_textEditBefore is null)
@@ -2483,6 +2525,11 @@ public partial class MainWindow : Window
         }
 
         ITextLanguageService language = TextLanguageRegistry.Resolve(_textEditLanguageId);
+        if (OfferFormattingRequest(language))
+        {
+            return;
+        }
+
         int editColumns = TextContainerVisual.ColumnsFor(
             _textEditBounds.Width,
             _textEditBefore.VisualScale,
@@ -2516,9 +2563,14 @@ public partial class MainWindow : Window
             return;
         }
 
+        ITextLanguageService language = TextLanguageRegistry.Resolve(textObject.LanguageId);
+        if (OfferFormattingRequest(language))
+        {
+            return;
+        }
+
         // Formatted to the columns the container shows, so the lines fit it:
         // the container's width is the line width of the snippet.
-        ITextLanguageService language = TextLanguageRegistry.Resolve(textObject.LanguageId);
         int columns = TextContainerVisual.ColumnsFor(textObject, VisualTreeHelper.GetDpi(SceneSurface).PixelsPerDip);
         if (!language.CanFormat ||
             !language.TryFormat(textObject.Text, columns, out string formatted) ||
