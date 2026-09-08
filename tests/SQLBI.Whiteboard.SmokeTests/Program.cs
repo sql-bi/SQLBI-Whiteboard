@@ -75,7 +75,7 @@ Colors(CSharpSource, TextLanguageIds.CSharp, "String", "'\\t'");
 // quote, and an interpolation hole is read as the code it is.
 Colors(CSharpSource, TextLanguageIds.CSharp, "String", "        {\"a\": 1, \"b\": \"x\"}");
 Colors(CSharpSource, TextLanguageIds.CSharp, "String", "@\"C:\\temp\\x\"\" still\"");
-Colors(CSharpSource, TextLanguageIds.CSharp, "Interpolation", "{n ");
+Colors(CSharpSource, TextLanguageIds.CSharp, "Variable", "{n ");
 Colors(CSharpSource, TextLanguageIds.CSharp, "Number", "1");
 Colors(CSharpSource, TextLanguageIds.CSharp, "String", " and {{literal}}\"");
 
@@ -173,12 +173,168 @@ Colors(VbSource, TextLanguageIds.VbNet, "Directive", "<Serializable>");
 Colors(VbSource, TextLanguageIds.VbNet, "String", "\"a\"\"b\"");
 Colors(VbSource, TextLanguageIds.VbNet, "String", "#1/1/2020#");
 Colors(VbSource, TextLanguageIds.VbNet, "Number", "&HFF_00UL");
-Colors(VbSource, TextLanguageIds.VbNet, "Interpolation", "{n ");
+Colors(VbSource, TextLanguageIds.VbNet, "Variable", "{n ");
 Colors(VbSource, TextLanguageIds.VbNet, "String", "<root><item>text</item></root>");
 // Keywords are matched whatever their case, and a comparison stays one.
 Colors(VbSource, TextLanguageIds.VbNet, "Keyword", "AndAlso");
 Colors(VbSource.Replace("AndAlso", "andalso", StringComparison.Ordinal), TextLanguageIds.VbNet, "Keyword", "andalso");
 Colors(VbSource, TextLanguageIds.VbNet, "Operator", "_");
+
+const string JsSource = """
+    const re = /ab+c/gi;
+    let x = a / b, re2 = /x\/y/;
+    foo(/lit/, 1 / 2);
+    return /re/.test(s);
+    /^start/.test(s);
+    var y = 1 / 2 / 3;
+    const s = `sum ${a + b} end`;
+    const big = 1_000n, hex = 0xFF, f = .5e-3; // done
+    """;
+
+// A slash divides or opens a regular expression, and only what precedes it
+// says which. Being wrong the harmless way — leaving a literal as operators —
+// is preferred to coloring half a line as a string.
+Colors(JsSource, TextLanguageIds.JavaScript, "String", "/ab+c/gi");
+Colors(JsSource, TextLanguageIds.JavaScript, "String", @"/x\/y/");
+Colors(JsSource, TextLanguageIds.JavaScript, "String", "/lit/");
+Colors(JsSource, TextLanguageIds.JavaScript, "String", "/re/");
+Colors(JsSource, TextLanguageIds.JavaScript, "String", "/^start/");
+Assert(
+    Spans(JsSource, TextLanguageIds.JavaScript)
+        .Count(span => span.Category == "Operator" && span.Text == "/") == 4,
+    "Every division should stay an operator.");
+Colors(JsSource, TextLanguageIds.JavaScript, "Variable", "${a ");
+Colors(JsSource, TextLanguageIds.JavaScript, "String", "`sum ");
+Colors(JsSource, TextLanguageIds.JavaScript, "Number", "1_000n");
+Colors(JsSource, TextLanguageIds.JavaScript, "Number", ".5e-3");
+Colors(JsSource, TextLanguageIds.JavaScript, "Comment", "// done");
+
+const string TsSource = """
+    @Component({ selector: 'app' })
+    export class Widget<T extends object> implements OnInit {
+        async load(id?: number): Promise<Record<string, unknown>> {
+            const re = /^id-\d+$/u;
+            return { done: id as unknown satisfies number };
+        }
+    }
+    """;
+
+// TypeScript is JavaScript with types written into it, and its definition says
+// so: the string, template and regular expression rules are imported.
+Colors(TsSource, TextLanguageIds.TypeScript, "Directive", "@Component");
+Colors(TsSource, TextLanguageIds.TypeScript, "Type", "unknown");
+Colors(TsSource, TextLanguageIds.TypeScript, "Keyword", "satisfies");
+Colors(TsSource, TextLanguageIds.TypeScript, "Keyword", "implements");
+Colors(TsSource, TextLanguageIds.TypeScript, "String", @"/^id-\d+$/u");
+Colors(TsSource, TextLanguageIds.TypeScript, "String", "'app'");
+
+const string PythonSource = """"""
+    @decorator
+    class Model:
+        """Doc "quoted" here.
+        Second line."""
+        path = r"C:\temp\x"
+        def total(self, items: list[int]) -> str:
+            # a comment
+            n = 0x1F_00 + 1_000j
+            return f"value {n!r} and {{literal}}"  # trailing
+    """""";
+
+Colors(PythonSource, TextLanguageIds.Python, "Directive", "@decorator");
+Colors(PythonSource, TextLanguageIds.Python, "Comment", "# a comment");
+// A docstring runs over its lines, and a raw string keeps its backslashes
+// rather than escaping its own closing quote.
+Colors(PythonSource, TextLanguageIds.Python, "String", "\"\"\"Doc \"quoted\" here.");
+Colors(PythonSource, TextLanguageIds.Python, "String", "    Second line.\"\"\"");
+Colors(PythonSource, TextLanguageIds.Python, "String", @"r""C:\temp\x""");
+Colors(PythonSource, TextLanguageIds.Python, "Variable", "{n");
+Colors(PythonSource, TextLanguageIds.Python, "String", " and {{literal}}\"");
+Colors(PythonSource, TextLanguageIds.Python, "Number", "0x1F_00");
+Colors(PythonSource, TextLanguageIds.Python, "Number", "1_000j");
+Colors(PythonSource, TextLanguageIds.Python, "Type", "str");
+
+const string RSource = """
+    # A comment
+    `my var` <- function(x, ...) {
+      s <- r"(raw "quoted" text)"
+      y <- x |> sum() %>% round(2L)
+      f <- y ~ x + I(x^2)
+      z %custom% w
+      if (is.na(y)) return(NA_real_)
+    }
+    """;
+
+Colors(RSource, TextLanguageIds.R, "Comment", "# A comment");
+// A name that needed backticks is still a name, and an operator an author
+// defines between percent signs is as much an operator as the built-in ones.
+Colors(RSource, TextLanguageIds.R, "Variable", "`my var`");
+Colors(RSource, TextLanguageIds.R, "String", "r\"(raw \"quoted\" text)\"");
+Colors(RSource, TextLanguageIds.R, "Operator", "<-");
+Colors(RSource, TextLanguageIds.R, "Operator", "|>");
+Colors(RSource, TextLanguageIds.R, "Operator", "%>%");
+Colors(RSource, TextLanguageIds.R, "Operator", "%custom%");
+Colors(RSource, TextLanguageIds.R, "Operator", "~");
+Colors(RSource, TextLanguageIds.R, "Number", "2L");
+Colors(RSource, TextLanguageIds.R, "Keyword", "NA_real_");
+Colors(RSource, TextLanguageIds.R, "Function", "is.na");
+
+const string RustSource = """
+    #![allow(dead_code)]
+    /* outer /* inner */ still comment */
+    #[derive(Debug)]
+    pub fn make(s: &'static str) -> Result<Self, String> {
+        let raw = r#"raw "quoted" text"#;
+        let t = r##"has "# inside"##;
+        let c = 'a'; let b = b'\n';
+        println!("{}", 0xFF_u8 + 1_000i64);
+    }
+    """;
+
+// A block comment nests, so the run ends where Rust ends it and not at the
+// first close; an apostrophe is a lifetime or a character literal.
+Colors(RustSource, TextLanguageIds.Rust, "Comment", "/* outer /* inner */ still comment */");
+Colors(RustSource, TextLanguageIds.Rust, "Directive", "#![allow(dead_code)]");
+Colors(RustSource, TextLanguageIds.Rust, "Directive", "#[derive(Debug)]");
+Colors(RustSource, TextLanguageIds.Rust, "Variable", "'static");
+Colors(RustSource, TextLanguageIds.Rust, "String", "'a'");
+Colors(RustSource, TextLanguageIds.Rust, "String", @"b'\n'");
+Colors(RustSource, TextLanguageIds.Rust, "String", "r#\"raw \"quoted\" text\"#");
+Colors(RustSource, TextLanguageIds.Rust, "String", "r##\"has \"# inside\"##");
+Colors(RustSource, TextLanguageIds.Rust, "Function", "println!");
+Colors(RustSource, TextLanguageIds.Rust, "Number", "0xFF_u8");
+Colors(RustSource, TextLanguageIds.Rust, "Number", "1_000i64");
+
+const string PhpSource = """
+    <?php
+    #[Attribute]
+    final class Greeter
+    {
+        public function greet(string $name): string
+        {
+            $text = <<<EOT
+                Hello $name and {$this->title}
+                EOT;
+            $raw = <<<'EOT'
+                No $interpolation here
+                EOT;
+            # hash comment
+            return "hi $name" . '$literal';
+        }
+    }
+    ?>
+    """;
+
+Colors(PhpSource, TextLanguageIds.Php, "Directive", "<?php");
+Colors(PhpSource, TextLanguageIds.Php, "Directive", "?>");
+Colors(PhpSource, TextLanguageIds.Php, "Directive", "#[Attribute]");
+Colors(PhpSource, TextLanguageIds.Php, "Comment", "# hash comment");
+Colors(PhpSource, TextLanguageIds.Php, "Variable", "$name");
+// A heredoc reads its variables; a nowdoc and a single-quoted string keep
+// theirs as the text they are.
+Colors(PhpSource, TextLanguageIds.Php, "String", "<<<EOT");
+Colors(PhpSource, TextLanguageIds.Php, "Variable", "{$this");
+Colors(PhpSource, TextLanguageIds.Php, "String", "            No $interpolation here");
+Colors(PhpSource, TextLanguageIds.Php, "String", "'$literal'");
 
 // Incomplete input colors to where its language ends it and picks the next
 // construct up again, and it is never rejected.
@@ -207,11 +363,7 @@ Colors(Astral, TextLanguageIds.CSharp, "Comment", "// caff\u00e8 \u2615");
 Colors(Astral, TextLanguageIds.CSharp, "String", "\"gr\U0001F389ok\"");
 Colors(Astral, TextLanguageIds.CSharp, "Comment", "// ok");
 
-foreach (string languageId in new[]
-         {
-             TextLanguageIds.C, TextLanguageIds.Cpp, TextLanguageIds.CSharp,
-             TextLanguageIds.Java, TextLanguageIds.VbNet,
-         })
+foreach (string languageId in TextLanguageIds.All.Where(id => !TextLanguageIds.CanDetect(id)))
 {
     Assert(
         Spans(string.Empty, languageId).Count == 0 &&
@@ -291,7 +443,8 @@ static string CategoryOf(TextRunStyle style) =>
         "#FFEE7F18" => "Number",
         "#FF268E26" => "Comment",
         "#FF6F42C1" => "Directive",
-        "#FF168C8B" => "Interpolation",
+        // A hole in a string and a variable share the teal.
+        "#FF168C8B" => "Variable",
         "#FF5E6470" => "Operator",
         "#FF808080" => "Punctuation",
         var color => throw new InvalidOperationException($"No category carries {color}."),

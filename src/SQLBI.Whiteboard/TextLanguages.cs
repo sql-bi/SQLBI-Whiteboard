@@ -69,17 +69,17 @@ internal static class TextLanguageRegistry
         Dax,
         SqlServer,
         Kql,
-        new ManualTextLanguageService(TextLanguageIds.Python, "Python"),
+        new ManualTextLanguageService(TextLanguageIds.Python, "Python", "Python"),
         new ManualTextLanguageService(TextLanguageIds.C, "C", "C"),
         new ManualTextLanguageService(TextLanguageIds.Cpp, "C++", "Cpp"),
         new ManualTextLanguageService(TextLanguageIds.Java, "Java", "Java"),
         new ManualTextLanguageService(TextLanguageIds.CSharp, "C#", "CSharp"),
-        new ManualTextLanguageService(TextLanguageIds.JavaScript, "JavaScript"),
-        new ManualTextLanguageService(TextLanguageIds.TypeScript, "TypeScript"),
+        new ManualTextLanguageService(TextLanguageIds.JavaScript, "JavaScript", "JavaScript"),
+        new ManualTextLanguageService(TextLanguageIds.TypeScript, "TypeScript", "TypeScript"),
         new ManualTextLanguageService(TextLanguageIds.VbNet, "Visual Basic .NET", "VisualBasic"),
-        new ManualTextLanguageService(TextLanguageIds.R, "R"),
-        new ManualTextLanguageService(TextLanguageIds.Rust, "Rust"),
-        new ManualTextLanguageService(TextLanguageIds.Php, "PHP"),
+        new ManualTextLanguageService(TextLanguageIds.R, "R", "R"),
+        new ManualTextLanguageService(TextLanguageIds.Rust, "Rust", "Rust"),
+        new ManualTextLanguageService(TextLanguageIds.Php, "PHP", "Php"),
     ];
 
     public static ITextLanguageService Resolve(string? languageId)

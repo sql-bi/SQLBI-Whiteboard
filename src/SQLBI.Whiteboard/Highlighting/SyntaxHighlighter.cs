@@ -34,6 +34,7 @@ internal static class SyntaxHighlighter
     private const int MaximumAnalyzedLength = 100_000;
 
     private static readonly ConcurrentDictionary<string, IHighlightingDefinition?> Definitions = new(StringComparer.Ordinal);
+    private static readonly DefinitionResolver Resolver = new();
 
     private static readonly Brush Keyword = CreateBrush(0xFF035ACA);
     private static readonly Brush TypeKeyword = CreateBrush(0xFF267F99);
@@ -42,7 +43,7 @@ internal static class SyntaxHighlighter
     private static readonly Brush Number = CreateBrush(0xFFEE7F18);
     private static readonly Brush Comment = CreateBrush(0xFF268E26);
     private static readonly Brush Directive = CreateBrush(0xFF6F42C1);
-    private static readonly Brush Interpolation = CreateBrush(0xFF168C8B);
+    private static readonly Brush Variable = CreateBrush(0xFF168C8B);
     private static readonly Brush Operator = CreateBrush(0xFF5E6470);
     private static readonly Brush Punctuation = CreateBrush(0xFF808080);
 
@@ -56,7 +57,10 @@ internal static class SyntaxHighlighter
         ["Comment"] = new(Comment, FontWeights.Normal, FontStyles.Italic),
         ["String"] = new(StringLiteral, FontWeights.Normal, FontStyles.Normal),
         ["Character"] = new(StringLiteral, FontWeights.Normal, FontStyles.Normal),
-        ["Interpolation"] = new(Interpolation, FontWeights.SemiBold, FontStyles.Normal),
+        // A hole in a string and a variable are the same thing to a reader:
+        // a value where text would otherwise be.
+        ["Interpolation"] = new(Variable, FontWeights.SemiBold, FontStyles.Normal),
+        ["Variable"] = new(Variable, FontWeights.SemiBold, FontStyles.Normal),
         ["Number"] = new(Number, FontWeights.Normal, FontStyles.Normal),
         ["Keyword"] = new(Keyword, FontWeights.Bold, FontStyles.Normal),
         ["TypeKeyword"] = new(TypeKeyword, FontWeights.SemiBold, FontStyles.Normal),
@@ -182,13 +186,23 @@ internal static class SyntaxHighlighter
             }
 
             using XmlReader reader = XmlReader.Create(stream);
-            return HighlightingLoader.Load(reader, HighlightingManager.Instance);
+            return HighlightingLoader.Load(reader, Resolver);
         }
         catch (Exception exception)
         {
             Debug.WriteLine($"[Highlighting] Loading {resource} failed: {exception.Message}");
             return null;
         }
+    }
+
+    /// <summary>
+    /// Lets one definition build on another - TypeScript on JavaScript - and
+    /// keeps that resolution inside this assembly, so the bundled definitions
+    /// of the same name are never what a rule set reference reaches.
+    /// </summary>
+    private sealed class DefinitionResolver : IHighlightingDefinitionReferenceResolver
+    {
+        public IHighlightingDefinition? GetDefinition(string name) => Definition(name);
     }
 
     private static SolidColorBrush CreateBrush(uint argb)

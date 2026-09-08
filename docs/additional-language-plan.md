@@ -1,11 +1,13 @@
 # Additional languages: highlighting and manual selection
 
-Status: steps 1 and 2 of the delivery sequence are implemented. Step 1 built the
-capability split, its persistence tests, the highlighting spike recorded below, and the
-F6 voting prompt. Step 2 added the highlighting adapter and the definitions for C, C++,
-C#, Java and Visual Basic .NET, with a WPF test host for them. JavaScript, TypeScript,
-Python, R, Rust and PHP are selectable but not yet colored. The eleven
-formatting/detection voting issues below were created on 8 September 2026.
+Status: steps 1 to 3 of the delivery sequence are implemented. Step 1 built the capability
+split, its persistence tests, the highlighting spike recorded below, and the F6 voting
+prompt. Step 2 added the highlighting adapter, the definitions for C, C++, C#, Java and
+Visual Basic .NET, and a WPF test host for them. Step 3 added JavaScript, TypeScript,
+Python, R, Rust and PHP, so all eleven languages are colored. Step 4 remains: the
+regression and export matrix, and the README, site and release-note text that describe
+the feature once it ships. The eleven formatting/detection voting issues below were
+created on 8 September 2026.
 
 ## Outcome and scope
 
@@ -171,22 +173,24 @@ What our own XSHD can and cannot express, tested by writing three definitions:
   `foo(/lit/, 1 / 2)` are right, while `let x = a / b, re2 = /x\/y/` misses the second
   literal, because the lookbehind window starts where the previous rule stopped.
 
-So: reuse the AvalonEdit engine and the flattening adapter, ship our own definitions under
-`Highlighting/` rather than the bundled ones, and keep a small stateful scanner behind the
-same adapter for the constructs XSHD cannot reach.
+So: reuse the AvalonEdit engine and the flattening adapter, and ship our own definitions
+under `Highlighting/` rather than the bundled ones.
 
-Writing the first five definitions narrowed that last list. C# needs no scanner: three
-rules, longest delimiter first, cover raw strings at three, four and five quotes, and a
-snippet with six is not a snippet anyone writes. The same bounded trick serves C++ raw
-string delimiters and Rust hashes. What is left for a scanner is JavaScript, where regex
-versus division is not a matter of counting, and the same rule regex is right or wrong
-depending only on where the previous rule stopped.
+Writing the eleven definitions retired the stateful scanner the spike had expected to
+need. C# raw strings take three rules, longest delimiter first, covering three, four and
+five quotes; a snippet with six is not one anyone writes, and the same bounded trick
+serves C++ raw string delimiters and Rust hashes. Regular expression versus division in
+JavaScript was a bad rule rather than a limit of the engine: it is decided by the token
+before the slash, and a lookbehind that names the operators, keywords and line starts a
+value cannot follow settles every case in the corpus. A regular expression somewhere else
+is left as operators and names, which is the harmless half of being wrong.
 
-Two lexical hazards showed up that the spike had not: an apostrophe is a digit separator
-in C and C++, so the character literal has to be a rule that runs after the number rather
-than a span that runs before it; and an angle bracket opens a Visual Basic XML literal or
-a comparison, so the literal is recognized only where a value belongs. Both are recorded
-in the definitions themselves.
+Three lexical hazards showed up that the spike had not, all recorded in the definitions
+themselves: an apostrophe is a digit separator in C and C++, so the character literal has
+to be a rule that runs after the number rather than a span that runs before it; an angle
+bracket opens a Visual Basic XML literal or a comparison, so the literal is recognized
+only where a value belongs; and a hash opens a PHP comment or an attribute, so the
+attribute is matched first.
 
 ## 3. Add the F6 voting prompt
 

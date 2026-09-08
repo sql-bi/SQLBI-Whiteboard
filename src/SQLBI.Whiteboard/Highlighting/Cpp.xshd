@@ -92,7 +92,7 @@
 
     <!-- Digit separators, and both the standard and user-defined suffixes. -->
     <Rule color="Number">
-      \b(
+      (?&lt;![\w.])(
         0[xX][0-9a-fA-F']+
       | 0[bB][01']+
       | (\d[\d']*)?\.\d[\d']*([eE][+-]?\d+)?

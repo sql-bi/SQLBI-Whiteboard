@@ -1,0 +1,96 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  JavaScript. A color name here is a category, not a color: SyntaxHighlighter
+  maps the names to the palette every language shares.
+
+  A slash opens a regular expression or divides, and which one it is depends on
+  the token before it. A rule sees only from where the rule before it stopped,
+  so the regular expression is recognized only after something a value cannot
+  follow - an operator, an opening bracket, a comma, a keyword, or the start of
+  a line. A literal that follows anything else is left as operators and names,
+  which is the harmless half of being wrong.
+-->
+<SyntaxDefinition name="JavaScript" extensions=".js;.mjs;.cjs" xmlns="http://icsharpcode.net/sharpdevelop/syntaxdefinition/2008">
+  <Color name="Comment" />
+  <Color name="String" />
+  <Color name="Interpolation" />
+  <Color name="Number" />
+  <Color name="Keyword" />
+  <Color name="TypeKeyword" />
+  <Color name="Function" />
+  <Color name="Operator" />
+  <Color name="Punctuation" />
+
+  <RuleSet name="Code" ignoreCase="false">
+    <Span color="Comment" multiline="true"><Begin>/\*</Begin><End>\*/</End></Span>
+    <Span color="Comment"><Begin>//</Begin></Span>
+
+    <!-- A template literal, and the code its holes contain. -->
+    <Span color="String" multiline="true">
+      <Begin>`</Begin>
+      <End>`</End>
+      <RuleSet>
+        <Span begin="\\" end="." />
+        <Span color="Interpolation" ruleSet="Code" begin="\$\{" end="\}" />
+      </RuleSet>
+    </Span>
+    <Span color="String">
+      <Begin>"</Begin><End>"</End>
+      <RuleSet><Span begin="\\" end="." /></RuleSet>
+    </Span>
+    <Span color="String">
+      <Begin>'</Begin><End>'</End>
+      <RuleSet><Span begin="\\" end="." /></RuleSet>
+    </Span>
+
+    <Rule color="String">
+      (?:
+        (?&lt;= [=(,:\[!&amp;|?{};+\-*%~^] \s* )
+      | (?&lt;= \b(?:return|typeof|case|in|of|new|delete|void|instanceof|do|else|yield|await|throw) \s* )
+      | (?&lt;= ^ \s* )
+      )
+      / (?![/*]) (?: \\. | \[ (?: \\. | [^\]\n] )* \] | [^/\\\n\[] )+ / [dgimsuvy]*
+    </Rule>
+
+    <Keywords color="Keyword">
+      <Word>as</Word><Word>async</Word><Word>await</Word><Word>break</Word>
+      <Word>case</Word><Word>catch</Word><Word>class</Word><Word>const</Word>
+      <Word>continue</Word><Word>debugger</Word><Word>default</Word><Word>delete</Word>
+      <Word>do</Word><Word>else</Word><Word>export</Word><Word>extends</Word>
+      <Word>false</Word><Word>finally</Word><Word>for</Word><Word>from</Word>
+      <Word>function</Word><Word>get</Word><Word>if</Word><Word>import</Word>
+      <Word>in</Word><Word>instanceof</Word><Word>let</Word><Word>new</Word>
+      <Word>null</Word><Word>of</Word><Word>return</Word><Word>set</Word>
+      <Word>static</Word><Word>super</Word><Word>switch</Word><Word>this</Word>
+      <Word>throw</Word><Word>true</Word><Word>try</Word><Word>typeof</Word>
+      <Word>var</Word><Word>void</Word><Word>while</Word><Word>with</Word>
+      <Word>yield</Word>
+    </Keywords>
+
+    <Keywords color="TypeKeyword">
+      <Word>undefined</Word><Word>NaN</Word><Word>Infinity</Word><Word>globalThis</Word>
+      <Word>Array</Word><Word>Object</Word><Word>String</Word><Word>Number</Word>
+      <Word>Boolean</Word><Word>Symbol</Word><Word>BigInt</Word><Word>Map</Word>
+      <Word>Set</Word><Word>Promise</Word><Word>Date</Word><Word>RegExp</Word>
+      <Word>JSON</Word><Word>Math</Word><Word>Error</Word>
+    </Keywords>
+
+    <Rule color="Number">
+      (?&lt;![\w.])(
+        0[xX][0-9a-fA-F_]+
+      | 0[bB][01_]+
+      | 0[oO][0-7_]+
+      | (\d[\d_]*)?\.\d[\d_]*([eE][+-]?\d+)?
+      | \d[\d_]*\.?([eE][+-]?\d+)?
+      )n?
+    </Rule>
+
+    <Rule color="Function">\b[A-Za-z_$][\w$]*(?=\s*\()</Rule>
+    <Rule color="Operator">=&gt;|\?\?=?|\.\.\.|[+\-*/%=!&lt;&gt;&amp;|^~?:]+</Rule>
+    <Rule color="Punctuation">[{}()\[\];,.]</Rule>
+  </RuleSet>
+
+  <RuleSet>
+    <Import ruleSet="Code" />
+  </RuleSet>
+</SyntaxDefinition>
