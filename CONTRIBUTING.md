@@ -22,7 +22,11 @@ typing the code themselves or directing a coding agent. It is deliberately tool-
    ```powershell
    dotnet build Whiteboard.sln -c Release
    dotnet run --project .\tests\SQLBI.Whiteboard.Core.SmokeTests\SQLBI.Whiteboard.Core.SmokeTests.csproj
+   dotnet run --project .\tests\SQLBI.Whiteboard.SmokeTests\SQLBI.Whiteboard.SmokeTests.csproj
    ```
+
+   The first harness is framework-neutral. The second needs WPF, and covers what only
+   the application can answer, such as syntax highlighting.
 
    `TreatWarningsAsErrors` is on for every project, so a warning fails the build.
 4. Open the pull request against `main`:

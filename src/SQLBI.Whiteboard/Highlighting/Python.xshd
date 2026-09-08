@@ -1,0 +1,115 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Python. A color name here is a category, not a color: SyntaxHighlighter maps
+  the names to the palette every language shares.
+
+  The triple-quoted forms come before the single-quoted ones, so that the first
+  quote of a docstring does not open a one-line string. A raw string keeps its
+  backslashes, so it is the one string with no escape rule inside it.
+-->
+<SyntaxDefinition name="Python" extensions=".py;.pyi" xmlns="http://icsharpcode.net/sharpdevelop/syntaxdefinition/2008">
+  <Color name="Comment" />
+  <Color name="String" />
+  <Color name="Interpolation" />
+  <Color name="Number" />
+  <Color name="Keyword" />
+  <Color name="TypeKeyword" />
+  <Color name="Attribute" />
+  <Color name="Function" />
+  <Color name="Operator" />
+  <Color name="Punctuation" />
+
+  <RuleSet name="Code" ignoreCase="false">
+    <Span color="Comment"><Begin>\#</Begin></Span>
+
+    <!-- Raw, which keeps its backslashes, before the forms that escape them. -->
+    <Span color="String" multiline="true">
+      <Begin>(?i)[rbu]{0,2}r[rbu]?"""</Begin><End>"""</End>
+    </Span>
+    <Span color="String" multiline="true">
+      <Begin>(?i)[rbu]{0,2}r[rbu]?'''</Begin><End>'''</End>
+    </Span>
+    <Span color="String">
+      <Begin>(?i)[rbu]{0,2}r[rbu]?"</Begin><End>"</End>
+    </Span>
+    <Span color="String">
+      <Begin>(?i)[rbu]{0,2}r[rbu]?'</Begin><End>'</End>
+    </Span>
+
+    <!-- A docstring, and an f-string whose holes are the code they contain. -->
+    <Span color="String" multiline="true">
+      <Begin>(?i)[fbu]{0,2}"""</Begin><End>"""</End>
+      <RuleSet>
+        <Span begin="\\" end="." />
+        <Span begin="\{\{" end="" />
+        <Span color="Interpolation" ruleSet="Code" begin="\{" end="\}" />
+      </RuleSet>
+    </Span>
+    <Span color="String" multiline="true">
+      <Begin>(?i)[fbu]{0,2}'''</Begin><End>'''</End>
+      <RuleSet>
+        <Span begin="\\" end="." />
+        <Span begin="\{\{" end="" />
+        <Span color="Interpolation" ruleSet="Code" begin="\{" end="\}" />
+      </RuleSet>
+    </Span>
+    <Span color="String">
+      <Begin>(?i)[fbu]{0,2}"</Begin><End>"</End>
+      <RuleSet>
+        <Span begin="\\" end="." />
+        <Span begin="\{\{" end="" />
+        <Span color="Interpolation" ruleSet="Code" begin="\{" end="\}" />
+      </RuleSet>
+    </Span>
+    <Span color="String">
+      <Begin>(?i)[fbu]{0,2}'</Begin><End>'</End>
+      <RuleSet>
+        <Span begin="\\" end="." />
+        <Span begin="\{\{" end="" />
+        <Span color="Interpolation" ruleSet="Code" begin="\{" end="\}" />
+      </RuleSet>
+    </Span>
+
+    <Rule color="Attribute">^\s*@[A-Za-z_][\w.]*</Rule>
+
+    <Keywords color="Keyword">
+      <Word>and</Word><Word>as</Word><Word>assert</Word><Word>async</Word>
+      <Word>await</Word><Word>break</Word><Word>case</Word><Word>class</Word>
+      <Word>continue</Word><Word>def</Word><Word>del</Word><Word>elif</Word>
+      <Word>else</Word><Word>except</Word><Word>False</Word><Word>finally</Word>
+      <Word>for</Word><Word>from</Word><Word>global</Word><Word>if</Word>
+      <Word>import</Word><Word>in</Word><Word>is</Word><Word>lambda</Word>
+      <Word>match</Word><Word>None</Word><Word>nonlocal</Word><Word>not</Word>
+      <Word>or</Word><Word>pass</Word><Word>raise</Word><Word>return</Word>
+      <Word>self</Word><Word>True</Word><Word>try</Word><Word>while</Word>
+      <Word>with</Word><Word>yield</Word>
+    </Keywords>
+
+    <Keywords color="TypeKeyword">
+      <Word>bool</Word><Word>bytes</Word><Word>complex</Word><Word>dict</Word>
+      <Word>float</Word><Word>frozenset</Word><Word>int</Word><Word>list</Word>
+      <Word>object</Word><Word>set</Word><Word>str</Word><Word>tuple</Word>
+      <Word>type</Word><Word>Any</Word><Word>Callable</Word><Word>Dict</Word>
+      <Word>Iterable</Word><Word>Iterator</Word><Word>List</Word><Word>Optional</Word>
+      <Word>Sequence</Word><Word>Tuple</Word><Word>Union</Word>
+    </Keywords>
+
+    <Rule color="Number">
+      (?&lt;![\w.])(
+        0[xX][0-9a-fA-F_]+
+      | 0[bB][01_]+
+      | 0[oO][0-7_]+
+      | (\d[\d_]*)?\.\d[\d_]*([eE][+-]?\d+)?
+      | \d[\d_]*\.?([eE][+-]?\d+)?
+      )[jJ]?
+    </Rule>
+
+    <Rule color="Function">\b[A-Za-z_]\w*(?=\s*\()</Rule>
+    <Rule color="Operator">-&gt;|:=|\*\*|//|[+\-*/%=!&lt;&gt;&amp;|^~@]+</Rule>
+    <Rule color="Punctuation">[{}()\[\];,.:]</Rule>
+  </RuleSet>
+
+  <RuleSet>
+    <Import ruleSet="Code" />
+  </RuleSet>
+</SyntaxDefinition>

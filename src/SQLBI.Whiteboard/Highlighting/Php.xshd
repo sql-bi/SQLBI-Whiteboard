@@ -1,0 +1,115 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  PHP. A color name here is a category, not a color: SyntaxHighlighter maps the
+  names to the palette every language shares.
+
+  A snippet is read as PHP whether or not it opens with a tag; when there is
+  one, the tag is colored and what surrounds it is not treated as HTML, which
+  is a separate scope.
+
+  A heredoc's closing identifier cannot be matched back to its opening, because
+  a span ends on its own regex with no memory of how it began. A line holding
+  nothing but a name closes it, which is what real text between the markers
+  almost never is.
+-->
+<SyntaxDefinition name="PHP" extensions=".php" xmlns="http://icsharpcode.net/sharpdevelop/syntaxdefinition/2008">
+  <Color name="Comment" />
+  <Color name="String" />
+  <Color name="Variable" />
+  <Color name="Number" />
+  <Color name="Keyword" />
+  <Color name="TypeKeyword" />
+  <Color name="Preprocessor" />
+  <Color name="Attribute" />
+  <Color name="Function" />
+  <Color name="Operator" />
+  <Color name="Punctuation" />
+
+  <RuleSet ignoreCase="false">
+    <Rule color="Preprocessor">&lt;\?(php|=)?|\?&gt;</Rule>
+
+    <!-- An attribute, before the hash that would otherwise start a comment. -->
+    <Span color="Attribute">
+      <Begin>\#\[</Begin><End>\]</End>
+      <RuleSet>
+        <Span color="String"><Begin>"</Begin><End>"</End><RuleSet><Span begin="\\" end="." /></RuleSet></Span>
+        <Span color="String"><Begin>'</Begin><End>'</End></Span>
+      </RuleSet>
+    </Span>
+
+    <Span color="Comment" multiline="true"><Begin>/\*</Begin><End>\*/</End></Span>
+    <Span color="Comment"><Begin>//</Begin></Span>
+    <Span color="Comment"><Begin>\#</Begin></Span>
+
+    <!-- Nowdoc keeps its text; heredoc reads variables the way a double-quoted
+         string does. -->
+    <Span color="String" multiline="true">
+      <Begin>&lt;&lt;&lt;\s*'[A-Za-z_]\w*'\s*$</Begin>
+      <End>^\s*[A-Za-z_]\w*(?=\s*[;,)\]]|\s*$)</End>
+    </Span>
+    <Span color="String" multiline="true">
+      <Begin>&lt;&lt;&lt;\s*"?[A-Za-z_]\w*"?\s*$</Begin>
+      <End>^\s*[A-Za-z_]\w*(?=\s*[;,)\]]|\s*$)</End>
+      <RuleSet>
+        <Rule color="Variable">\$[A-Za-z_]\w*</Rule>
+        <Span color="Variable" ruleSet="" begin="\{(?=\$)" end="\}" />
+      </RuleSet>
+    </Span>
+
+    <Span color="String" multiline="true">
+      <Begin>"</Begin><End>"</End>
+      <RuleSet>
+        <Span begin="\\" end="." />
+        <Rule color="Variable">\$[A-Za-z_]\w*</Rule>
+        <Span color="Variable" ruleSet="" begin="\{(?=\$)" end="\}" />
+      </RuleSet>
+    </Span>
+    <Span color="String" multiline="true">
+      <Begin>'</Begin><End>'</End>
+      <RuleSet><Span begin="\\" end="." /></RuleSet>
+    </Span>
+
+    <Rule color="Variable">\$+[A-Za-z_]\w*</Rule>
+
+    <Keywords color="Keyword">
+      <Word>abstract</Word><Word>and</Word><Word>array</Word><Word>as</Word>
+      <Word>break</Word><Word>callable</Word><Word>case</Word><Word>catch</Word>
+      <Word>class</Word><Word>clone</Word><Word>const</Word><Word>continue</Word>
+      <Word>declare</Word><Word>default</Word><Word>do</Word><Word>echo</Word>
+      <Word>else</Word><Word>elseif</Word><Word>empty</Word><Word>enddeclare</Word>
+      <Word>endfor</Word><Word>endforeach</Word><Word>endif</Word><Word>endswitch</Word>
+      <Word>endwhile</Word><Word>enum</Word><Word>extends</Word><Word>final</Word>
+      <Word>finally</Word><Word>fn</Word><Word>for</Word><Word>foreach</Word>
+      <Word>function</Word><Word>global</Word><Word>goto</Word><Word>if</Word>
+      <Word>implements</Word><Word>include</Word><Word>include_once</Word><Word>instanceof</Word>
+      <Word>insteadof</Word><Word>interface</Word><Word>isset</Word><Word>list</Word>
+      <Word>match</Word><Word>namespace</Word><Word>new</Word><Word>or</Word>
+      <Word>print</Word><Word>private</Word><Word>protected</Word><Word>public</Word>
+      <Word>readonly</Word><Word>require</Word><Word>require_once</Word><Word>return</Word>
+      <Word>static</Word><Word>switch</Word><Word>throw</Word><Word>trait</Word>
+      <Word>try</Word><Word>unset</Word><Word>use</Word><Word>var</Word>
+      <Word>while</Word><Word>xor</Word><Word>yield</Word>
+    </Keywords>
+
+    <Keywords color="TypeKeyword">
+      <Word>bool</Word><Word>false</Word><Word>float</Word><Word>int</Word>
+      <Word>iterable</Word><Word>mixed</Word><Word>never</Word><Word>null</Word>
+      <Word>object</Word><Word>parent</Word><Word>self</Word><Word>string</Word>
+      <Word>true</Word><Word>void</Word>
+    </Keywords>
+
+    <Rule color="Number">
+      (?&lt;![\w.])(
+        0[xX][0-9a-fA-F_]+
+      | 0[bB][01_]+
+      | 0[oO]?[0-7_]+
+      | (\d[\d_]*)?\.\d[\d_]*([eE][+-]?\d+)?
+      | \d[\d_]*\.?([eE][+-]?\d+)?
+      )
+    </Rule>
+
+    <Rule color="Function">\b[A-Za-z_]\w*(?=\s*\()</Rule>
+    <Rule color="Operator">=&gt;|-&gt;|\?\?=?|&lt;=&gt;|\.=|[+\-*/%=!&lt;&gt;&amp;|^~?.]+</Rule>
+    <Rule color="Punctuation">::|[{}()\[\];,]</Rule>
+  </RuleSet>
+</SyntaxDefinition>

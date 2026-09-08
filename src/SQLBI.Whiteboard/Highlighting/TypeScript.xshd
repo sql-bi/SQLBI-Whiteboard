@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  TypeScript, which is JavaScript with types written into it. The JavaScript
+  rules are imported rather than repeated, so a fix to a string, a template or a
+  regular expression is made once; what is added here is the type vocabulary and
+  the decorator. A color name is a category, not a color.
+-->
+<SyntaxDefinition name="TypeScript" extensions=".ts;.mts;.cts" xmlns="http://icsharpcode.net/sharpdevelop/syntaxdefinition/2008">
+  <Color name="Keyword" />
+  <Color name="TypeKeyword" />
+  <Color name="Attribute" />
+
+  <RuleSet ignoreCase="false">
+    <!-- Before the import, so a decorator is not read as a name. -->
+    <Rule color="Attribute">@[A-Za-z_$][\w$]*</Rule>
+
+    <Keywords color="Keyword">
+      <Word>abstract</Word><Word>accessor</Word><Word>asserts</Word><Word>declare</Word>
+      <Word>enum</Word><Word>implements</Word><Word>infer</Word><Word>interface</Word>
+      <Word>is</Word><Word>keyof</Word><Word>module</Word><Word>namespace</Word>
+      <Word>out</Word><Word>override</Word><Word>private</Word><Word>protected</Word>
+      <Word>public</Word><Word>readonly</Word><Word>require</Word><Word>satisfies</Word>
+      <Word>type</Word><Word>using</Word>
+    </Keywords>
+
+    <Keywords color="TypeKeyword">
+      <Word>any</Word><Word>bigint</Word><Word>boolean</Word><Word>never</Word>
+      <Word>number</Word><Word>object</Word><Word>string</Word><Word>symbol</Word>
+      <Word>unique</Word><Word>unknown</Word><Word>void</Word><Word>Partial</Word>
+      <Word>Readonly</Word><Word>Record</Word><Word>Pick</Word><Word>Omit</Word>
+      <Word>Exclude</Word><Word>Extract</Word><Word>Awaited</Word><Word>ReturnType</Word>
+    </Keywords>
+
+    <Import ruleSet="JavaScript/Code" />
+  </RuleSet>
+</SyntaxDefinition>

@@ -1,0 +1,80 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  R. A color name here is a category, not a color: SyntaxHighlighter maps the
+  names to the palette every language shares.
+
+  A raw string carries its own delimiter, r"(...)", r"[...]", r"{...}", with any
+  number of dashes around it. A span cannot match its closing delimiter back to
+  its opening, so the closing rule accepts a short run of dashes, which covers
+  what real code writes.
+-->
+<SyntaxDefinition name="R" extensions=".r;.R" xmlns="http://icsharpcode.net/sharpdevelop/syntaxdefinition/2008">
+  <Color name="Comment" />
+  <Color name="String" />
+  <Color name="Variable" />
+  <Color name="Number" />
+  <Color name="Keyword" />
+  <Color name="TypeKeyword" />
+  <Color name="Function" />
+  <Color name="Operator" />
+  <Color name="Punctuation" />
+
+  <RuleSet ignoreCase="false">
+    <Span color="Comment"><Begin>\#</Begin></Span>
+
+    <!-- Raw strings, before the quotes they contain. -->
+    <Span color="String" multiline="true">
+      <Begin>[rR]"-{0,8}\(</Begin><End>\)-{0,8}"</End>
+    </Span>
+    <Span color="String" multiline="true">
+      <Begin>[rR]"-{0,8}\[</Begin><End>\]-{0,8}"</End>
+    </Span>
+    <Span color="String" multiline="true">
+      <Begin>[rR]"-{0,8}\{</Begin><End>\}-{0,8}"</End>
+    </Span>
+    <Span color="String" multiline="true">
+      <Begin>[rR]'-{0,8}\(</Begin><End>\)-{0,8}'</End>
+    </Span>
+
+    <Span color="String" multiline="true">
+      <Begin>"</Begin><End>"</End>
+      <RuleSet><Span begin="\\" end="." /></RuleSet>
+    </Span>
+    <Span color="String" multiline="true">
+      <Begin>'</Begin><End>'</End>
+      <RuleSet><Span begin="\\" end="." /></RuleSet>
+    </Span>
+
+    <!-- A name that needed quoting is still a name. -->
+    <Rule color="Variable">`[^`\n]*`</Rule>
+
+    <Keywords color="Keyword">
+      <Word>break</Word><Word>else</Word><Word>for</Word><Word>function</Word>
+      <Word>if</Word><Word>in</Word><Word>next</Word><Word>repeat</Word>
+      <Word>return</Word><Word>while</Word><Word>TRUE</Word><Word>FALSE</Word>
+      <Word>NULL</Word><Word>Inf</Word><Word>NaN</Word><Word>NA</Word>
+      <Word>NA_integer_</Word><Word>NA_real_</Word><Word>NA_character_</Word>
+      <Word>NA_complex_</Word><Word>T</Word><Word>F</Word>
+    </Keywords>
+
+    <Keywords color="TypeKeyword">
+      <Word>character</Word><Word>complex</Word><Word>data.frame</Word><Word>double</Word>
+      <Word>factor</Word><Word>integer</Word><Word>list</Word><Word>logical</Word>
+      <Word>matrix</Word><Word>numeric</Word><Word>raw</Word><Word>vector</Word>
+    </Keywords>
+
+    <Rule color="Number">
+      (?&lt;![\w.])( 0[xX][0-9a-fA-F]+ | (\d)?\.\d+([eE][+-]?\d+)? | \d+\.?([eE][+-]?\d+)? )[Li]?
+    </Rule>
+
+    <Rule color="Function">
+      \b[A-Za-z.][\w.]* (?= \s* \( )
+    </Rule>
+    <!-- The pipes, the assignments, the formula, and any %...% an author
+         defines, which are as much operators as the ones the language ships. -->
+    <Rule color="Operator">
+      %[^%\s]*% | \|&gt; | &lt;&lt;- | -&gt;&gt; | &lt;- | -&gt; | [+\-*/^=!&lt;&gt;&amp;|~?]+
+    </Rule>
+    <Rule color="Punctuation">:::|::|[{}()\[\];,$@:]</Rule>
+  </RuleSet>
+</SyntaxDefinition>

@@ -1,0 +1,120 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Visual Basic .NET. A color name here is a category, not a color:
+  SyntaxHighlighter maps the names to the palette every language shares.
+
+  Keywords are matched without regard to case, which is the language's own rule.
+  An XML literal is recognized only where an assignment or an argument puts one,
+  so that "If a < b" stays a comparison; a bare angle bracket is left alone.
+-->
+<SyntaxDefinition name="Visual Basic .NET" extensions=".vb" xmlns="http://icsharpcode.net/sharpdevelop/syntaxdefinition/2008">
+  <Color name="Comment" />
+  <Color name="String" />
+  <Color name="Interpolation" />
+  <Color name="Number" />
+  <Color name="Keyword" />
+  <Color name="TypeKeyword" />
+  <Color name="Preprocessor" />
+  <Color name="Attribute" />
+  <Color name="Function" />
+  <Color name="Operator" />
+  <Color name="Punctuation" />
+
+  <RuleSet ignoreCase="true">
+    <Span color="Comment"><Begin>'</Begin></Span>
+    <Span color="Comment"><Begin>\bREM\b</Begin></Span>
+
+    <Span color="String">
+      <Begin>\$"</Begin>
+      <End>"(?!")</End>
+      <RuleSet>
+        <Span begin='""' end="" />
+        <Span begin="\{\{" end="" />
+        <Span color="Interpolation" ruleSet="" begin="\{" end="\}" />
+      </RuleSet>
+    </Span>
+    <Span color="String">
+      <Begin>"</Begin>
+      <End>"(?!")</End>
+      <RuleSet><Span begin='""' end="" /></RuleSet>
+    </Span>
+
+    <!-- A date literal, before the directive that its hash would otherwise open. -->
+    <Rule color="String">\#[^#\n]+\#</Rule>
+    <Span color="Preprocessor"><Begin>\#(?=[A-Za-z])</Begin></Span>
+
+    <!-- An attribute list opens its own line; an XML literal follows a value. -->
+    <Span color="Attribute">
+      <Begin>^\s*&lt;(?=\s*[A-Za-z_])</Begin>
+      <End>&gt;</End>
+      <RuleSet>
+        <Span color="String"><Begin>"</Begin><End>"</End></Span>
+        <Rule color="Number">\b\d[\d_]*\b</Rule>
+      </RuleSet>
+    </Span>
+    <Span color="String" multiline="true">
+      <Begin>(?&lt;=[=(,]\s{0,8})&lt;(?=[A-Za-z_?!/])</Begin>
+      <End>&gt;(?=\s*($|[),]))</End>
+      <RuleSet>
+        <Span color="Interpolation" ruleSet="" begin="&lt;%=" end="%&gt;" />
+      </RuleSet>
+    </Span>
+
+    <Keywords color="Keyword">
+      <Word>AddHandler</Word><Word>AddressOf</Word><Word>Alias</Word><Word>And</Word>
+      <Word>AndAlso</Word><Word>As</Word><Word>Async</Word><Word>Await</Word>
+      <Word>ByRef</Word><Word>ByVal</Word><Word>Call</Word><Word>Case</Word>
+      <Word>Catch</Word><Word>CBool</Word><Word>CByte</Word><Word>CChar</Word>
+      <Word>CDate</Word><Word>CDbl</Word><Word>CDec</Word><Word>CInt</Word>
+      <Word>Class</Word><Word>CLng</Word><Word>CObj</Word><Word>Const</Word>
+      <Word>Continue</Word><Word>CSByte</Word><Word>CShort</Word><Word>CSng</Word>
+      <Word>CStr</Word><Word>CType</Word><Word>CUInt</Word><Word>CULng</Word>
+      <Word>CUShort</Word><Word>Declare</Word><Word>Default</Word><Word>Delegate</Word>
+      <Word>Dim</Word><Word>DirectCast</Word><Word>Do</Word><Word>Each</Word>
+      <Word>Else</Word><Word>ElseIf</Word><Word>End</Word><Word>EndIf</Word>
+      <Word>Enum</Word><Word>Erase</Word><Word>Error</Word><Word>Event</Word>
+      <Word>Exit</Word><Word>False</Word><Word>Finally</Word><Word>For</Word>
+      <Word>Friend</Word><Word>Function</Word><Word>Get</Word><Word>GetType</Word>
+      <Word>GetXMLNamespace</Word><Word>Global</Word><Word>GoTo</Word><Word>Handles</Word>
+      <Word>If</Word><Word>Implements</Word><Word>Imports</Word><Word>In</Word>
+      <Word>Inherits</Word><Word>Interface</Word><Word>Is</Word><Word>IsNot</Word>
+      <Word>Iterator</Word><Word>Let</Word><Word>Lib</Word><Word>Like</Word>
+      <Word>Loop</Word><Word>Me</Word><Word>Mod</Word><Word>Module</Word>
+      <Word>MustInherit</Word><Word>MustOverride</Word><Word>MyBase</Word><Word>MyClass</Word>
+      <Word>Namespace</Word><Word>Narrowing</Word><Word>NameOf</Word><Word>New</Word>
+      <Word>Next</Word><Word>Not</Word><Word>Nothing</Word><Word>NotInheritable</Word>
+      <Word>NotOverridable</Word><Word>Of</Word><Word>On</Word><Word>Operator</Word>
+      <Word>Option</Word><Word>Optional</Word><Word>Or</Word><Word>OrElse</Word>
+      <Word>Out</Word><Word>Overloads</Word><Word>Overridable</Word><Word>Overrides</Word>
+      <Word>ParamArray</Word><Word>Partial</Word><Word>Private</Word><Word>Property</Word>
+      <Word>Protected</Word><Word>Public</Word><Word>RaiseEvent</Word><Word>ReadOnly</Word>
+      <Word>ReDim</Word><Word>RemoveHandler</Word><Word>Resume</Word><Word>Return</Word>
+      <Word>Select</Word><Word>Set</Word><Word>Shadows</Word><Word>Shared</Word>
+      <Word>Static</Word><Word>Step</Word><Word>Stop</Word><Word>Structure</Word>
+      <Word>Sub</Word><Word>SyncLock</Word><Word>Then</Word><Word>Throw</Word>
+      <Word>To</Word><Word>True</Word><Word>Try</Word><Word>TryCast</Word>
+      <Word>TypeOf</Word><Word>Using</Word><Word>When</Word><Word>While</Word>
+      <Word>Widening</Word><Word>With</Word><Word>WithEvents</Word><Word>WriteOnly</Word>
+      <Word>Xor</Word><Word>Yield</Word>
+    </Keywords>
+
+    <Keywords color="TypeKeyword">
+      <Word>Boolean</Word><Word>Byte</Word><Word>Char</Word><Word>Date</Word>
+      <Word>Decimal</Word><Word>Double</Word><Word>Integer</Word><Word>Long</Word>
+      <Word>Object</Word><Word>SByte</Word><Word>Short</Word><Word>Single</Word>
+      <Word>String</Word><Word>UInteger</Word><Word>ULong</Word><Word>UShort</Word>
+      <Word>Variant</Word>
+    </Keywords>
+
+    <Rule color="Number">
+      ( &amp;[hH][0-9a-fA-F_]+ | &amp;[oO][0-7_]+ | &amp;[bB][01_]+
+      | \b( (\d[\d_]*)?\.\d[\d_]* ([eE][+-]?\d+)? | \d[\d_]*\.? ([eE][+-]?\d+)? ) )
+      ([uU][sSiIlL]|[sSiIlLdDfFrRcC])?
+    </Rule>
+
+    <Rule color="Function">\b[A-Za-z_]\w*(?=\s*\()</Rule>
+    <!-- A trailing underscore continues the statement on the next line. -->
+    <Rule color="Operator">(?&lt;=\s)_$|[+\-*/\\^=&lt;&gt;&amp;]+</Rule>
+    <Rule color="Punctuation">[(){}\[\];,.!?]</Rule>
+  </RuleSet>
+</SyntaxDefinition>

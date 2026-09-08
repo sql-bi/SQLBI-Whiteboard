@@ -160,7 +160,7 @@
                                 <ComboBox x:Name="TextEditorLanguageCombo"
                                           Grid.Column="1"
                                           Style="{StaticResource LanguageComboBox}"
-                                          Width="110"
+                                          Width="132"
                                           Height="22"
                                           Margin="0,0,6,0"
                                           VerticalAlignment="Center"

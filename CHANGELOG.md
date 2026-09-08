@@ -17,6 +17,19 @@ broke. The heading is parsed by `scripts/release-notes.ps1`, so keep its shape; 
 under it is ordinary Markdown, and the renderer handles paragraphs, lists, links, `code`
 and **bold**.
 
+## 1.4.0 - 8 September 2026
+
+### Eleven more languages in a text container
+The title-bar chip now also offers Python, C, C++, Java, C#, JavaScript, TypeScript,
+Visual Basic .NET, R, Rust, and PHP. Choose one and the text is highlighted, on the board
+and in an export. These languages are not formatted and are not recognized on paste: pick
+them by hand.
+
+### F6 asks for a vote on a language it cannot format
+On one of the new languages, **F6** opens a short note with a link to that language's issue
+on GitHub. A thumbs-up there is how the next formatter is chosen. DAX, SQL, and KQL still
+format, and Plain text is still quiet.
+
 ## 1.3.1 - 5 September 2026
 
 ### KQL joins DAX and SQL in text containers

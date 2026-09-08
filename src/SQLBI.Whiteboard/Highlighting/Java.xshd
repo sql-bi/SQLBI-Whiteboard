@@ -1,0 +1,84 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Java. A color name here is a category, not a color: SyntaxHighlighter maps the
+  names to the palette every language shares.
+-->
+<SyntaxDefinition name="Java" extensions=".java" xmlns="http://icsharpcode.net/sharpdevelop/syntaxdefinition/2008">
+  <Color name="Comment" />
+  <Color name="String" />
+  <Color name="Character" />
+  <Color name="Number" />
+  <Color name="Keyword" />
+  <Color name="TypeKeyword" />
+  <Color name="Attribute" />
+  <Color name="Function" />
+  <Color name="Operator" />
+  <Color name="Punctuation" />
+
+  <RuleSet ignoreCase="false">
+    <Span color="Comment" multiline="true"><Begin>/\*</Begin><End>\*/</End></Span>
+    <Span color="Comment"><Begin>//</Begin></Span>
+
+    <!-- A text block, before the ordinary string that its first quote opens. -->
+    <Span color="String" multiline="true">
+      <Begin>"""</Begin>
+      <End>"""</End>
+      <RuleSet><Span begin="\\" end="." /></RuleSet>
+    </Span>
+    <Span color="String">
+      <Begin>"</Begin>
+      <End>"</End>
+      <RuleSet><Span begin="\\" end="." /></RuleSet>
+    </Span>
+    <Span color="Character">
+      <Begin>'</Begin>
+      <End>'</End>
+      <RuleSet><Span begin="\\" end="." /></RuleSet>
+    </Span>
+
+    <Rule color="Attribute">@\s*[A-Za-z_]\w*</Rule>
+
+    <Keywords color="Keyword">
+      <Word>abstract</Word><Word>assert</Word><Word>break</Word><Word>case</Word>
+      <Word>catch</Word><Word>class</Word><Word>const</Word><Word>continue</Word>
+      <Word>default</Word><Word>do</Word><Word>else</Word><Word>enum</Word>
+      <Word>exports</Word><Word>extends</Word><Word>false</Word><Word>final</Word>
+      <Word>finally</Word><Word>for</Word><Word>goto</Word><Word>if</Word>
+      <Word>implements</Word><Word>import</Word><Word>instanceof</Word><Word>interface</Word>
+      <Word>module</Word><Word>native</Word><Word>new</Word><Word>non-sealed</Word>
+      <Word>null</Word><Word>opens</Word><Word>package</Word><Word>permits</Word>
+      <Word>private</Word><Word>protected</Word><Word>provides</Word><Word>public</Word>
+      <Word>record</Word><Word>requires</Word><Word>return</Word><Word>sealed</Word>
+      <Word>static</Word><Word>strictfp</Word><Word>super</Word><Word>switch</Word>
+      <Word>synchronized</Word><Word>this</Word><Word>throw</Word><Word>throws</Word>
+      <Word>to</Word><Word>transient</Word><Word>transitive</Word><Word>true</Word>
+      <Word>try</Word><Word>uses</Word><Word>volatile</Word><Word>while</Word>
+      <Word>with</Word><Word>yield</Word>
+    </Keywords>
+
+    <Keywords color="TypeKeyword">
+      <Word>boolean</Word><Word>byte</Word><Word>char</Word><Word>double</Word>
+      <Word>float</Word><Word>int</Word><Word>long</Word><Word>short</Word>
+      <Word>void</Word><Word>var</Word><Word>String</Word><Word>Object</Word>
+      <Word>Integer</Word><Word>Long</Word><Word>Double</Word><Word>Float</Word>
+      <Word>Boolean</Word><Word>Character</Word><Word>Byte</Word><Word>Short</Word>
+      <Word>List</Word><Word>Map</Word><Word>Set</Word><Word>Optional</Word>
+      <Word>Stream</Word>
+    </Keywords>
+
+    <Rule color="Number">
+      (?&lt;![\w.])(
+        0[xX][0-9a-fA-F_]+
+      | 0[bB][01_]+
+      | (\d[\d_]*)?\.\d[\d_]*([eE][+-]?\d+)?
+      | \d[\d_]*\.?([eE][+-]?\d+)?
+      )[lLfFdD]?
+    </Rule>
+
+    <Rule color="Function">
+      \b[A-Za-z_]\w* (?= \s* ( \( | &lt; [\w.,\s?\[\]]+ &gt; \s* \( ) )
+    </Rule>
+    <Rule color="Operator">-&gt;|::|[+\-*/%=!&lt;&gt;&amp;|^~?:]+</Rule>
+    <Rule color="Punctuation">[{}()\[\];,.]</Rule>
+  </RuleSet>
+</SyntaxDefinition>

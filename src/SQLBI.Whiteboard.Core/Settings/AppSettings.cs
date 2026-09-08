@@ -134,7 +134,7 @@ public sealed class AppSettings
     /// </summary>
     public bool ShowEraserButton { get; set; }
 
-    public List<string> SnippetFormatOrder { get; set; } = [.. TextLanguageIds.All];
+    public List<string> SnippetFormatOrder { get; set; } = [.. TextLanguageIds.DetectionOrder];
 
     public InkToolSettings Pen { get; set; } = InkToolSettings.From(InkPalettes.DefaultPen);
 
@@ -288,7 +288,7 @@ public static class AppSettingsSerializer
         if (settings.Version < VersionWithPlainTextLast &&
             TextLanguageIds.IsLegacyDefaultOrder(settings.SnippetFormatOrder))
         {
-            settings.SnippetFormatOrder = [.. TextLanguageIds.All];
+            settings.SnippetFormatOrder = [.. TextLanguageIds.DetectionOrder];
         }
 
         settings.SnippetFormatOrder = [.. TextLanguageIds.NormalizeOrder(settings.SnippetFormatOrder)];

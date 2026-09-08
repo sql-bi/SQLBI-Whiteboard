@@ -121,6 +121,14 @@ jobs:
           --project tests/SQLBI.Whiteboard.Core.SmokeTests/SQLBI.Whiteboard.Core.SmokeTests.csproj
           --configuration Release
 
+      # The highlighting adapter runs on AvalonEdit, so its tests need WPF.
+      - name: Application smoke tests
+        if: needs.changes.outputs.code == 'true'
+        run: >-
+          dotnet run
+          --project tests/SQLBI.Whiteboard.SmokeTests/SQLBI.Whiteboard.SmokeTests.csproj
+          --configuration Release
+
   installer:
     name: Build installers
     needs: changes

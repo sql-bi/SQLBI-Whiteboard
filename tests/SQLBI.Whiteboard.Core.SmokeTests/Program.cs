@@ -656,6 +656,69 @@ Assert(
     TextLanguageIds.SqlServer,
     "Archive round trips should preserve the SQL Server text language.");
 
+// A language the selector offers has to survive the file whether or not the release
+// that saved it could color it, and an identifier no release ever had still opens as
+// plain text rather than losing the container.
+var languageDocument = new BoardDocument();
+foreach (string languageId in TextLanguageIds.All)
+{
+    languageDocument.AddObject(new TextBoardObject(
+        Guid.NewGuid(),
+        languageDocument.NextZIndex,
+        new RectD(0, 0, 320, 120),
+        "Snippet",
+        "one" + (char)10 + "two",
+        1,
+        languageId));
+}
+
+await using var languageArchive = new MemoryStream();
+await BoardArchive.SaveAsync(languageDocument, languageArchive);
+languageArchive.Position = 0;
+BoardDocument loadedLanguages = await BoardArchive.LoadAsync(languageArchive);
+Assert(
+    loadedLanguages.Objects.OfType<TextBoardObject>()
+        .Select(text => text.LanguageId)
+        .Order(StringComparer.Ordinal)
+        .SequenceEqual(TextLanguageIds.All.Order(StringComparer.Ordinal), StringComparer.Ordinal),
+    "Every language the selector offers round-trips through a board file.");
+
+string unknownLanguageScene = $$"""
+{
+  "version": 5,
+  "objects": [
+    {
+      "type": "text",
+      "id": "{{Guid.NewGuid()}}",
+      "zIndex": 0,
+      "bounds": { "x": 10, "y": 20, "width": 300, "height": 120 },
+      "textTitle": "From a later release",
+      "textContent": "print(1)",
+      "textVisualScale": 1,
+      "textLanguageId": "brainfuck"
+    }
+  ],
+  "assets": []
+}
+""";
+await using var unknownLanguageStream = new MemoryStream();
+using (var unknownLanguageArchive = new ZipArchive(
+           unknownLanguageStream,
+           ZipArchiveMode.Create,
+           leaveOpen: true))
+{
+    ZipArchiveEntry sceneEntry = unknownLanguageArchive.CreateEntry("scene.json");
+    await using Stream sceneStream = sceneEntry.Open();
+    await sceneStream.WriteAsync(Encoding.UTF8.GetBytes(unknownLanguageScene));
+}
+
+unknownLanguageStream.Position = 0;
+BoardDocument unknownLanguageDocument = await BoardArchive.LoadAsync(unknownLanguageStream);
+Assert(
+    unknownLanguageDocument.Objects.OfType<TextBoardObject>().Single() is
+    { LanguageId: TextLanguageIds.Plain, Text: "print(1)" },
+    "A language identifier this release does not know opens as plain text, keeping the source.");
+
 await using var previewArchive = new MemoryStream();
 var previewBytes = new byte[] { 0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A, 1, 2, 3 };
 await BoardArchive.SaveAsync(
@@ -953,7 +1016,7 @@ Assert(
     defaultSettings.SnippetFormatOrder is ["dax", "sqlserver", "kql", "plain"],
     "A new setup tries every language before plain text, so pasted code is code without a setting.");
 Assert(
-    TextLanguageIds.NormalizeOrder(["sqlserver", "plain", "dax", "plain", "python"]) is
+    TextLanguageIds.NormalizeOrder(["sqlserver", "plain", "dax", "plain", "not-a-language"]) is
         ["sqlserver", "kql", "plain", "dax"],
     "Snippet format order should drop unknowns, keep first-seen order, and put a missing language in front of plain text.");
 var snippetOrderRoundTrip = AppSettingsSerializer.Parse(
@@ -985,6 +1048,56 @@ Assert(
     AppSettingsSerializer.Parse("""{ "version": 16, "snippetFormatOrder": ["plain", "dax", "sqlserver", "kql"] }""").SnippetFormatOrder is
         ["plain", "dax", "sqlserver", "kql"],
     "A current file that puts plain text first chose to, and is left alone.");
+
+// Choosing a language and recognizing one are two lists. Everything the selector offers
+// is saved and restored; only the four that can read a snippet claim a paste, so a
+// language chosen by hand is skipped in the snippet format order rather than read as
+// plain text, which would move plain text up an order it was never part of.
+Assert(
+    TextLanguageIds.All.Count == 15 &&
+    TextLanguageIds.All[0] == TextLanguageIds.Plain &&
+    TextLanguageIds.All.Distinct(StringComparer.Ordinal).Count() == 15,
+    "The selector offers fifteen distinct languages, plain text first.");
+Assert(
+    TextLanguageIds.DetectionOrder is ["dax", "sqlserver", "kql", "plain"] &&
+    TextLanguageIds.All.Count(TextLanguageIds.CanDetect) == 4,
+    "Only the four languages that read a snippet take part in detection.");
+Assert(
+    TextLanguageIds.Normalize("Python") == TextLanguageIds.Python &&
+    TextLanguageIds.Normalize(" VBNET ") == TextLanguageIds.VbNet &&
+    TextLanguageIds.Normalize("C++") == TextLanguageIds.Plain,
+    "A language added for manual selection normalizes for persistence; a caption is not an identifier.");
+Assert(
+    TextLanguageIds.NormalizeOrder(["dax", "python", "rust", "plain"]) is
+        ["dax", "sqlserver", "kql", "plain"],
+    "A language chosen by hand is ignored in the snippet format order, not read as plain text.");
+Assert(
+    TextLanguageIds.NormalizeOrder(["not-a-language", "dax"]) is
+        ["plain", "dax", "sqlserver", "kql"],
+    "A name that is no language still reads as plain text, so an order beginning with one keeps pastes plain.");
+Assert(
+    AppSettingsSerializer.Parse("""{ "version": 16, "snippetFormatOrder": ["python", "dax", "rust", "plain"] }""")
+        .SnippetFormatOrder is ["dax", "sqlserver", "kql", "plain"],
+    "A manual-only language written into settings is dropped from the saved order.");
+
+// F6 answers a language it cannot format by asking for a vote, and the issue it opens
+// is fixed per language rather than assembled from anything on the board.
+Assert(
+    new[]
+    {
+        (TextLanguageIds.Python, 108), (TextLanguageIds.C, 109), (TextLanguageIds.Cpp, 110),
+        (TextLanguageIds.Java, 111), (TextLanguageIds.CSharp, 112), (TextLanguageIds.JavaScript, 113),
+        (TextLanguageIds.TypeScript, 114), (TextLanguageIds.VbNet, 115), (TextLanguageIds.R, 116),
+        (TextLanguageIds.Rust, 117), (TextLanguageIds.Php, 118),
+    }.All(entry =>
+        TextLanguageIds.FormattingRequestUrl(entry.Item1) ==
+        $"https://github.com/sql-bi/SQLBI-Whiteboard/issues/{entry.Item2}"),
+    "Each language chosen by hand resolves to its own voting issue.");
+Assert(
+    TextLanguageIds.All.Where(TextLanguageIds.CanDetect)
+        .All(languageId => TextLanguageIds.FormattingRequestUrl(languageId) is null) &&
+    TextLanguageIds.FormattingRequestUrl("not-a-language") is null,
+    "Plain text and the three languages that format have nothing to vote for.");
 const string longMeasure = "Sales Amount := SUMX ( Sales, Sales[Quantity] * Sales[Net Price] * ( 1 - Sales[Discount] ) )";
 Assert(
     DaxLanguageEngine.TryFormat(longMeasure, 65, out string narrowDax) &&

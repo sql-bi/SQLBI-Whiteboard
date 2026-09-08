@@ -1,0 +1,101 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Rust. A color name here is a category, not a color: SyntaxHighlighter maps the
+  names to the palette every language shares.
+
+  A block comment nests, which a single regex cannot express: the comment's rule
+  set contains the comment itself, so every /* pushes another one and the run
+  ends where Rust says it ends. The apostrophe is both a lifetime and a
+  character literal, and the lifetime rule runs first with a lookahead that
+  refuses the closing quote a character literal has.
+-->
+<SyntaxDefinition name="Rust" extensions=".rs" xmlns="http://icsharpcode.net/sharpdevelop/syntaxdefinition/2008">
+  <Color name="Comment" />
+  <Color name="String" />
+  <Color name="Character" />
+  <Color name="Variable" />
+  <Color name="Number" />
+  <Color name="Keyword" />
+  <Color name="TypeKeyword" />
+  <Color name="Attribute" />
+  <Color name="Function" />
+  <Color name="Operator" />
+  <Color name="Punctuation" />
+
+  <RuleSet name="NestedComment">
+    <Span color="Comment" ruleSet="NestedComment" multiline="true">
+      <Begin>/\*</Begin><End>\*/</End>
+    </Span>
+  </RuleSet>
+
+  <RuleSet ignoreCase="false">
+    <Span color="Comment" ruleSet="NestedComment" multiline="true">
+      <Begin>/\*</Begin><End>\*/</End>
+    </Span>
+    <Span color="Comment"><Begin>//</Begin></Span>
+
+    <!-- Raw strings, longest hash run first; the byte forms take the same path. -->
+    <Span color="String" multiline="true"><Begin>b?r\#\#\#"</Begin><End>"\#\#\#</End></Span>
+    <Span color="String" multiline="true"><Begin>b?r\#\#"</Begin><End>"\#\#</End></Span>
+    <Span color="String" multiline="true"><Begin>b?r\#"</Begin><End>"\#</End></Span>
+    <Span color="String" multiline="true"><Begin>b?r"</Begin><End>"</End></Span>
+    <Span color="String" multiline="true">
+      <Begin>b?"</Begin><End>"</End>
+      <RuleSet><Span begin="\\" end="." /></RuleSet>
+    </Span>
+
+    <!-- An attribute, inner or outer, before the directive-looking hash. -->
+    <Span color="Attribute">
+      <Begin>\#!?\[</Begin><End>\]</End>
+      <RuleSet>
+        <Span color="String"><Begin>"</Begin><End>"</End><RuleSet><Span begin="\\" end="." /></RuleSet></Span>
+      </RuleSet>
+    </Span>
+
+    <!-- A lifetime is an apostrophe that no closing quote follows. -->
+    <Rule color="Variable">'(?:static|_|[a-z][a-z0-9_]*)\b(?!')</Rule>
+    <Rule color="Character">b?'(\\.|[^\\'\n]){1,10}?'</Rule>
+
+    <Keywords color="Keyword">
+      <Word>as</Word><Word>async</Word><Word>await</Word><Word>break</Word>
+      <Word>const</Word><Word>continue</Word><Word>crate</Word><Word>dyn</Word>
+      <Word>else</Word><Word>enum</Word><Word>extern</Word><Word>false</Word>
+      <Word>fn</Word><Word>for</Word><Word>if</Word><Word>impl</Word>
+      <Word>in</Word><Word>let</Word><Word>loop</Word><Word>match</Word>
+      <Word>mod</Word><Word>move</Word><Word>mut</Word><Word>pub</Word>
+      <Word>ref</Word><Word>return</Word><Word>self</Word><Word>Self</Word>
+      <Word>static</Word><Word>struct</Word><Word>super</Word><Word>trait</Word>
+      <Word>true</Word><Word>type</Word><Word>union</Word><Word>unsafe</Word>
+      <Word>use</Word><Word>where</Word><Word>while</Word><Word>yield</Word>
+    </Keywords>
+
+    <Keywords color="TypeKeyword">
+      <Word>bool</Word><Word>char</Word><Word>f32</Word><Word>f64</Word>
+      <Word>i8</Word><Word>i16</Word><Word>i32</Word><Word>i64</Word>
+      <Word>i128</Word><Word>isize</Word><Word>str</Word><Word>u8</Word>
+      <Word>u16</Word><Word>u32</Word><Word>u64</Word><Word>u128</Word>
+      <Word>usize</Word><Word>String</Word><Word>Vec</Word><Word>Option</Word>
+      <Word>Result</Word><Word>Box</Word><Word>Rc</Word><Word>Arc</Word>
+      <Word>HashMap</Word><Word>HashSet</Word><Word>BTreeMap</Word>
+    </Keywords>
+
+    <Rule color="Number">
+      \b(
+        0[xX][0-9a-fA-F_]+
+      | 0[bB][01_]+
+      | 0[oO][0-7_]+
+      | (\d[\d_]*)?\.\d[\d_]*([eE][+-]?\d+)?
+      | \d[\d_]*\.?([eE][+-]?\d+)?
+      )(([iuf](8|16|32|64|128|size))|usize|isize)?
+    </Rule>
+
+    <!-- A macro invocation is a name with a bang; a call is a name with a
+         parenthesis, or one that names its type arguments first. -->
+    <Rule color="Function">\b[A-Za-z_]\w*!</Rule>
+    <Rule color="Function">
+      \b[A-Za-z_]\w* (?= \s* ( \( | ::&lt; ) )
+    </Rule>
+    <Rule color="Operator">-&gt;|=&gt;|\.\.=?|[+\-*/%=!&lt;&gt;&amp;|^~?]+</Rule>
+    <Rule color="Punctuation">::|[{}()\[\];,.:@]</Rule>
+  </RuleSet>
+</SyntaxDefinition>
