@@ -1,8 +1,15 @@
+using System.IO;
 using System.Diagnostics;
+using System.IO.Compression;
+using System.Text;
 using System.Windows;
 using System.Windows.Media;
 using SQLBI.Whiteboard;
+using SQLBI.Whiteboard.Core.Export;
+using SQLBI.Whiteboard.Core.Geometry;
 using SQLBI.Whiteboard.Core.Model;
+using SQLBI.Whiteboard.Core.Settings;
+using SQLBI.Whiteboard.Export;
 
 // The languages Whiteboard colors from a syntax definition rather than a parser.
 // What is checked is what a reader sees: which characters carry which color, that
@@ -108,6 +115,7 @@ Colors(CSource, TextLanguageIds.C, "Number", "0xFF'00uL");
 
 const string CppSource = """
     #include <vector>
+    // A comment
     [[nodiscard]] constexpr auto make() noexcept -> std::vector<int> {
         auto s = R"(raw "quoted" text)";
         auto j = R"json({"a": 1})json";
@@ -115,6 +123,7 @@ const string CppSource = """
     }
     """;
 
+Colors(CppSource, TextLanguageIds.Cpp, "Comment", "// A comment");
 Colors(CppSource, TextLanguageIds.Cpp, "Directive", "[[nodiscard]]");
 Colors(CppSource, TextLanguageIds.Cpp, "Keyword", "constexpr");
 Colors(CppSource, TextLanguageIds.Cpp, "String", "R\"(raw \"quoted\" text)\"");
@@ -210,6 +219,7 @@ Colors(JsSource, TextLanguageIds.JavaScript, "Number", ".5e-3");
 Colors(JsSource, TextLanguageIds.JavaScript, "Comment", "// done");
 
 const string TsSource = """
+    // A comment
     @Component({ selector: 'app' })
     export class Widget<T extends object> implements OnInit {
         async load(id?: number): Promise<Record<string, unknown>> {
@@ -221,6 +231,7 @@ const string TsSource = """
 
 // TypeScript is JavaScript with types written into it, and its definition says
 // so: the string, template and regular expression rules are imported.
+Colors(TsSource, TextLanguageIds.TypeScript, "Comment", "// A comment");
 Colors(TsSource, TextLanguageIds.TypeScript, "Directive", "@Component");
 Colors(TsSource, TextLanguageIds.TypeScript, "Type", "unknown");
 Colors(TsSource, TextLanguageIds.TypeScript, "Keyword", "satisfies");
@@ -363,7 +374,31 @@ Colors(Astral, TextLanguageIds.CSharp, "Comment", "// caff\u00e8 \u2615");
 Colors(Astral, TextLanguageIds.CSharp, "String", "\"gr\U0001F389ok\"");
 Colors(Astral, TextLanguageIds.CSharp, "Comment", "// ok");
 
-foreach (string languageId in TextLanguageIds.All.Where(id => !TextLanguageIds.CanDetect(id)))
+// The same questions asked of every language, over the snippet written for it
+// above, rather than a case each: what a reader is owed does not vary by
+// language, and neither should the coverage.
+(string LanguageId, string Source)[] corpus =
+[
+    (TextLanguageIds.C, CSource),
+    (TextLanguageIds.Cpp, CppSource),
+    (TextLanguageIds.CSharp, CSharpSource),
+    (TextLanguageIds.Java, JavaSource),
+    (TextLanguageIds.VbNet, VbSource),
+    (TextLanguageIds.JavaScript, JsSource),
+    (TextLanguageIds.TypeScript, TsSource),
+    (TextLanguageIds.Python, PythonSource),
+    (TextLanguageIds.R, RSource),
+    (TextLanguageIds.Rust, RustSource),
+    (TextLanguageIds.Php, PhpSource),
+];
+
+Assert(
+    corpus.Select(entry => entry.LanguageId).Order(StringComparer.Ordinal).SequenceEqual(
+        TextLanguageIds.All.Where(id => !TextLanguageIds.CanDetect(id)).Order(StringComparer.Ordinal),
+        StringComparer.Ordinal),
+    "Every language chosen by hand should be in the corpus.");
+
+foreach ((string languageId, string source) in corpus)
 {
     Assert(
         Spans(string.Empty, languageId).Count == 0 &&
@@ -373,26 +408,150 @@ foreach (string languageId in TextLanguageIds.All.Where(id => !TextLanguageIds.C
         Spans("plain words with no code in them", languageId)
             .All(span => span.Category is "Function" or "Punctuation" or "Keyword" or "Type" or "Operator" or "Number"),
         $"Ordinary prose should not be read as a string or a comment in {languageId}.");
+    Assert(
+        Spans(source, languageId).Count > 8,
+        $"The snippet for {languageId} should be colored.");
+
+    // A snippet cut anywhere is still a snippet: an unterminated string or
+    // comment colors to where the language ends it, and nothing is refused.
+    for (int cut = 1; cut < source.Length; cut += Math.Max(1, source.Length / 12))
+    {
+        Assert(Reconstructs(source[..cut], languageId), $"A snippet of {languageId} cut at {cut} should color validly.");
+    }
+
+    // Either line ending colors the same characters, and no span covers one.
+    // A raw string literal in this file carries the file's own line endings,
+    // so the two forms are made here rather than assumed.
+    string lfSource = source.Replace("\r\n", "\n", StringComparison.Ordinal);
+    string crLfSource = lfSource.Replace("\n", "\r\n", StringComparison.Ordinal);
+    Assert(
+        Spans(lfSource, languageId).Select(span => span.Text)
+            .SequenceEqual(Spans(crLfSource, languageId).Select(span => span.Text), StringComparer.Ordinal),
+        $"CRLF and LF should color the same text in {languageId}.");
+    Assert(
+        Spans(crLfSource, languageId).All(span => !span.Text.Contains('\r')),
+        $"No span should cover a carriage return in {languageId}.");
+
+    // Offsets are UTF-16 offsets, which is what the colorizer and the exporters
+    // index with. A character outside the basic plane is two of them, so a line
+    // holding one moves every span that follows by three.
+    const string AstralLine = "\U0001F389\n";
+    IReadOnlyList<Span> shifted = Spans(AstralLine + source, languageId);
+    Assert(
+        shifted.Select(span => (span.Start - AstralLine.Length, span.Text))
+            .SequenceEqual(Spans(source, languageId).Select(span => (span.Start, span.Text))),
+        $"A surrogate pair should move the spans of {languageId} by its two units, and change none of them.");
+
+    // A snippet of the size someone puts on a board colors quickly, and one
+    // past the analyzer's limit is left uncolored rather than colored slowly.
+    string large = string.Concat(Enumerable.Repeat(source + "\n", Math.Max(1, 40_000 / source.Length)));
+    var watch = Stopwatch.StartNew();
+    int count = Spans(large, languageId).Count;
+    watch.Stop();
+    Assert(
+        count > 8 && watch.ElapsedMilliseconds < 4000,
+        $"A large {languageId} snippet should still color, and took {watch.ElapsedMilliseconds} ms.");
+    Assert(
+        Spans(string.Concat(Enumerable.Repeat(source + "\n", (100_000 / source.Length) + 2)), languageId).Count == 0,
+        $"A {languageId} source past the limit should be left uncolored.");
 }
 
-// A snippet longer than the analyzer's limit is shown uncolored rather than
-// slowly, and one under it stays quick.
-string wide = "var x = " + string.Join(" + ", Enumerable.Range(0, 30000).Select(index => $"\"s{index}\"")) + ";";
-Assert(wide.Length > 100_000 && Spans(wide, TextLanguageIds.CSharp).Count == 0, "A source past the limit is left uncolored.");
-string tall = string.Concat(Enumerable.Repeat("    public int Value => 1_000; // note\n", 1200));
-var watch = Stopwatch.StartNew();
-int spanCount = Spans(tall, TextLanguageIds.CSharp).Count;
-watch.Stop();
-Assert(spanCount > 1200 && watch.ElapsedMilliseconds < 4000, $"A large snippet should still color, and did in {watch.ElapsedMilliseconds} ms.");
-
 // Switching a container's language re-reads the source rather than handing
-// back what the language before it found.
+// back what the language before it found, whichever order they are asked in.
+IReadOnlyList<Span> firstReading = Spans(CSharpSource, TextLanguageIds.CSharp);
 Assert(
-    Spans("var x = 1;", TextLanguageIds.CSharp).Any(span => span.Category == "Type" && span.Text == "var") &&
-    !Spans("var x = 1;", TextLanguageIds.Java).Any(span => span.Text == "var" && span.Category == "Keyword"),
-    "Two languages should read the same source their own way.");
+    !Spans(CSharpSource, TextLanguageIds.Python).Select(span => (span.Start, span.Category))
+        .SequenceEqual(firstReading.Select(span => (span.Start, span.Category))) &&
+    Spans(CSharpSource, TextLanguageIds.CSharp).Select(span => (span.Start, span.Category))
+        .SequenceEqual(firstReading.Select(span => (span.Start, span.Category))),
+    "A language switch and a switch back should each read the source afresh.");
+
+// The export path reads the same analysis the board and the editor do, so what
+// leaves for PowerPoint or PDF is the coloring on screen. The runs are checked
+// here against the source they came from: together they spell it exactly.
+var exportDocument = new BoardDocument();
+foreach ((string languageId, string source) in corpus)
+{
+    exportDocument.AddObject(new TextBoardObject(
+        Guid.NewGuid(),
+        exportDocument.NextZIndex,
+        new RectD(0, exportDocument.Objects.Count * 400, 900, 360),
+        "Snippet",
+        source,
+        1,
+        languageId));
+}
+
+var exportSettings = new ExportSettings { PageModel = ExportPageModel.WholeBoard };
+IReadOnlyList<ExportArea> areas = BoardExporter.Areas(exportDocument, exportSettings, null);
+Assert(areas.Count == 1, "A whole-board export is one area.");
+IReadOnlyList<SlideElement> elements =
+    EditableSlide.Build(exportDocument, areas[0], 1600, 900, null, inkAsStrokes: true);
+SlideTextElement[] textElements = elements.OfType<SlideTextElement>().ToArray();
+Assert(textElements.Length == corpus.Length, "Every text container should leave as a text element.");
+
+for (int index = 0; index < corpus.Length; index++)
+{
+    (string languageId, string source) = corpus[index];
+    SlideTextElement element = textElements[index];
+    Assert(
+        string.Concat(element.Runs.Select(run => run.Text)) == source,
+        $"The exported runs for {languageId} should spell the source exactly.");
+    Assert(
+        element.FontFamily == "Consolas" && element.Title == $"{TextLanguageRegistry.Resolve(languageId).DisplayName} Code",
+        $"An exported {languageId} container should keep its code font and its title.");
+    Assert(
+        element.Runs.Any(run => run.Argb != 0xFF1F2937),
+        $"An exported {languageId} container should carry its colors.");
+    Assert(
+        element.Runs.Any(run => run.Italic),
+        $"A comment should still be italic after export in {languageId}.");
+}
+
+// And the writers accept them: a deck whose slide XML holds the snippet, and a
+// vector page that opens.
+byte[] onePixelPng = Convert.FromBase64String(
+    "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==");
+ExportPage[] pages = [new ExportPage("Languages", null, onePixelPng, 1600, 900, elements)];
+using var deck = new MemoryStream();
+PptxDeckWriter.Write(deck, pages, new DeckOptions(SlideAspect.Wide));
+deck.Position = 0;
+using (var package = new ZipArchive(deck, ZipArchiveMode.Read, leaveOpen: true))
+{
+    ZipArchiveEntry slide = package.Entries.Single(entry => entry.FullName == "ppt/slides/slide1.xml");
+    using var slideReader = new StreamReader(slide.Open());
+    string slideXml = slideReader.ReadToEnd();
+    Assert(
+        slideXml.Contains("println!", StringComparison.Ordinal) &&
+        slideXml.Contains("NA_real_", StringComparison.Ordinal) &&
+        slideXml.Contains("Rust Code", StringComparison.Ordinal),
+        "The deck's slide should hold the snippets and their titles as text.");
+}
+
+using var vector = new MemoryStream();
+PdfDocumentWriter.Write(vector, pages, new PdfOptions(PdfPageSize.A4, Landscape: true));
+Assert(
+    vector.Length > 1000 && Encoding.ASCII.GetString(vector.ToArray(), 0, 5) == "%PDF-",
+    "The vector page should be written as a PDF.");
 
 Console.WriteLine("SQLBI.Whiteboard smoke tests passed.");
+
+// Whether the spans, and the text between them, put the source back together
+// unchanged. Nothing here rewrites a snippet; a span only says what covers it.
+static bool Reconstructs(string source, string languageId)
+{
+    var rebuilt = new StringBuilder();
+    int cursor = 0;
+    foreach (Span span in Spans(source, languageId))
+    {
+        rebuilt.Append(source, cursor, span.Start - cursor);
+        rebuilt.Append(span.Text);
+        cursor = span.Start + span.Length;
+    }
+
+    rebuilt.Append(source, cursor, source.Length - cursor);
+    return rebuilt.ToString() == source;
+}
 
 // Every span is checked here rather than in each case: in order, not
 // overlapping, inside the source, and covering only what the source already

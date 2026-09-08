@@ -1,13 +1,12 @@
 # Additional languages: highlighting and manual selection
 
-Status: steps 1 to 3 of the delivery sequence are implemented. Step 1 built the capability
-split, its persistence tests, the highlighting spike recorded below, and the F6 voting
-prompt. Step 2 added the highlighting adapter, the definitions for C, C++, C#, Java and
-Visual Basic .NET, and a WPF test host for them. Step 3 added JavaScript, TypeScript,
-Python, R, Rust and PHP, so all eleven languages are colored. Step 4 remains: the
-regression and export matrix, and the README, site and release-note text that describe
-the feature once it ships. The eleven formatting/detection voting issues below were
-created on 8 September 2026.
+Status: implemented, and shipping as 1.4.0. Step 1 built the capability split, its
+persistence tests, the highlighting spike recorded below, and the F6 voting prompt. Step 2
+added the highlighting adapter, the definitions for C, C++, C#, Java and Visual Basic
+.NET, and a WPF test host for them. Step 3 added JavaScript, TypeScript, Python, R, Rust
+and PHP. Step 4 completed the regression and export matrix and the text a reader sees. The
+eleven formatting/detection voting issues below were created on 8 September 2026, and are
+what decides which language is formatted next.
 
 ## Outcome and scope
 
