@@ -5028,7 +5028,93 @@ public partial class MainWindow : Window
             return;
         }
 
+        // Every way into a board arrives here - the Open dialog, a drop, and a double-click
+        // in Explorer by way of the command line - so this is the one place that has to ask
+        // whether something newer than the file is waiting for it.
+        if (await TryOpenRecoveredAsync(filePath))
+        {
+            return;
+        }
+
         await LoadBoardAsync(filePath);
+    }
+
+    /// <summary>
+    /// Offers what a copy that closed unexpectedly was holding for this exact file. True
+    /// when the open has been dealt with and the file itself should not be loaded.
+    /// </summary>
+    private async Task<bool> TryOpenRecoveredAsync(string filePath)
+    {
+        AbandonedSession? match = SessionStore.FindAbandoned().FirstOrDefault(item =>
+            item.State.Modified &&
+            !item.State.ExitedCleanly &&
+            item.BoardPath is not null &&
+            item.State.BoardPath is not null &&
+            IsSameFile(item.State.BoardPath, filePath));
+
+        if (match is null)
+        {
+            return false;
+        }
+
+        var when = match.State.WrittenUtc.ToLocalTime().ToString("f");
+        MessageBoxResult answer = MessageBox.Show(
+            this,
+            $"{Path.GetFileName(filePath)} has unsaved changes from {when}, left behind when " +
+            "SQLBI Whiteboard closed unexpectedly.\n\n" +
+            "Open those changes instead of the saved file? Choosing No opens the saved file " +
+            "and discards them.",
+            "SQLBI Whiteboard",
+            MessageBoxButton.YesNoCancel,
+            MessageBoxImage.Question);
+
+        if (answer == MessageBoxResult.Cancel)
+        {
+            // Neither the changes nor the file: the slot keeps its place and the board on
+            // screen is left alone.
+            return true;
+        }
+
+        if (answer != MessageBoxResult.Yes)
+        {
+            // The saved file was asked for by name, so the changes it was offered against
+            // have been answered and must not be offered again.
+            SessionStore.Forget(match.SlotId);
+            return false;
+        }
+
+        if (!await AdoptSessionAsync(match))
+        {
+            return false;
+        }
+
+        await WriteSessionAsync(keepBoard: true, exitedCleanly: false);
+        SessionStore.Forget(match.SlotId);
+        return true;
+    }
+
+    /// <summary>
+    /// Whether two paths name the same file on this machine. Compared after expansion, since
+    /// the same board reaches the application as a full path from Explorer and as whatever
+    /// was typed from everywhere else.
+    /// </summary>
+    private static bool IsSameFile(string left, string right)
+    {
+        try
+        {
+            return string.Equals(
+                Path.GetFullPath(left),
+                Path.GetFullPath(right),
+                StringComparison.OrdinalIgnoreCase);
+        }
+        catch (ArgumentException)
+        {
+            return false;
+        }
+        catch (IOException)
+        {
+            return false;
+        }
     }
 
     private async Task LoadBoardAsync(string filePath)
@@ -5779,7 +5865,9 @@ public partial class MainWindow : Window
         var keepBoard = IsModified;
         if (_currentBoardPath is not null && IsModified)
         {
-            var dialog = new UnsavedChangesWindow(Path.GetFileName(_currentBoardPath))
+            var dialog = new UnsavedChangesWindow(
+                Path.GetFileName(_currentBoardPath),
+                _document.Objects.OfType<LiveViewBoardObject>().Any())
             {
                 Owner = this,
             };

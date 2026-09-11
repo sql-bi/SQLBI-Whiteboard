@@ -27,10 +27,18 @@ public enum UnsavedChangesAnswer
 /// </summary>
 public partial class UnsavedChangesWindow : Window
 {
-    public UnsavedChangesWindow(string boardName)
+    public UnsavedChangesWindow(string boardName, bool hasLiveView)
     {
         InitializeComponent();
         HeadingText.Text = $"{boardName} has unsaved changes";
+        SaveDetail.Text = $"Write the changes to {boardName}.";
+
+        // Only worth saying where there is a feed to lose. On a board without one it would
+        // be a sentence about a feature the reader is not using, in the row they are most
+        // likely to want when they have hit the wrong thing.
+        CancelDetail.Text = hasLiveView
+            ? "Go back to the board. The only answer that keeps a LiveView feed connected."
+            : "Go back to the board and carry on.";
     }
 
     /// <summary>

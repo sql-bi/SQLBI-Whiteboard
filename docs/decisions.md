@@ -787,10 +787,21 @@ below follows from that.
   copy — it may have been edited elsewhere since — so a slot that matched its file reopens
   the file. Only a board that never matched one carries its own copy.
 
-What is not built, and would be worth building: opening a `.wboard` does not yet notice
-that an abandoned slot is holding unsaved changes for that same file. The sidecar already
-records the path, so it is a lookup rather than a new model. It is
-[issue 122](https://github.com/sql-bi/SQLBI-Whiteboard/issues/122).
+- **Opening a board asks the slots whether anything newer is waiting for it**
+  ([issue 122](https://github.com/sql-bi/SQLBI-Whiteboard/issues/122)). Without this, the
+  moment somebody is most likely to want their recovered work — opening the very board they
+  lost — is the moment the application says nothing, because the recovery offer only appears
+  at startup and only for the newest slot. The sidecar already records the path, so it is a
+  lookup. Three calls inside it:
+  - **Every route into a board goes through one place.** The Open dialog, a drop, and a
+    double-click in Explorer all arrive at `OpenPathAsync`, so the question is asked there
+    rather than three times over.
+  - **The answer is Yes, No, or Cancel, and No discards.** Opening the saved file by name is
+    an answer about those changes, not a postponement of the question; leaving the slot would
+    bring the same prompt back on the next open of the same file. Cancel opens neither and
+    keeps the slot, which is what an accidental Yes-or-No needs to be recoverable from.
+  - **Only a slot left by a crash is offered.** One that exited cleanly is either restored at
+    startup or dropped there, and offering it here as well would ask twice about one board.
 
 ---
 

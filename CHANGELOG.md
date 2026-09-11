@@ -36,6 +36,11 @@ The board is copied beside your settings every thirty seconds while you work. If
 Whiteboard stops unexpectedly, the next start offers to recover it. This copy is only ever a
 safety net — nothing here writes to your `.wboard` file without being asked.
 
+### Opening a board offers changes a crash left for it
+If SQLBI Whiteboard stopped unexpectedly while you had unsaved changes to a board, opening
+that board again offers those changes instead of the saved file. This works however you open
+it — **File → Open**, a drop, or a double-click in Explorer.
+
 ### The title bar says which board, and whether it is saved
 The window title now shows the file name, with an asterisk while the board differs from what
 is on disk. An untitled board reads as **Untitled board**.
