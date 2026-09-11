@@ -540,7 +540,60 @@
     <section class="story">
       <h3>Pick up where you left off</h3>
       <p>Close SQLBI Whiteboard and the board you had open is there again the next time you start, at the zoom and position you left it. Turn that off under <span class="ui">Preferences → Startup</span> if you would rather begin on a blank board every time.</p>
-      <p>Closing a saved board that has changed asks what to do first: <span class="ui">Keep for next time</span> leaves the file alone and brings the board back as it stands, and <span class="ui">Cancel</span> is the answer that keeps a LiveView feed connected. The board is also copied every thirty seconds while you work, so one lost to a crash is offered back at the next start rather than gone. Nothing on this path writes to your <code>.wboard</code> file — only <span class="ui">Save</span> does that.</p>
+      <p>Closing a saved board that has changed asks first: <span class="ui">Keep for next time</span> leaves the file alone and brings the board back as it stands, and <span class="ui">Cancel</span> is the answer that keeps a LiveView feed connected. The board is also copied aside every thirty seconds, so one lost to a crash is offered back — at the next start, or when you next open that board. Only <span class="ui">Save</span> writes to your <code>.wboard</code>.</p>
+
+      <figure class="fig">
+        <div class="figbox">
+          <svg viewBox="0 0 700 244" role="img" aria-label="The same board drawn twice: as it stood when the window was closed, and unchanged after the application was started again, with the same ink in the same place and the same unsaved marker in the title.">
+            <title>A board across a restart</title>
+            <defs>
+              <g id="restore-board">
+                <path d="M26 54c22-32 40 14 58-10s34 6 52-14" fill="none" stroke="var(--fig-ink)" stroke-width="3" stroke-linecap="round"/>
+                <path d="M28 88h104" fill="none" stroke="var(--fig-danger)" stroke-width="5" stroke-linecap="round" opacity=".55"/>
+                <rect x="160" y="34" width="98" height="62" rx="7" fill="var(--fig-surface-2)" stroke="var(--fig-line)"/>
+                <g fill="var(--fig-line)">
+                  <rect x="172" y="48" width="62" height="6" rx="3"/>
+                  <rect x="172" y="62" width="74" height="6" rx="3"/>
+                  <rect x="172" y="76" width="44" height="6" rx="3"/>
+                </g>
+              </g>
+              <pattern id="f13grid" width="34" height="34" patternUnits="userSpaceOnUse"><path d="M34 0H0v34" fill="none" stroke="var(--fig-grid)" stroke-width="1"/></pattern>
+              <clipPath id="f13left"><rect x="24" y="30" width="286" height="166" rx="12"/></clipPath>
+              <clipPath id="f13right"><rect x="390" y="30" width="286" height="166" rx="12"/></clipPath>
+            </defs>
+
+            <rect width="700" height="244" rx="10" fill="var(--fig-ground)"/>
+
+            <g clip-path="url(#f13left)">
+              <rect x="24" y="30" width="286" height="166" fill="var(--fig-surface)"/>
+              <rect x="24" y="58" width="286" height="138" fill="url(#f13grid)"/>
+              <rect x="24" y="30" width="286" height="28" fill="var(--fig-surface-2)"/>
+              <use href="#restore-board" x="24" y="58"/>
+            </g>
+            <rect x="24" y="30" width="286" height="166" rx="12" fill="none" stroke="var(--fig-line)"/>
+            <text x="40" y="49" font-size="11.5" fill="var(--fig-muted)">demo.wboard *</text>
+            <path d="M288 39l12 10M300 39l-12 10" stroke="var(--fig-muted)" stroke-width="1.6" stroke-linecap="round"/>
+
+            <path d="M326 113h42" fill="none" stroke="var(--fig-muted)" stroke-width="2" stroke-linecap="round"/>
+            <path d="M362 107l8 6-8 6" fill="none" stroke="var(--fig-muted)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+
+            <g clip-path="url(#f13right)">
+              <rect x="390" y="30" width="286" height="166" fill="var(--fig-surface)"/>
+              <rect x="390" y="58" width="286" height="138" fill="url(#f13grid)"/>
+              <rect x="390" y="30" width="286" height="28" fill="var(--fig-surface-2)"/>
+              <use href="#restore-board" x="390" y="58"/>
+            </g>
+            <rect x="390" y="30" width="286" height="166" rx="12" fill="none" stroke="var(--fig-line)"/>
+            <text x="406" y="49" font-size="11.5" fill="var(--fig-muted)">demo.wboard *</text>
+
+            <g font-size="12.5" fill="var(--fig-muted)" text-anchor="middle">
+              <text x="167" y="222">when you close</text>
+              <text x="533" y="222">when you start again</text>
+            </g>
+          </svg>
+        </div>
+        <figcaption>The same ink in the same place, and the same zoom. A board you chose to keep rather than save comes back unsaved, so the asterisk in the title comes back with it.</figcaption>
+      </figure>
     </section>
 
     <section class="story">
