@@ -895,6 +895,7 @@ public partial class PreferencesWindow : Window
             {
                 SettingsCatalog.Ids.StartFullScreen => _settings.StartFullScreen,
                 SettingsCatalog.Ids.WarnWhenNoDigitizer => _settings.WarnWhenNoDigitizer,
+                SettingsCatalog.Ids.RestoreLastSession => _settings.RestoreLastSession,
                 SettingsCatalog.Ids.SuggestMouseMode => _settings.SuggestMouseMode,
                 SettingsCatalog.Ids.CheckForUpdates => _settings.CheckForUpdates,
                 _ => false,
@@ -1080,6 +1081,10 @@ public partial class PreferencesWindow : Window
         else if (setting.Id == SettingsCatalog.Ids.WarnWhenNoDigitizer)
         {
             _settings.WarnWhenNoDigitizer = value;
+        }
+        else if (setting.Id == SettingsCatalog.Ids.RestoreLastSession)
+        {
+            _settings.RestoreLastSession = value;
         }
         else if (setting.Id == SettingsCatalog.Ids.SuggestMouseMode)
         {

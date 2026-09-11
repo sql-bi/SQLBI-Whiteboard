@@ -65,6 +65,33 @@ public partial class MainWindow : Window
 
     private BoardDocument _document = new();
     private string? _currentBoardPath;
+
+    // The history save point answers for everything that arrives as a command, undo
+    // included. It cannot answer for the dozen places that change the document directly -
+    // a container gesture settling, an asset arriving with a pasted image - so those say so
+    // here. The LiveView paths deliberately do not: a frame turning up on its own is not
+    // somebody changing the board, and would otherwise put an unasked question on the way
+    // out of an application left running beside a feed.
+    private bool _dirtyOutsideHistory;
+
+    private readonly SessionStore? _session = SessionStore.Acquire();
+    private readonly DispatcherTimer _autosaveTimer;
+    private bool _closeConfirmed;
+    private bool _autosaveRunning;
+
+    /// <summary>
+    /// Whether anything has changed since the last autosave. Without it the timer would
+    /// rewrite the same board every interval for as long as the application is open, since
+    /// an autosave deliberately does not make the board count as saved.
+    /// </summary>
+    private bool _autosaveDirty;
+
+    /// <summary>
+    /// How often the board is copied into the session slot while it is being worked on. The
+    /// copy exists for a crash and for nothing else, so this is set by how much ink somebody
+    /// would mind redrawing rather than by what the disk could keep up with.
+    /// </summary>
+    private static readonly TimeSpan AutosaveInterval = TimeSpan.FromSeconds(30);
     private BoardTool _activeTool = BoardTool.Pen;
     private BoardTool _lastDrawingTool = BoardTool.Pen;
     private BoardTool _toolBeforeSpace = BoardTool.Pen;
@@ -151,7 +178,7 @@ public partial class MainWindow : Window
         SessionBar.ViewOpened += UpdateLiveViewMenuItems;
         SessionBar.UpdateDownloadRequested += _ => OpenUpdateDownload();
         SessionBar.UpdateDismissed += SessionBar_UpdateDismissed;
-        Title += AppChannel.WindowTitleSuffix;
+        UpdateWindowTitle();
         _initialBoardPath = initialBoardPath;
         TextEditorLanguageCombo.ItemsSource = TextLanguageRegistry.All;
         LanguageChipCombo.ItemsSource = TextLanguageRegistry.All;
@@ -168,6 +195,11 @@ public partial class MainWindow : Window
             Interval = TimeSpan.FromMilliseconds(50),
         };
         _hoverWatch.Tick += HoverWatch_Tick;
+        _autosaveTimer = new DispatcherTimer(DispatcherPriority.Background)
+        {
+            Interval = AutosaveInterval,
+        };
+        _autosaveTimer.Tick += AutosaveTimer_Tick;
         InkSurface.HoverTracker.Hovered += HoverTracker_Hovered;
         SourceInitialized += MainWindow_SourceInitialized;
         Loaded += MainWindow_Loaded;
@@ -206,7 +238,175 @@ public partial class MainWindow : Window
         _ = CheckForUpdatesAsync();
         if (_initialBoardPath is not null)
         {
+            // A file named on the command line is what the person asked for, and outranks
+            // whatever the last session happened to be holding.
             await OpenPathAsync(_initialBoardPath, confirmDiscard: false);
+        }
+        else
+        {
+            await RestoreSessionAsync();
+        }
+
+        SessionStore.Prune();
+        _autosaveTimer.Start();
+    }
+
+    /// <summary>
+    /// Brings back what the last copy of the application to close was holding: silently when
+    /// it closed on purpose, and by asking when it did not.
+    /// </summary>
+    private async Task RestoreSessionAsync()
+    {
+        IReadOnlyList<AbandonedSession> abandoned = SessionStore.FindAbandoned();
+        if (abandoned.Count == 0)
+        {
+            return;
+        }
+
+        // Newest first, and one window holds one board. A slot left behind by a crash keeps
+        // its place and is offered again at the next start; one that exited cleanly will
+        // never be the newest again, so it is dropped rather than left to pile up a board
+        // copy per start until the thirty days run out.
+        AbandonedSession candidate = abandoned[0];
+        foreach (AbandonedSession stale in abandoned.Skip(1).Where(item => item.State.ExitedCleanly))
+        {
+            SessionStore.Forget(stale.SlotId);
+        }
+
+        if (candidate.State.ExitedCleanly)
+        {
+            if (!_settings.RestoreLastSession)
+            {
+                SessionStore.Forget(candidate.SlotId);
+                return;
+            }
+        }
+        else if (!ConfirmRecovery(abandoned))
+        {
+            // Declined, so it goes. Keeping it would put the same question in front of the
+            // same person at every start until the thirty days ran out, and the question
+            // says plainly what No means.
+            SessionStore.Forget(candidate.SlotId);
+            return;
+        }
+
+        if (!await AdoptSessionAsync(candidate))
+        {
+            return;
+        }
+
+        // Take a copy into this copy's own slot before letting go of the old one, so a
+        // second crash before the first autosave cannot lose what was just recovered.
+        await WriteSessionAsync(candidate.State.Modified, exitedCleanly: false);
+        SessionStore.Forget(candidate.SlotId);
+    }
+
+    private bool ConfirmRecovery(IReadOnlyList<AbandonedSession> abandoned)
+    {
+        var crashed = abandoned.Count(item => !item.State.ExitedCleanly);
+        var message = crashed > 1
+            ? $"SQLBI Whiteboard closed unexpectedly with {crashed} boards open. The most " +
+              "recent one can be recovered now, and the others are offered the next time " +
+              "you start.\n\nRecover it? Choosing No discards it."
+            : "SQLBI Whiteboard closed unexpectedly while a board was open.\n\n" +
+              "Recover it? Choosing No discards it.";
+
+        return MessageBox.Show(
+            this,
+            message,
+            "SQLBI Whiteboard",
+            MessageBoxButton.YesNo,
+            MessageBoxImage.Question) == MessageBoxResult.Yes;
+    }
+
+    /// <summary>
+    /// Opens what a slot was holding. An unmodified slot kept only a file name, because the
+    /// file is the better copy of a board that matched it - and may have been edited
+    /// elsewhere since.
+    /// </summary>
+    private async Task<bool> AdoptSessionAsync(AbandonedSession session)
+    {
+        SessionState state = session.State;
+        var fileStillThere = state.BoardPath is not null && File.Exists(state.BoardPath);
+        if (!state.Modified)
+        {
+            if (!fileStillThere)
+            {
+                return false;
+            }
+
+            await LoadBoardAsync(state.BoardPath!);
+            RestoreCamera(state);
+            return true;
+        }
+
+        if (session.BoardPath is null)
+        {
+            return false;
+        }
+
+        try
+        {
+            await using var stream = new FileStream(
+                session.BoardPath,
+                FileMode.Open,
+                FileAccess.Read,
+                FileShare.Read,
+                81920,
+                useAsync: true);
+            var loaded = await BoardArchive.LoadAsync(stream);
+            ReplaceDocument(loaded);
+            _currentBoardPath = fileStillThere ? state.BoardPath : null;
+            ResetBoardView();
+            MarkSaved();
+
+            // It never matched the file it came from, and both the title marker and the
+            // question asked on the way out have to go on saying so.
+            MarkDirtyOutsideHistory();
+            RestoreCamera(state);
+            return true;
+        }
+        catch (Exception exception)
+        {
+            ShowError("Could not restore the previous session", exception);
+            return false;
+        }
+    }
+
+    private void RestoreCamera(SessionState state)
+    {
+        _camera.Restore(new PointD(state.CameraCenterX, state.CameraCenterY), state.CameraZoom);
+        CameraChanged();
+    }
+
+    // Only ever writes to the session slot. The board the person named is theirs, and
+    // nothing here is allowed to write to it without being asked.
+    private async void AutosaveTimer_Tick(object? sender, EventArgs e)
+    {
+        if (_autosaveRunning || !_autosaveDirty || !IsModified)
+        {
+            return;
+        }
+
+        // Not while anything is in contact with the glass. The zip runs on a worker, but
+        // the snapshot does not, and a stroke is the one thing that must never stutter.
+        if (_penInContact ||
+            _stylusAction != PointerAction.None ||
+            _mouseAction != PointerAction.None ||
+            _touchPoints.Count > 0)
+        {
+            return;
+        }
+
+        _autosaveRunning = true;
+        try
+        {
+            _autosaveDirty = false;
+            await WriteSessionAsync(keepBoard: true, exitedCleanly: false);
+        }
+        finally
+        {
+            _autosaveRunning = false;
         }
     }
 
@@ -241,6 +441,7 @@ public partial class MainWindow : Window
 
     private void Document_Changed(object? sender, EventArgs e)
     {
+        _autosaveDirty = true;
         var liveViewIds = _document.Objects.OfType<LiveViewBoardObject>()
             .Select(item => item.Id)
             .ToHashSet();
@@ -266,6 +467,7 @@ public partial class MainWindow : Window
     private void History_Changed(object? sender, EventArgs e)
     {
         SessionBar.SetEditEnabled(_history.CanUndo, _history.CanRedo);
+        UpdateWindowTitle();
     }
 
     // Only touch reaches here now. Pen ink is collected from the pen's own
@@ -4034,16 +4236,59 @@ public partial class MainWindow : Window
         ReplaceDocument(new BoardDocument());
         _currentBoardPath = null;
         ResetBoardView();
+        MarkSaved();
+    }
+
+    /// <summary>
+    /// Whether the board differs from what the file on disk holds - or, for a board that
+    /// has never been saved, from the empty board it started as.
+    /// </summary>
+    private bool IsModified => !_history.IsAtSavePoint || _dirtyOutsideHistory;
+
+    /// <summary>
+    /// Records a change the command history will not see. See <see cref="_dirtyOutsideHistory"/>.
+    /// </summary>
+    private void MarkDirtyOutsideHistory()
+    {
+        if (_dirtyOutsideHistory)
+        {
+            return;
+        }
+
+        _dirtyOutsideHistory = true;
+        UpdateWindowTitle();
+    }
+
+    /// <summary>
+    /// Records that the board as it stands is what <see cref="_currentBoardPath"/> holds.
+    /// </summary>
+    private void MarkSaved()
+    {
+        _history.MarkSaved();
+        _dirtyOutsideHistory = false;
+        UpdateWindowTitle();
     }
 
     private bool ConfirmDiscardUnsaved(string message) =>
-        _document.Objects.Count == 0 && _document.Assets.Count == 0 ||
+        !IsModified ||
         MessageBox.Show(
             this,
             message,
             "SQLBI Whiteboard",
             MessageBoxButton.YesNo,
             MessageBoxImage.Warning) == MessageBoxResult.Yes;
+
+    // The board's name and whether it has strayed from the file, in the one place every
+    // window already shows what it is holding. Without it the question asked on the way out
+    // arrives with nothing on screen to explain what prompted it.
+    private void UpdateWindowTitle()
+    {
+        var name = _currentBoardPath is null
+            ? "Untitled board"
+            : Path.GetFileName(_currentBoardPath);
+        var marker = IsModified ? " *" : string.Empty;
+        Title = $"{name}{marker} - SQLBI Whiteboard{AppChannel.WindowTitleSuffix}";
+    }
 
     private async void SaveAsMenuItem_Click(object sender, RoutedEventArgs e) =>
         await SaveBoardAsync(saveAs: true);
@@ -4737,6 +4982,7 @@ public partial class MainWindow : Window
                 stream,
                 previewPng: preview is null ? default : preview);
             _currentBoardPath = filePath;
+            MarkSaved();
         }
         catch (Exception exception)
         {
@@ -4800,6 +5046,7 @@ public partial class MainWindow : Window
             ReplaceDocument(loaded);
             _currentBoardPath = filePath;
             ResetBoardView();
+            MarkSaved();
         }
         catch (Exception exception)
         {
@@ -5133,8 +5380,11 @@ public partial class MainWindow : Window
         }
         else
         {
+            // The recipe built a board no file holds, and clearing the history has just
+            // said the opposite. Nothing else reaches the save point, so say it here.
             command.Execute(_document);
             _history.Clear();
+            MarkDirtyOutsideHistory();
         }
 
         SceneSurface.InvalidateAssets();
@@ -5481,13 +5731,134 @@ public partial class MainWindow : Window
         EndTemporaryBarrelTool();
     }
 
-    private void Window_Closing(object? sender, CancelEventArgs e)
+    private async void Window_Closing(object? sender, CancelEventArgs e)
     {
         CommitTextEdit();
+        if (!_closeConfirmed)
+        {
+            // Closing runs synchronously, while asking about unsaved changes and writing
+            // the session do not. So the first pass always calls the close off, finishes
+            // the work, and closes again - and nothing below this is reached until it has.
+            e.Cancel = true;
+            bool proceed;
+            try
+            {
+                proceed = await PrepareToCloseAsync();
+            }
+            catch (Exception exception)
+            {
+                // Whatever went wrong, it must not be what leaves somebody unable to close
+                // the window. The session is the thing being given up here, not the board.
+                Debug.WriteLine($"[Session] Could not prepare to close: {exception.Message}");
+                proceed = true;
+            }
+
+            if (proceed)
+            {
+                _closeConfirmed = true;
+                Close();
+            }
+
+            return;
+        }
+
+        _autosaveTimer.Stop();
         // Unregister Vortice's retained Window.Closed callbacks and unload the
         // D3D surfaces before the Closed event begins. This guarantees one
         // native teardown path for both live and already-paused presenters.
         DisposeAllLiveViewPresenters();
+        _session?.Dispose();
+    }
+
+    /// <summary>
+    /// Asks about unsaved changes where there is something to ask about, then records what
+    /// the next start should come back to. False calls the close off.
+    /// </summary>
+    private async Task<bool> PrepareToCloseAsync()
+    {
+        var keepBoard = IsModified;
+        if (_currentBoardPath is not null && IsModified)
+        {
+            var dialog = new UnsavedChangesWindow(Path.GetFileName(_currentBoardPath))
+            {
+                Owner = this,
+            };
+            dialog.ShowDialog();
+            switch (dialog.Result)
+            {
+                case UnsavedChangesAnswer.Cancel:
+                    return false;
+
+                case UnsavedChangesAnswer.Save:
+                    await SaveBoardAsync();
+                    if (IsModified)
+                    {
+                        // Nothing was written - the save failed, or the file dialog was
+                        // dismissed - so closing now would lose what was being saved.
+                        return false;
+                    }
+
+                    keepBoard = false;
+                    break;
+
+                case UnsavedChangesAnswer.Discard:
+                    keepBoard = false;
+                    break;
+            }
+        }
+
+        if (keepBoard)
+        {
+            // Worth the one pass on the way out, so a restored LiveView container shows
+            // the frame it was showing rather than the one it started with.
+            RefreshLiveViewSnapshots();
+        }
+
+        await WriteSessionAsync(keepBoard, exitedCleanly: true);
+        return true;
+    }
+
+    /// <summary>
+    /// Copies the board into this copy's session slot, or clears the slot when there is
+    /// nothing worth coming back to.
+    /// </summary>
+    private async Task WriteSessionAsync(bool keepBoard, bool exitedCleanly)
+    {
+        if (_session is null)
+        {
+            return;
+        }
+
+        try
+        {
+            if (!keepBoard && _currentBoardPath is null)
+            {
+                // An untitled board nobody has drawn on. Restoring it would be
+                // indistinguishable from starting normally.
+                _session.Clear();
+                return;
+            }
+
+            var state = new SessionState
+            {
+                BoardPath = _currentBoardPath,
+                Modified = keepBoard,
+                ExitedCleanly = exitedCleanly,
+                CameraCenterX = _camera.Center.X,
+                CameraCenterY = _camera.Center.Y,
+                CameraZoom = _camera.Zoom,
+            };
+
+            // Snapshotting here and writing on a worker keeps the zip off the pen's thread.
+            BoardDocument? snapshot = keepBoard ? _document.Snapshot() : null;
+            await Task.Run(() => _session.WriteAsync(snapshot, state));
+        }
+        catch (Exception exception)
+        {
+            // Never in the way of closing, and never a dialog: this is the safety net
+            // rather than the save, and the file the person asked for is already written.
+            Debug.WriteLine($"[Session] Could not write the session: {exception.Message}");
+        }
     }
 
     private void Window_PreviewStylusInRange(object sender, StylusEventArgs e)

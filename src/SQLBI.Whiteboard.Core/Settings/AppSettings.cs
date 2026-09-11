@@ -159,6 +159,14 @@ public sealed class AppSettings
     /// </summary>
     public bool WarnWhenNoDigitizer { get; set; } = true;
 
+    /// <summary>
+    /// Whether a board left open at the last exit comes back at the next start. It governs
+    /// the silent restore only: a board left behind by a copy that crashed is always
+    /// offered, because losing work to a crash is the thing the session copy exists to
+    /// prevent and is not a preference about how the application starts.
+    /// </summary>
+    public bool RestoreLastSession { get; set; } = true;
+
     public bool CheckForUpdates { get; set; } = true;
 
     public DateTimeOffset? LastUpdateCheckUtc { get; set; }
@@ -172,7 +180,7 @@ public sealed class AppSettings
 
 public static class AppSettingsSerializer
 {
-    public const int CurrentVersion = 16;
+    public const int CurrentVersion = 17;
 
     /// <summary>
     /// The version that moved plain text to the end of the default snippet

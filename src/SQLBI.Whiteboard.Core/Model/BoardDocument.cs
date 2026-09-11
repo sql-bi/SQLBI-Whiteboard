@@ -102,6 +102,24 @@ public sealed class BoardDocument
         Changed?.Invoke(this, EventArgs.Empty);
     }
 
+    /// <summary>
+    /// A shallow copy that shares this document's objects and assets but none of its
+    /// mutability. Autosave takes one on the UI thread and writes it on another: objects are
+    /// records and an asset's bytes are never rewritten once it exists, so what the writer
+    /// sees cannot change underneath it while the board carries on being drawn.
+    /// </summary>
+    public BoardDocument Snapshot()
+    {
+        var copy = new BoardDocument();
+        copy._objects.AddRange(_objects);
+        foreach (var asset in _assets)
+        {
+            copy._assets[asset.Key] = asset.Value;
+        }
+
+        return copy;
+    }
+
     public bool RemoveAsset(string id)
     {
         var removed = _assets.Remove(id);

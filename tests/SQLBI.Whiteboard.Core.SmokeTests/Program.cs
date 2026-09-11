@@ -1728,6 +1728,115 @@ Assert(
     }
 }
 
+// The save point is what tells a board that matches its file from one that does not, and
+// every one of these is a case somebody hits in an afternoon's drawing.
+{
+    var savedDocument = new BoardDocument();
+    var savedHistory = new CommandHistory();
+    Assert(savedHistory.IsAtSavePoint, "A board nobody has drawn on matches the empty file it is not.");
+
+    savedHistory.Execute(new AddObjectCommand(ExportStroke(0, 0, 10, 10, 0)), savedDocument);
+    Assert(!savedHistory.IsAtSavePoint, "A stroke drawn before any save must count as a change.");
+
+    savedHistory.MarkSaved();
+    Assert(savedHistory.IsAtSavePoint, "Saving must make the board match the file.");
+
+    savedHistory.Undo(savedDocument);
+    Assert(
+        !savedHistory.IsAtSavePoint,
+        "Undoing after a save rolls back what the file holds, so it must count as a change.");
+
+    savedHistory.Redo(savedDocument);
+    Assert(savedHistory.IsAtSavePoint, "Redoing back onto the save point must match the file again.");
+
+    savedHistory.Execute(new AddObjectCommand(ExportStroke(20, 20, 10, 10, 1)), savedDocument);
+    Assert(!savedHistory.IsAtSavePoint, "A stroke drawn after a save must count as a change.");
+
+    savedHistory.Undo(savedDocument);
+    Assert(
+        savedHistory.IsAtSavePoint,
+        "Undoing that stroke returns to what was saved, so it must stop counting as a change.");
+
+    // Same depth, different history: the save point is the command, never the count.
+    savedHistory.Execute(new AddObjectCommand(ExportStroke(40, 40, 10, 10, 2)), savedDocument);
+    Assert(
+        !savedHistory.IsAtSavePoint,
+        "A different action at the depth that was saved is still a change.");
+
+    savedHistory.Clear();
+    Assert(savedHistory.IsAtSavePoint, "Clearing the history puts the save point at the empty board.");
+}
+
+// A snapshot is what autosave writes while the board carries on being drawn, so it has to
+// hold what the document held and stop hearing about it afterwards.
+{
+    var snapshotDocument = new BoardDocument();
+    snapshotDocument.AddAsset(new BoardAsset("asset-1", "picture.png", "image/png", [1, 2, 3]));
+    snapshotDocument.AddObject(ExportStroke(0, 0, 10, 10, 3));
+    snapshotDocument.AddObject(ExportStroke(30, 30, 10, 10, 1));
+
+    var snapshot = snapshotDocument.Snapshot();
+    Assert(snapshot.Objects.Count == 2, "A snapshot keeps every object.");
+    Assert(snapshot.Assets.Count == 1, "A snapshot keeps every asset.");
+    Assert(
+        snapshot.Objects[0].ZIndex == 1 && snapshot.Objects[1].ZIndex == 3,
+        "A snapshot keeps the document's z order.");
+
+    snapshotDocument.AddObject(ExportStroke(60, 60, 10, 10, 4));
+    Assert(
+        snapshot.Objects.Count == 2,
+        "A stroke drawn after the snapshot must not reach the copy being written.");
+}
+
+// The session sidecar is read while the application is starting, so nothing it can contain
+// is allowed to be what stops it.
+{
+    var state = new SessionState
+    {
+        BoardPath = @"C:\decks\demo.wboard",
+        Modified = true,
+        ExitedCleanly = false,
+        CameraCenterX = 120.5,
+        CameraCenterY = -40.25,
+        CameraZoom = 2.5,
+    };
+
+    var parsed = SessionState.Parse(SessionState.Format(state));
+    Assert(parsed is not null, "A sidecar this version wrote must read back.");
+    Assert(parsed!.BoardPath == state.BoardPath, "A sidecar keeps the board it was editing.");
+    Assert(parsed.Modified && !parsed.ExitedCleanly, "A sidecar keeps how the session ended.");
+    AssertNear(120.5, parsed.CameraCenterX, "A sidecar keeps where the camera was.");
+    AssertNear(2.5, parsed.CameraZoom, "A sidecar keeps the zoom.");
+
+    Assert(SessionState.Parse("{ not json") is null, "Damaged sidecars are skipped, not thrown over.");
+    Assert(SessionState.Parse(string.Empty) is null, "An empty sidecar is skipped.");
+    Assert(
+        SessionState.Parse("{\"version\":9999}") is null,
+        "A sidecar from a later version is skipped rather than half understood.");
+    Assert(
+        SessionState.Parse("{\"version\":1,\"boardPath\":\"  \"}")?.BoardPath is null,
+        "A blank board path reads as no board path.");
+}
+
+// A restored camera comes from a file, so what it carries is checked rather than trusted.
+{
+    var restored = new Camera2D();
+    restored.Resize(1000, 800);
+    restored.Restore(new PointD(50, -30), 3);
+    AssertNear(50, restored.Center.X, "A restored camera takes the center it was given.");
+    AssertNear(3, restored.Zoom, "A restored camera takes the zoom it was given.");
+
+    restored.Restore(new PointD(0, 0), 9999);
+    AssertNear(Camera2D.MaximumZoom, restored.Zoom, "A restored zoom is clamped, not trusted.");
+
+    restored.Restore(new PointD(0, 0), 0);
+    AssertNear(Camera2D.MinimumZoom, restored.Zoom, "A zero zoom clamps rather than blanking the board.");
+
+    restored.Restore(new PointD(10, 10), 2);
+    restored.Restore(new PointD(double.NaN, 0), 2);
+    AssertNear(10, restored.Center.X, "A sidecar carrying NaN leaves the camera where it was.");
+}
+
 Console.WriteLine("SQLBI.Whiteboard.Core smoke tests passed.");
 
 static InkStrokeObject ExportStroke(double x, double y, double width, double height, int zIndex, Guid? containerId = null) =>
