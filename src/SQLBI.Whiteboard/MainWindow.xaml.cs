@@ -5050,7 +5050,7 @@ public partial class MainWindow : Window
             !item.State.ExitedCleanly &&
             item.BoardPath is not null &&
             item.State.BoardPath is not null &&
-            IsSameFile(item.State.BoardPath, filePath));
+            SessionStore.IsSameFile(item.State.BoardPath, filePath));
 
         if (match is null)
         {
@@ -5091,30 +5091,6 @@ public partial class MainWindow : Window
         await WriteSessionAsync(keepBoard: true, exitedCleanly: false);
         SessionStore.Forget(match.SlotId);
         return true;
-    }
-
-    /// <summary>
-    /// Whether two paths name the same file on this machine. Compared after expansion, since
-    /// the same board reaches the application as a full path from Explorer and as whatever
-    /// was typed from everywhere else.
-    /// </summary>
-    private static bool IsSameFile(string left, string right)
-    {
-        try
-        {
-            return string.Equals(
-                Path.GetFullPath(left),
-                Path.GetFullPath(right),
-                StringComparison.OrdinalIgnoreCase);
-        }
-        catch (ArgumentException)
-        {
-            return false;
-        }
-        catch (IOException)
-        {
-            return false;
-        }
     }
 
     private async Task LoadBoardAsync(string filePath)

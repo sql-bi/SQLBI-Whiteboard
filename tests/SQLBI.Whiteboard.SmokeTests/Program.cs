@@ -534,7 +534,63 @@ Assert(
     vector.Length > 1000 && Encoding.ASCII.GetString(vector.ToArray(), 0, 5) == "%PDF-",
     "The vector page should be written as a PDF.");
 
+// Matching a session slot to the board it was holding is a string comparison over paths
+// that reached the application by different routes, so what it has to survive is the same
+// file spelled differently. The 8.3 case is the one Path.GetFullPath does not answer.
+{
+    // The directory name has to be long enough and mixed enough to earn a distinct 8.3
+    // name; the temp folder itself is often already the short form, which would make the
+    // comparison below trivially true.
+    var directory = Path.Combine(
+        Path.GetTempPath(),
+        $"WhiteboardSmokeSession-{Guid.NewGuid():n}");
+    Directory.CreateDirectory(directory);
+    var longPath = Path.Combine(directory, "Compression demo.wboard");
+    File.WriteAllText(longPath, "board");
+    try
+    {
+        Assert(
+            SessionStore.IsSameFile(longPath, longPath),
+            "A path must match itself.");
+        Assert(
+            SessionStore.IsSameFile(longPath, longPath.ToUpperInvariant()),
+            "Windows paths differing only in case name the same file.");
+        Assert(
+            SessionStore.IsSameFile(
+                longPath,
+                Path.Combine(directory, ".", Path.GetFileName(longPath))),
+            "A path with a redundant component names the same file.");
+        Assert(
+            !SessionStore.IsSameFile(longPath, longPath + ".other"),
+            "Two different files must not match.");
+
+        // On a volume with 8.3 names turned off this is the long path back again, and the
+        // case degrades to the first assertion rather than failing.
+        var shortPath = ShortPathOf(longPath);
+        Assert(
+            SessionStore.IsSameFile(shortPath, longPath),
+            "A short 8.3 path and its long form name the same file.");
+    }
+    finally
+    {
+        Directory.Delete(directory, recursive: true);
+    }
+}
+
 Console.WriteLine("SQLBI.Whiteboard smoke tests passed.");
+
+static string ShortPathOf(string path)
+{
+    var buffer = new StringBuilder(260);
+    var length = GetShortPathName(path, buffer, (uint)buffer.Capacity);
+    return length == 0 || length > buffer.Capacity ? path : buffer.ToString();
+}
+
+[System.Runtime.InteropServices.DllImport(
+    "kernel32.dll",
+    CharSet = System.Runtime.InteropServices.CharSet.Unicode,
+    SetLastError = true)]
+static extern uint GetShortPathName(string longPath, StringBuilder shortPath, uint bufferLength);
 
 // Whether the spans, and the text between them, put the source back together
 // unchanged. Nothing here rewrites a snippet; a span only says what covers it.
