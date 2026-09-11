@@ -105,6 +105,7 @@ internal static class SettingsCatalog
         public const string ToolbarLayout = "toolbar.layout";
         public const string ShowEraserButton = "toolbar.eraserButton";
         public const string WarnWhenNoDigitizer = "startup.noDigitizerNotice";
+        public const string RestoreLastSession = "startup.restoreLastSession";
         public const string FingerMode = "input.fingerMode";
         public const string MouseMode = "input.mouseMode";
         public const string SuggestMouseMode = "input.mouseModeOffer";
@@ -152,6 +153,16 @@ internal static class SettingsCatalog
             Summary = "Fill the monitor and hide the chrome at launch",
             Description = "Fill the current monitor and hide the title and tabs the next time the application starts. F11 still toggles this session. Ctrl+F11 hides chrome without filling the monitor.",
             Keywords = ["fullscreen", "full screen", "f11", "maximize"],
+            Editor = SettingEditorKind.BooleanSwitch,
+        },
+        new()
+        {
+            Id = Ids.RestoreLastSession,
+            Category = Startup,
+            Title = "Reopen the last board",
+            Summary = "Come back to whatever was open when you last closed",
+            Description = "Come back to the board that was open the last time the application closed, at the zoom and position you left it. A board you had saved is reopened from its file; one you had not is kept beside the settings and restored as it was, still unsaved. This covers an ordinary exit only: a board left behind by a copy that stopped unexpectedly is always offered back, whatever this is set to. A LiveView container returns as its last frame and needs Reconnect, because Windows cannot save the capture permission.",
+            Keywords = ["session", "restore", "reopen", "autosave", "recover", "crash", "startup", "last"],
             Editor = SettingEditorKind.BooleanSwitch,
         },
         new()

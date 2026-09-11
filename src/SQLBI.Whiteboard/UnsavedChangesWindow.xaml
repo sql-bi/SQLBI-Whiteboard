@@ -1,0 +1,83 @@
+<Window x:Class="SQLBI.Whiteboard.UnsavedChangesWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Unsaved changes"
+        Width="470"
+        SizeToContent="Height"
+        ResizeMode="NoResize"
+        WindowStartupLocation="CenterOwner"
+        ShowInTaskbar="False"
+        Background="{DynamicResource ToolbarBackgroundBrush}">
+    <Window.Resources>
+        <!-- Each answer carries its own consequence, so there is nothing to read
+             first and nothing to map onto a row of buttons afterwards. -->
+        <Style x:Key="AnswerButton" TargetType="Button">
+            <Setter Property="MinHeight" Value="52" />
+            <Setter Property="Margin" Value="0,0,0,8" />
+            <Setter Property="Padding" Value="14,9" />
+            <Setter Property="HorizontalAlignment" Value="Stretch" />
+            <Setter Property="HorizontalContentAlignment" Value="Left" />
+        </Style>
+        <Style x:Key="AnswerTitle" TargetType="TextBlock">
+            <Setter Property="FontFamily" Value="Segoe UI" />
+            <Setter Property="FontSize" Value="14" />
+            <Setter Property="FontWeight" Value="SemiBold" />
+            <Setter Property="Foreground" Value="#FF1F2937" />
+        </Style>
+        <Style x:Key="AnswerDetail" TargetType="TextBlock">
+            <Setter Property="FontFamily" Value="Segoe UI" />
+            <Setter Property="FontSize" Value="12" />
+            <Setter Property="Margin" Value="0,2,0,0" />
+            <Setter Property="Foreground" Value="#FF4B5563" />
+            <Setter Property="TextWrapping" Value="Wrap" />
+        </Style>
+    </Window.Resources>
+    <StackPanel Margin="24,20,24,20">
+        <TextBlock x:Name="HeadingText"
+                   Margin="0,0,0,16"
+                   FontFamily="Segoe UI"
+                   FontSize="16"
+                   FontWeight="SemiBold"
+                   Foreground="#FF1F2937"
+                   TextWrapping="Wrap" />
+
+        <Button x:Name="SaveButton" Style="{StaticResource AnswerButton}" Click="SaveButton_Click">
+            <StackPanel>
+                <TextBlock Style="{StaticResource AnswerTitle}" Text="Save" />
+                <TextBlock x:Name="SaveDetail" Style="{StaticResource AnswerDetail}" />
+            </StackPanel>
+        </Button>
+
+        <!-- The default, because it is the one answer that decides nothing: the file
+             is untouched and the board comes back. Decision 30 says why that is what
+             makes a default acceptable here and not on the mouse mode offer. -->
+        <Button x:Name="KeepButton"
+                Style="{StaticResource AnswerButton}"
+                IsDefault="True"
+                Click="KeepButton_Click">
+            <StackPanel>
+                <TextBlock Style="{StaticResource AnswerTitle}" Text="Keep for next time" />
+                <TextBlock Style="{StaticResource AnswerDetail}"
+                           Text="Leave the file alone. This board comes back the next time you start." />
+            </StackPanel>
+        </Button>
+
+        <Button x:Name="DiscardButton" Style="{StaticResource AnswerButton}" Click="DiscardButton_Click">
+            <StackPanel>
+                <TextBlock Style="{StaticResource AnswerTitle}" Text="Discard changes" />
+                <TextBlock Style="{StaticResource AnswerDetail}"
+                           Text="Throw them away and keep the file as it was last saved." />
+            </StackPanel>
+        </Button>
+
+        <Button x:Name="CancelButton"
+                Style="{StaticResource AnswerButton}"
+                Margin="0"
+                IsCancel="True">
+            <StackPanel>
+                <TextBlock Style="{StaticResource AnswerTitle}" Text="Cancel" />
+                <TextBlock x:Name="CancelDetail" Style="{StaticResource AnswerDetail}" />
+            </StackPanel>
+        </Button>
+    </StackPanel>
+</Window>

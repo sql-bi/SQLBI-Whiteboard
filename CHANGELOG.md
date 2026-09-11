@@ -17,6 +17,34 @@ broke. The heading is parsed by `scripts/release-notes.ps1`, so keep its shape; 
 under it is ordinary Markdown, and the renderer handles paragraphs, lists, links, `code`
 and **bold**.
 
+## 1.5.0 - 11 September 2026
+
+### The board you had open comes back
+Close SQLBI Whiteboard and the board you were working on is there again the next time you
+start, at the zoom and position you left it. A board you had saved reopens from its file; an
+untitled one is kept beside your settings and comes back as it was. **Reopen the last board**
+in **Preferences → Startup** turns this off.
+
+### Closing a board with unsaved changes asks first
+If the board has a name and has changed since you saved it, closing the window now offers
+**Save**, **Keep for next time**, **Discard changes**, and **Cancel**. Keep leaves the file
+untouched and brings the board back at the next start. Cancel is the only answer that keeps a
+LiveView feed connected.
+
+### Work is recoverable after a crash
+The board is copied beside your settings every thirty seconds while you work. If SQLBI
+Whiteboard stops unexpectedly, the next start offers to recover it. This copy is only ever a
+safety net — nothing here writes to your `.wboard` file without being asked.
+
+### Opening a board offers changes a crash left for it
+If SQLBI Whiteboard stopped unexpectedly while you had unsaved changes to a board, opening
+that board again offers those changes instead of the saved file. This works however you open
+it — **File → Open**, a drop, or a double-click in Explorer.
+
+### The title bar says which board, and whether it is saved
+The window title now shows the file name, with an asterisk while the board differs from what
+is on disk. An untitled board reads as **Untitled board**.
+
 ## 1.4.0 - 8 September 2026
 
 ### Eleven more languages in a text container

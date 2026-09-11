@@ -724,6 +724,87 @@ levers those languages have, and can come as yes-or-no settings when someone ask
 
 ---
 
+## 30. Autosave is a safety net, and never the save
+
+**Implemented** in 1.5.0, answering
+[issue 121](https://github.com/sql-bi/SQLBI-Whiteboard/issues/121).
+
+The board is copied into a session slot every thirty seconds and again on the way out, and
+the next start brings it back. **Nothing on this path ever writes to the `.wboard` the
+person named.** A file changes when they ask for it to change, and an application that
+saved on their behalf would eventually overwrite something they meant to keep. Everything
+below follows from that.
+
+- **A board with a name is asked about; a board without one is not.** An untitled board has
+  no file to disagree with, so interrupting someone on the way out to protect it would be
+  asking a question with no stakes. It goes into the session and comes back. A named board
+  has somewhere its changes belong, and only the person can say whether they belong there.
+
+- **The exit question has four answers and a default, where decision 24 refused one.**
+  Save, **Keep for next time**, Discard changes, Cancel. Keep is `IsDefault` because it is
+  the one answer that decides nothing: the file is untouched, the board returns at the next
+  start, and Enter landing on it can never be the wrong outcome. That is exactly what the
+  mouse mode offer did not have — there, both answers changed something, so neither could
+  be primed. A default is a property of the answers, not a habit to apply or refuse
+  everywhere.
+
+- **Cancel stays, and LiveView is why.** Keep and Cancel look interchangeable — both end
+  with the board in front of you — but a restored LiveView container comes back as its last
+  frame and has to be reconnected by hand, because Windows cannot save the capture
+  permission. Cancel is the only answer that keeps a feed live, which matters most in the
+  situation where the window gets closed by accident: mid-recording, in front of an
+  audience. The camera position is carried in the session for the same reason, to narrow
+  what is left of the gap.
+
+- **Modified means two things, because one signal cannot cover it.** The command history
+  carries a save point — the command on top of the undo stack when the file was written —
+  so a board undone back to what was saved stops counting as changed, and one undone *past*
+  it starts counting again. A counter cannot express that, since undo moves it the same way
+  drawing does. The dozen places that change the document without going through a command
+  set a flag instead. The LiveView paths deliberately set neither: a frame arriving on its
+  own is not somebody changing the board, and would otherwise put an unasked question in
+  front of anyone who left the application running beside a feed.
+
+- **One slot per running copy, not one file.** Each copy takes a slot named by a GUID and
+  holds a lock file open for as long as it runs. Two windows therefore never write to the
+  same files, which is what makes running two of them safe without the application having
+  to forbid it — and forbidding it was considered and rejected, because two boards side by
+  side is a real thing to want. A slot whose lock can be taken belonged to a copy that has
+  gone; its sidecar says whether it went on purpose. One start restores one slot, the most
+  recent; the others keep their slots and are offered again rather than being discarded,
+  and anything abandoned for thirty days is pruned.
+
+- **A clean exit restores silently; a crash asks.** Coming back to where you were is
+  ordinary and needs no ceremony, and **Reopen the last board** in Preferences turns it off
+  for anyone who wants a blank board every time. Recovering after a crash is not ordinary,
+  so it is offered rather than done — and it is offered whatever that setting says, because
+  the setting is about how the application starts, not about whether work lost to a crash
+  should be retrievable. Declining discards that slot, and the question says so: the only
+  alternative is putting the same question in front of the same person at every start for
+  thirty days, which is how a safety net turns into a nuisance people learn to dismiss.
+
+- **An unmodified session keeps the file name and not the board.** The file is the better
+  copy — it may have been edited elsewhere since — so a slot that matched its file reopens
+  the file. Only a board that never matched one carries its own copy.
+
+- **Opening a board asks the slots whether anything newer is waiting for it**
+  ([issue 122](https://github.com/sql-bi/SQLBI-Whiteboard/issues/122)). Without this, the
+  moment somebody is most likely to want their recovered work — opening the very board they
+  lost — is the moment the application says nothing, because the recovery offer only appears
+  at startup and only for the newest slot. The sidecar already records the path, so it is a
+  lookup. Three calls inside it:
+  - **Every route into a board goes through one place.** The Open dialog, a drop, and a
+    double-click in Explorer all arrive at `OpenPathAsync`, so the question is asked there
+    rather than three times over.
+  - **The answer is Yes, No, or Cancel, and No discards.** Opening the saved file by name is
+    an answer about those changes, not a postponement of the question; leaving the slot would
+    bring the same prompt back on the next open of the same file. Cancel opens neither and
+    keeps the slot, which is what an accidental Yes-or-No needs to be recoverable from.
+  - **Only a slot left by a crash is offered.** One that exited cleanly is either restored at
+    startup or dropped there, and offering it here as well would ask twice about one board.
+
+---
+
 ## Open questions
 
 - arm64 is not built; add it if Surface devices matter for a pen application.

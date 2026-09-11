@@ -77,4 +77,19 @@ public sealed class Camera2D
         Center = new PointD(0, 0);
         Zoom = 1;
     }
+
+    /// <summary>
+    /// Puts the camera back where a restored session left it. The zoom is clamped rather
+    /// than trusted, because it arrives from a file that anything could have written.
+    /// </summary>
+    public void Restore(PointD center, double zoom)
+    {
+        if (double.IsNaN(center.X) || double.IsNaN(center.Y) || double.IsNaN(zoom))
+        {
+            return;
+        }
+
+        Center = center;
+        Zoom = Math.Clamp(zoom, MinimumZoom, MaximumZoom);
+    }
 }
