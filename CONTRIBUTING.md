@@ -110,8 +110,15 @@ mechanism belong, at whatever length they need. The other two are short:
   not the diagnosis. Link to `docs/` for anything longer.
 
 The test is the neighbours: if a new paragraph is noticeably longer than the ones beside
-it, cut it. This has been asked for twice; the 1.3.0 notes as first written are what it
-looks like when it slips, and their shortened form is what was wanted.
+it, cut it. This has been asked for three times; the 1.3.0 notes as first written are what
+it looks like when it slips, and their shortened form is what was wanted.
+
+It slips the same way each time: one entry per piece of work that was built, rather than
+per thing a person notices. The 1.5.0 notes went in with five entries where the change
+deserved three — the title bar marker belongs in the entry about closing a board, where a
+person meets it, and being offered recovered work when reopening a board is the same story
+to a reader as being offered it at startup. So count the entries in the two versions below
+yours before writing: that is the shape to match, not a ceiling to approach.
 
 ## Code style
 
