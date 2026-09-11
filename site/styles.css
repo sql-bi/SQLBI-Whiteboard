@@ -990,6 +990,12 @@ footer a:hover { color: var(--ink); text-decoration: underline; }
   .fig.is-visible .f12-a { animation: fig-swap 6s ease infinite; }
   .fig.is-visible .f12-b { animation: fig-swap 6s ease -3s infinite; }
   .fig.is-visible .f12-ink { animation: fig-inkdraw 7s ease-out .5s infinite; }
+
+  /* The board, then the restart, then the board again - so the second window
+     arriving after the first is the thing the eye follows. */
+  .fig.is-visible .f13-before { animation: fig-pop 6.5s ease infinite both; }
+  .fig.is-visible .f13-restart { animation: fig-pop 6.5s ease .3s infinite both; }
+  .fig.is-visible .f13-after { animation: fig-pop 6.5s ease .6s infinite both; }
 }
 
 /* The container carries its ink out, holds, and is put back. */
@@ -1098,7 +1104,8 @@ footer a:hover { color: var(--ink); text-decoration: underline; }
 .fig .f6-1, .fig .f6-2, .fig .f6-3, .fig .f6-4,
 .fig .f7-b, .fig .f7-d,
 .fig .f8-a, .fig .f8-b, .fig .f8-c,
-.fig .f10-q, .fig .f10-a, .fig .f10-b, .fig .f10-c {
+.fig .f10-q, .fig .f10-a, .fig .f10-b, .fig .f10-c,
+.fig .f13-before, .fig .f13-restart, .fig .f13-after {
   transform-box: fill-box;
   transform-origin: center;
 }

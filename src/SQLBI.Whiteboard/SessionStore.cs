@@ -258,6 +258,42 @@ internal sealed class SessionStore : IDisposable
         }
     }
 
+    /// <summary>
+    /// Whether two paths name the same file on this machine.
+    /// </summary>
+    /// <remarks>
+    /// A board reaches the application as a full path from Explorer, as whatever was typed
+    /// on a command line, and as whatever a sidecar recorded when it was last open, so the
+    /// two sides are expanded before they are compared. <see cref="Path.GetFullPath(string)"/>
+    /// settles all of it, 8.3 short components included: it expands those against the
+    /// directory entries, so a slot holding <c>C:\MARCOR~1\board.wboard</c> does match the
+    /// same board opened by its long name. That only holds while the file is there to be
+    /// read, which is exactly when this is asked - the board being opened exists, and the
+    /// slot that matches it names that same file.
+    /// </remarks>
+    public static bool IsSameFile(string left, string right)
+    {
+        try
+        {
+            return string.Equals(
+                Path.GetFullPath(left),
+                Path.GetFullPath(right),
+                StringComparison.OrdinalIgnoreCase);
+        }
+        catch (ArgumentException)
+        {
+            return false;
+        }
+        catch (IOException)
+        {
+            return false;
+        }
+        catch (NotSupportedException)
+        {
+            return false;
+        }
+    }
+
     private static string PathFor(string slotId, string extension) =>
         Path.Combine(FolderPath, slotId + extension);
 
