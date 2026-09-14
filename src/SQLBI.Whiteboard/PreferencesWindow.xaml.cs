@@ -265,9 +265,9 @@ public partial class PreferencesWindow : Window
             var value = new TextBlock
             {
                 Style = (Style)FindResource("SettingsValueLabel"),
-                Text = FormatSeconds(slider.Value),
+                Text = FormatRangeValue(setting, slider.Value),
             };
-            slider.ValueChanged += (_, _) => value.Text = FormatSeconds(slider.Value);
+            slider.ValueChanged += (_, _) => value.Text = FormatRangeValue(setting, slider.Value);
             Grid.SetColumn(value, 1);
             Grid.SetRow(slider, 1);
             Grid.SetColumnSpan(slider, 2);
@@ -908,20 +908,26 @@ public partial class PreferencesWindow : Window
 
     private Slider CreateSlider(SettingDescriptor setting)
     {
-        var value = setting.Id == SettingsCatalog.Ids.LaserFadeSeconds
-            ? _settings.Laser.FadeSeconds
-            : _settings.Laser.HoldSeconds;
+        var value = setting.Id switch
+        {
+            SettingsCatalog.Ids.LaserFadeSeconds => _settings.Laser.FadeSeconds,
+            SettingsCatalog.Ids.LaserHoldSeconds => _settings.Laser.HoldSeconds,
+            SettingsCatalog.Ids.ImportHorizontalSpacing => _settings.Import.HorizontalSpacing,
+            SettingsCatalog.Ids.ImportVerticalSpacing => _settings.Import.VerticalSpacing,
+            _ => throw new ArgumentException("Unknown range setting.", nameof(setting)),
+        };
         var slider = new Slider
         {
             Style = (Style)FindResource("SettingsSlider"),
             Minimum = setting.Minimum,
             Maximum = setting.Maximum,
-            SmallChange = setting.Id == SettingsCatalog.Ids.LaserFadeSeconds ? 0.05 : 0.25,
-            LargeChange = setting.Id == SettingsCatalog.Ids.LaserFadeSeconds ? 0.5 : 1,
-            TickFrequency = setting.Id == SettingsCatalog.Ids.LaserFadeSeconds ? 0.05 : 0.25,
+            SmallChange = setting.SmallChange,
+            LargeChange = setting.LargeChange,
+            TickFrequency = setting.SmallChange,
             IsSnapToTickEnabled = true,
             Value = value,
         };
+        AutomationProperties.SetName(slider, setting.Title);
         slider.ValueChanged += (_, _) => SetRange(setting, slider.Value);
         return slider;
     }
@@ -1109,16 +1115,26 @@ public partial class PreferencesWindow : Window
             return;
         }
 
-        if (setting.Id == SettingsCatalog.Ids.LaserFadeSeconds)
+        switch (setting.Id)
         {
-            _settings.Laser.FadeSeconds = value;
-        }
-        else
-        {
-            _settings.Laser.HoldSeconds = value;
+            case SettingsCatalog.Ids.LaserFadeSeconds:
+                _settings.Laser.FadeSeconds = value;
+                break;
+            case SettingsCatalog.Ids.LaserHoldSeconds:
+                _settings.Laser.HoldSeconds = value;
+                break;
+            case SettingsCatalog.Ids.ImportHorizontalSpacing:
+                _settings.Import.HorizontalSpacing = value;
+                break;
+            case SettingsCatalog.Ids.ImportVerticalSpacing:
+                _settings.Import.VerticalSpacing = value;
+                break;
+            default:
+                return;
         }
 
         _settings.Laser = LaserSettings.Normalize(_settings.Laser);
+        _settings.Import = ImportSettings.Normalize(_settings.Import);
         NotifyApplied();
     }
 
@@ -1195,11 +1211,11 @@ public partial class PreferencesWindow : Window
         return seen.Count;
     }
 
-    private static string FormatSeconds(double value)
+    private static string FormatRangeValue(SettingDescriptor setting, double value)
     {
         var rounded = Math.Round(value, 2, MidpointRounding.AwayFromZero);
         var text = rounded.ToString(rounded == Math.Truncate(rounded) ? "0" : "0.##", CultureInfo.CurrentCulture);
-        return $"{text} s";
+        return $"{text} {setting.Unit}";
     }
 
     private sealed class MonitorChoiceItem

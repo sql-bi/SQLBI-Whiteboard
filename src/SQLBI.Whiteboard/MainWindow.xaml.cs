@@ -5402,7 +5402,11 @@ public partial class MainWindow : Window
             return;
         }
 
-        var rects = ImportLayout.Place(sizes, originTopLeft);
+        var rects = ImportLayout.Place(
+            sizes,
+            originTopLeft,
+            _settings.Import.HorizontalSpacing,
+            _settings.Import.VerticalSpacing);
         var objects = new List<BoardObject>(decoded.Count);
         var assets = new List<BoardAsset>();
         for (var index = 0; index < decoded.Count; index++)
