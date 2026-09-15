@@ -577,6 +577,8 @@ Assert(
     }
 }
 
+SQLBI.Whiteboard.SmokeTests.PreferencesSmokeTests.Run();
+
 Console.WriteLine("SQLBI.Whiteboard smoke tests passed.");
 
 static string ShortPathOf(string path)

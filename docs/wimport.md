@@ -86,6 +86,12 @@ Whiteboard measures each container, then packs them **left to right**. A themati
 starts a new row even if the current row is not full. Without a break, a row wraps when the
 next item would exceed about 2400 world units.
 
+In Preferences → Import, **Horizontal spacing** sets the gap between side-by-side
+containers, and **Vertical spacing** sets the gap below the tallest container when a new
+row starts, whether from a break or automatic wrapping. Both default to **32 px** and range
+from 0 to 500 px at 100% zoom. Changes apply to future imports, not containers already on
+the board.
+
 On drop, the group’s **top-left** is the pointer. On Open or File → Import, the group’s
 top-left is the top-left of the visible view.
 

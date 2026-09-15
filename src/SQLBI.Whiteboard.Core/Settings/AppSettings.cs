@@ -150,6 +150,8 @@ public sealed class AppSettings
 
     public ExportSettings Export { get; set; } = new();
 
+    public ImportSettings Import { get; set; } = new();
+
     /// <summary>
     /// Whether to say at startup that Windows reports nothing to draw with. The
     /// tablet list this reads is a list of digitizers rather than an answer
@@ -180,7 +182,7 @@ public sealed class AppSettings
 
 public static class AppSettingsSerializer
 {
-    public const int CurrentVersion = 17;
+    public const int CurrentVersion = 18;
 
     /// <summary>
     /// The version that moved plain text to the end of the default snippet
@@ -293,6 +295,7 @@ public static class AppSettingsSerializer
         settings.Laser = LaserSettings.Normalize(settings.Laser);
         settings.PenButtons = PenButtonSettings.Normalize(settings.PenButtons);
         settings.Export = ExportSettings.Normalize(settings.Export);
+        settings.Import = ImportSettings.Normalize(settings.Import);
         if (settings.Version < VersionWithPlainTextLast &&
             TextLanguageIds.IsLegacyDefaultOrder(settings.SnippetFormatOrder))
         {

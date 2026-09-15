@@ -17,6 +17,14 @@ broke. The heading is parsed by `scripts/release-notes.ps1`, so keep its shape; 
 under it is ordinary Markdown, and the renderer handles paragraphs, lists, links, `code`
 and **bold**.
 
+## 1.5.1 - 14 September 2026
+
+### Imported containers lay out at the spacing you choose
+**Preferences → Import** sets the **Horizontal spacing** between containers in a row and the
+**Vertical spacing** between rows, from 0 to 500 px at 100% zoom. Both start at 32 px, the
+gap an import has always used, and a change applies to the next file you import rather than
+to containers already on the board.
+
 ## 1.5.0 - 11 September 2026
 
 ### The board you had open comes back

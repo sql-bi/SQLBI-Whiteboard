@@ -87,6 +87,12 @@ internal sealed class SettingDescriptor
 
     public double Maximum { get; init; }
 
+    public double SmallChange { get; init; } = 1;
+
+    public double LargeChange { get; init; } = 10;
+
+    public string Unit { get; init; } = string.Empty;
+
     public bool HideInStore { get; init; }
 }
 
@@ -96,6 +102,8 @@ internal static class SettingsCatalog
     {
         public const string StartupMonitor = "startup.monitor";
         public const string StartFullScreen = "startup.fullscreen";
+        public const string ImportHorizontalSpacing = "import.horizontalSpacing";
+        public const string ImportVerticalSpacing = "import.verticalSpacing";
         public const string LaserHoldSeconds = "laser.holdSeconds";
         public const string LaserFadeSeconds = "laser.fadeSeconds";
         public const string LaserHoldMode = "laser.holdMode";
@@ -127,12 +135,13 @@ internal static class SettingsCatalog
 
     public const string Startup = "Startup";
     public const string Input = "Input";
+    public const string Import = "Import";
     public const string Laser = "Laser pointer";
     public const string Toolbar = "Toolbar";
     public const string Updates = "Updates";
 
     public static IReadOnlyList<string> Categories { get; } =
-        [Startup, Input, Laser, Toolbar, Updates];
+        [Startup, Input, Import, Laser, Toolbar, Updates];
 
     public static IReadOnlyList<SettingDescriptor> All { get; } =
     [
@@ -245,6 +254,32 @@ internal static class SettingsCatalog
         },
         new()
         {
+            Id = Ids.ImportHorizontalSpacing,
+            Category = Import,
+            Title = "Horizontal spacing",
+            Summary = "Space between imported containers in a row",
+            Description = "Pixels at 100% zoom. Applies to the next .wimport file, without rearranging existing containers. The default is 32 px.",
+            Keywords = ["import", "wimport", "horizontal", "spacing", "gap", "pixels", "layout"],
+            Editor = SettingEditorKind.DoubleRange,
+            Minimum = ImportSettings.MinimumSpacing,
+            Maximum = ImportSettings.MaximumSpacing,
+            Unit = "px",
+        },
+        new()
+        {
+            Id = Ids.ImportVerticalSpacing,
+            Category = Import,
+            Title = "Vertical spacing",
+            Summary = "Space between imported rows",
+            Description = "Pixels at 100% zoom, measured below the tallest item in the previous row. Applies to explicit line breaks and automatic wrapping in the next .wimport file. The default is 32 px.",
+            Keywords = ["import", "wimport", "vertical", "spacing", "gap", "pixels", "row", "line", "layout"],
+            Editor = SettingEditorKind.DoubleRange,
+            Minimum = ImportSettings.MinimumSpacing,
+            Maximum = ImportSettings.MaximumSpacing,
+            Unit = "px",
+        },
+        new()
+        {
             Id = Ids.LaserHoldSeconds,
             Category = Laser,
             Title = "Trail duration",
@@ -253,6 +288,9 @@ internal static class SettingsCatalog
             Editor = SettingEditorKind.DoubleRange,
             Minimum = LaserSettings.MinimumHoldSeconds,
             Maximum = LaserSettings.MaximumHoldSeconds,
+            SmallChange = 0.25,
+            LargeChange = 1,
+            Unit = "s",
         },
         new()
         {
@@ -264,6 +302,9 @@ internal static class SettingsCatalog
             Editor = SettingEditorKind.DoubleRange,
             Minimum = LaserSettings.MinimumFadeSeconds,
             Maximum = LaserSettings.MaximumFadeSeconds,
+            SmallChange = 0.05,
+            LargeChange = 0.5,
+            Unit = "s",
         },
         new()
         {

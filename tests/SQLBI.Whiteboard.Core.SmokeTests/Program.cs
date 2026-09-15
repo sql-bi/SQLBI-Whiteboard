@@ -331,6 +331,42 @@ Assert(
     placed[2].X == 10 && placed[2].Y > placed[0].Bottom &&
     placed[4].Y > placed[3].Y,
     "Flow layout should pack left to right, honor a forced row, and wrap on max width.");
+var spacedImport = ImportLayout.Place(
+    [(400, 200, false), (400, 300, false), (400, 200, true), (2400, 100, false), (500, 100, false)],
+    new PointD(10, 20),
+    horizontalSpacing: 80,
+    verticalSpacing: 120);
+Assert(
+    spacedImport.SequenceEqual(
+    [
+        new RectD(10, 20, 400, 200),
+        new RectD(490, 20, 400, 300),
+        new RectD(10, 440, 400, 200),
+        new RectD(10, 760, 2400, 100),
+        new RectD(10, 980, 500, 100),
+    ]),
+    "Custom spacing should separate columns horizontally and forced or wrapped rows vertically below the tallest item.");
+var touchingImport = ImportLayout.Place(
+    [(1200, 200, false), (1200, 300, false), (400, 100, false), (200, 100, true)],
+    new PointD(10, 20),
+    horizontalSpacing: 0,
+    verticalSpacing: 0);
+Assert(
+    touchingImport.SequenceEqual(
+    [
+        new RectD(10, 20, 1200, 200),
+        new RectD(1210, 20, 1200, 300),
+        new RectD(10, 320, 400, 100),
+        new RectD(10, 420, 200, 100),
+    ]),
+    "Zero spacing should allow touching edges and an exactly full row without overlapping containers.");
+Assert(
+    ImportLayout.Place(
+        [(1200, 200, false), (1200, 300, false)],
+        new PointD(10, 20),
+        horizontalSpacing: 1,
+        verticalSpacing: 7)[1] == new RectD(10, 227, 1200, 300),
+    "The configured horizontal gap must count toward the wrap threshold.");
 Assert(
     ImportLayout.ImageSize(1800, 1400) is { Width: 900, Height: 700 },
     "Imported images should use the same 900 by 700 cap as a dropped image.");
@@ -788,6 +824,28 @@ Assert(
 
 var defaultSettings = AppSettingsSerializer.Parse(string.Empty);
 Assert(
+    defaultSettings.Import is { HorizontalSpacing: 32, VerticalSpacing: 32 } &&
+    AppSettingsSerializer.Parse("{ \"version\": 17 }").Import is
+        { HorizontalSpacing: 32, VerticalSpacing: 32 } &&
+    AppSettingsSerializer.Parse("{ \"import\": null }").Import is
+        { HorizontalSpacing: 32, VerticalSpacing: 32 },
+    "New, older, and null import settings should preserve the existing 32 px gaps.");
+Assert(
+    AppSettingsSerializer.Parse("{ \"import\": { \"horizontalSpacing\": 0 } }").Import is
+        { HorizontalSpacing: 0, VerticalSpacing: 32 },
+    "A missing direction should default independently without replacing a saved zero gap.");
+Assert(
+    AppSettingsSerializer.Parse(
+        "{ \"import\": { \"horizontalSpacing\": -10, \"verticalSpacing\": 10000 } }").Import is
+        { HorizontalSpacing: ImportSettings.MinimumSpacing, VerticalSpacing: ImportSettings.MaximumSpacing },
+    "Import spacing should clamp invalid saved values to the slider range.");
+Assert(
+    AppSettingsSerializer.Parse(AppSettingsSerializer.Format(new AppSettings
+    {
+        Import = new ImportSettings { HorizontalSpacing = double.NaN, VerticalSpacing = double.PositiveInfinity },
+    })).Import is { HorizontalSpacing: 32, VerticalSpacing: 32 },
+    "Non-finite spacing should fall back to the defaults before saving JSON.");
+Assert(
     defaultSettings.ToolbarPlacement == ToolbarPlacement.TopRight,
     "Missing settings should default the toolbar to top-right.");
 Assert(
@@ -845,11 +903,15 @@ var formattedSettings = AppSettingsSerializer.Format(new AppSettings
     ToolbarPlacement = ToolbarPlacement.BottomCenter,
     CalligraphyAccess = CalligraphyAccess.SizeRow,
     Highlighter = new InkToolSettings { Argb = 0xFFF472B6, Thickness = 10 },
+    Import = new ImportSettings { HorizontalSpacing = 80, VerticalSpacing = 120 },
 });
 Assert(
     formattedSettings.Contains("BottomCenter", StringComparison.Ordinal),
     "Settings JSON should persist the toolbar placement name.");
 var roundTripped = AppSettingsSerializer.Parse(formattedSettings);
+Assert(
+    roundTripped.Import is { HorizontalSpacing: 80, VerticalSpacing: 120 },
+    "Horizontal and vertical import spacing should persist independently.");
 Assert(
     roundTripped.ToolbarPlacement == ToolbarPlacement.BottomCenter &&
     roundTripped.CalligraphyAccess == CalligraphyAccess.SizeRow &&

@@ -12,7 +12,9 @@ public static class ImportLayout
 
     public static IReadOnlyList<RectD> Place(
         IReadOnlyList<(double Width, double Height, bool StartNewRow)> items,
-        PointD originTopLeft)
+        PointD originTopLeft,
+        double horizontalSpacing = Gap,
+        double verticalSpacing = Gap)
     {
         ArgumentNullException.ThrowIfNull(items);
         var placed = new RectD[items.Count];
@@ -30,13 +32,13 @@ public static class ImportLayout
             if (wrap)
             {
                 x = originTopLeft.X;
-                y += rowHeight + Gap;
+                y += rowHeight + verticalSpacing;
                 rowHeight = 0;
                 rowOccupied = false;
             }
 
             placed[index] = new RectD(x, y, width, height);
-            x += width + Gap;
+            x += width + horizontalSpacing;
             rowHeight = Math.Max(rowHeight, height);
             rowOccupied = true;
         }
