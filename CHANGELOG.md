@@ -17,6 +17,20 @@ broke. The heading is parsed by `scripts/release-notes.ps1`, so keep its shape; 
 under it is ordinary Markdown, and the renderer handles paragraphs, lists, links, `code`
 and **bold**.
 
+## 1.5.2 - 16 September 2026
+
+### Prompt is a text type of its own
+Pick **Prompt** from the title-bar chip for AI instructions: a line starting with `- ` shows
+as a bullet, and its wrapped lines align under the item text rather than under the marker.
+The text itself is never rewritten — the markers stay editable in **F2**, and copying, saving,
+and an export keep it as you wrote it. Text copied from Prompt Assistant arrives as Prompt.
+
+### A recipe finds a file whose name has spaces
+An image or a link in a `.wimport` such as `![diagram](./My diagram.svg)` built a text
+container showing the Markdown instead of importing the picture. The path now runs to the
+closing parenthesis, so a space is ordinary; wrap a name that contains a parenthesis in
+angle brackets, as `<./My diagram (2).svg>`.
+
 ## 1.5.1 - 14 September 2026
 
 ### Imported containers lay out at the spacing you choose

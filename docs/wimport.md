@@ -22,7 +22,7 @@ embedded preview. This repository and `docs/samples` both do that.
 
 - Extension: `.wimport` (not `.md`, not `.imp`).
 - Encoding: UTF-8.
-- Paths: local and relative to the `.wimport` file. No `http://` or `https://`.
+- Paths: local and relative to the `.wimport` file. No `http://` or `https://`. A name may contain spaces; wrap one that contains a parenthesis in angle brackets, as `![alt](<./my file (2).svg>)`.
 - One idea per `##` heading. One container per heading.
 
 ## Heading grammar
