@@ -2510,6 +2510,9 @@ public partial class MainWindow : Window
     // what a tap on nothing has always done.
     private const double AreaDragThreshold = 3;
 
+    // Screen pixels between the points a lasso keeps.
+    private const double LassoPointSpacing = 3;
+
     private void BeginAreaGesture(PointD screenPoint, PointD worldPoint, bool extend)
     {
         _areaActive = true;
@@ -2530,15 +2533,26 @@ public partial class MainWindow : Window
             _areaDragged = true;
         }
 
-        if (IsLassoArea || _areaPoints.Count < 2)
+        if (!IsLassoArea)
         {
-            _areaPoints.Add(worldPoint);
+            // A rubber band is its two corners, so the second is replaced rather
+            // than appended and the band follows the pointer back.
+            if (_areaPoints.Count < 2)
+            {
+                _areaPoints.Add(worldPoint);
+            }
+            else
+            {
+                _areaPoints[1] = worldPoint;
+            }
         }
-        else
+        else if (Distance(ToPoint(screen), ToPoint(_camera.WorldToScreen(_areaPoints[^1]))) >=
+                 LassoPointSpacing)
         {
-            // A rubber band is its two corners, so the second one is replaced
-            // rather than appended and the band follows the pointer back.
-            _areaPoints[1] = worldPoint;
+            // A point every few screen pixels rather than every packet. The
+            // outline is the same to look at, and every object the lasso is
+            // tested against walks it once.
+            _areaPoints.Add(worldPoint);
         }
 
         SceneSurface.PendingArea = _areaDragged ? AreaOutline() : null;
@@ -5113,7 +5127,8 @@ public partial class MainWindow : Window
         double top = topLeft.Y - size.Height - gap;
         if (top < 0)
         {
-            top = bottomRight.Y + gap;
+            double below = bottomRight.Y + gap;
+            top = below + size.Height <= TextEditorLayer.ActualHeight ? below : 0;
         }
 
         Canvas.SetLeft(SelectionPropertyBar, left);

@@ -217,7 +217,7 @@ internal sealed class BoardSurface : FrameworkElement
         using (var context = geometry.Open())
         {
             PointD first = camera.WorldToScreen(area[0]);
-            context.BeginFigure(new Point(first.X, first.Y), false, true);
+            context.BeginFigure(new Point(first.X, first.Y), true, true);
             context.PolyLineTo(
                 [.. area.Skip(1).Select(point =>
                 {
