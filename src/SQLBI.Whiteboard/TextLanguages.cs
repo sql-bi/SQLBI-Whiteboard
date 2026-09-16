@@ -59,13 +59,13 @@ internal static class TextLanguageRegistry
     private static readonly ITextLanguageService Kql = new KqlTextLanguageService();
 
     /// <summary>
-    /// Every language the selectors offer. The four that recognize a snippet
-    /// come first, in the order they always had; the rest are chosen by hand,
-    /// in the order the language inventory lists them.
+    /// Every text type the selectors offer. Prompt sits beside plain text but
+    /// is chosen by hand, so adding it leaves snippet detection unchanged.
     /// </summary>
     public static IReadOnlyList<ITextLanguageService> All { get; } =
     [
         Plain,
+        new PromptTextLanguageService(),
         Dax,
         SqlServer,
         Kql,
@@ -127,6 +127,31 @@ internal static class TextLanguageRegistry
         }
 
         public bool TryAccept(string source) => true;
+
+        public override string ToString() => DisplayName;
+    }
+
+    private sealed class PromptTextLanguageService : ITextLanguageService
+    {
+        public string Id => TextLanguageIds.Prompt;
+        public string DisplayName => "Prompt";
+        public string FontFamilyName => "Segoe UI";
+        public bool CanFormat => false;
+        public bool CanDetect => false;
+        public bool ShowLineNumbers => false;
+        public bool WordWrap => true;
+        public bool UseBackgroundAnalysis => false;
+        public Uri? FormattingRequestUri => null;
+
+        public TextLanguageAnalysis Analyze(string source, string fallbackTitle) => new("Prompt", []);
+
+        public bool TryFormat(string source, int columns, out string formatted)
+        {
+            formatted = source;
+            return false;
+        }
+
+        public bool TryAccept(string source) => false;
 
         public override string ToString() => DisplayName;
     }

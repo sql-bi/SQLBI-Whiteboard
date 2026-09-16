@@ -131,6 +131,7 @@ public partial class MainWindow : Window
     private bool _updatingLanguageChip;
     private string _textEditLanguageId = TextLanguageIds.Plain;
     private readonly TextClassificationColorizer _textColorizer = new();
+    private readonly PromptBulletGenerator _promptBulletGenerator = new();
     private readonly DispatcherTimer _textHighlightTimer;
     private CancellationTokenSource? _textAnalysisCancellation;
     private bool _formattingRequestOpen;
@@ -183,6 +184,7 @@ public partial class MainWindow : Window
         TextEditorLanguageCombo.ItemsSource = TextLanguageRegistry.All;
         LanguageChipCombo.ItemsSource = TextLanguageRegistry.All;
         TextEditor.TextArea.TextView.LineTransformers.Add(_textColorizer);
+        TextEditor.TextArea.TextView.ElementGenerators.Add(_promptBulletGenerator);
         TextEditor.Options.ConvertTabsToSpaces = true;
         TextEditor.Options.IndentationSize = 4;
         _textHighlightTimer = new DispatcherTimer(DispatcherPriority.Background)
@@ -2603,6 +2605,8 @@ public partial class MainWindow : Window
         bool updateCombo)
     {
         TextEditor.FontFamily = new FontFamily(language.FontFamilyName);
+        _promptBulletGenerator.IsEnabled = language.Id == TextLanguageIds.Prompt;
+        TextEditor.TextArea.TextView.Redraw();
         TextEditor.WordWrap = language.WordWrap;
         TextEditor.ShowLineNumbers = language.ShowLineNumbers;
         TextEditor.HorizontalScrollBarVisibility = language.WordWrap

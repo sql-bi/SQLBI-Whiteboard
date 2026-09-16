@@ -719,6 +719,29 @@ Assert(
         .SequenceEqual(TextLanguageIds.All.Order(StringComparer.Ordinal), StringComparer.Ordinal),
     "Every language the selector offers round-trips through a board file.");
 
+const string promptSource = "Keep this text.\r\n- An instruction with Unicode café 世界.\r\n  - An indented instruction.\n\n- ";
+var promptObject = new TextBoardObject(Guid.NewGuid(), 0, new RectD(0, 0, 320, 200),
+    "Prompt", promptSource, 1, TextLanguageIds.Prompt);
+var promptDocument = new BoardDocument();
+promptDocument.AddObject(promptObject);
+await using var promptArchive = new MemoryStream();
+await BoardArchive.SaveAsync(promptDocument, promptArchive);
+promptArchive.Position = 0;
+var loadedPrompt = await BoardArchive.LoadAsync(promptArchive);
+Assert(loadedPrompt.Objects.OfType<TextBoardObject>().Single() == promptObject,
+    "Prompt type, geometry, and exact source (including hyphens, spaces, and line endings) should survive saving.");
+Assert(
+    PromptText.Lines(promptSource).Select(line => line.IsBullet).SequenceEqual([false, true, true, false, true]) &&
+    PromptText.Lines("one\rtwo\r\nthree\n").Count() == 4 &&
+    PromptText.Lines(string.Empty).Single().Content == string.Empty,
+    "Prompt paragraphs should preserve blank lines and recognize all common line endings.");
+Assert(
+    PromptText.ParseLine("  -  item") is { MarkerOffset: 2, ContentOffset: 5, Content: "item" } &&
+    PromptText.ParseLine("- item").Content == "item" && PromptText.ParseLine("- ").IsBullet &&
+    !PromptText.ParseLine("-1").IsBullet && !PromptText.ParseLine("---").IsBullet &&
+    !PromptText.ParseLine("x - item").IsBullet && !PromptText.ParseLine("-").IsBullet,
+    "Only a line-leading dash followed by a space is a bullet; signs and separators are ordinary text.");
+
 string unknownLanguageScene = $$"""
 {
   "version": 5,
@@ -1116,10 +1139,10 @@ Assert(
 // language chosen by hand is skipped in the snippet format order rather than read as
 // plain text, which would move plain text up an order it was never part of.
 Assert(
-    TextLanguageIds.All.Count == 15 &&
+    TextLanguageIds.All.Count == 16 &&
     TextLanguageIds.All[0] == TextLanguageIds.Plain &&
-    TextLanguageIds.All.Distinct(StringComparer.Ordinal).Count() == 15,
-    "The selector offers fifteen distinct languages, plain text first.");
+    TextLanguageIds.All.Distinct(StringComparer.Ordinal).Count() == 16,
+    "The selector offers sixteen distinct text types, plain text first.");
 Assert(
     TextLanguageIds.DetectionOrder is ["dax", "sqlserver", "kql", "plain"] &&
     TextLanguageIds.All.Count(TextLanguageIds.CanDetect) == 4,
@@ -1130,7 +1153,7 @@ Assert(
     TextLanguageIds.Normalize("C++") == TextLanguageIds.Plain,
     "A language added for manual selection normalizes for persistence; a caption is not an identifier.");
 Assert(
-    TextLanguageIds.NormalizeOrder(["dax", "python", "rust", "plain"]) is
+    TextLanguageIds.NormalizeOrder(["dax", "prompt", "python", "rust", "plain"]) is
         ["dax", "sqlserver", "kql", "plain"],
     "A language chosen by hand is ignored in the snippet format order, not read as plain text.");
 Assert(

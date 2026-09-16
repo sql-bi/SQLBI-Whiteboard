@@ -31,9 +31,20 @@ public sealed record SlideImageElement(SlideRect Bounds, byte[] Data, string Con
 public sealed record SlideTextRun(string Text, uint Argb, bool Bold, bool Italic);
 
 /// <summary>
+/// An explicitly laid-out paragraph. Margins are in page pixels; a bullet sits
+/// HangingIndent pixels to the left of the body and never becomes part of its text.
+/// </summary>
+public sealed record SlideTextParagraph(
+    IReadOnlyList<SlideTextRun> Runs,
+    double LeftMargin = 0,
+    double HangingIndent = 0,
+    string? Bullet = null);
+
+/// <summary>
 /// A text container as a text box: the title on its own first line, then the body as
 /// runs whose colors and weights are the ones the screen shows. A run may contain line
 /// breaks; each starts a new paragraph. Sizes and the padding are in page pixels.
+/// When supplied, Paragraphs describes the displayed body; Runs still preserves the source.
 /// </summary>
 public sealed record SlideTextElement(
     SlideRect Bounds,
@@ -45,7 +56,8 @@ public sealed record SlideTextElement(
     double Padding,
     uint BackgroundArgb,
     uint BorderArgb,
-    uint TextArgb) : SlideElement(Bounds);
+    uint TextArgb,
+    IReadOnlyList<SlideTextParagraph>? Paragraphs = null) : SlideElement(Bounds);
 
 public enum SlideStrokeKind
 {

@@ -18,7 +18,7 @@ using SQLBI.Whiteboard.Export;
 // changes the source.
 
 var registry = TextLanguageRegistry.All;
-Assert(registry.Count == 15, "The selectors offer fifteen languages.");
+Assert(registry.Count == 16, "The selectors offer sixteen text types.");
 Assert(
     registry.Count(language => language.CanDetect) == 4 &&
     registry.Where(language => language.CanDetect)
@@ -26,7 +26,7 @@ Assert(
         .SequenceEqual([TextLanguageIds.Plain, TextLanguageIds.Dax, TextLanguageIds.SqlServer, TextLanguageIds.Kql]),
     "Only the original four can claim a paste.");
 Assert(
-    registry.Where(language => !language.CanDetect)
+    registry.Where(language => !language.CanDetect && language.Id != TextLanguageIds.Prompt)
         .All(language => !language.CanFormat &&
                          !language.TryAccept("anything at all") &&
                          language.FormattingRequestUri is { IsAbsoluteUri: true, Scheme: "https" }),
@@ -42,7 +42,7 @@ Assert(
 
 // F6 never reaches a formatter for these, and neither does anything else: the
 // source that comes back is the source that went in.
-foreach (ITextLanguageService language in registry.Where(language => !language.CanDetect))
+foreach (ITextLanguageService language in registry.Where(language => !language.CanDetect && language.Id != TextLanguageIds.Prompt))
 {
     Assert(
         !language.TryFormat("some text\n\tand more", 65, out string formatted) &&
@@ -394,7 +394,7 @@ Colors(Astral, TextLanguageIds.CSharp, "Comment", "// ok");
 
 Assert(
     corpus.Select(entry => entry.LanguageId).Order(StringComparer.Ordinal).SequenceEqual(
-        TextLanguageIds.All.Where(id => !TextLanguageIds.CanDetect(id)).Order(StringComparer.Ordinal),
+        TextLanguageIds.All.Where(id => !TextLanguageIds.CanDetect(id) && id != TextLanguageIds.Prompt).Order(StringComparer.Ordinal),
         StringComparer.Ordinal),
     "Every language chosen by hand should be in the corpus.");
 
@@ -577,6 +577,7 @@ Assert(
     }
 }
 
+SQLBI.Whiteboard.SmokeTests.PromptSmokeTests.Run(Environment.GetEnvironmentVariable("SQLBI_WHITEBOARD_PROMPT_PREVIEW"));
 SQLBI.Whiteboard.SmokeTests.PreferencesSmokeTests.Run();
 
 Console.WriteLine("SQLBI.Whiteboard smoke tests passed.");
