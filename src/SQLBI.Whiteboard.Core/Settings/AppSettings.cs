@@ -99,9 +99,26 @@ public enum MouseMode
     WhenNoDigitizer = 2,
 }
 
+/// <summary>
+/// The shape a select gesture on empty canvas draws. It is remembered rather
+/// than chosen each time, because the Edit row's Lasso toggle is what switches
+/// it and a toggle has to come back where it was left.
+/// </summary>
+public enum AreaSelectionTool
+{
+    Rectangle = 0,
+    Lasso = 1,
+}
+
 public sealed class AppSettings
 {
     public int Version { get; set; } = AppSettingsSerializer.CurrentVersion;
+
+    public AreaSelection AreaSelection { get; set; } = AreaSelection.PartlyInside;
+
+    public ExtendSelection ExtendSelection { get; set; } = ExtendSelection.Ignore;
+
+    public AreaSelectionTool AreaSelectionTool { get; set; } = AreaSelectionTool.Rectangle;
 
     public ToolbarPlacement ToolbarPlacement { get; set; } = ToolbarPlacement.TopRight;
 
@@ -182,7 +199,7 @@ public sealed class AppSettings
 
 public static class AppSettingsSerializer
 {
-    public const int CurrentVersion = 18;
+    public const int CurrentVersion = 19;
 
     /// <summary>
     /// The version that moved plain text to the end of the default snippet
@@ -270,6 +287,21 @@ public static class AppSettingsSerializer
         if (!Enum.IsDefined(settings.MouseMode))
         {
             settings.MouseMode = MouseMode.WhenNoDigitizer;
+        }
+
+        if (!Enum.IsDefined(settings.AreaSelection))
+        {
+            settings.AreaSelection = AreaSelection.PartlyInside;
+        }
+
+        if (!Enum.IsDefined(settings.ExtendSelection))
+        {
+            settings.ExtendSelection = ExtendSelection.Ignore;
+        }
+
+        if (!Enum.IsDefined(settings.AreaSelectionTool))
+        {
+            settings.AreaSelectionTool = AreaSelectionTool.Rectangle;
         }
 
         if (settings.StartupMonitor == StartupMonitorKind.Named)

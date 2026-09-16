@@ -414,7 +414,7 @@ history.Undo(document);
 Assert(document.Objects.Count == 0, "Undo should remove the object.");
 history.Redo(document);
 Assert(document.Objects.Count == 1, "Redo should restore the object.");
-Assert(stroke.HitTest(new PointD(10, 9), 4), "Stroke hit testing should find a nearby point.");
+Assert(stroke.HitTestWithin(new PointD(10, 9), 4), "Stroke hit testing should find a nearby point.");
 Assert(document.ContentBounds == stroke.Bounds, "A single object should define the content bounds.");
 
 var boundsDocument = new BoardDocument();
@@ -1940,6 +1940,299 @@ Assert(
     restored.Restore(new PointD(10, 10), 2);
     restored.Restore(new PointD(double.NaN, 0), 2);
     AssertNear(10, restored.Center.X, "A sidecar carrying NaN leaves the camera where it was.");
+}
+
+// Area selection: what a rubber band and a lasso take, under both rules.
+{
+    var areaBoard = new BoardDocument();
+    var picture = new ImageBoardObject(
+        Guid.NewGuid(),
+        areaBoard.NextZIndex,
+        new RectD(100, 100, 100, 100),
+        "area-picture");
+    areaBoard.AddObject(picture);
+    var crossingStroke = InkStrokeObject.Create(
+        [
+            new InkPoint(new PointD(150, 150), 0.5f, 0),
+            new InkPoint(new PointD(400, 150), 0.5f, 1),
+        ],
+        PenStyle.Default,
+        areaBoard.NextZIndex);
+    areaBoard.AddObject(crossingStroke);
+    var farStroke = InkStrokeObject.Create(
+        [
+            new InkPoint(new PointD(600, 600), 0.5f, 0),
+            new InkPoint(new PointD(650, 650), 0.5f, 1),
+        ],
+        PenStyle.Default,
+        areaBoard.NextZIndex);
+    areaBoard.AddObject(farStroke);
+    var slide = new FrameBoardObject(
+        Guid.NewGuid(),
+        areaBoard.NextZIndex,
+        new RectD(0, 0, 900, 900),
+        "Slide 1");
+    areaBoard.AddObject(slide);
+
+    var band = SelectionArea.Rectangle(new RectD(50, 50, 250, 250));
+    HashSet<Guid> partly = areaBoard.ObjectsInArea(band, AreaSelection.PartlyInside)
+        .Select(item => item.Id)
+        .ToHashSet();
+    Assert(
+        partly.SetEquals(new[] { picture.Id, crossingStroke.Id }),
+        "A band takes what it meets, and leaves what it does not.");
+    Assert(
+        !partly.Contains(slide.Id),
+        "A frame is never taken by an area: the band means what is on the slide.");
+    HashSet<Guid> fully = areaBoard.ObjectsInArea(band, AreaSelection.FullyInside)
+        .Select(item => item.Id)
+        .ToHashSet();
+    Assert(
+        fully.SetEquals(new[] { picture.Id }),
+        "Fully inside drops the stroke that leaves the band, and keeps the picture inside it.");
+
+    Assert(
+        areaBoard.ObjectsInArea(
+            SelectionArea.Rectangle(new RectD(500, 500, 400, 400)),
+            AreaSelection.FullyInside)
+            .Select(item => item.Id)
+            .SequenceEqual([farStroke.Id]),
+        "A band around a whole stroke takes it under either rule.");
+
+    // The same two questions asked of a lasso, drawn as a diamond around the
+    // same corner of the board.
+    var lasso = SelectionArea.Lasso(
+    [
+        new PointD(175, 20),
+        new PointD(330, 175),
+        new PointD(175, 330),
+        new PointD(20, 175),
+    ]);
+    Assert(
+        areaBoard.ObjectsInArea(lasso, AreaSelection.PartlyInside)
+            .Select(item => item.Id)
+            .ToHashSet()
+            .SetEquals(new[] { picture.Id, crossingStroke.Id }),
+        "A lasso takes what its outline encloses or crosses.");
+    Assert(
+        areaBoard.ObjectsInArea(lasso, AreaSelection.FullyInside)
+            .Select(item => item.Id)
+            .SequenceEqual([picture.Id]),
+        "Fully inside a lasso is every corner inside the outline.");
+    Assert(
+        !Polygon.Contains(
+            [new PointD(175, 20), new PointD(330, 175), new PointD(175, 330), new PointD(20, 175)],
+            new PointD(340, 340)),
+        "A point outside the outline is outside by the even-odd rule.");
+    Assert(
+        Polygon.RectangleIntersectsSegment(
+            new RectD(0, 0, 10, 10),
+            new PointD(-5, 5),
+            new PointD(15, 5)) &&
+        !Polygon.RectangleIntersectsSegment(
+            new RectD(0, 0, 10, 10),
+            new PointD(-5, 50),
+            new PointD(15, 50)),
+        "A segment through a box meets it, and one well past it does not.");
+}
+
+// Extend to touching, including the ring that would otherwise circle forever.
+{
+    var chain = new BoardDocument();
+    var first = new ImageBoardObject(Guid.NewGuid(), chain.NextZIndex, new RectD(0, 0, 100, 100), "chain-1");
+    var second = new ImageBoardObject(Guid.NewGuid(), chain.NextZIndex, new RectD(90, 0, 100, 100), "chain-2");
+    var third = new ImageBoardObject(Guid.NewGuid(), chain.NextZIndex, new RectD(180, 0, 100, 100), "chain-3");
+    var apart = new ImageBoardObject(Guid.NewGuid(), chain.NextZIndex, new RectD(600, 0, 100, 100), "chain-apart");
+    chain.AddObject(first);
+    chain.AddObject(second);
+    chain.AddObject(third);
+    chain.AddObject(apart);
+
+    Assert(
+        chain.GrowSelection([first.Id], ExtendSelection.Ignore).SequenceEqual([first.Id]),
+        "Ignore takes the area at its word.");
+    Assert(
+        chain.GrowSelection([first.Id], ExtendSelection.Single)
+            .ToHashSet()
+            .SetEquals(new[] { first.Id, second.Id }),
+        "Single adds one round of what touches the selection.");
+    HashSet<Guid> recursive = chain.GrowSelection([first.Id], ExtendSelection.Recursive).ToHashSet();
+    Assert(
+        recursive.SetEquals(new[] { first.Id, second.Id, third.Id }),
+        "Recursive walks the chain and stops where it ends.");
+    Assert(
+        !recursive.Contains(apart.Id),
+        "Nothing the chain does not reach joins it.");
+
+    // A ring: every one of these touches the next, and the last touches the
+    // first. The visited set is what makes this terminate at all.
+    var ring = new BoardDocument();
+    var ringIds = new List<Guid>();
+    for (var index = 0; index < 4; index++)
+    {
+        var corner = new ImageBoardObject(
+            Guid.NewGuid(),
+            ring.NextZIndex,
+            new RectD(index is 1 or 2 ? 90 : 0, index is 2 or 3 ? 90 : 0, 100, 100),
+            $"ring-{index}");
+        ring.AddObject(corner);
+        ringIds.Add(corner.Id);
+    }
+
+    Assert(
+        ring.GrowSelection([ringIds[0]], ExtendSelection.Recursive).ToHashSet().SetEquals(ringIds),
+        "A ring of touching objects is taken whole, and examined once each.");
+}
+
+// A group gesture: the selection moves and scales as one, and the strokes
+// linked to a selected container come along without being selected themselves.
+{
+    var groupBoard = new BoardDocument();
+    var groupPicture = new ImageBoardObject(
+        Guid.NewGuid(),
+        groupBoard.NextZIndex,
+        new RectD(0, 0, 100, 100),
+        "group-picture");
+    groupBoard.AddObject(groupPicture);
+    var groupLinked = InkStrokeObject.Create(
+        [
+            new InkPoint(new PointD(20, 20), 0.5f, 0),
+            new InkPoint(new PointD(80, 80), 0.5f, 1),
+        ],
+        PenStyle.Default,
+        groupBoard.NextZIndex,
+        containerId: groupPicture.Id);
+    groupBoard.AddObject(groupLinked);
+    var groupStroke = InkStrokeObject.Create(
+        [
+            new InkPoint(new PointD(200, 200), 0.5f, 0),
+            new InkPoint(new PointD(300, 300), 0.5f, 1),
+        ],
+        PenStyle.Default,
+        groupBoard.NextZIndex);
+    groupBoard.AddObject(groupStroke);
+
+    var groupBounds = new RectD(0, 0, 300, 300);
+    var moved = groupBounds.Translate(new PointD(500, 50));
+    BoardObject[] movedBefore = [groupPicture, groupStroke, groupLinked];
+    BoardObject[] movedAfter =
+    [
+        groupPicture.WithBounds(new RectD(500, 50, 100, 100)),
+        groupStroke.TransformWithContainer(groupBounds, moved),
+        groupLinked.TransformWithContainer(groupBounds, moved),
+    ];
+    var groupHistory = new CommandHistory();
+    groupHistory.Execute(new ReplaceObjectsCommand(movedBefore, movedAfter), groupBoard);
+    AssertNear(
+        500,
+        groupBoard.Objects.OfType<ImageBoardObject>().Single().Bounds.Left,
+        "Moving the selection moves every member of it.");
+    AssertNear(
+        520,
+        groupBoard.Objects.OfType<InkStrokeObject>()
+            .Single(item => item.ContainerId == groupPicture.Id)
+            .Points[0]
+            .Position
+            .X,
+        "A stroke linked to a selected container is carried by the same move.");
+
+    groupHistory.Undo(groupBoard);
+    AssertNear(
+        0,
+        groupBoard.Objects.OfType<ImageBoardObject>().Single().Bounds.Left,
+        "Undo puts the whole group back.");
+    AssertNear(
+        20,
+        groupBoard.Objects.OfType<InkStrokeObject>()
+            .Single(item => item.ContainerId == groupPicture.Id)
+            .Points[0]
+            .Position
+            .X,
+        "Undo puts the linked strokes back too.");
+
+    // Scaled about the top-left corner, aspect preserved.
+    var scaled = new RectD(0, 0, 600, 600);
+    BoardObject[] scaledAfter =
+    [
+        groupPicture.WithBounds(new RectD(0, 0, 200, 200)),
+        groupStroke.TransformWithContainer(groupBounds, scaled),
+        groupLinked.TransformWithContainer(groupBounds, scaled),
+    ];
+    groupHistory.Execute(new ReplaceObjectsCommand(movedBefore, scaledAfter), groupBoard);
+    AssertNear(
+        200,
+        groupBoard.Objects.OfType<ImageBoardObject>().Single().Bounds.Width,
+        "Scaling the selection scales every member about the same corner.");
+    AssertNear(
+        400,
+        groupBoard.Objects.OfType<InkStrokeObject>()
+            .Single(item => item.ContainerId is null)
+            .Points[0]
+            .Position
+            .X,
+        "A selected stroke is scaled by the group rather than by its own box.");
+
+    // Deleting the set takes the linked strokes with it, whether or not they
+    // were part of the set.
+    Assert(
+        groupBoard.GetDeletionGroup([groupPicture.Id, groupStroke.Id])
+            .Select(item => item.Id)
+            .ToHashSet()
+            .SetEquals(new[] { groupPicture.Id, groupStroke.Id, groupLinked.Id }),
+        "Deleting a set takes its members and the strokes linked to them.");
+
+    // A block sent to the front keeps its own order.
+    var ordered = new BoardDocument();
+    var bottom = new ImageBoardObject(Guid.NewGuid(), ordered.NextZIndex, new RectD(0, 0, 10, 10), "z-1");
+    ordered.AddObject(bottom);
+    var middle = new ImageBoardObject(Guid.NewGuid(), ordered.NextZIndex, new RectD(20, 0, 10, 10), "z-2");
+    ordered.AddObject(middle);
+    var top = new ImageBoardObject(Guid.NewGuid(), ordered.NextZIndex, new RectD(40, 0, 10, 10), "z-3");
+    ordered.AddObject(top);
+    BoardObject[] block = ordered.GetDeletionGroup([bottom.Id, middle.Id])
+        .OrderBy(item => item.ZIndex)
+        .ToArray();
+    var start = top.ZIndex + 1;
+    ordered.ReplaceObjects(block.Select((item, index) => item.WithZIndex(start + index)).ToArray());
+    Assert(
+        ordered.Objects[0].Id == top.Id &&
+        ordered.Objects[1].Id == bottom.Id &&
+        ordered.Objects[2].Id == middle.Id,
+        "A block brought to the front goes above everything and keeps its internal order.");
+}
+
+// The three Selection settings: what they round trip as, and what an invalid
+// one normalizes to.
+{
+    var selectionSettings = AppSettingsSerializer.Parse(AppSettingsSerializer.Format(new AppSettings
+    {
+        AreaSelection = AreaSelection.FullyInside,
+        ExtendSelection = ExtendSelection.Recursive,
+        AreaSelectionTool = AreaSelectionTool.Lasso,
+    }));
+    Assert(
+        selectionSettings.AreaSelection == AreaSelection.FullyInside &&
+        selectionSettings.ExtendSelection == ExtendSelection.Recursive &&
+        selectionSettings.AreaSelectionTool == AreaSelectionTool.Lasso,
+        "The Selection settings survive a round trip.");
+    Assert(
+        AppSettingsSerializer.Parse("{ }") is
+        {
+            AreaSelection: AreaSelection.PartlyInside,
+            ExtendSelection: ExtendSelection.Ignore,
+            AreaSelectionTool: AreaSelectionTool.Rectangle,
+        },
+        "A file that says nothing about selection takes the defaults.");
+    Assert(
+        AppSettingsSerializer.Parse("{ \"areaSelection\": 99, \"extendSelection\": 99 }") is
+        {
+            AreaSelection: AreaSelection.PartlyInside,
+            ExtendSelection: ExtendSelection.Ignore,
+        },
+        "A selection value that is not one of the choices normalizes to the default.");
+    Assert(
+        AppSettingsSerializer.Parse("{ }").Version == 19,
+        "Settings are written as version 19.");
 }
 
 Console.WriteLine("SQLBI.Whiteboard.Core smoke tests passed.");

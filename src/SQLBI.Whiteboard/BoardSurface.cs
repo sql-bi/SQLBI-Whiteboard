@@ -12,6 +12,9 @@ internal sealed class BoardSurface : FrameworkElement
 {
     private static readonly Brush BackgroundBrush = CreateFrozenBrush(0xFFFFFFFF);
     private static readonly Pen SelectionPen = CreateFrozenPen(0xFF2563EB, 2);
+    private static readonly Pen SelectionMemberPen = CreateFrozenPen(0xFF2563EB, 1);
+    private static readonly Pen AreaPen = CreateDashedPen(0xFF2563EB, 1.5);
+    private static readonly Brush AreaFillBrush = CreateFrozenBrush(0x142563EB);
     private static readonly Brush SelectionHandleBrush = CreateFrozenBrush(0xFFFFFFFF);
     private static readonly Brush MissingImageBrush = CreateFrozenBrush(0xFFE5E7EB);
     private static readonly Pen MissingImagePen = CreateFrozenPen(0xFF9CA3AF, 1);
@@ -27,7 +30,18 @@ internal sealed class BoardSurface : FrameworkElement
     private BoardDocument? _document;
     private Camera2D? _camera;
 
-    public Guid? SelectedObjectId { get; set; }
+    /// <summary>
+    /// Every selected object. A single selection is a set of one, and looks
+    /// exactly as it always did: one rectangle with the corner handle. Only a
+    /// set of several also outlines its members, because only then is there a
+    /// question about which of them the rectangle covers.
+    /// </summary>
+    public IReadOnlySet<Guid> SelectedObjectIds { get; set; } = new HashSet<Guid>();
+
+    /// <summary>
+    /// The rubber band or lasso being drawn right now, in world coordinates.
+    /// </summary>
+    public IReadOnlyList<PointD>? PendingArea { get; set; }
 
     public Guid? HoveredObjectId { get; set; }
 
@@ -144,17 +158,78 @@ internal sealed class BoardSurface : FrameworkElement
         }
 
         if (HoveredObjectId is Guid hoveredId &&
-            hoveredId != SelectedObjectId &&
+            !SelectedObjectIds.Contains(hoveredId) &&
             _document.Objects.FirstOrDefault(item => item.Id == hoveredId) is { } hovered)
         {
             DrawSelection(drawingContext, hovered.Bounds, _camera, includeHandle: false);
         }
 
-        if (SelectedObjectId is Guid selectedId &&
-            _document.Objects.FirstOrDefault(item => item.Id == selectedId) is { } selected)
+        DrawSelectionSet(drawingContext, _camera);
+        if (PendingArea is { Count: > 1 } area)
         {
-            DrawSelection(drawingContext, selected.Bounds, _camera, includeHandle: true);
+            DrawPendingArea(drawingContext, area, _camera);
         }
+    }
+
+    private void DrawSelectionSet(DrawingContext drawingContext, Camera2D camera)
+    {
+        if (_document is null || SelectedObjectIds.Count == 0)
+        {
+            return;
+        }
+
+        BoardObject[] selected = _document.Objects
+            .Where(item => SelectedObjectIds.Contains(item.Id))
+            .ToArray();
+        if (selected.Length == 0)
+        {
+            return;
+        }
+
+        if (selected.Length > 1)
+        {
+            foreach (var item in selected)
+            {
+                drawingContext.DrawRectangle(
+                    null,
+                    SelectionMemberPen,
+                    ToScreenRectangle(item.Bounds, camera));
+            }
+        }
+
+        var left = selected.Min(item => item.Bounds.Left);
+        var top = selected.Min(item => item.Bounds.Top);
+        var right = selected.Max(item => item.Bounds.Right);
+        var bottom = selected.Max(item => item.Bounds.Bottom);
+        DrawSelection(
+            drawingContext,
+            new RectD(left, top, right - left, bottom - top),
+            camera,
+            includeHandle: true);
+    }
+
+    private static void DrawPendingArea(
+        DrawingContext drawingContext,
+        IReadOnlyList<PointD> area,
+        Camera2D camera)
+    {
+        var geometry = new StreamGeometry();
+        using (var context = geometry.Open())
+        {
+            PointD first = camera.WorldToScreen(area[0]);
+            context.BeginFigure(new Point(first.X, first.Y), false, true);
+            context.PolyLineTo(
+                [.. area.Skip(1).Select(point =>
+                {
+                    PointD screen = camera.WorldToScreen(point);
+                    return new Point(screen.X, screen.Y);
+                })],
+                true,
+                false);
+        }
+
+        geometry.Freeze();
+        drawingContext.DrawGeometry(AreaFillBrush, AreaPen, geometry);
     }
 
     private static void DrawStroke(
@@ -275,7 +350,9 @@ internal sealed class BoardSurface : FrameworkElement
 
     private double LanguageChipTitleReserve(TextBoardObject text)
     {
-        if (_camera is null || text.Id != SelectedObjectId)
+        if (_camera is null ||
+            SelectedObjectIds.Count != 1 ||
+            !SelectedObjectIds.Contains(text.Id))
         {
             return 0;
         }
@@ -373,6 +450,16 @@ internal sealed class BoardSurface : FrameworkElement
     private static Pen CreateFrozenPen(uint argb, double thickness)
     {
         var pen = new Pen(CreateFrozenBrush(argb), thickness);
+        pen.Freeze();
+        return pen;
+    }
+
+    private static Pen CreateDashedPen(uint argb, double thickness)
+    {
+        var pen = new Pen(CreateFrozenBrush(argb), thickness)
+        {
+            DashStyle = new DashStyle([4, 3], 0),
+        };
         pen.Freeze();
         return pen;
     }

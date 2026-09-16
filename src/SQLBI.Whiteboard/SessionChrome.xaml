@@ -200,6 +200,24 @@
                                            Text="Ctrl+V" />
                             </StackPanel>
                         </Button>
+                        <Border Style="{StaticResource SessionCommandSeparator}" />
+                        <Button x:Name="LassoButton"
+                                Style="{StaticResource SessionCommandButton}"
+                                Tag="ToggleLasso"
+                                Click="Command_Click">
+                            <StackPanel HorizontalAlignment="Center">
+                                <Path Width="18"
+                                      Height="18"
+                                      Stretch="Uniform"
+                                      Fill="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"
+                                      Data="{StaticResource LassoGeometry}" />
+                                <TextBlock Margin="0,4,0,0"
+                                           HorizontalAlignment="Center"
+                                           Text="Lasso" />
+                                <TextBlock Style="{StaticResource SessionShortcutHint}"
+                                           Text="L" />
+                            </StackPanel>
+                        </Button>
                     </StackPanel>
                     <StackPanel x:Name="ViewRow"
                                 Orientation="Horizontal"

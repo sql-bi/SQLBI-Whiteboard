@@ -215,6 +215,7 @@
                           SelectionChanged="LanguageChipCombo_SelectionChanged"
                           PreviewMouseDown="LanguageChipCombo_PreviewMouseDown"
                           PreviewMouseWheel="TextEditorBorder_PreviewMouseWheel" />
+                <local:PropertyBar x:Name="SelectionPropertyBar" />
             </Canvas>
         </Grid>
 
