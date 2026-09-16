@@ -4369,6 +4369,14 @@ public partial class MainWindow : Window
     {
         try
         {
+            // Explicit Prompt Assistant metadata takes precedence over an accompanying
+            // picture or code-like text. Untagged clipboard data keeps its usual priority.
+            if (ClipboardPrompt.TryGetText(Clipboard.GetDataObject(), out string prompt))
+            {
+                AddText(prompt, languageId: TextLanguageIds.Prompt);
+                return;
+            }
+
             string[] files = ClipboardImage.GetImportableFiles();
             if (files.Length > 0)
             {

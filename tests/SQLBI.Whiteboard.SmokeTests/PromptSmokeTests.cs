@@ -39,6 +39,7 @@ internal static class PromptSmokeTests
 
     private static void Check(string? previewPath)
     {
+        ClipboardPromptSmokeTests.Run();
         var language = TextLanguageRegistry.Resolve(TextLanguageIds.Prompt);
         Assert(language.DisplayName == "Prompt" && language.WordWrap && !language.ShowLineNumbers &&
             !language.CanDetect && !language.CanFormat && language.FormattingRequestUri is null &&
