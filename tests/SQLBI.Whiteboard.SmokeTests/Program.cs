@@ -578,6 +578,7 @@ Assert(
 }
 
 SQLBI.Whiteboard.SmokeTests.PromptSmokeTests.Run(Environment.GetEnvironmentVariable("SQLBI_WHITEBOARD_PROMPT_PREVIEW"));
+SQLBI.Whiteboard.SmokeTests.GridSmokeTests.Run(Environment.GetEnvironmentVariable("SQLBI_WHITEBOARD_GRID_PREVIEW"));
 SQLBI.Whiteboard.SmokeTests.PreferencesSmokeTests.Run();
 
 Console.WriteLine("SQLBI.Whiteboard smoke tests passed.");

@@ -3,6 +3,7 @@ using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using SQLBI.Whiteboard.Core.Geometry;
 using SQLBI.Whiteboard.Core.Model;
+using SQLBI.Whiteboard.Core.Settings;
 using SQLBI.Whiteboard.Core.Viewport;
 
 namespace SQLBI.Whiteboard;
@@ -34,6 +35,11 @@ internal static class BoardPreviewRenderer
             Height = pixelSize.Height,
             LiveViewImageSourceProvider = liveViewImageSourceProvider,
             DrawFrames = false,
+
+            // Said rather than left to the default: a preview is what the
+            // Explorer thumbnail and the VS Code preview show, and neither is a
+            // place for the author's own guides.
+            GridStyle = GridStyle.Off,
         };
         surface.Configure(document, camera);
         surface.Measure(new Size(pixelSize.Width, pixelSize.Height));
