@@ -185,6 +185,26 @@ Assert(
     ],
     "A .wimport should build image containers from SVG, both embedded and linked.");
 
+var spacedNameImport = ImportDocument.Parse(
+    """
+    ## Diagram
+    ![short alt](./test - Copy.svg)
+
+    ## Angle brackets
+    ![star](<./art/my star.svg>)
+
+    ## Linked with a title
+    [logo](./art/my logo.svg "Contoso")
+    """);
+Assert(
+    spacedNameImport.Items is
+    [
+        { Kind: ImportItemKind.Image, SourcePath: "./test - Copy.svg" },
+        { Kind: ImportItemKind.Image, SourcePath: "./art/my star.svg" },
+        { Kind: ImportItemKind.Image, SourcePath: "./art/my logo.svg" },
+    ],
+    "A file name with spaces is the path, bare or in angle brackets, and a title is not part of it.");
+
 var parsedImport = ImportDocument.Parse(
     """
     # Contoso workshop

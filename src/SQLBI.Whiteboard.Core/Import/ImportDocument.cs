@@ -30,12 +30,18 @@ public sealed record ImportItem
 
 public sealed class ImportDocument
 {
+    // A recipe names files on this computer, where a space in a name is ordinary, so a
+    // destination runs to the closing parenthesis rather than stopping at the first space.
+    // A link title is still read as a title, so it never becomes part of the path.
+    private const string Destination =
+        @"(?<path><[^>]+>|[^)\s][^)\r\n]*?)\s*(?<title>""[^""]*""|'[^']*')?\s*";
+
     private static readonly Regex ImagePattern = new(
-        @"!\[(?<alt>[^\]]*)\]\((?<path><[^>]+>|[^)\s]+)\)",
+        @"!\[(?<alt>[^\]]*)\]\(\s*" + Destination + @"\)",
         RegexOptions.CultureInvariant);
 
     private static readonly Regex LinkPattern = new(
-        @"(?<!!)\[(?<text>[^\]]*)\]\((?<path><[^>]+>|[^)\s]+)\)",
+        @"(?<!!)\[(?<text>[^\]]*)\]\(\s*" + Destination + @"\)",
         RegexOptions.CultureInvariant);
 
     public ImportDocument(
