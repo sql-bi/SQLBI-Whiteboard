@@ -33,6 +33,43 @@ var framedTopLeft = camera.WorldToScreen(
 Assert(framedTopLeft.X >= 49.999999, "Framing must preserve the horizontal margin.");
 Assert(framedTopLeft.Y >= 49.999999, "Framing must preserve the vertical margin.");
 
+// The grid coarsens in steps rather than continuously, so a zoom is visible as
+// the lines spreading and then snapping wider apart.
+{
+    AssertNear(40, GridGeometry.SpacingFor(1), "At zoom 1 the grid is the base 40 board pixels.");
+    AssertNear(40, GridGeometry.SpacingFor(16), "Zoomed all the way in the grid stays at 40: it is already wide enough on screen.");
+    AssertNear(160, GridGeometry.SpacingFor(0.25), "40 at quarter zoom is 10 screen pixels, which is under the floor, so the spacing steps by four.");
+    AssertNear(640, GridGeometry.SpacingFor(0.05), "At the minimum zoom the spacing steps twice rather than crowding.");
+
+    // Exactly at the floor the spacing holds: the step is for lines that would be
+    // closer than it, not for lines that reach it.
+    var threshold = GridGeometry.MinimumScreenSpacing / GridGeometry.BaseSpacing;
+    AssertNear(40, GridGeometry.SpacingFor(threshold), "12 screen pixels apart is close enough, so the spacing holds.");
+    AssertNear(
+        160,
+        GridGeometry.SpacingFor(Math.BitDecrement(threshold)),
+        "A hair under the floor is what steps the spacing, so the comparison cannot drift to the wrong side.");
+    AssertNear(40, GridGeometry.SpacingFor(0), "A zoom that cannot be drawn with falls back to the base spacing.");
+    AssertNear(40, GridGeometry.SpacingFor(double.NaN), "NaN falls back rather than looping forever.");
+
+    var visible = new RectD(-50, 30, 180, 90);
+    Assert(
+        GridGeometry.VerticalLines(visible, 40).SequenceEqual([-40d, 0, 40, 80, 120]),
+        "Vertical lines cover the visible rectangle from its first multiple of the spacing to its last.");
+    Assert(
+        GridGeometry.HorizontalLines(visible, 40).SequenceEqual([40d, 80, 120]),
+        "Horizontal lines start at the first multiple inside the rectangle, not at its edge.");
+    Assert(
+        GridGeometry.VerticalLines(new RectD(0, 0, 0, 0), 40).SequenceEqual([0d]),
+        "A rectangle standing on a line still carries that line.");
+    Assert(
+        !GridGeometry.VerticalLines(new RectD(1, 0, 10, 10), 40).Any(),
+        "A rectangle between two lines carries none of them.");
+    Assert(
+        !GridGeometry.VerticalLines(visible, 0).Any(),
+        "A spacing of zero yields nothing rather than never returning.");
+}
+
 var lineAnchor = new PointD(100, 100);
 Assert(
     StraightLineSnap.DetectDirection(lineAnchor, new PointD(200, 120)) ==
@@ -1117,6 +1154,29 @@ var eraserButtonRoundTrip = AppSettingsSerializer.Parse(
 Assert(
     eraserButtonRoundTrip.ShowEraserButton,
     "Settings JSON should round-trip the always-show-the-Eraser choice.");
+// The grid is an application preference, never part of a board, so what a person
+// chose is what they get back at the next start.
+Assert(
+    defaultSettings.Grid == GridStyle.Off && defaultSettings.LastGridStyle == GridStyle.Lines,
+    "A new setup draws no grid, and the first toggle from Off gives lines.");
+Assert(
+    settingsFromVersion12.Grid == GridStyle.Off,
+    "Settings saved before the grid existed should not grow one.");
+var gridRoundTrip = AppSettingsSerializer.Parse(
+    AppSettingsSerializer.Format(new AppSettings
+    {
+        Grid = GridStyle.Dots,
+        LastGridStyle = GridStyle.Dots,
+    }));
+Assert(
+    gridRoundTrip is { Grid: GridStyle.Dots, LastGridStyle: GridStyle.Dots },
+    "Settings JSON should round-trip the grid and the style the toggle brings back.");
+Assert(
+    AppSettingsSerializer.Parse("{ \"grid\": \"Squares\" }").Grid == GridStyle.Off,
+    "A grid style nothing draws reads as no grid.");
+Assert(
+    AppSettingsSerializer.Parse("{ \"lastGridStyle\": \"Off\" }").LastGridStyle == GridStyle.Lines,
+    "Off as the remembered style would leave the toggle nothing to turn on, so it reads as lines.");
 Assert(
     defaultSettings.SnippetFormatOrder is ["dax", "sqlserver", "kql", "plain"],
     "A new setup tries every language before plain text, so pasted code is code without a setting.");
