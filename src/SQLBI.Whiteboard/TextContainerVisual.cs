@@ -107,17 +107,25 @@ internal static class TextContainerVisual
         double scale = NormalizeScale(visualScale);
         double padding = ContentPadding * scale;
         double availableWidth = Math.Max(1, width - (2 * padding));
-        FormattedText formatted = CreateBodyText(
-            text,
-            BodyFontSize * scale,
-            pixelsPerDip,
-            language);
-        formatted.MaxTextWidth = availableWidth;
+        double bodyHeight;
+        if (language.Id == TextLanguageIds.Prompt)
+        {
+            // The editor's border consumes width that the drawing does not. Measure the
+            // narrower body so switching modes cannot hide a final wrapped line.
+            bodyHeight = new PromptTextLayout(text, Math.Max(1, availableWidth - 2 * BorderThickness * scale),
+                BodyFontSize * scale, pixelsPerDip, TextBrush).Height;
+        }
+        else
+        {
+            FormattedText formatted = CreateBodyText(text, BodyFontSize * scale, pixelsPerDip, language);
+            formatted.MaxTextWidth = availableWidth;
+            bodyHeight = formatted.Height;
+        }
         return Math.Max(
             64 * scale,
             (TitleBarHeight * scale) +
             (2 * padding) +
-            formatted.Height +
+            bodyHeight +
             (BodyBottomAllowance * scale));
     }
 
@@ -181,6 +189,16 @@ internal static class TextContainerVisual
             destination.Top + titleHeight + padding,
             Math.Max(1, destination.Width - (2 * padding)),
             Math.Max(1, destination.Height - titleHeight - (2 * padding)));
+        if (language.Id == TextLanguageIds.Prompt)
+        {
+            var layout = new PromptTextLayout(textObject.Text, bodyRectangle.Width,
+                Math.Max(1, BodyFontSize * scale), pixelsPerDip, TextBrush);
+            drawingContext.PushClip(new RectangleGeometry(bodyRectangle));
+            layout.Draw(drawingContext, bodyRectangle.TopLeft);
+            drawingContext.Pop();
+            return;
+        }
+
         FormattedText body = CreateBodyText(
             textObject.Text,
             Math.Max(1, BodyFontSize * scale),

@@ -243,6 +243,7 @@ public sealed record ImageBoardObject(
 public static class TextLanguageIds
 {
     public const string Plain = "plain";
+    public const string Prompt = "prompt";
     public const string Dax = "dax";
     public const string SqlServer = "sqlserver";
     public const string Kql = "kql";
@@ -266,7 +267,7 @@ public static class TextLanguageIds
     /// </summary>
     public static IReadOnlyList<string> All { get; } =
     [
-        Plain, Dax, SqlServer, Kql,
+        Plain, Prompt, Dax, SqlServer, Kql,
         Python, C, Cpp, Java, CSharp, JavaScript, TypeScript, VbNet, R, Rust, Php,
     ];
 

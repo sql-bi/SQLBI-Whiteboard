@@ -205,8 +205,40 @@ public static class PptxDeckWriter
         title.Append(new A.EndParagraphRunProperties { Language = Language, FontSize = titleSize });
         body.Append(title);
 
+        if (text.Paragraphs is { } paragraphs)
+        {
+            foreach (var item in paragraphs)
+            {
+                var properties = new A.ParagraphProperties
+                {
+                    LeftMargin = (int)fit.Emu(item.LeftMargin),
+                    Indent = -(int)fit.Emu(item.HangingIndent),
+                };
+                if (item.Bullet is { } bullet)
+                {
+                    properties.Append(new A.BulletFont { Typeface = text.FontFamily });
+                    properties.Append(new A.CharacterBullet { Char = bullet });
+                }
+                else
+                {
+                    properties.Append(new A.NoBullet());
+                }
+
+                var itemParagraph = new A.Paragraph(properties);
+                foreach (var run in item.Runs)
+                {
+                    itemParagraph.Append(new A.Run(
+                        RunProperties(run.Argb, text.FontFamily, bodySize, run.Bold, run.Italic),
+                        new A.Text(run.Text)));
+                }
+
+                itemParagraph.Append(new A.EndParagraphRunProperties { Language = Language, FontSize = bodySize });
+                body.Append(itemParagraph);
+            }
+        }
+
         var paragraph = new A.Paragraph();
-        foreach (var run in text.Runs)
+        foreach (var run in text.Paragraphs is null ? text.Runs : [])
         {
             var lines = run.Text.Split('\n');
             for (var index = 0; index < lines.Length; index++)
@@ -228,7 +260,7 @@ public static class PptxDeckWriter
             }
         }
 
-        if (text.Runs.Count > 0)
+        if (text.Paragraphs is null && text.Runs.Count > 0)
         {
             paragraph.Append(new A.EndParagraphRunProperties { Language = Language, FontSize = bodySize });
             body.Append(paragraph);

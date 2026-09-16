@@ -265,19 +265,29 @@ public static class PdfDocumentWriter
         y += titleFont.GetHeight() + TitleGap * bodySize;
         var lineHeight = BodyFont(bold: false, italic: false).GetHeight();
 
-        foreach (var paragraph in Paragraphs(text.Runs))
+        var paragraphs = text.Paragraphs ?? Paragraphs(text.Runs)
+            .Select(fragments => new SlideTextParagraph(fragments.Select(fragment => fragment.Run with { Text = fragment.Text }).ToArray()))
+            .ToArray();
+        foreach (var paragraph in paragraphs)
         {
             if (y >= bottom)
             {
                 break;
             }
 
-            var x = left;
-            foreach (var (fragment, run) in paragraph)
+            var paragraphLeft = left + mapping.Map(paragraph.LeftMargin);
+            if (paragraph.Bullet is { } bullet)
+            {
+                graphics.DrawString(bullet, BodyFont(false, false), new XSolidBrush(Color(text.TextArgb, opaque: true)),
+                    new XPoint(paragraphLeft - mapping.Map(paragraph.HangingIndent), y), XStringFormats.TopLeft);
+            }
+
+            var x = paragraphLeft;
+            foreach (var run in paragraph.Runs)
             {
                 var font = BodyFont(run.Bold, run.Italic);
                 var brush = new XSolidBrush(Color(run.Argb, opaque: true));
-                var rest = fragment;
+                var rest = run.Text;
                 while (rest.Length > 0 && y < bottom)
                 {
                     var fit = FitLength(graphics, font, rest, right - x);
@@ -292,14 +302,14 @@ public static class PdfDocumentWriter
                     // the next line whole when something precedes it on the line, and is
                     // cut at the last character that fits when it starts the line.
                     var space = rest.LastIndexOf(' ', Math.Max(0, fit - 1));
-                    var head = space > 0 ? space : x > left ? 0 : Math.Max(1, fit);
+                    var head = space > 0 ? space : x > paragraphLeft ? 0 : Math.Max(1, fit);
                     if (head > 0)
                     {
                         graphics.DrawString(rest[..head], font, brush, new XPoint(x, y), XStringFormats.TopLeft);
                     }
 
                     rest = rest[(space > 0 ? space + 1 : head)..];
-                    x = left;
+                    x = paragraphLeft;
                     y += lineHeight;
                 }
             }

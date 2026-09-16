@@ -186,7 +186,22 @@ internal static class EditableSlide
             TextContainerVisual.ContentPadding * scale,
             TextBackgroundArgb,
             TextBorderArgb,
-            TextArgb);
+            TextArgb,
+            language.Id == TextLanguageIds.Prompt ? PromptParagraphs(text, scale, visualScale) : null);
+    }
+
+    private static IReadOnlyList<SlideTextParagraph> PromptParagraphs(TextBoardObject text, double scale, double visualScale)
+    {
+        var width = Math.Max(1, (text.Bounds.Width / visualScale - 2 * TextContainerVisual.ContentPadding) * scale);
+        return PromptText.Lines(text.Text).Select(line =>
+        {
+            var indent = PromptTextLayout.MeasureIndent(line, width, TextContainerVisual.BodyFontSize * scale, 1);
+            return new SlideTextParagraph(
+                [new SlideTextRun(line.Content, TextArgb, false, false)],
+                indent.Content,
+                indent.Content - indent.Marker,
+                line.IsBullet ? "•" : null);
+        }).ToArray();
     }
 
     /// <summary>
