@@ -256,6 +256,24 @@
                                            Text="Ctrl+F11" />
                             </StackPanel>
                         </Button>
+                        <Button x:Name="GridButton"
+                                Style="{StaticResource SessionCommandButton}"
+                                ToolTip="Show a faint grid behind the board"
+                                Tag="ToggleGrid"
+                                Click="Command_Click">
+                            <StackPanel HorizontalAlignment="Center">
+                                <Path Width="18"
+                                      Height="18"
+                                      Stretch="Uniform"
+                                      Fill="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"
+                                      Data="{StaticResource GridGeometry}" />
+                                <TextBlock Margin="0,4,0,0"
+                                           HorizontalAlignment="Center"
+                                           Text="Grid" />
+                                <TextBlock Style="{StaticResource SessionShortcutHint}"
+                                           Text="G" />
+                            </StackPanel>
+                        </Button>
                         <Border Style="{StaticResource SessionCommandSeparator}" />
                         <Button x:Name="BringToFrontButton"
                                 Style="{StaticResource SessionCommandButton}"

@@ -21,6 +21,7 @@ public enum SessionCommand
     Paste,
     FullScreen,
     CanvasOnly,
+    ToggleGrid,
     BringToFront,
     SendToBack,
     AddLiveView,
@@ -118,6 +119,29 @@ public partial class SessionChrome : UserControl
 
         BringToFrontButton.IsEnabled = canBringToFront;
         SendToBackButton.IsEnabled = canSendToBack;
+    }
+
+    /// <summary>
+    /// The Grid button carries its own state rather than only issuing a command,
+    /// so the row says whether the grid is on without anyone having to open
+    /// Preferences to find out.
+    /// </summary>
+    public void SetGridChecked(bool on)
+    {
+        if (GridButton is null)
+        {
+            return;
+        }
+
+        GridButton.Background = on
+            ? (Brush)FindResource("ToolbarSelectedBrush")
+            : Brushes.Transparent;
+        GridButton.Foreground = on
+            ? (Brush)FindResource("ToolbarAccentBrush")
+            : (Brush)FindResource("ToolbarIconBrush");
+        GridButton.ToolTip = on
+            ? "Hide the grid behind the board"
+            : "Show a faint grid behind the board";
     }
 
     public void SetLiveViewCommands(bool selected, bool hasTarget, bool frozen)
@@ -328,6 +352,7 @@ public partial class SessionChrome : UserControl
             'L' when EditRow.Visibility == Visibility.Visible => SessionCommand.ToggleLasso,
             'F' when ViewRow.Visibility == Visibility.Visible => SessionCommand.FullScreen,
             'C' when ViewRow.Visibility == Visibility.Visible => SessionCommand.CanvasOnly,
+            'G' when ViewRow.Visibility == Visibility.Visible => SessionCommand.ToggleGrid,
             'B' when ViewRow.Visibility == Visibility.Visible => SessionCommand.BringToFront,
             'S' when ViewRow.Visibility == Visibility.Visible => SessionCommand.SendToBack,
             'L' when ViewRow.Visibility == Visibility.Visible => SessionCommand.AddLiveView,

@@ -110,6 +110,18 @@ public enum AreaSelectionTool
     Lasso = 1,
 }
 
+/// <summary>
+/// The faint grid behind the board. It is an application preference rather than
+/// something a board carries: it says how one person likes to work, and it is
+/// drawn on screen only, never in an export or a preview.
+/// </summary>
+public enum GridStyle
+{
+    Off = 0,
+    Lines = 1,
+    Dots = 2,
+}
+
 public sealed class AppSettings
 {
     public int Version { get; set; } = AppSettingsSerializer.CurrentVersion;
@@ -150,6 +162,15 @@ public sealed class AppSettings
     /// reverse end, which otherwise cannot reach the Eraser at all.
     /// </summary>
     public bool ShowEraserButton { get; set; }
+
+    public GridStyle Grid { get; set; } = GridStyle.Off;
+
+    /// <summary>
+    /// What the View row's Grid button turns back on. Someone who prefers dots
+    /// gets dots back, and a first toggle from the default gives lines rather
+    /// than nothing at all.
+    /// </summary>
+    public GridStyle LastGridStyle { get; set; } = GridStyle.Lines;
 
     public List<string> SnippetFormatOrder { get; set; } = [.. TextLanguageIds.DetectionOrder];
 
@@ -302,6 +323,17 @@ public static class AppSettingsSerializer
         if (!Enum.IsDefined(settings.AreaSelectionTool))
         {
             settings.AreaSelectionTool = AreaSelectionTool.Rectangle;
+        }
+
+        if (!Enum.IsDefined(settings.Grid))
+        {
+            settings.Grid = GridStyle.Off;
+        }
+
+        // Off here would leave the View row's toggle with nothing to turn on.
+        if (!Enum.IsDefined(settings.LastGridStyle) || settings.LastGridStyle == GridStyle.Off)
+        {
+            settings.LastGridStyle = GridStyle.Lines;
         }
 
         if (settings.StartupMonitor == StartupMonitorKind.Named)

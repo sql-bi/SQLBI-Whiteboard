@@ -121,6 +121,7 @@ internal static class SettingsCatalog
         public const string SnippetFormatOrder = "input.snippetFormatOrder";
         public const string AreaSelection = "selection.area";
         public const string ExtendSelection = "selection.extend";
+        public const string Grid = "board.grid";
         public const string CheckForUpdates = "updates.check";
     }
 
@@ -138,13 +139,14 @@ internal static class SettingsCatalog
     public const string Startup = "Startup";
     public const string Input = "Input";
     public const string Selection = "Selection";
+    public const string Board = "Board";
     public const string Import = "Import";
     public const string Laser = "Laser pointer";
     public const string Toolbar = "Toolbar";
     public const string Updates = "Updates";
 
     public static IReadOnlyList<string> Categories { get; } =
-        [Startup, Input, Selection, Import, Laser, Toolbar, Updates];
+        [Startup, Input, Selection, Board, Import, Laser, Toolbar, Updates];
 
     public static IReadOnlyList<SettingDescriptor> All { get; } =
     [
@@ -284,6 +286,22 @@ internal static class SettingsCatalog
                 new() { Id = nameof(Core.Model.ExtendSelection.Ignore), Title = "Ignore" },
                 new() { Id = nameof(Core.Model.ExtendSelection.Single), Title = "Single" },
                 new() { Id = nameof(Core.Model.ExtendSelection.Recursive), Title = "Recursive" },
+            ],
+        },
+        new()
+        {
+            Id = Ids.Grid,
+            Category = Board,
+            Title = "Background grid",
+            Summary = "A faint grid behind the board, off by default",
+            Description = "Lines or Dots draw a faint grid under everything, 40 board pixels apart, coarsening by fours as you zoom out so it never closes up. It is there because a white board says nothing about how far in you are: the grid spreading and then stepping coarser is what makes the zoom level visible. It is drawn on screen only, and never appears in an export, a preview, or the Explorer thumbnail.",
+            Keywords = ["grid", "lines", "dots", "background", "board", "zoom", "graph paper", "squared"],
+            Editor = SettingEditorKind.EnumChoice,
+            Choices =
+            [
+                new() { Id = nameof(GridStyle.Off), Title = "Off" },
+                new() { Id = nameof(GridStyle.Lines), Title = "Lines" },
+                new() { Id = nameof(GridStyle.Dots), Title = "Dots" },
             ],
         },
         new()

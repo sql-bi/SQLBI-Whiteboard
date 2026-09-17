@@ -1069,6 +1069,7 @@ public partial class PreferencesWindow : Window
             SettingsCatalog.Ids.AreaSelection => _settings.AreaSelection.ToString(),
             SettingsCatalog.Ids.ExtendSelection => _settings.ExtendSelection.ToString(),
             SettingsCatalog.Ids.PenButton => _settings.PenButtons.Barrel.ToString(),
+            SettingsCatalog.Ids.Grid => _settings.Grid.ToString(),
             SettingsCatalog.Ids.ShowEraserButton => _settings.ShowEraserButton
                 ? SettingsCatalog.EraserButton.On
                 : SettingsCatalog.EraserButton.Off,
@@ -1187,6 +1188,18 @@ public partial class PreferencesWindow : Window
                 break;
             case SettingsCatalog.Ids.ShowEraserButton:
                 _settings.ShowEraserButton = id == SettingsCatalog.EraserButton.On;
+                break;
+            case SettingsCatalog.Ids.Grid
+                when Enum.TryParse<GridStyle>(id, out var grid):
+                _settings.Grid = grid;
+
+                // What the View row's toggle brings back, so choosing Dots here
+                // and switching the grid off leaves it Dots rather than Lines.
+                if (grid != GridStyle.Off)
+                {
+                    _settings.LastGridStyle = grid;
+                }
+
                 break;
             default:
                 return;

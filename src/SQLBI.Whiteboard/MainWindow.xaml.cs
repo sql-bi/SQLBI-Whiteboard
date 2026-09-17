@@ -238,6 +238,7 @@ public partial class MainWindow : Window
         ApplyToolbarPlacement();
         ApplyCalligraphyAccess();
         ApplyPointerModes();
+        ApplyGrid();
         ApplyDrawingAttributes();
         SetActiveTool(BoardTool.Pen);
         InkSurface.Focus();
@@ -4016,6 +4017,7 @@ public partial class MainWindow : Window
         ApplyLaserSettings();
         ApplyPointerModes();
         SessionBar.SetLassoChecked(IsLassoArea);
+        ApplyGrid();
         if (!_settings.CheckForUpdates)
         {
             SessionBar.HideUpdateNotice();
@@ -4101,6 +4103,31 @@ public partial class MainWindow : Window
         });
     }
 
+    private void ApplyGrid()
+    {
+        SceneSurface.GridStyle = _settings.Grid;
+        SessionBar.SetGridChecked(_settings.Grid != GridStyle.Off);
+        SceneSurface.InvalidateVisual();
+    }
+
+    /// <summary>
+    /// The View row's toggle is between Off and whatever style was last chosen,
+    /// so it never asks which of the two grids someone meant.
+    /// </summary>
+    private void ToggleGrid()
+    {
+        _settings.Grid = _settings.Grid == GridStyle.Off
+            ? _settings.LastGridStyle
+            : GridStyle.Off;
+        if (_settings.Grid != GridStyle.Off)
+        {
+            _settings.LastGridStyle = _settings.Grid;
+        }
+
+        ApplyGrid();
+        PersistSettings();
+    }
+
     private void PreferencesMenuItem_Click(object sender, RoutedEventArgs e) =>
         ShowOwnedDialog(new PreferencesWindow(_settings, ApplyPreferences));
 
@@ -4149,6 +4176,9 @@ public partial class MainWindow : Window
                     _chromeMode == SessionChromeMode.CanvasOnly
                         ? SessionChromeMode.Windowed
                         : SessionChromeMode.CanvasOnly);
+                break;
+            case SessionCommand.ToggleGrid:
+                ToggleGrid();
                 break;
             case SessionCommand.BringToFront:
                 BringSelectedContainerToFront();
