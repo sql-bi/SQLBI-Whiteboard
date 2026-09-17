@@ -538,6 +538,95 @@ public sealed record FrameBoardObject(
     public override bool IsAreaSelectable => false;
 }
 
+/// <summary>
+/// The eight shapes, in the order the Insert row and the toolbar flyout offer
+/// them. The first is a rectangle with rounded corners rather than a square.
+/// </summary>
+public enum ShapeKind
+{
+    RoundedRectangle,
+    Ellipse,
+    Triangle,
+    Pentagon,
+    BlockArrow,
+    Parallelogram,
+    Diamond,
+    Stadium,
+}
+
+/// <summary>
+/// A drawn shape. It is a container, so ink that touches only this one links to
+/// it and moves with it - and it is taken hold of by its outline alone, never by
+/// its interior, so whatever is drawn inside it stays reachable.
+/// </summary>
+public sealed record ShapeBoardObject(
+    Guid Id,
+    int ZIndex,
+    RectD Bounds,
+    ShapeKind Kind,
+    uint OutlineArgb,
+    uint? FillArgb,
+    double Thickness) : BoardObject(Id, ZIndex, Bounds), IBoardContainer
+{
+    /// <summary>
+    /// What a shape is drawn with when nothing says otherwise, and what a saved
+    /// thickness that makes no sense falls back to.
+    /// </summary>
+    public const double DefaultThickness = 4;
+
+    /// <summary>
+    /// The box is the whole of it: a shape is the one container allowed to
+    /// change proportion under the corner handle.
+    /// </summary>
+    public override BoardObject WithBounds(RectD bounds) => this with { Bounds = bounds };
+
+    public override BoardObject WithZIndex(int zIndex) => this with { ZIndex = zIndex };
+
+    public IReadOnlyList<PointD> Outline() => ShapeGeometry.Outline(Kind, Bounds);
+
+    public override bool HitTest(PointD worldPoint, double zoom)
+    {
+        var band = HitBand / Math.Max(zoom, 0.000001);
+        return Bounds.Inflate(band).Contains(worldPoint) &&
+               ShapeGeometry.IsOnOutline(Kind, Bounds, worldPoint, band);
+    }
+
+    /// <summary>
+    /// The outline answers the area too, so a band that crosses a circle's
+    /// corner of empty box does not take it while one that crosses the curve
+    /// does.
+    /// </summary>
+    public override bool IsTakenBy(SelectionArea area, AreaSelection rule)
+    {
+        ArgumentNullException.ThrowIfNull(area);
+        IReadOnlyList<PointD> outline = Outline();
+        if (rule == AreaSelection.FullyInside)
+        {
+            return outline.All(area.Contains);
+        }
+
+        if (!area.IntersectsRectangle(Bounds))
+        {
+            return false;
+        }
+
+        if (outline.Any(area.Contains))
+        {
+            return true;
+        }
+
+        for (var index = 0; index < outline.Count; index++)
+        {
+            if (area.IntersectsSegment(outline[index], outline[(index + 1) % outline.Count]))
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+}
+
 public sealed record BoardAsset(
     string Id,
     string OriginalFileName,

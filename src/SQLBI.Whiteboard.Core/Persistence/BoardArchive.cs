@@ -7,7 +7,7 @@ namespace SQLBI.Whiteboard.Core.Persistence;
 
 public static class BoardArchive
 {
-    public const int CurrentVersion = 6;
+    public const int CurrentVersion = 7;
 
     /// <summary>
     /// Frames arrived in version 6. A board without one is still written as
@@ -16,8 +16,22 @@ public static class BoardArchive
     /// </summary>
     public const int VersionBeforeFrames = 5;
 
+    /// <summary>
+    /// Frames, and nothing newer. The design objects - shapes, labels, and
+    /// connectors - arrived in version 7 and carry on the same rule.
+    /// </summary>
+    public const int VersionWithFrames = 6;
+
+    /// <summary>
+    /// Whether this object is one of the kinds that only a version 7 reader
+    /// knows. Each design object adds itself here as it lands.
+    /// </summary>
+    private static bool NeedsVersion7(BoardObject item) => item is ShapeBoardObject;
+
     public static int VersionFor(BoardDocument document) =>
-        document.Objects.Any(item => item is FrameBoardObject) ? CurrentVersion : VersionBeforeFrames;
+        document.Objects.Any(NeedsVersion7) ? CurrentVersion
+        : document.Objects.Any(item => item is FrameBoardObject) ? VersionWithFrames
+        : VersionBeforeFrames;
     private const string SceneEntryName = "scene.json";
     public const string PreviewEntryName = "preview.png";
 
@@ -209,6 +223,19 @@ public static class BoardArchive
             null,
             null,
             TextTitle: frame.Title),
+        ShapeBoardObject shape => new ObjectDto(
+            "shape",
+            shape.Id,
+            shape.ZIndex,
+            shape.Bounds,
+            null,
+            null,
+            null,
+            null,
+            ShapeKind: shape.Kind.ToString(),
+            OutlineArgb: shape.OutlineArgb,
+            FillArgb: shape.FillArgb,
+            Thickness: shape.Thickness),
         _ => throw new NotSupportedException($"Unsupported board object type {item.GetType().Name}."),
     };
 
@@ -246,12 +273,34 @@ public static class BoardArchive
                 dto.CaptureCursor ?? false,
                 dto.IsFrozen ?? true),
         "frame" => new FrameBoardObject(dto.Id, dto.ZIndex, dto.Bounds, dto.TextTitle ?? ""),
+        "shape" => new ShapeBoardObject(
+            dto.Id,
+            dto.ZIndex,
+            dto.Bounds,
+            NormalizeShapeKind(dto.ShapeKind),
+            dto.OutlineArgb ?? PenStyle.Default.Argb,
+            dto.FillArgb,
+            NormalizeShapeThickness(dto.Thickness)),
         _ => throw new InvalidDataException($"Invalid board object type '{dto.Type}'."),
     };
 
     private static int NormalizeFrameRate(int? frameRate) => frameRate is 15 or 30 or 60
         ? frameRate.Value
         : 15;
+
+    /// <summary>
+    /// A kind this release does not know becomes a rounded rectangle, so a board
+    /// written by a later one still opens with its shapes where they were.
+    /// </summary>
+    private static ShapeKind NormalizeShapeKind(string? kind) =>
+        Enum.TryParse(kind, ignoreCase: true, out ShapeKind parsed) && Enum.IsDefined(parsed)
+            ? parsed
+            : ShapeKind.RoundedRectangle;
+
+    private static double NormalizeShapeThickness(double? thickness) =>
+        thickness is > 0 and <= 100
+            ? thickness.Value
+            : ShapeBoardObject.DefaultThickness;
 
     private static double NormalizeTextVisualScale(double? scale) =>
         scale is > 0 and < 100 ? scale.Value : 1;
@@ -274,7 +323,11 @@ public static class BoardArchive
         string? TextTitle = null,
         string? TextContent = null,
         double? TextVisualScale = null,
-        string? TextLanguageId = null);
+        string? TextLanguageId = null,
+        string? ShapeKind = null,
+        uint? OutlineArgb = null,
+        uint? FillArgb = null,
+        double? Thickness = null);
 
     private sealed record InkPointDto(double X, double Y, float Pressure, long Timestamp);
 
