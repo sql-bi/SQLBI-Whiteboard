@@ -1,0 +1,23 @@
+<UserControl x:Class="SQLBI.Whiteboard.PropertyBar"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             Visibility="Collapsed"
+             Stylus.IsPressAndHoldEnabled="False"
+             PreviewStylusDown="PropertyBar_PreviewStylusDown">
+    <Border Padding="4"
+            CornerRadius="10"
+            BorderBrush="{StaticResource ToolbarBorderBrush}"
+            BorderThickness="1"
+            Background="{StaticResource ToolbarBackgroundBrush}">
+        <Border.Effect>
+            <DropShadowEffect BlurRadius="14"
+                              ShadowDepth="1"
+                              Direction="270"
+                              Opacity="0.16"
+                              Color="Black" />
+        </Border.Effect>
+        <!-- Rows are built in code, one per property the selection has in
+             common, so a later kind of object adds a row rather than a layout. -->
+        <StackPanel x:Name="RowHost" />
+    </Border>
+</UserControl>

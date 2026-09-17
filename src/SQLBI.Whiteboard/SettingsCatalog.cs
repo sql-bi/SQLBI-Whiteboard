@@ -119,6 +119,8 @@ internal static class SettingsCatalog
         public const string SuggestMouseMode = "input.mouseModeOffer";
         public const string PenButton = "input.penButton";
         public const string SnippetFormatOrder = "input.snippetFormatOrder";
+        public const string AreaSelection = "selection.area";
+        public const string ExtendSelection = "selection.extend";
         public const string Grid = "board.grid";
         public const string CheckForUpdates = "updates.check";
     }
@@ -136,6 +138,7 @@ internal static class SettingsCatalog
 
     public const string Startup = "Startup";
     public const string Input = "Input";
+    public const string Selection = "Selection";
     public const string Board = "Board";
     public const string Import = "Import";
     public const string Laser = "Laser pointer";
@@ -143,7 +146,7 @@ internal static class SettingsCatalog
     public const string Updates = "Updates";
 
     public static IReadOnlyList<string> Categories { get; } =
-        [Startup, Input, Board, Import, Laser, Toolbar, Updates];
+        [Startup, Input, Selection, Board, Import, Laser, Toolbar, Updates];
 
     public static IReadOnlyList<SettingDescriptor> All { get; } =
     [
@@ -253,6 +256,37 @@ internal static class SettingsCatalog
             Keywords =
                 ["snippet", "language", "dax", "sql", "kql", "paste", "format", "text", "order"],
             Editor = SettingEditorKind.OrderedList,
+        },
+        new()
+        {
+            Id = Ids.AreaSelection,
+            Category = Selection,
+            Title = "Area selects",
+            Summary = "Whether an object has to be wholly inside the area",
+            Description = "Drag with Select on empty canvas for a rectangle, or turn on Lasso in the Edit row for a freehand outline. Objects partly inside is the default: an object joins the selection as soon as the area meets it, which is how a quick sweep picks up a diagram. Only objects fully inside asks for every point of a stroke and every corner of anything else to be inside, which is what you want when the thing you are after sits among others. A frame is never taken by an area, so a band drawn over a slide picks up what is on it.",
+            Keywords = ["select", "selection", "area", "rubber", "band", "lasso", "marquee", "inside", "partly", "fully"],
+            Editor = SettingEditorKind.EnumChoice,
+            Choices =
+            [
+                new() { Id = nameof(Core.Model.AreaSelection.PartlyInside), Title = "Objects partly inside" },
+                new() { Id = nameof(Core.Model.AreaSelection.FullyInside), Title = "Only objects fully inside" },
+            ],
+        },
+        new()
+        {
+            Id = Ids.ExtendSelection,
+            Category = Selection,
+            Title = "Extend to touching",
+            Summary = "Whether the selection grows to what it touches",
+            Description = "After the area has chosen, the selection can grow to what those objects touch: an object touches another when its geometry meets the other's box. Ignore is the default and takes the area at its word. Single adds one round, so a label beside a picture comes along with it. Recursive repeats the rounds until one adds nothing, which takes a whole connected diagram from one stroke in it; an object is examined once and never again, so a ring of things that touch each other still ends. Strokes linked to a selected container come along whatever this is set to.",
+            Keywords = ["select", "selection", "extend", "touching", "grow", "recursive", "connected", "neighbour", "neighbor"],
+            Editor = SettingEditorKind.EnumChoice,
+            Choices =
+            [
+                new() { Id = nameof(Core.Model.ExtendSelection.Ignore), Title = "Ignore" },
+                new() { Id = nameof(Core.Model.ExtendSelection.Single), Title = "Single" },
+                new() { Id = nameof(Core.Model.ExtendSelection.Recursive), Title = "Recursive" },
+            ],
         },
         new()
         {

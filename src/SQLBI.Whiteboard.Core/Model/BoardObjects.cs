@@ -2,7 +2,49 @@ using SQLBI.Whiteboard.Core.Geometry;
 
 namespace SQLBI.Whiteboard.Core.Model;
 
-public abstract record BoardObject(Guid Id, int ZIndex, RectD Bounds);
+/// <summary>
+/// Everything the board retains. The four questions a gesture asks of an
+/// object - move it there, put it at that depth, are you under this point, does
+/// this area take you - are answered by the object rather than by a switch in
+/// the window, so a new kind of object is a new record and nothing else.
+/// </summary>
+public abstract record BoardObject(Guid Id, int ZIndex, RectD Bounds)
+{
+    /// <summary>
+    /// Screen pixels, divided by the zoom when hit testing, so what a tap
+    /// reaches around a line stays the same size under the pen at any zoom.
+    /// </summary>
+    public const double HitBand = 8;
+
+    public abstract BoardObject WithBounds(RectD bounds);
+
+    public abstract BoardObject WithZIndex(int zIndex);
+
+    /// <summary>
+    /// Whether a select gesture at this world point takes hold of this object.
+    /// </summary>
+    public abstract bool HitTest(PointD worldPoint, double zoom);
+
+    /// <summary>
+    /// Whether an area gesture can take this object at all. A frame is a guide
+    /// the author draws around other things, so a band drawn over one would
+    /// otherwise pick up the slide along with its contents.
+    /// </summary>
+    public virtual bool IsAreaSelectable => true;
+
+    /// <summary>
+    /// Whether the area takes this object under <paramref name="rule"/>. The
+    /// box is the whole answer for everything the area sees as a rectangle;
+    /// a stroke has its own, because its box is mostly empty.
+    /// </summary>
+    public virtual bool IsTakenBy(SelectionArea area, AreaSelection rule)
+    {
+        ArgumentNullException.ThrowIfNull(area);
+        return rule == AreaSelection.FullyInside
+            ? area.ContainsRectangle(Bounds)
+            : area.IntersectsRectangle(Bounds);
+    }
+}
 
 public interface IBoardContainer
 {
@@ -105,10 +147,50 @@ public sealed record InkStrokeObject(
 
         for (var index = 1; index < Points.Count; index++)
         {
-            if (SegmentIntersectsRectangle(
+            if (Polygon.RectangleIntersectsSegment(
+                    contactBounds,
                     Points[index - 1].Position,
-                    Points[index].Position,
-                    contactBounds))
+                    Points[index].Position))
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    public override BoardObject WithBounds(RectD bounds) => TransformWithContainer(Bounds, bounds);
+
+    public override BoardObject WithZIndex(int zIndex) => this with { ZIndex = zIndex };
+
+    public override bool HitTest(PointD worldPoint, double zoom) =>
+        HitTestWithin(worldPoint, HitBand / Math.Max(zoom, 0.000001));
+
+    /// <summary>
+    /// A stroke is a line through a mostly empty box, so an area asks its
+    /// points and the segments between them rather than the box.
+    /// </summary>
+    public override bool IsTakenBy(SelectionArea area, AreaSelection rule)
+    {
+        ArgumentNullException.ThrowIfNull(area);
+        if (rule == AreaSelection.FullyInside)
+        {
+            return Points.All(point => area.Contains(point.Position));
+        }
+
+        if (!area.IntersectsRectangle(Bounds))
+        {
+            return false;
+        }
+
+        if (Points.Any(point => area.Contains(point.Position)))
+        {
+            return true;
+        }
+
+        for (var index = 1; index < Points.Count; index++)
+        {
+            if (area.IntersectsSegment(Points[index - 1].Position, Points[index].Position))
             {
                 return true;
             }
@@ -141,7 +223,12 @@ public sealed record InkStrokeObject(
             ContainerId);
     }
 
-    public bool HitTest(PointD point, double radius)
+    /// <summary>
+    /// Whether the stroke passes within <paramref name="radius"/> of the point.
+    /// The eraser's reach and a select tap are the same question at two
+    /// different radii.
+    /// </summary>
+    public bool HitTestWithin(PointD point, double radius)
     {
         if (!Bounds.Inflate(radius).Contains(point))
         {
@@ -189,56 +276,20 @@ public sealed record InkStrokeObject(
         var closest = new PointD(start.X + (projection * segmentX), start.Y + (projection * segmentY));
         return DistanceSquared(point, closest);
     }
-
-    private static bool SegmentIntersectsRectangle(PointD start, PointD end, RectD rectangle)
-    {
-        var minimum = 0d;
-        var maximum = 1d;
-        var deltaX = end.X - start.X;
-        var deltaY = end.Y - start.Y;
-
-        return ClipSegment(-deltaX, start.X - rectangle.Left, ref minimum, ref maximum) &&
-               ClipSegment(deltaX, rectangle.Right - start.X, ref minimum, ref maximum) &&
-               ClipSegment(-deltaY, start.Y - rectangle.Top, ref minimum, ref maximum) &&
-               ClipSegment(deltaY, rectangle.Bottom - start.Y, ref minimum, ref maximum);
-    }
-
-    private static bool ClipSegment(double direction, double distance, ref double minimum, ref double maximum)
-    {
-        if (Math.Abs(direction) <= double.Epsilon)
-        {
-            return distance >= 0;
-        }
-
-        var ratio = distance / direction;
-        if (direction < 0)
-        {
-            if (ratio > maximum)
-            {
-                return false;
-            }
-
-            minimum = Math.Max(minimum, ratio);
-        }
-        else
-        {
-            if (ratio < minimum)
-            {
-                return false;
-            }
-
-            maximum = Math.Min(maximum, ratio);
-        }
-
-        return true;
-    }
 }
 
 public sealed record ImageBoardObject(
     Guid Id,
     int ZIndex,
     RectD Bounds,
-    string AssetId) : BoardObject(Id, ZIndex, Bounds), IBoardContainer;
+    string AssetId) : BoardObject(Id, ZIndex, Bounds), IBoardContainer
+{
+    public override BoardObject WithBounds(RectD bounds) => this with { Bounds = bounds };
+
+    public override BoardObject WithZIndex(int zIndex) => this with { ZIndex = zIndex };
+
+    public override bool HitTest(PointD worldPoint, double zoom) => Bounds.Contains(worldPoint);
+}
 
 public static class TextLanguageIds
 {
@@ -392,7 +443,23 @@ public record TextBoardObject(
     string Title,
     string Text,
     double VisualScale = 1,
-    string LanguageId = TextLanguageIds.Plain) : BoardObject(Id, ZIndex, Bounds), IBoardContainer;
+    string LanguageId = TextLanguageIds.Plain) : BoardObject(Id, ZIndex, Bounds), IBoardContainer
+{
+    /// <summary>
+    /// The text scales with the box, as it does when the corner handle is
+    /// dragged: a container that changed size without its text changing with it
+    /// would reflow, and reflowing is what the width handle is for.
+    /// </summary>
+    public override BoardObject WithBounds(RectD bounds) => this with
+    {
+        Bounds = bounds,
+        VisualScale = VisualScale * (bounds.Width / Math.Max(0.000001, Bounds.Width)),
+    };
+
+    public override BoardObject WithZIndex(int zIndex) => this with { ZIndex = zIndex };
+
+    public override bool HitTest(PointD worldPoint, double zoom) => Bounds.Contains(worldPoint);
+}
 
 public enum LiveViewSourceKind
 {
@@ -414,7 +481,14 @@ public sealed record LiveViewBoardObject(
     string? SnapshotAssetId = null,
     int DesiredFrameRate = 15,
     bool CaptureCursor = false,
-    bool IsFrozen = false) : BoardObject(Id, ZIndex, Bounds), IBoardContainer;
+    bool IsFrozen = false) : BoardObject(Id, ZIndex, Bounds), IBoardContainer
+{
+    public override BoardObject WithBounds(RectD bounds) => this with { Bounds = bounds };
+
+    public override BoardObject WithZIndex(int zIndex) => this with { ZIndex = zIndex };
+
+    public override bool HitTest(PointD worldPoint, double zoom) => Bounds.Contains(worldPoint);
+}
 
 /// <summary>
 /// A rectangle the author draws to say "this is a slide". It is not a container:
@@ -443,7 +517,7 @@ public sealed record FrameBoardObject(
         Math.Min(Bounds.Width, TabWidth / Math.Max(zoom, 0.000001)),
         Math.Min(Bounds.Height, TabHeight / Math.Max(zoom, 0.000001)));
 
-    public bool HitTest(PointD worldPoint, double zoom)
+    public override bool HitTest(PointD worldPoint, double zoom)
     {
         var band = EdgeBand / Math.Max(zoom, 0.000001);
         if (!Bounds.Inflate(band).Contains(worldPoint))
@@ -453,6 +527,15 @@ public sealed record FrameBoardObject(
 
         return !Bounds.Inflate(-band).Contains(worldPoint) || TabRect(zoom).Contains(worldPoint);
     }
+
+    public override BoardObject WithBounds(RectD bounds) => this with { Bounds = bounds };
+
+    public override BoardObject WithZIndex(int zIndex) => this with { ZIndex = zIndex };
+
+    /// <summary>
+    /// A band drawn over a slide means the things on it, not the slide.
+    /// </summary>
+    public override bool IsAreaSelectable => false;
 }
 
 public sealed record BoardAsset(

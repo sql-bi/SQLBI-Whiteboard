@@ -100,6 +100,17 @@ public enum MouseMode
 }
 
 /// <summary>
+/// The shape a select gesture on empty canvas draws. It is remembered rather
+/// than chosen each time, because the Edit row's Lasso toggle is what switches
+/// it and a toggle has to come back where it was left.
+/// </summary>
+public enum AreaSelectionTool
+{
+    Rectangle = 0,
+    Lasso = 1,
+}
+
+/// <summary>
 /// The faint grid behind the board. It is an application preference rather than
 /// something a board carries: it says how one person likes to work, and it is
 /// drawn on screen only, never in an export or a preview.
@@ -114,6 +125,12 @@ public enum GridStyle
 public sealed class AppSettings
 {
     public int Version { get; set; } = AppSettingsSerializer.CurrentVersion;
+
+    public AreaSelection AreaSelection { get; set; } = AreaSelection.PartlyInside;
+
+    public ExtendSelection ExtendSelection { get; set; } = ExtendSelection.Ignore;
+
+    public AreaSelectionTool AreaSelectionTool { get; set; } = AreaSelectionTool.Rectangle;
 
     public ToolbarPlacement ToolbarPlacement { get; set; } = ToolbarPlacement.TopRight;
 
@@ -291,6 +308,21 @@ public static class AppSettingsSerializer
         if (!Enum.IsDefined(settings.MouseMode))
         {
             settings.MouseMode = MouseMode.WhenNoDigitizer;
+        }
+
+        if (!Enum.IsDefined(settings.AreaSelection))
+        {
+            settings.AreaSelection = AreaSelection.PartlyInside;
+        }
+
+        if (!Enum.IsDefined(settings.ExtendSelection))
+        {
+            settings.ExtendSelection = ExtendSelection.Ignore;
+        }
+
+        if (!Enum.IsDefined(settings.AreaSelectionTool))
+        {
+            settings.AreaSelectionTool = AreaSelectionTool.Rectangle;
         }
 
         if (!Enum.IsDefined(settings.Grid))

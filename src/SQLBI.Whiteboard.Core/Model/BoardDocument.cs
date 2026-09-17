@@ -141,15 +141,115 @@ public sealed class BoardDocument
             .FirstOrDefault();
 
     /// <summary>
-    /// The topmost thing a select gesture lands on: a container anywhere inside
-    /// it, or a frame by its edge or tab. The zoom sizes the frame's band.
+    /// The topmost thing a select gesture lands on, whatever it is: a container
+    /// anywhere inside it, a frame by its edge or tab, a stroke within a band
+    /// of the line itself. Each object answers for itself, and the zoom sizes
+    /// the bands so they stay the same size under the pen at any zoom.
     /// </summary>
-    public BoardObject? HitTestTopContainer(PointD worldPoint, double zoom = 1) =>
-        _objects.Where(item =>
-                (item is IBoardContainer && item.Bounds.Contains(worldPoint)) ||
-                (item is FrameBoardObject frame && frame.HitTest(worldPoint, zoom)))
+    public BoardObject? HitTestTopSelectable(PointD worldPoint, double zoom = 1) =>
+        _objects.Where(item => item.HitTest(worldPoint, zoom))
             .OrderByDescending(item => item.ZIndex)
             .FirstOrDefault();
+
+    /// <summary>
+    /// The topmost container or frame, for the gestures that mean a container
+    /// rather than whatever happens to be on top: double-click framing, and the
+    /// hover that offers a text container's width handle.
+    /// </summary>
+    public BoardObject? HitTestTopContainer(PointD worldPoint, double zoom = 1) =>
+        _objects.Where(item => item is IBoardContainer or FrameBoardObject)
+            .Where(item => item.HitTest(worldPoint, zoom))
+            .OrderByDescending(item => item.ZIndex)
+            .FirstOrDefault();
+
+    /// <summary>
+    /// Everything the area takes, in z-order.
+    /// </summary>
+    public IReadOnlyList<BoardObject> ObjectsInArea(SelectionArea area, AreaSelection rule)
+    {
+        ArgumentNullException.ThrowIfNull(area);
+        return _objects
+            .Where(item => item.IsAreaSelectable && item.IsTakenBy(area, rule))
+            .ToArray();
+    }
+
+    /// <summary>
+    /// The objects whose geometry meets this one's box. It is the partly-inside
+    /// test of the area selection, asked of one object's bounds, so what counts
+    /// as touching is the same thing a rubber band counts as taking.
+    /// </summary>
+    public IReadOnlyList<Guid> Touching(Guid id)
+    {
+        var target = _objects.FirstOrDefault(item => item.Id == id);
+        if (target is null)
+        {
+            return [];
+        }
+
+        var area = SelectionArea.Rectangle(target.Bounds);
+        return _objects
+            .Where(item => item.Id != id &&
+                           item.IsAreaSelectable &&
+                           item.IsTakenBy(area, AreaSelection.PartlyInside))
+            .Select(item => item.Id)
+            .ToArray();
+    }
+
+    /// <summary>
+    /// Grows a selection to what it touches. An object is examined once and
+    /// never again, so a ring of objects that touch each other ends the rounds
+    /// rather than circling them.
+    /// </summary>
+    public IReadOnlyList<Guid> GrowSelection(IEnumerable<Guid> seed, ExtendSelection mode)
+    {
+        ArgumentNullException.ThrowIfNull(seed);
+        var selected = new List<Guid>();
+        var chosen = new HashSet<Guid>();
+        foreach (var id in seed)
+        {
+            if (chosen.Add(id))
+            {
+                selected.Add(id);
+            }
+        }
+
+        if (mode == ExtendSelection.Ignore)
+        {
+            return selected;
+        }
+
+        var examined = new HashSet<Guid>();
+        var frontier = selected.ToList();
+        while (frontier.Count > 0)
+        {
+            var added = new List<Guid>();
+            foreach (var id in frontier)
+            {
+                if (!examined.Add(id))
+                {
+                    continue;
+                }
+
+                foreach (var touched in Touching(id))
+                {
+                    if (chosen.Add(touched))
+                    {
+                        selected.Add(touched);
+                        added.Add(touched);
+                    }
+                }
+            }
+
+            if (mode == ExtendSelection.Single)
+            {
+                break;
+            }
+
+            frontier = added;
+        }
+
+        return selected;
+    }
 
     public IEnumerable<FrameBoardObject> Frames => _objects.OfType<FrameBoardObject>();
 
@@ -178,24 +278,26 @@ public sealed class BoardDocument
         _objects.OfType<InkStrokeObject>()
             .Where(stroke => stroke.ContainerId == containerId);
 
-    public IReadOnlyList<BoardObject> GetDeletionGroup(Guid objectId)
+    public IReadOnlyList<BoardObject> GetDeletionGroup(Guid objectId) =>
+        GetDeletionGroup([objectId]);
+
+    /// <summary>
+    /// The objects a delete takes: the selection itself, plus every stroke
+    /// linked to a selected container, whether or not the stroke was selected.
+    /// </summary>
+    public IReadOnlyList<BoardObject> GetDeletionGroup(IEnumerable<Guid> objectIds)
     {
-        var target = _objects.FirstOrDefault(item => item.Id == objectId);
-        if (target is null)
-        {
-            return [];
-        }
-
-        if (target is not IBoardContainer)
-        {
-            return [target];
-        }
-
+        ArgumentNullException.ThrowIfNull(objectIds);
+        var ids = objectIds.ToHashSet();
+        var containerIds = _objects
+            .Where(item => ids.Contains(item.Id) && item is IBoardContainer)
+            .Select(item => item.Id)
+            .ToHashSet();
         return _objects
             .Where(item =>
-                item.Id == objectId ||
-                item is InkStrokeObject { ContainerId: var containerId } &&
-                containerId == objectId)
+                ids.Contains(item.Id) ||
+                (item is InkStrokeObject { ContainerId: Guid containerId } &&
+                 containerIds.Contains(containerId)))
             .ToArray();
     }
 }

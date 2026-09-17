@@ -1066,6 +1066,8 @@ public partial class PreferencesWindow : Window
             SettingsCatalog.Ids.ToolbarLayout => _settings.CalligraphyAccess.ToString(),
             SettingsCatalog.Ids.FingerMode => _settings.FingerMode.ToString(),
             SettingsCatalog.Ids.MouseMode => _settings.MouseMode.ToString(),
+            SettingsCatalog.Ids.AreaSelection => _settings.AreaSelection.ToString(),
+            SettingsCatalog.Ids.ExtendSelection => _settings.ExtendSelection.ToString(),
             SettingsCatalog.Ids.PenButton => _settings.PenButtons.Barrel.ToString(),
             SettingsCatalog.Ids.Grid => _settings.Grid.ToString(),
             SettingsCatalog.Ids.ShowEraserButton => _settings.ShowEraserButton
@@ -1175,6 +1177,14 @@ public partial class PreferencesWindow : Window
             case SettingsCatalog.Ids.PenButton
                 when Enum.TryParse<PenButtonAction>(id, out var penButton):
                 _settings.PenButtons.Barrel = penButton;
+                break;
+            case SettingsCatalog.Ids.AreaSelection
+                when Enum.TryParse<AreaSelection>(id, out var areaSelection):
+                _settings.AreaSelection = areaSelection;
+                break;
+            case SettingsCatalog.Ids.ExtendSelection
+                when Enum.TryParse<ExtendSelection>(id, out var extendSelection):
+                _settings.ExtendSelection = extendSelection;
                 break;
             case SettingsCatalog.Ids.ShowEraserButton:
                 _settings.ShowEraserButton = id == SettingsCatalog.EraserButton.On;

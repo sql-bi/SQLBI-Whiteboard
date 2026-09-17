@@ -116,14 +116,34 @@ public partial class MainWindow : Window
     private bool _touchNavigationLocked;
     private int? _fingerToolDeviceId;
     private bool _spaceTemporaryPan;
-    private Guid? _selectedObjectId;
-    private BoardObject? _containerGestureBefore;
-    private BoardObject? _containerGestureCurrent;
-    private InkStrokeObject[] _containerGestureLinkedBefore = [];
-    private InkStrokeObject[] _containerGestureLinkedCurrent = [];
-    private PointD _containerGestureStartWorld;
-    private bool _containerGestureIsResize;
-    private bool _containerGestureReflow;
+
+    /// <summary>
+    /// What is selected. A single selection is a set of one, so every gesture,
+    /// command, and overlay reads one thing rather than branching on how many.
+    /// </summary>
+    private readonly HashSet<Guid> _selectedObjectIds = [];
+
+    // A select gesture moves or scales the whole selection, plus the strokes
+    // linked to a selected container that are not themselves selected. Both
+    // lists are whole objects rather than ids, so one ReplaceObjectsCommand
+    // records the gesture and an undo puts every one of them back.
+    private BoardObject[] _gestureBefore = [];
+    private BoardObject[] _gestureAfter = [];
+    private RectD _gestureBounds;
+    private RectD _gestureAfterBounds;
+    private PointD _gestureStartWorld;
+    private bool _gestureIsResize;
+    private bool _gestureReflow;
+    private TextBoardObject? _gestureReflowTarget;
+
+    // A press on empty canvas with Select draws a rubber band or a lasso. It
+    // only becomes a selection on release, because a press that never moves is
+    // a tap, and a tap on empty canvas clears.
+    private bool _areaActive;
+    private bool _areaExtends;
+    private bool _areaDragged;
+    private PointD _areaStartScreen;
+    private readonly List<PointD> _areaPoints = [];
     private TextBoardObject? _textEditBefore;
     private InkStrokeObject[] _textEditLinkedBefore = [];
     private RectD _textEditBounds;
@@ -179,6 +199,8 @@ public partial class MainWindow : Window
         SessionBar.ViewOpened += UpdateLiveViewMenuItems;
         SessionBar.UpdateDownloadRequested += _ => OpenUpdateDownload();
         SessionBar.UpdateDismissed += SessionBar_UpdateDismissed;
+        SelectionPropertyBar.ColorChosen += ApplySelectionColor;
+        SelectionPropertyBar.ThicknessChosen += ApplySelectionThickness;
         UpdateWindowTitle();
         _initialBoardPath = initialBoardPath;
         TextEditorLanguageCombo.ItemsSource = TextLanguageRegistry.All;
@@ -455,13 +477,8 @@ public partial class MainWindow : Window
             DisposeLiveViewPresenter(removedId);
         }
 
-        if (_selectedObjectId is Guid selectedId &&
-            _document.Objects.All(item => item.Id != selectedId))
-        {
-            _selectedObjectId = null;
-        }
-
-        SceneSurface.SelectedObjectId = _selectedObjectId;
+        _selectedObjectIds.RemoveWhere(id => _document.Objects.All(item => item.Id != id));
+        PublishSelection();
         SceneSurface.InvalidateVisual();
         UpdateLiveViewActionOverlay();
         UpdateTextEditorOverlay();
@@ -2117,22 +2134,88 @@ public partial class MainWindow : Window
         SceneSurface.InvalidateVisual();
         UpdateLiveViewActionOverlay();
         UpdateTextEditorOverlay();
+        UpdateSelectionPropertyBar();
     }
 
     private void ClearSelection()
     {
-        if (_selectedObjectId is null &&
-            SceneSurface.SelectedObjectId is null &&
+        if (_selectedObjectIds.Count == 0 &&
+            SceneSurface.SelectedObjectIds.Count == 0 &&
             SceneSurface.HoveredObjectId is null)
         {
             return;
         }
 
-        _selectedObjectId = null;
-        SceneSurface.SelectedObjectId = null;
+        _selectedObjectIds.Clear();
         SceneSurface.HoveredObjectId = null;
+        PublishSelection();
         SceneSurface.InvalidateVisual();
         UpdateLiveViewActionOverlay();
+    }
+
+    /// <summary>
+    /// The surface and the property bar, brought up to what the set now holds.
+    /// Nothing changes the selection without ending here.
+    /// </summary>
+    private void PublishSelection()
+    {
+        SceneSurface.SelectedObjectIds = new HashSet<Guid>(_selectedObjectIds);
+        UpdateSelectionPropertyBar();
+    }
+
+    private void SelectOnly(Guid? objectId)
+    {
+        _selectedObjectIds.Clear();
+        if (objectId is Guid id)
+        {
+            _selectedObjectIds.Add(id);
+        }
+
+        PublishSelection();
+    }
+
+    private void SelectMany(IEnumerable<Guid> objectIds, bool extend)
+    {
+        if (!extend)
+        {
+            _selectedObjectIds.Clear();
+        }
+
+        foreach (var id in objectIds)
+        {
+            _selectedObjectIds.Add(id);
+        }
+
+        PublishSelection();
+    }
+
+    /// <summary>
+    /// The one selected object, when exactly one is selected. Everything that
+    /// only makes sense for a single thing - F2, the language chip, the
+    /// LiveView overlay - asks for it and does nothing when there is none.
+    /// </summary>
+    private T? SingleSelected<T>()
+        where T : BoardObject =>
+        _selectedObjectIds.Count == 1
+            ? _document.Objects.FirstOrDefault(item => item.Id == _selectedObjectIds.First()) as T
+            : null;
+
+    private BoardObject[] SelectedObjects() =>
+        _document.Objects.Where(item => _selectedObjectIds.Contains(item.Id)).ToArray();
+
+    private RectD? SelectionBounds()
+    {
+        BoardObject[] selected = SelectedObjects();
+        return selected.Length == 0 ? null : UnionBounds(selected);
+    }
+
+    private static RectD UnionBounds(IReadOnlyList<BoardObject> items)
+    {
+        var left = items.Min(item => item.Bounds.Left);
+        var top = items.Min(item => item.Bounds.Top);
+        var right = items.Max(item => item.Bounds.Right);
+        var bottom = items.Max(item => item.Bounds.Bottom);
+        return new RectD(left, top, right - left, bottom - top);
     }
 
     private void FrameContentAt(PointD screenPoint)
@@ -2140,14 +2223,12 @@ public partial class MainWindow : Window
         var container = _document.HitTestTopContainer(_camera.ScreenToWorld(screenPoint), _camera.Zoom);
         if (container is not null)
         {
-            _selectedObjectId = container.Id;
-            SceneSurface.SelectedObjectId = container.Id;
+            SelectOnly(container.Id);
             _camera.Frame(container.Bounds);
         }
         else
         {
-            _selectedObjectId = null;
-            SceneSurface.SelectedObjectId = null;
+            SelectOnly(null);
             if (_document.ContentBounds is RectD contentBounds)
             {
                 _camera.Frame(contentBounds);
@@ -2174,16 +2255,16 @@ public partial class MainWindow : Window
         var hits = _document.Objects
             .OfType<InkStrokeObject>()
             .Where(stroke => _erasedObjects.All(item => item.Id != stroke.Id))
-            .Where(stroke => stroke.HitTest(worldPoint, radius))
+            .Where(stroke => stroke.HitTestWithin(worldPoint, radius))
             .ToArray();
 
         foreach (var stroke in hits)
         {
             _erasedObjects.Add(stroke);
             _document.RemoveObject(stroke.Id);
-            if (_selectedObjectId == stroke.Id)
+            if (_selectedObjectIds.Remove(stroke.Id))
             {
-                _selectedObjectId = null;
+                PublishSelection();
             }
         }
     }
@@ -2198,145 +2279,226 @@ public partial class MainWindow : Window
         _erasedObjects.Clear();
     }
 
+    /// <summary>
+    /// A press with Select. It takes hold of the corner handle, a text
+    /// container's width handle, whatever is under the point, or - when nothing
+    /// is - the empty canvas, which starts a rubber band or a lasso.
+    /// </summary>
     private void BeginContainerGesture(PointD screenPoint)
     {
         var worldPoint = _camera.ScreenToWorld(screenPoint);
-        var selected = _document.HitTestTopContainer(worldPoint, _camera.Zoom);
-        _containerGestureIsResize = false;
+        var extend = Keyboard.Modifiers.HasFlag(ModifierKeys.Control);
+        ResetContainerGesture();
 
-        if (_selectedObjectId is Guid existingId &&
-            _document.Objects.FirstOrDefault(item => item.Id == existingId) is { } existing &&
-            IsSelectable(existing))
+        // The handle belongs to the selection's own rectangle and sits outside
+        // everything inside it, so it is asked before anything is hit tested.
+        if (!extend && SelectionBounds() is RectD bounds && IsOverHandle(screenPoint, bounds))
         {
-            var handle = _camera.WorldToScreen(
-                new PointD(existing.Bounds.Right, existing.Bounds.Bottom));
-            if (Distance(ToPoint(handle), ToPoint(screenPoint)) <= 16)
-            {
-                selected = existing;
-                _containerGestureIsResize = true;
+            _gestureIsResize = true;
 
-                // Shift on the handle of a text container changes its width in
-                // columns and reflows the text, keeping the size; a plain drag
-                // scales it like a picture, as it does every container.
-                _containerGestureReflow = existing is TextBoardObject &&
-                                          Keyboard.Modifiers.HasFlag(ModifierKeys.Shift);
-            }
+            // Shift on the handle of a lone text container changes its width in
+            // columns and reflows the text, keeping the size; a plain drag
+            // scales it like a picture, as it does every container.
+            _gestureReflowTarget = SingleSelected<TextBoardObject>();
+            _gestureReflow = _gestureReflowTarget is not null &&
+                             Keyboard.Modifiers.HasFlag(ModifierKeys.Shift);
+            BeginSelectionGesture(worldPoint);
+            return;
         }
 
-        if (!_containerGestureIsResize && FindTextContainerAtRightEdge(screenPoint) is { } edged)
+        if (!extend && FindTextContainerAtRightEdge(screenPoint) is { } edged)
         {
-            selected = edged;
-            _containerGestureIsResize = true;
-            _containerGestureReflow = true;
-        }
-
-        _selectedObjectId = selected?.Id;
-        SceneSurface.SelectedObjectId = _selectedObjectId;
-        if (selected is null)
-        {
-            ResetContainerGesture();
+            SelectOnly(edged.Id);
+            _gestureIsResize = true;
+            _gestureReflow = true;
+            _gestureReflowTarget = edged;
+            BeginSelectionGesture(worldPoint);
             SceneSurface.InvalidateVisual();
             UpdateLiveViewActionOverlay();
             return;
         }
 
-        _containerGestureBefore = selected;
-        _containerGestureCurrent = selected;
-        _containerGestureLinkedBefore = _document.LinkedStrokes(selected.Id).ToArray();
-        _containerGestureLinkedCurrent = _containerGestureLinkedBefore;
-        _containerGestureStartWorld = worldPoint;
+        BoardObject? hit = _document.HitTestTopSelectable(worldPoint, _camera.Zoom);
+        if (hit is null)
+        {
+            BeginAreaGesture(screenPoint, worldPoint, extend);
+            SceneSurface.InvalidateVisual();
+            return;
+        }
+
+        if (extend)
+        {
+            _selectedObjectIds.Add(hit.Id);
+            PublishSelection();
+        }
+        else if (!_selectedObjectIds.Contains(hit.Id))
+        {
+            // A press on something already selected keeps the set, so dragging
+            // any member of it drags all of them.
+            SelectOnly(hit.Id);
+        }
+
+        BeginSelectionGesture(worldPoint);
         SceneSurface.InvalidateVisual();
         UpdateLiveViewActionOverlay();
     }
 
+    private void BeginSelectionGesture(PointD worldPoint)
+    {
+        BoardObject[] selected = SelectedObjects();
+        if (selected.Length == 0)
+        {
+            ResetContainerGesture();
+            return;
+        }
+
+        HashSet<Guid> ids = selected.Select(item => item.Id).ToHashSet();
+        InkStrokeObject[] linked = selected
+            .Where(item => item is IBoardContainer)
+            .SelectMany(item => _document.LinkedStrokes(item.Id))
+            .Where(stroke => !ids.Contains(stroke.Id))
+            .DistinctBy(stroke => stroke.Id)
+            .ToArray();
+        _gestureBefore = [.. selected, .. linked];
+        _gestureAfter = _gestureBefore;
+        _gestureBounds = UnionBounds(selected);
+        _gestureAfterBounds = _gestureBounds;
+        _gestureStartWorld = worldPoint;
+        HideSelectionPropertyBar();
+    }
+
     private void UpdateContainerGesture(PointD worldPoint)
     {
-        if (_containerGestureBefore is null)
+        if (_areaActive)
+        {
+            UpdateAreaGesture(worldPoint);
+            return;
+        }
+
+        if (_gestureBefore.Length == 0)
         {
             return;
         }
 
-        var bounds = _containerGestureBefore.Bounds;
-        if (_containerGestureReflow && _containerGestureBefore is TextBoardObject reflowed)
+        if (_gestureReflow && _gestureReflowTarget is { } reflowed)
         {
             double pixelsPerDip = VisualTreeHelper.GetDpi(SceneSurface).PixelsPerDip;
             double width = Math.Max(
                 TextContainerVisual.MinimumWidth * reflowed.VisualScale,
-                worldPoint.X - bounds.Left);
+                worldPoint.X - reflowed.Bounds.Left);
             double height = TextContainerVisual.MeasureDesiredHeight(
                 reflowed.Text,
                 width,
                 reflowed.VisualScale,
                 pixelsPerDip,
                 reflowed.LanguageId);
-            bounds = new RectD(bounds.Left, bounds.Top, width, height);
-            SceneSurface.HandleLabel = TextContainerVisual.ColumnsFor(width, reflowed.VisualScale, reflowed.LanguageId, pixelsPerDip) + " columns";
-            _containerGestureCurrent = reflowed with { Bounds = bounds };
-            _containerGestureLinkedCurrent = _containerGestureLinkedBefore
-                .Select(stroke => stroke.TransformWithContainer(_containerGestureBefore.Bounds, bounds))
+            var reflowedBounds = new RectD(reflowed.Bounds.Left, reflowed.Bounds.Top, width, height);
+            SceneSurface.HandleLabel = TextContainerVisual.ColumnsFor(
+                width,
+                reflowed.VisualScale,
+                reflowed.LanguageId,
+                pixelsPerDip) + " columns";
+            _gestureAfterBounds = reflowedBounds;
+            _gestureAfter = _gestureBefore
+                .Select(item => item.Id == reflowed.Id
+                    ? reflowed with { Bounds = reflowedBounds }
+                    : TransformInGesture(item, reflowed.Bounds, reflowedBounds))
                 .ToArray();
-            _document.ReplaceObjects([_containerGestureCurrent, .. _containerGestureLinkedCurrent]);
+            _document.ReplaceObjects(_gestureAfter);
             return;
         }
 
-        if (_containerGestureIsResize)
+        RectD after = _gestureIsResize
+            ? ScaledSelection(worldPoint)
+            : _gestureBounds.Translate(worldPoint - _gestureStartWorld);
+        if (after == _gestureAfterBounds)
         {
-            var minimumWorldSize = 32 / _camera.Zoom;
-            var requestedWidth = worldPoint.X - bounds.Left;
-            var requestedHeight = worldPoint.Y - bounds.Top;
-            var diagonalSquared =
-                (bounds.Width * bounds.Width) +
-                (bounds.Height * bounds.Height);
-            var requestedScale =
-                ((requestedWidth * bounds.Width) +
-                 (requestedHeight * bounds.Height)) /
-                diagonalSquared;
-            var minimumScale = Math.Max(
-                minimumWorldSize / bounds.Width,
-                minimumWorldSize / bounds.Height);
-            var scale = Math.Max(minimumScale, requestedScale);
-            bounds = bounds.WithSize(
-                bounds.Width * scale,
-                bounds.Height * scale);
-        }
-        else
-        {
-            bounds = bounds.Translate(worldPoint - _containerGestureStartWorld);
+            return;
         }
 
-        _containerGestureCurrent = WithBounds(_containerGestureBefore, bounds);
-        _containerGestureLinkedCurrent = _containerGestureLinkedBefore
-            .Select(stroke => stroke.TransformWithContainer(_containerGestureBefore.Bounds, bounds))
+        _gestureAfterBounds = after;
+        _gestureAfter = _gestureBefore
+            .Select(item => TransformInGesture(item, _gestureBounds, after))
             .ToArray();
-        BoardObject[] replacements =
-            [_containerGestureCurrent, .. _containerGestureLinkedCurrent];
-        _document.ReplaceObjects(replacements);
+        _document.ReplaceObjects(_gestureAfter);
+    }
+
+    /// <summary>
+    /// The selection scaled about its top-left corner, aspect preserved, by how
+    /// far the handle has been dragged along the diagonal. It is the rule a
+    /// single container has always followed, asked of the whole set.
+    /// </summary>
+    private RectD ScaledSelection(PointD worldPoint)
+    {
+        RectD bounds = _gestureBounds;
+        var width = Math.Max(0.000001, bounds.Width);
+        var height = Math.Max(0.000001, bounds.Height);
+        var minimumWorldSize = 32 / _camera.Zoom;
+        var requestedScale =
+            (((worldPoint.X - bounds.Left) * width) + ((worldPoint.Y - bounds.Top) * height)) /
+            ((width * width) + (height * height));
+        var minimumScale = Math.Max(minimumWorldSize / width, minimumWorldSize / height);
+        var scale = Math.Max(minimumScale, requestedScale);
+        return bounds.WithSize(width * scale, height * scale);
+    }
+
+    /// <summary>
+    /// One member of the gesture, carried from where the selection was to where
+    /// it now is. A stroke follows the points themselves; everything else
+    /// follows its box.
+    /// </summary>
+    private static BoardObject TransformInGesture(BoardObject item, RectD before, RectD after) =>
+        item is InkStrokeObject stroke
+            ? stroke.TransformWithContainer(before, after)
+            : item.WithBounds(MapRectangle(item.Bounds, before, after));
+
+    private static RectD MapRectangle(RectD bounds, RectD before, RectD after)
+    {
+        var scaleX = after.Width / Math.Max(0.000001, before.Width);
+        var scaleY = after.Height / Math.Max(0.000001, before.Height);
+        return new RectD(
+            after.Left + ((bounds.Left - before.Left) * scaleX),
+            after.Top + ((bounds.Top - before.Top) * scaleY),
+            bounds.Width * scaleX,
+            bounds.Height * scaleY);
     }
 
     private void CompleteContainerGesture()
     {
-        if (_containerGestureBefore is not null &&
-            _containerGestureCurrent is not null &&
-            _containerGestureBefore.Bounds != _containerGestureCurrent.Bounds)
+        if (_areaActive)
         {
-            BoardObject[] before =
-                [_containerGestureBefore, .. _containerGestureLinkedBefore];
-            BoardObject[] after =
-                [_containerGestureCurrent, .. _containerGestureLinkedCurrent];
-            _history.RecordExecuted(new ReplaceObjectsCommand(before, after));
+            CompleteAreaGesture();
+            return;
+        }
+
+        if (_gestureBefore.Length > 0 && _gestureAfterBounds != _gestureBounds)
+        {
+            _history.RecordExecuted(new ReplaceObjectsCommand(_gestureBefore, _gestureAfter));
         }
 
         ResetContainerGesture();
+        UpdateSelectionPropertyBar();
     }
 
     private void ResetContainerGesture()
     {
-        _containerGestureBefore = null;
-        _containerGestureCurrent = null;
-        _containerGestureLinkedBefore = [];
-        _containerGestureLinkedCurrent = [];
-        _containerGestureIsResize = false;
-        _containerGestureReflow = false;
+        _gestureBefore = [];
+        _gestureAfter = [];
+        _gestureBounds = default;
+        _gestureAfterBounds = default;
+        _gestureIsResize = false;
+        _gestureReflow = false;
+        _gestureReflowTarget = null;
+        _areaActive = false;
+        _areaExtends = false;
+        _areaDragged = false;
+        _areaPoints.Clear();
+        if (SceneSurface.PendingArea is not null)
+        {
+            SceneSurface.PendingArea = null;
+            SceneSurface.InvalidateVisual();
+        }
+
         if (SceneSurface.HandleLabel is not null)
         {
             SceneSurface.HandleLabel = null;
@@ -2344,58 +2506,145 @@ public partial class MainWindow : Window
         }
     }
 
-    private static BoardObject WithBounds(BoardObject item, RectD bounds) => item switch
+    // How far the pointer has to travel before a press on empty canvas is an
+    // area rather than a tap. Below it the press clears the selection, which is
+    // what a tap on nothing has always done.
+    private const double AreaDragThreshold = 3;
+
+    // Screen pixels between the points a lasso keeps.
+    private const double LassoPointSpacing = 3;
+
+    private void BeginAreaGesture(PointD screenPoint, PointD worldPoint, bool extend)
     {
-        ImageBoardObject image => image with { Bounds = bounds },
-        TextBoardObject text => text with
+        _areaActive = true;
+        _areaExtends = extend;
+        _areaDragged = false;
+        _areaStartScreen = screenPoint;
+        _areaPoints.Clear();
+        _areaPoints.Add(worldPoint);
+        HideSelectionPropertyBar();
+    }
+
+    private void UpdateAreaGesture(PointD worldPoint)
+    {
+        PointD screen = _camera.WorldToScreen(worldPoint);
+        if (!_areaDragged &&
+            Distance(ToPoint(screen), ToPoint(_areaStartScreen)) > AreaDragThreshold)
         {
-            Bounds = bounds,
-            VisualScale = text.VisualScale * (bounds.Width / Math.Max(0.000001, text.Bounds.Width)),
-        },
-        LiveViewBoardObject liveView => liveView with { Bounds = bounds },
-        FrameBoardObject frame => frame with { Bounds = bounds },
-        _ => throw new NotSupportedException($"Unsupported container type {item.GetType().Name}."),
-    };
-
-    // What a select gesture can take hold of: a container, or a frame by its edge.
-    private static bool IsSelectable(BoardObject item) => item is IBoardContainer or FrameBoardObject;
-
-    private static BoardObject WithZIndex(BoardObject item, int zIndex) => item switch
-    {
-        ImageBoardObject image => image with { ZIndex = zIndex },
-        TextBoardObject text => text with { ZIndex = zIndex },
-        LiveViewBoardObject liveView => liveView with { ZIndex = zIndex },
-        InkStrokeObject stroke => stroke with { ZIndex = zIndex },
-        FrameBoardObject frame => frame with { ZIndex = zIndex },
-        _ => throw new NotSupportedException($"Unsupported object type {item.GetType().Name}."),
-    };
-
-    private BoardObject? GetSelectedContainer()
-    {
-        if (_selectedObjectId is not Guid selectedId)
-        {
-            return null;
+            _areaDragged = true;
         }
 
-        BoardObject? item = _document.Objects.FirstOrDefault(candidate => candidate.Id == selectedId);
-        return item is not null && IsSelectable(item) ? item : null;
+        if (!IsLassoArea)
+        {
+            // A rubber band is its two corners, so the second is replaced rather
+            // than appended and the band follows the pointer back.
+            if (_areaPoints.Count < 2)
+            {
+                _areaPoints.Add(worldPoint);
+            }
+            else
+            {
+                _areaPoints[1] = worldPoint;
+            }
+        }
+        else if (Distance(ToPoint(screen), ToPoint(_camera.WorldToScreen(_areaPoints[^1]))) >=
+                 LassoPointSpacing)
+        {
+            // A point every few screen pixels rather than every packet. The
+            // outline is the same to look at, and every object the lasso is
+            // tested against walks it once.
+            _areaPoints.Add(worldPoint);
+        }
+
+        SceneSurface.PendingArea = _areaDragged ? AreaOutline() : null;
+        SceneSurface.InvalidateVisual();
+    }
+
+    private void CompleteAreaGesture()
+    {
+        var extend = _areaExtends;
+        var dragged = _areaDragged;
+        SelectionArea area = CurrentArea();
+        ResetContainerGesture();
+
+        if (!dragged)
+        {
+            if (!extend)
+            {
+                ClearSelection();
+            }
+
+            return;
+        }
+
+        IEnumerable<Guid> taken = _document
+            .ObjectsInArea(area, _settings.AreaSelection)
+            .Select(item => item.Id);
+        SelectMany(_document.GrowSelection(taken, _settings.ExtendSelection), extend);
+        SceneSurface.InvalidateVisual();
+        UpdateLiveViewActionOverlay();
+    }
+
+    private bool IsLassoArea => _settings.AreaSelectionTool == AreaSelectionTool.Lasso;
+
+    private RectD CurrentAreaRectangle()
+    {
+        PointD start = _areaPoints[0];
+        PointD end = _areaPoints[^1];
+        return new RectD(
+            Math.Min(start.X, end.X),
+            Math.Min(start.Y, end.Y),
+            Math.Abs(end.X - start.X),
+            Math.Abs(end.Y - start.Y));
+    }
+
+    private SelectionArea CurrentArea() =>
+        IsLassoArea
+            ? SelectionArea.Lasso(_areaPoints)
+            : SelectionArea.Rectangle(CurrentAreaRectangle());
+
+    private IReadOnlyList<PointD> AreaOutline()
+    {
+        if (IsLassoArea)
+        {
+            return [.. _areaPoints, _areaPoints[0]];
+        }
+
+        IReadOnlyList<PointD> corners = Polygon.Corners(CurrentAreaRectangle());
+        return [.. corners, corners[0]];
+    }
+
+    private bool IsOverHandle(PointD screen, RectD bounds)
+    {
+        PointD handle = _camera.WorldToScreen(new PointD(bounds.Right, bounds.Bottom));
+        return Distance(ToPoint(handle), ToPoint(screen)) <= 16;
     }
 
     private void UpdateZOrderCommands()
     {
-        if (_textEditBefore is not null || GetSelectedContainer() is not { } container)
+        BoardObject[] group = _textEditBefore is null ? SelectedZGroup() : [];
+        if (group.Length == 0)
         {
             SessionBar.SetZOrderEnabled(canBringToFront: false, canSendToBack: false);
             return;
         }
 
-        BoardObject[] group = _document.GetDeletionGroup(container.Id)
-            .OrderBy(item => item.ZIndex)
-            .ToArray();
         SessionBar.SetZOrderEnabled(
             canBringToFront: !IsZGroupAtFront(group),
             canSendToBack: !IsZGroupAtBack(group));
     }
+
+    /// <summary>
+    /// The selection and the strokes linked to it, in their own order. Reorder
+    /// moves the whole block and keeps that order, so what was drawn over what
+    /// inside the selection stays as it was.
+    /// </summary>
+    private BoardObject[] SelectedZGroup() =>
+        _selectedObjectIds.Count == 0
+            ? []
+            : _document.GetDeletionGroup(_selectedObjectIds)
+                .OrderBy(item => item.ZIndex)
+                .ToArray();
 
     private bool IsZGroupAtFront(IReadOnlyList<BoardObject> group)
     {
@@ -2425,14 +2674,7 @@ public partial class MainWindow : Window
 
     private void ReorderSelectedContainer(bool toFront)
     {
-        if (GetSelectedContainer() is not { } container)
-        {
-            return;
-        }
-
-        BoardObject[] before = _document.GetDeletionGroup(container.Id)
-            .OrderBy(item => item.ZIndex)
-            .ToArray();
+        BoardObject[] before = SelectedZGroup();
         if (before.Length == 0 ||
             (toFront ? IsZGroupAtFront(before) : IsZGroupAtBack(before)))
         {
@@ -2447,7 +2689,7 @@ public partial class MainWindow : Window
             ? otherZ.DefaultIfEmpty(-1).Max() + 1
             : otherZ.DefaultIfEmpty(0).Min() - before.Length;
         BoardObject[] after = before
-            .Select((item, index) => WithZIndex(item, start + index))
+            .Select((item, index) => item.WithZIndex(start + index))
             .ToArray();
         if (before.SequenceEqual(after))
         {
@@ -2471,9 +2713,11 @@ public partial class MainWindow : Window
         _textEditBefore = textObject;
         _textEditLinkedBefore = _document.LinkedStrokes(textObject.Id).ToArray();
         _textEditBounds = textObject.Bounds;
-        _selectedObjectId = textObject.Id;
-        SceneSurface.SelectedObjectId = null;
+        _selectedObjectIds.Clear();
+        _selectedObjectIds.Add(textObject.Id);
+        SceneSurface.SelectedObjectIds = new HashSet<Guid>();
         SceneSurface.HoveredObjectId = null;
+        HideSelectionPropertyBar();
         SceneSurface.HiddenObjectId = textObject.Id;
 
         _updatingTextEditor = true;
@@ -2554,8 +2798,7 @@ public partial class MainWindow : Window
         _textColorizer.Update([], new FontFamily("Segoe UI"));
         TextEditorBorder.Visibility = Visibility.Collapsed;
         SceneSurface.HiddenObjectId = null;
-        _selectedObjectId = selectedObjectId;
-        SceneSurface.SelectedObjectId = selectedObjectId;
+        SelectOnly(selectedObjectId);
         SceneSurface.InvalidateVisual();
         UpdateLiveViewActionOverlay();
         History_Changed(this, EventArgs.Empty);
@@ -2904,18 +3147,18 @@ public partial class MainWindow : Window
     {
         if (sender is MenuItem)
         {
-            SetActiveTool(BoardTool.Pen);
+            ChooseTool(BoardTool.Pen);
             return;
         }
 
         if (_activeTool is BoardTool.Pen or BoardTool.Calligraphy)
         {
             ToggleInkOptions();
-            SetActiveTool(_activeTool);
+            ChooseTool(_activeTool);
             return;
         }
 
-        SetActiveTool(
+        ChooseTool(
             _lastDrawingTool == BoardTool.Calligraphy
                 ? BoardTool.Calligraphy
                 : BoardTool.Pen);
@@ -2925,33 +3168,33 @@ public partial class MainWindow : Window
     {
         if (sender is MenuItem)
         {
-            SetActiveTool(BoardTool.Highlighter);
+            ChooseTool(BoardTool.Highlighter);
             return;
         }
 
         if (_activeTool == BoardTool.Highlighter)
         {
             ToggleInkOptions();
-            SetActiveTool(BoardTool.Highlighter);
+            ChooseTool(BoardTool.Highlighter);
             return;
         }
 
-        SetActiveTool(BoardTool.Highlighter);
+        ChooseTool(BoardTool.Highlighter);
     }
 
     private void CalligraphyToolButton_Click(object sender, RoutedEventArgs e) =>
-        SetActiveTool(BoardTool.Calligraphy);
+        ChooseTool(BoardTool.Calligraphy);
 
     private void PenNibButton_Click(object sender, RoutedEventArgs e)
     {
         SetNibPickerOpen(false);
-        SetActiveTool(BoardTool.Pen);
+        ChooseTool(BoardTool.Pen);
     }
 
     private void CalligraphyNibButton_Click(object sender, RoutedEventArgs e)
     {
         SetNibPickerOpen(false);
-        SetActiveTool(BoardTool.Calligraphy);
+        ChooseTool(BoardTool.Calligraphy);
     }
 
     private void PenChevronButton_Click(object sender, RoutedEventArgs e) =>
@@ -2960,7 +3203,7 @@ public partial class MainWindow : Window
     private void EraserToolButton_Click(object sender, RoutedEventArgs e)
     {
         LeaveLaserIfActive();
-        SetActiveTool(BoardTool.Eraser);
+        ChooseTool(BoardTool.Eraser);
     }
 
     private void SelectToolButton_Click(object sender, RoutedEventArgs e)
@@ -2987,19 +3230,34 @@ public partial class MainWindow : Window
     private void DualPenButton_Click(object sender, RoutedEventArgs e)
     {
         LeaveLaserIfActive();
-        SetActiveTool(BoardTool.Pen);
+        ChooseTool(BoardTool.Pen);
     }
 
     private void DualCalligraphyButton_Click(object sender, RoutedEventArgs e)
     {
         LeaveLaserIfActive();
-        SetActiveTool(BoardTool.Calligraphy);
+        ChooseTool(BoardTool.Calligraphy);
     }
 
     private void DualHighlighterButton_Click(object sender, RoutedEventArgs e)
     {
         LeaveLaserIfActive();
-        SetActiveTool(BoardTool.Highlighter);
+        ChooseTool(BoardTool.Highlighter);
+    }
+
+    /// <summary>
+    /// A tool picked by hand. Reaching for something to draw with says the
+    /// selection is finished with, so it goes - unlike the tool handed back
+    /// after a borrowed mouse gesture, which is not a choice anybody made.
+    /// </summary>
+    private void ChooseTool(BoardTool tool)
+    {
+        if (tool is not (BoardTool.Select or BoardTool.Pan or BoardTool.Laser))
+        {
+            ClearSelection();
+        }
+
+        SetActiveTool(tool);
     }
 
     private void SetActiveTool(BoardTool tool)
@@ -3480,7 +3738,7 @@ public partial class MainWindow : Window
         }
 
         LeaveLaserIfActive();
-        SetActiveTool(tool);
+        ChooseTool(tool);
         CommitInkStyle(style);
         InkSurface.Focus();
     }
@@ -3499,7 +3757,7 @@ public partial class MainWindow : Window
         }
 
         LeaveLaserIfActive();
-        SetActiveTool(BoardTool.Highlighter);
+        ChooseTool(BoardTool.Highlighter);
         CommitInkStyle(style);
         InkSurface.Focus();
     }
@@ -3652,14 +3910,15 @@ public partial class MainWindow : Window
 
     private void UpdateSelectHover(PointD screen)
     {
-        if (_containerGestureBefore is not null)
+        if (_gestureBefore.Length > 0 || _areaActive)
         {
             return;
         }
 
-        var container = _document.HitTestTopContainer(_camera.ScreenToWorld(screen), _camera.Zoom)
+        BoardObject? hovered =
+            _document.HitTestTopSelectable(_camera.ScreenToWorld(screen), _camera.Zoom)
             ?? FindTextContainerAtRightEdge(screen);
-        var hoveredId = container?.Id;
+        var hoveredId = hovered?.Id;
         if (SceneSurface.HoveredObjectId == hoveredId)
         {
             return;
@@ -3681,7 +3940,7 @@ public partial class MainWindow : Window
             return Cursors.SizeWE;
         }
 
-        return _document.HitTestTopContainer(_camera.ScreenToWorld(screen), _camera.Zoom) is null
+        return _document.HitTestTopSelectable(_camera.ScreenToWorld(screen), _camera.Zoom) is null
             ? Cursors.Arrow
             : Cursors.SizeAll;
     }
@@ -3715,19 +3974,8 @@ public partial class MainWindow : Window
         return null;
     }
 
-    private bool IsOverResizeHandle(PointD screen)
-    {
-        if (_selectedObjectId is not Guid existingId ||
-            _document.Objects.FirstOrDefault(item => item.Id == existingId) is not { } existing ||
-            !IsSelectable(existing))
-        {
-            return false;
-        }
-
-        var handle = _camera.WorldToScreen(
-            new PointD(existing.Bounds.Right, existing.Bounds.Bottom));
-        return Distance(ToPoint(handle), ToPoint(screen)) <= 16;
-    }
+    private bool IsOverResizeHandle(PointD screen) =>
+        SelectionBounds() is RectD bounds && IsOverHandle(screen, bounds);
 
     private static PenKind ToPenKind(BoardTool tool) => tool switch
     {
@@ -3749,12 +3997,26 @@ public partial class MainWindow : Window
         return brush;
     }
 
+    /// <summary>
+    /// The shape the next area gesture draws. The toggle remembers it, so the
+    /// choice outlives the gesture and the session.
+    /// </summary>
+    private void ToggleAreaSelectionTool()
+    {
+        _settings.AreaSelectionTool = IsLassoArea
+            ? AreaSelectionTool.Rectangle
+            : AreaSelectionTool.Lasso;
+        SessionBar.SetLassoChecked(IsLassoArea);
+        PersistSettings();
+    }
+
     private void ApplyPreferences()
     {
         ApplyToolbarPlacement();
         ApplyCalligraphyAccess();
         ApplyLaserSettings();
         ApplyPointerModes();
+        SessionBar.SetLassoChecked(IsLassoArea);
         ApplyGrid();
         if (!_settings.CheckForUpdates)
         {
@@ -3939,6 +4201,9 @@ public partial class MainWindow : Window
             case SessionCommand.ReconnectLiveView:
                 ReconnectLiveViewMenuItem_Click(this, new RoutedEventArgs());
                 break;
+            case SessionCommand.ToggleLasso:
+                ToggleAreaSelectionTool();
+                break;
             case SessionCommand.Preferences:
                 PreferencesMenuItem_Click(this, new RoutedEventArgs());
                 break;
@@ -3971,8 +4236,7 @@ public partial class MainWindow : Window
             bounds,
             $"Slide {_document.Frames.Count() + 1}");
         _history.Execute(new AddObjectCommand(frame), _document);
-        _selectedObjectId = frame.Id;
-        SceneSurface.SelectedObjectId = frame.Id;
+        SelectOnly(frame.Id);
         SetActiveTool(BoardTool.Select);
         SceneSurface.InvalidateVisual();
         UpdateZOrderCommands();
@@ -4469,8 +4733,7 @@ public partial class MainWindow : Window
             assetId);
 
         _history.Execute(new AddObjectCommand(image), _document);
-        _selectedObjectId = image.Id;
-        SceneSurface.SelectedObjectId = image.Id;
+        SelectOnly(image.Id);
         SetActiveTool(BoardTool.Select);
         UpdateLiveViewActionOverlay();
     }
@@ -4513,8 +4776,7 @@ public partial class MainWindow : Window
             LanguageId: resolvedLanguageId);
 
         _history.Execute(new AddObjectCommand(textObject), _document);
-        _selectedObjectId = textObject.Id;
-        SceneSurface.SelectedObjectId = textObject.Id;
+        SelectOnly(textObject.Id);
         SetActiveTool(BoardTool.Select);
         if (beginEdit)
         {
@@ -4569,8 +4831,7 @@ public partial class MainWindow : Window
 
             _history.Execute(new AddObjectCommand(liveView), _document);
             AttachLiveViewPresenter(liveView, item);
-            _selectedObjectId = liveView.Id;
-            SceneSurface.SelectedObjectId = liveView.Id;
+            SelectOnly(liveView.Id);
             SceneSurface.InvalidateVisual();
             SetActiveTool(BoardTool.Select);
             UpdateLiveViewActionOverlay();
@@ -4740,10 +5001,7 @@ public partial class MainWindow : Window
             ? presenter.ImageSource
             : null;
 
-    private LiveViewBoardObject? GetSelectedLiveView() =>
-        _selectedObjectId is Guid selectedId
-            ? _document.Objects.FirstOrDefault(item => item.Id == selectedId) as LiveViewBoardObject
-            : null;
+    private LiveViewBoardObject? GetSelectedLiveView() => SingleSelected<LiveViewBoardObject>();
 
     private void UpdateLiveViewMenuItems()
     {
@@ -4798,10 +5056,7 @@ public partial class MainWindow : Window
         UpdateZOrderCommands();
     }
 
-    private TextBoardObject? GetSelectedText() =>
-        _selectedObjectId is Guid selectedId
-            ? _document.Objects.FirstOrDefault(item => item.Id == selectedId) as TextBoardObject
-            : null;
+    private TextBoardObject? GetSelectedText() => SingleSelected<TextBoardObject>();
 
     private void UpdateLanguageChipOverlay()
     {
@@ -4863,6 +5118,93 @@ public partial class MainWindow : Window
     {
         LanguageChipCombo.IsDropDownOpen = false;
         LanguageChipCombo.Visibility = Visibility.Collapsed;
+    }
+
+    /// <summary>
+    /// The property bar, above the selection's rectangle and flipped below it
+    /// when there is no room. It stays away during a gesture and a text edit:
+    /// both are about where something is, and neither wants a bar moving under
+    /// the hand.
+    /// </summary>
+    private void UpdateSelectionPropertyBar()
+    {
+        if (SelectionPropertyBar is null)
+        {
+            return;
+        }
+
+        if (_textEditBefore is not null ||
+            _gestureBefore.Length > 0 ||
+            _areaActive ||
+            SelectionBounds() is not RectD bounds ||
+            !SelectionPropertyBar.Update(SelectedObjects()))
+        {
+            HideSelectionPropertyBar();
+            return;
+        }
+
+        SelectionPropertyBar.Visibility = Visibility.Visible;
+        SelectionPropertyBar.Measure(new Size(double.PositiveInfinity, double.PositiveInfinity));
+        Size size = SelectionPropertyBar.DesiredSize;
+        PointD topLeft = _camera.WorldToScreen(new PointD(bounds.Left, bounds.Top));
+        PointD bottomRight = _camera.WorldToScreen(new PointD(bounds.Right, bounds.Bottom));
+        const double gap = 8;
+        double left = Math.Max(
+            0,
+            Math.Min(
+                ((topLeft.X + bottomRight.X) / 2) - (size.Width / 2),
+                Math.Max(0, TextEditorLayer.ActualWidth - size.Width)));
+        double top = topLeft.Y - size.Height - gap;
+        if (top < 0)
+        {
+            double below = bottomRight.Y + gap;
+            top = below + size.Height <= TextEditorLayer.ActualHeight ? below : 0;
+        }
+
+        Canvas.SetLeft(SelectionPropertyBar, left);
+        Canvas.SetTop(SelectionPropertyBar, top);
+    }
+
+    private void HideSelectionPropertyBar()
+    {
+        if (SelectionPropertyBar is not null)
+        {
+            SelectionPropertyBar.Visibility = Visibility.Collapsed;
+        }
+    }
+
+    /// <summary>
+    /// A color for every selected stroke, as one step. The kind is untouched,
+    /// so recoloring a highlighter leaves it a highlighter with its own
+    /// transparency rather than turning it into a pen.
+    /// </summary>
+    private void ApplySelectionColor(uint argb) =>
+        RestyleSelectedStrokes(style => style with { Argb = argb });
+
+    private void ApplySelectionThickness(double thickness) =>
+        RestyleSelectedStrokes(style => style with { Thickness = thickness });
+
+    private void RestyleSelectedStrokes(Func<PenStyle, PenStyle> restyle)
+    {
+        InkStrokeObject[] before = SelectedObjects().OfType<InkStrokeObject>().ToArray();
+        if (before.Length == 0 || before.All(stroke => restyle(stroke.Style) == stroke.Style))
+        {
+            return;
+        }
+
+        // Rebuilt rather than copied with a new style: the bounds carry half the
+        // nib, so a thicker stroke covers more board than the one it replaces.
+        BoardObject[] after = before
+            .Select(stroke => (BoardObject)InkStrokeObject.Create(
+                stroke.Points,
+                restyle(stroke.Style),
+                stroke.ZIndex,
+                stroke.Id,
+                stroke.ContainerId))
+            .ToArray();
+        _history.Execute(new ReplaceObjectsCommand(before, after), _document);
+        SceneSurface.InvalidateVisual();
+        InkSurface.Focus();
     }
 
     private void CloseLanguagePickers()
@@ -5181,8 +5523,7 @@ public partial class MainWindow : Window
         }
 
         _camera.Reset();
-        _selectedObjectId = null;
-        SceneSurface.SelectedObjectId = null;
+        SelectOnly(null);
         InkSurface.Strokes.Clear();
         _history.Clear();
         ResetContainerGesture();
@@ -5200,8 +5541,13 @@ public partial class MainWindow : Window
                 return;
             }
 
-            if (_selectedObjectId is not Guid selectedId ||
-                _document.Objects.FirstOrDefault(item => item.Id == selectedId) is not { } selected)
+            if (_selectedObjectIds.Count > 1)
+            {
+                CopySelectionAsImage();
+                return;
+            }
+
+            if (SingleSelected<BoardObject>() is not { } selected)
             {
                 return;
             }
@@ -5260,6 +5606,40 @@ public partial class MainWindow : Window
         {
             ShowError("Could not copy selection", exception);
         }
+    }
+
+    /// <summary>
+    /// Several things at once go out as a picture of themselves, drawn by the
+    /// same rasterizer Export uses so that what lands in a slide is what the
+    /// board shows. A lone text container or picture still copies as itself.
+    /// </summary>
+    private void CopySelectionAsImage()
+    {
+        BoardObject[] selected = SelectedObjects();
+        if (selected.Length == 0)
+        {
+            return;
+        }
+
+        HashSet<Guid> ids = _document.GetDeletionGroup(_selectedObjectIds)
+            .Select(item => item.Id)
+            .ToHashSet();
+        RectD bounds = UnionBounds(selected);
+
+        // Drawn at the zoom it is being looked at, within reason, so a copy of
+        // something small is not a poster and a copy of a wall is not a file
+        // nothing will paste.
+        double scale = Math.Clamp(_camera.Zoom, 0.5, 2);
+        var width = (int)Math.Clamp(Math.Round(bounds.Width * scale), 1, 4096);
+        var height = (int)Math.Clamp(Math.Round(bounds.Height * scale), 1, 4096);
+        Clipboard.SetImage(BoardRasterizer.Render(
+            _document,
+            bounds,
+            width,
+            height,
+            GetLiveViewImageSource,
+            paddingFraction: 0,
+            objectFilter: item => ids.Contains(item.Id)));
     }
 
     private void Window_PreviewDragOver(object sender, DragEventArgs e)
@@ -5498,8 +5878,7 @@ public partial class MainWindow : Window
         SceneSurface.InvalidateAssets();
         if (objects.Count > 0)
         {
-            _selectedObjectId = objects[^1].Id;
-            SceneSurface.SelectedObjectId = _selectedObjectId;
+            SelectOnly(objects[^1].Id);
             SetActiveTool(BoardTool.Select);
         }
 
@@ -5617,16 +5996,12 @@ public partial class MainWindow : Window
             FormatSelectedText();
             e.Handled = true;
         }
-        else if (e.Key == Key.F2 &&
-            _selectedObjectId is Guid textObjectId &&
-            _document.Objects.FirstOrDefault(item => item.Id == textObjectId) is TextBoardObject textObject)
+        else if (e.Key == Key.F2 && SingleSelected<TextBoardObject>() is { } textObject)
         {
             BeginTextEdit(textObject);
             e.Handled = true;
         }
-        else if (e.Key == Key.F2 &&
-            _selectedObjectId is Guid frameId &&
-            _document.Objects.FirstOrDefault(item => item.Id == frameId) is FrameBoardObject selectedFrame)
+        else if (e.Key == Key.F2 && SingleSelected<FrameBoardObject>() is { } selectedFrame)
         {
             RenameFrame(selectedFrame);
             e.Handled = true;
@@ -5671,17 +6046,21 @@ public partial class MainWindow : Window
             ShowExportDialog();
             e.Handled = true;
         }
-        else if (e.Key == Key.Delete && _selectedObjectId is Guid selectedId)
+        else if (e.Key == Key.Delete && _selectedObjectIds.Count > 0)
         {
-            var deletionGroup = _document.GetDeletionGroup(selectedId);
+            var deletionGroup = _document.GetDeletionGroup(_selectedObjectIds);
             if (deletionGroup.Count > 0)
             {
                 _history.Execute(new RemoveObjectsCommand(deletionGroup), _document);
-                _selectedObjectId = null;
-                SceneSurface.SelectedObjectId = null;
+                SelectOnly(null);
                 SceneSurface.InvalidateVisual();
             }
 
+            e.Handled = true;
+        }
+        else if (e.Key == Key.Escape && _selectedObjectIds.Count > 0)
+        {
+            ClearSelection();
             e.Handled = true;
         }
         else if (modifiers.HasFlag(ModifierKeys.Alt) &&
