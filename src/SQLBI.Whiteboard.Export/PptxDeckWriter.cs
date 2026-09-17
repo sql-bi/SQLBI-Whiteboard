@@ -438,8 +438,12 @@ public static class PptxDeckWriter
         SlidePosition second,
         PageFit fit)
     {
-        var width = fit.Emu(connector.Bounds.Width);
-        var height = fit.Emu(connector.Bounds.Height);
+        // The path's own extents are what the shape's extents are scaled against, so
+        // they never reach zero: a curve between two side midpoints that face each
+        // other has all four of its points on one line, and the box around them has
+        // no height at all.
+        var width = Math.Max(1, fit.Emu(connector.Bounds.Width));
+        var height = Math.Max(1, fit.Emu(connector.Bounds.Height));
         A.Point Local(SlidePosition point) => new()
         {
             X = fit.Emu(point.X - connector.Bounds.X).ToString(CultureInfo.InvariantCulture),

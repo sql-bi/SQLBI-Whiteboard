@@ -1875,6 +1875,18 @@ Assert(
             new SlidePosition(940, 900),
             0xFF035ACA,
             6),
+
+        // Two side midpoints facing each other: every point of the cubic is on one
+        // line, which is the box with no height at all.
+        new SlideConnectorElement(
+            new SlideRect(200, 860, 400, 0),
+            ConnectorKind.CurvedArrow,
+            new SlidePosition(200, 860),
+            new SlidePosition(600, 860),
+            new SlidePosition(360, 860),
+            new SlidePosition(440, 860),
+            0xFF035ACA,
+            6),
     ];
     ExportPage[] designPages = [new ExportPage("Design", null, onePixelPng, 1600, 900, designElements)];
 
@@ -1893,8 +1905,8 @@ Assert(
         }
 
         Assert(
-            slideXml.Split("<p:sp>").Length - 1 == Enum.GetValues<ShapeKind>().Length + 3,
-            "Every shape, the label, the curved connector, and the title are shapes on the slide.");
+            slideXml.Split("<p:sp>").Length - 1 == Enum.GetValues<ShapeKind>().Length + 4,
+            "Every shape, the label, the two curved connectors, and the title are shapes on the slide.");
         Assert(
             slideXml.Contains("fmla=\"val 20000\"", StringComparison.Ordinal) &&
             slideXml.Contains("fmla=\"val 50000\"", StringComparison.Ordinal),
@@ -1916,13 +1928,17 @@ Assert(
         Assert(
             slideXml.Split("<p:cxnSp>").Length - 1 == 1 &&
             slideXml.Contains("prst=\"straightConnector1\"", StringComparison.Ordinal) &&
-            slideXml.Contains("<a:cubicBezTo>", StringComparison.Ordinal),
+            slideXml.Split("<a:cubicBezTo>").Length - 1 == 2,
             "A straight connector is a connector with the preset, and a curved one is a freeform with its own cubic.");
         Assert(
             slideXml.Contains("flipH=\"1\"", StringComparison.Ordinal) &&
             slideXml.Contains("flipV=\"1\"", StringComparison.Ordinal) &&
-            slideXml.Split("<a:tailEnd").Length - 1 == 2,
-            "A connector that runs right to left and bottom to top is flipped, and both arrows have a head.");
+            slideXml.Split("<a:tailEnd").Length - 1 == 3,
+            "A connector that runs right to left and bottom to top is flipped, and every arrow has a head.");
+        Assert(
+            !slideXml.Contains("<a:path w=\"0\"", StringComparison.Ordinal) &&
+            !slideXml.Contains("h=\"0\">", StringComparison.Ordinal),
+            "A flat curve still has a path to scale against.");
     }
 
     // The same elements as a vector page, and a label in each font a board offers:
@@ -1937,37 +1953,40 @@ Assert(
         Assert(designPdf.PageCount == 1, "The design page is one page.");
     }
 
-    using var fontStream = new MemoryStream();
-    PdfDocumentWriter.Write(
-        fontStream,
-        [
-            new ExportPage(
-                "Fonts",
-                null,
-                onePixelPng,
-                1600,
-                900,
-                [
-                    .. LabelStyles.Fonts.Select((font, index) => new SlideLabelElement(
-                        new SlideRect(60, 40 + (index * 90), 900, 70),
-                        0,
-                        $"The quick brown fox in {font}",
-                        font,
-                        36,
-                        0xFF1F2937,
-                        Bold: false,
-                        Italic: false,
-                        Underline: false)),
-                ]),
-        ],
-        new PdfOptions());
-    var fontBytes = System.Text.Encoding.Latin1.GetString(fontStream.ToArray());
+    // One document per font, so that the face a label was written in is the only
+    // one the document could have got it from: a page holding all nine would name
+    // Arial for its own sake and answer for every family that falls back to it.
     foreach (var font in LabelStyles.Fonts)
     {
+        using var fontStream = new MemoryStream();
+        PdfDocumentWriter.Write(
+            fontStream,
+            [
+                new ExportPage(
+                    font,
+                    null,
+                    onePixelPng,
+                    1600,
+                    900,
+                    [
+                        new SlideLabelElement(
+                            new SlideRect(60, 40, 900, 70),
+                            0,
+                            $"The quick brown fox in {font}",
+                            font,
+                            36,
+                            0xFF1F2937,
+                            Bold: false,
+                            Italic: false,
+                            Underline: false),
+                    ]),
+            ],
+            new PdfOptions(Footer: false));
+
         // A base font is named after the family, with #20 where a space is. A
-        // Windows without the family embeds the stand-in the resolver names for
-        // it, so either answer is the resolver working: what is checked is that
-        // the label was not quietly written in the default face instead.
+        // Windows without the family embeds the stand-in the resolver names for it,
+        // so either answer is the resolver working; what is ruled out is the label
+        // quietly coming out in the page's own face instead.
         var face = (font == "Cascadia Mono" ? "Consolas" : font).Replace(" ", "#20", StringComparison.Ordinal);
         var standIn = font switch
         {
@@ -1975,6 +1994,7 @@ Assert(
             "Consolas" or "Cascadia Mono" => "Courier#20New",
             _ => "Arial",
         };
+        var fontBytes = System.Text.Encoding.Latin1.GetString(fontStream.ToArray());
         Assert(
             fontBytes.Contains($"+{face}", StringComparison.Ordinal) ||
             fontBytes.Contains($"+{standIn}", StringComparison.Ordinal),
