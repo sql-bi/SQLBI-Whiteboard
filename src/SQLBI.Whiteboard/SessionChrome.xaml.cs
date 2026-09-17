@@ -4,6 +4,7 @@ using System.Windows.Controls.Primitives;
 using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Threading;
+using SQLBI.Whiteboard.Core.Model;
 
 namespace SQLBI.Whiteboard;
 
@@ -47,6 +48,13 @@ public partial class SessionChrome : UserControl
     }
 
     public event Action<SessionCommand>? CommandRequested;
+
+    /// <summary>
+    /// A shape picked from the Insert row. It carries its kind rather than
+    /// joining <see cref="SessionCommand"/> eight times over, and the toolbar
+    /// flyout raises the same choice through the window.
+    /// </summary>
+    public event Action<ShapeKind>? ShapeRequested;
 
     public event Action? ViewOpened;
 
@@ -174,6 +182,7 @@ public partial class SessionChrome : UserControl
             Key.F => FileTab,
             Key.E => EditTab,
             Key.V => ViewTab,
+            Key.I => InsertTab,
             Key.H => HelpTab,
             _ => null,
         };
@@ -207,6 +216,7 @@ public partial class SessionChrome : UserControl
         FileRow.Visibility = Visibility.Collapsed;
         EditRow.Visibility = Visibility.Collapsed;
         ViewRow.Visibility = Visibility.Collapsed;
+        InsertRow.Visibility = Visibility.Collapsed;
         HelpRow.Visibility = Visibility.Collapsed;
         if (ReferenceEquals(tab, FileTab))
         {
@@ -219,6 +229,10 @@ public partial class SessionChrome : UserControl
         else if (ReferenceEquals(tab, ViewTab))
         {
             ViewRow.Visibility = Visibility.Visible;
+        }
+        else if (ReferenceEquals(tab, InsertTab))
+        {
+            InsertRow.Visibility = Visibility.Visible;
         }
         else
         {
@@ -253,6 +267,22 @@ public partial class SessionChrome : UserControl
         CommandRequested?.Invoke(command);
     }
 
+    private void Shape_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is not Button { Tag: string name } ||
+            !Enum.TryParse<ShapeKind>(name, out var kind))
+        {
+            return;
+        }
+
+        if (!IsStickyTab(_openTab))
+        {
+            Collapse();
+        }
+
+        ShapeRequested?.Invoke(kind);
+    }
+
     private bool IsStickyTab(ToggleButton? tab) =>
         ReferenceEquals(tab, EditTab) || ReferenceEquals(tab, HelpTab);
 
@@ -261,6 +291,7 @@ public partial class SessionChrome : UserControl
         FileTab.IsChecked = false;
         EditTab.IsChecked = false;
         ViewTab.IsChecked = false;
+        InsertTab.IsChecked = false;
         HelpTab.IsChecked = false;
     }
 
@@ -401,6 +432,7 @@ public partial class SessionChrome : UserControl
         var row = FileRow.Visibility == Visibility.Visible ? FileRow
             : EditRow.Visibility == Visibility.Visible ? EditRow
             : ViewRow.Visibility == Visibility.Visible ? ViewRow
+            : InsertRow.Visibility == Visibility.Visible ? InsertRow
             : HelpRow.Visibility == Visibility.Visible ? HelpRow
             : null;
         return row?.Children.OfType<Button>() ?? [];

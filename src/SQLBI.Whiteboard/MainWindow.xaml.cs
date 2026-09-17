@@ -38,6 +38,7 @@ public partial class MainWindow : Window
         Select,
         Pan,
         Laser,
+        Shape,
     }
 
     private enum PointerAction
@@ -48,6 +49,7 @@ public partial class MainWindow : Window
         Container,
         Laser,
         Ink,
+        Shape,
     }
 
     private readonly Camera2D _camera = new();
@@ -133,6 +135,7 @@ public partial class MainWindow : Window
     private RectD _gestureAfterBounds;
     private PointD _gestureStartWorld;
     private bool _gestureIsResize;
+    private bool _gestureFreeResize;
     private bool _gestureReflow;
     private TextBoardObject? _gestureReflowTarget;
 
@@ -144,6 +147,17 @@ public partial class MainWindow : Window
     private bool _areaDragged;
     private PointD _areaStartScreen;
     private readonly List<PointD> _areaPoints = [];
+
+    // A press with the Shape tool drags a shape out from where it started. A
+    // press that never moves is a tap, and a tap inserts one at a readable size
+    // rather than a shape with no area at all.
+    private ShapeKind _shapeKind = ShapeKind.RoundedRectangle;
+    private bool _shapeActive;
+    private bool _shapeDragged;
+    private PointD _shapeStartScreen;
+    private PointD _shapeStartWorld;
+    private bool _isInsertOptionsOpen;
+    private bool _isSelectOptionsOpen;
     private TextBoardObject? _textEditBefore;
     private InkStrokeObject[] _textEditLinkedBefore = [];
     private RectD _textEditBounds;
@@ -201,6 +215,8 @@ public partial class MainWindow : Window
         SessionBar.UpdateDismissed += SessionBar_UpdateDismissed;
         SelectionPropertyBar.ColorChosen += ApplySelectionColor;
         SelectionPropertyBar.ThicknessChosen += ApplySelectionThickness;
+        SelectionPropertyBar.FillChosen += ApplySelectionFill;
+        SessionBar.ShapeRequested += ChooseShapeTool;
         UpdateWindowTitle();
         _initialBoardPath = initialBoardPath;
         TextEditorLanguageCombo.ItemsSource = TextLanguageRegistry.All;
@@ -239,6 +255,7 @@ public partial class MainWindow : Window
         ApplyCalligraphyAccess();
         ApplyPointerModes();
         ApplyGrid();
+        ApplyInsertOnToolbar();
         ApplyDrawingAttributes();
         SetActiveTool(BoardTool.Pen);
         InkSurface.Focus();
@@ -745,6 +762,13 @@ public partial class MainWindow : Window
             InkSurface.CaptureStylus();
             e.Handled = true;
         }
+        else if (EffectiveTool == BoardTool.Shape)
+        {
+            BeginShapeGesture(screen);
+            _stylusAction = PointerAction.Shape;
+            InkSurface.CaptureStylus();
+            e.Handled = true;
+        }
         else if (EffectiveTool == BoardTool.Laser && !e.StylusDevice.Inverted)
         {
             BeginLaserContact(e);
@@ -801,6 +825,10 @@ public partial class MainWindow : Window
                 break;
             case PointerAction.Laser:
                 AddLaserSamples(e, leaveTrail: true);
+                e.Handled = true;
+                break;
+            case PointerAction.Shape:
+                UpdateShapeGesture(screen);
                 e.Handled = true;
                 break;
         }
@@ -894,6 +922,10 @@ public partial class MainWindow : Window
             case PointerAction.Laser:
                 ReleaseBoardPointerCapture(e.StylusDevice);
                 LaserTrail.Lift();
+                e.Handled = true;
+                break;
+            case PointerAction.Shape:
+                CompleteShapeGesture(screen);
                 e.Handled = true;
                 break;
         }
@@ -1530,6 +1562,10 @@ public partial class MainWindow : Window
                 BeginContainerGesture(screen);
                 _mouseAction = PointerAction.Container;
                 break;
+            case BoardTool.Shape:
+                BeginShapeGesture(screen);
+                _mouseAction = PointerAction.Shape;
+                break;
             default:
                 BeginMouseInk(screen);
                 _mouseAction = PointerAction.Ink;
@@ -1660,6 +1696,13 @@ public partial class MainWindow : Window
             ShowPointerDot(e.GetPosition(RootGrid));
             InkSurface.Cursor = Cursors.None;
         }
+        else if (EffectiveTool == BoardTool.Shape)
+        {
+            // The crosshair says the next press drags a box out rather than
+            // taking hold of something already on the board.
+            HidePointerDot();
+            InkSurface.Cursor = Cursors.Cross;
+        }
         else
         {
             HidePointerDot();
@@ -1682,6 +1725,9 @@ public partial class MainWindow : Window
                 break;
             case PointerAction.Ink:
                 UpdateMouseInk(screen);
+                break;
+            case PointerAction.Shape:
+                UpdateShapeGesture(screen);
                 break;
         }
     }
@@ -1739,6 +1785,10 @@ public partial class MainWindow : Window
         {
             EndMouseInk();
         }
+        else if (_mouseAction == PointerAction.Shape)
+        {
+            ResetShapeGesture();
+        }
 
         _mouseAction = PointerAction.None;
         if (!hadMouseAction)
@@ -1784,6 +1834,9 @@ public partial class MainWindow : Window
             case PointerAction.Ink:
                 UpdateMouseInk(screen);
                 EndMouseInk();
+                break;
+            case PointerAction.Shape:
+                CompleteShapeGesture(screen);
                 break;
         }
 
@@ -2014,6 +2067,9 @@ public partial class MainWindow : Window
             case PointerAction.Laser:
                 StopLaserSampling();
                 LaserTrail.Lift();
+                break;
+            case PointerAction.Shape:
+                ResetShapeGesture();
                 break;
         }
 
@@ -2302,6 +2358,11 @@ public partial class MainWindow : Window
             _gestureReflowTarget = SingleSelected<TextBoardObject>();
             _gestureReflow = _gestureReflowTarget is not null &&
                              Keyboard.Modifiers.HasFlag(ModifierKeys.Shift);
+
+            // A shape is the one container allowed to change proportion, so its
+            // handle follows the pointer in both directions and Shift is what
+            // keeps the aspect - the opposite way round from a picture.
+            _gestureFreeResize = SingleSelected<ShapeBoardObject>() is not null;
             BeginSelectionGesture(worldPoint);
             return;
         }
@@ -2409,7 +2470,7 @@ public partial class MainWindow : Window
         }
 
         RectD after = _gestureIsResize
-            ? ScaledSelection(worldPoint)
+            ? ResizedSelection(worldPoint)
             : _gestureBounds.Translate(worldPoint - _gestureStartWorld);
         if (after == _gestureAfterBounds)
         {
@@ -2421,6 +2482,25 @@ public partial class MainWindow : Window
             .Select(item => TransformInGesture(item, _gestureBounds, after))
             .ToArray();
         _document.ReplaceObjects(_gestureAfter);
+    }
+
+    /// <summary>
+    /// The selection under the corner handle. A lone shape takes the width and
+    /// the height the pointer is at, and keeps its aspect with Shift; everything
+    /// else scales with the aspect preserved, as a picture always has.
+    /// </summary>
+    private RectD ResizedSelection(PointD worldPoint) =>
+        _gestureFreeResize && !Keyboard.Modifiers.HasFlag(ModifierKeys.Shift)
+            ? StretchedSelection(worldPoint)
+            : ScaledSelection(worldPoint);
+
+    private RectD StretchedSelection(PointD worldPoint)
+    {
+        RectD bounds = _gestureBounds;
+        var minimum = 32 / _camera.Zoom;
+        return bounds.WithSize(
+            Math.Max(minimum, worldPoint.X - bounds.Left),
+            Math.Max(minimum, worldPoint.Y - bounds.Top));
     }
 
     /// <summary>
@@ -2487,6 +2567,7 @@ public partial class MainWindow : Window
         _gestureBounds = default;
         _gestureAfterBounds = default;
         _gestureIsResize = false;
+        _gestureFreeResize = false;
         _gestureReflow = false;
         _gestureReflowTarget = null;
         _areaActive = false;
@@ -2613,6 +2694,127 @@ public partial class MainWindow : Window
         IReadOnlyList<PointD> corners = Polygon.Corners(CurrentAreaRectangle());
         return [.. corners, corners[0]];
     }
+
+    // What a tap with the Shape tool inserts, in screen pixels: a shape big
+    // enough to read and to take hold of, at whatever zoom the board is at.
+    private const double TappedShapeWidth = 160;
+    private const double TappedShapeHeight = 120;
+
+    /// <summary>
+    /// A shape tool picked from the Insert row or the toolbar flyout. The kind
+    /// is remembered, so the tool that stays after a drag draws the same thing
+    /// again.
+    /// </summary>
+    private void ChooseShapeTool(ShapeKind kind)
+    {
+        _shapeKind = kind;
+        SetInsertOptionsOpen(false);
+        ChooseTool(BoardTool.Shape);
+    }
+
+    private void BeginShapeGesture(PointD screen)
+    {
+        _shapeActive = true;
+        _shapeDragged = false;
+        _shapeStartScreen = screen;
+        _shapeStartWorld = _camera.ScreenToWorld(screen);
+        HideSelectionPropertyBar();
+    }
+
+    private void UpdateShapeGesture(PointD screen)
+    {
+        if (!_shapeActive)
+        {
+            return;
+        }
+
+        if (!_shapeDragged &&
+            Distance(ToPoint(screen), ToPoint(_shapeStartScreen)) > AreaDragThreshold)
+        {
+            _shapeDragged = true;
+        }
+
+        SceneSurface.PendingShape = _shapeDragged ? NewShape(DraggedShapeBounds(screen)) : null;
+        SceneSurface.InvalidateVisual();
+    }
+
+    private void CompleteShapeGesture(PointD screen)
+    {
+        if (!_shapeActive)
+        {
+            return;
+        }
+
+        RectD bounds = _shapeDragged ? DraggedShapeBounds(screen) : TappedShapeBounds();
+        ResetShapeGesture();
+        ShapeBoardObject shape = NewShape(bounds);
+        _history.Execute(new AddObjectCommand(shape), _document);
+
+        // The new shape is the selection, so the property bar is there to
+        // recolor or fill it without anything else being picked up first.
+        SelectOnly(shape.Id);
+        SceneSurface.InvalidateVisual();
+        UpdateLiveViewActionOverlay();
+        if (_settings.AfterInsert == AfterInsert.ReturnToSelect)
+        {
+            SetActiveTool(BoardTool.Select);
+        }
+    }
+
+    private void ResetShapeGesture()
+    {
+        _shapeActive = false;
+        _shapeDragged = false;
+        if (SceneSurface.PendingShape is not null)
+        {
+            SceneSurface.PendingShape = null;
+            SceneSurface.InvalidateVisual();
+        }
+    }
+
+    /// <summary>
+    /// The box between the press and the pointer. Shift constrains it to a
+    /// square, measured on the longer side so the shape follows the hand rather
+    /// than shrinking under it.
+    /// </summary>
+    private RectD DraggedShapeBounds(PointD screen)
+    {
+        PointD world = _camera.ScreenToWorld(screen);
+        var deltaX = world.X - _shapeStartWorld.X;
+        var deltaY = world.Y - _shapeStartWorld.Y;
+        if (Keyboard.Modifiers.HasFlag(ModifierKeys.Shift))
+        {
+            var side = Math.Max(Math.Abs(deltaX), Math.Abs(deltaY));
+            deltaX = deltaX < 0 ? -side : side;
+            deltaY = deltaY < 0 ? -side : side;
+        }
+
+        return new RectD(
+            Math.Min(_shapeStartWorld.X, _shapeStartWorld.X + deltaX),
+            Math.Min(_shapeStartWorld.Y, _shapeStartWorld.Y + deltaY),
+            Math.Abs(deltaX),
+            Math.Abs(deltaY));
+    }
+
+    private RectD TappedShapeBounds()
+    {
+        var width = TappedShapeWidth / _camera.Zoom;
+        var height = TappedShapeHeight / _camera.Zoom;
+        return new RectD(
+            _shapeStartWorld.X - (width / 2),
+            _shapeStartWorld.Y - (height / 2),
+            width,
+            height);
+    }
+
+    private ShapeBoardObject NewShape(RectD bounds) => new(
+        Guid.NewGuid(),
+        _document.NextZIndex,
+        bounds,
+        _shapeKind,
+        _settings.Shape.OutlineArgb,
+        _settings.Shape.FillArgb,
+        _settings.Shape.Thickness);
 
     private bool IsOverHandle(PointD screen, RectD bounds)
     {
@@ -3279,10 +3481,23 @@ public partial class MainWindow : Window
             SetNibPickerOpen(false);
         }
 
+        if (tool != BoardTool.Shape)
+        {
+            SetInsertOptionsOpen(false);
+            ResetShapeGesture();
+        }
+
+        SetSelectOptionsOpen(false);
+
         if (tool == BoardTool.Select)
         {
             HidePointerDot();
             InkSurface.Cursor = Cursors.Arrow;
+        }
+        else if (tool == BoardTool.Shape)
+        {
+            HidePointerDot();
+            InkSurface.Cursor = Cursors.Cross;
         }
 
         if (tool != BoardTool.Laser)
@@ -3300,6 +3515,7 @@ public partial class MainWindow : Window
         PenToolButton.IsChecked = penFamilyActive;
         HighlighterToolButton.IsChecked = tool == BoardTool.Highlighter;
         SelectToolButton.IsChecked = tool == BoardTool.Select;
+        UpdateInsertButtonChecks();
         if (EraserToolButton is not null)
         {
             EraserToolButton.IsChecked = tool == BoardTool.Eraser;
@@ -4010,6 +4226,226 @@ public partial class MainWindow : Window
         PersistSettings();
     }
 
+    /// <summary>
+    /// The Insert button beside Select and the chevron on Select, which exist
+    /// only while the preference asks for them. Collapsed they take no width, so
+    /// the toolbar the default setup shows is the one it has always been - which
+    /// matters because it sits under a presenter picture-in-picture.
+    /// </summary>
+    private void ApplyInsertOnToolbar()
+    {
+        var on = _settings.InsertOnToolbar;
+        Visibility visibility = on ? Visibility.Visible : Visibility.Collapsed;
+        if (InsertToolButton is not null)
+        {
+            InsertToolButton.Visibility = visibility;
+        }
+
+        if (DualInsertButton is not null)
+        {
+            DualInsertButton.Visibility = visibility;
+        }
+
+        if (SelectChevronButton is not null)
+        {
+            SelectChevronButton.Visibility = visibility;
+        }
+
+        if (!on)
+        {
+            SetInsertOptionsOpen(false);
+            SetSelectOptionsOpen(false);
+        }
+    }
+
+    private void InsertToolButton_Click(object sender, RoutedEventArgs e)
+    {
+        SetSelectOptionsOpen(false);
+        SetInsertOptionsOpen(!_isInsertOptionsOpen);
+    }
+
+    private void SelectChevronButton_Click(object sender, RoutedEventArgs e)
+    {
+        SetInsertOptionsOpen(false);
+        SetSelectOptionsOpen(!_isSelectOptionsOpen);
+    }
+
+    private void SetInsertOptionsOpen(bool open)
+    {
+        _isInsertOptionsOpen = open && _settings.InsertOnToolbar;
+        if (InsertOptionsPanel is not null)
+        {
+            InsertOptionsPanel.Visibility = _isInsertOptionsOpen
+                ? Visibility.Visible
+                : Visibility.Collapsed;
+        }
+
+        if (_isInsertOptionsOpen)
+        {
+            RebuildInsertOptions();
+        }
+
+        UpdateInsertButtonChecks();
+    }
+
+    private void SetSelectOptionsOpen(bool open)
+    {
+        _isSelectOptionsOpen = open && _settings.InsertOnToolbar;
+        if (SelectOptionsPanel is not null)
+        {
+            SelectOptionsPanel.Visibility = _isSelectOptionsOpen
+                ? Visibility.Visible
+                : Visibility.Collapsed;
+        }
+
+        if (SelectChevronButton is not null)
+        {
+            SelectChevronButton.IsChecked = _isSelectOptionsOpen;
+        }
+
+        if (_isSelectOptionsOpen)
+        {
+            RebuildSelectOptions();
+        }
+    }
+
+    /// <summary>
+    /// The Insert button reads as on while its flyout is open as well as while
+    /// the shape tool is active: the flyout is the button's own state, and the
+    /// tool may not have changed yet.
+    /// </summary>
+    private void UpdateInsertButtonChecks()
+    {
+        var on = _activeTool == BoardTool.Shape || _isInsertOptionsOpen;
+        if (InsertToolButton is not null)
+        {
+            InsertToolButton.IsChecked = on;
+        }
+
+        if (DualInsertButton is not null)
+        {
+            DualInsertButton.IsChecked = on;
+        }
+    }
+
+    // Four to a row, so the eight shapes are two rows no wider than the ink
+    // options under the same toolbar.
+    private const int InsertOptionsColumns = 4;
+
+    /// <summary>
+    /// What the Insert flyout offers, in the order the Insert row offers it. The
+    /// connectors and Text join this list, and the flyout follows from it.
+    /// </summary>
+    private static IReadOnlyList<ShapeKind> InsertShapes { get; } = Enum.GetValues<ShapeKind>();
+
+    private void RebuildInsertOptions()
+    {
+        if (InsertOptionsHost is null)
+        {
+            return;
+        }
+
+        InsertOptionsHost.Children.Clear();
+        StackPanel? row = null;
+        var index = 0;
+        foreach (ShapeKind kind in InsertShapes)
+        {
+            if (index % InsertOptionsColumns == 0)
+            {
+                row = new StackPanel
+                {
+                    Orientation = Orientation.Horizontal,
+                    HorizontalAlignment = HorizontalAlignment.Center,
+                    Margin = new Thickness(0, index == 0 ? 0 : 2, 0, 0),
+                };
+                InsertOptionsHost.Children.Add(row);
+            }
+
+            row?.Children.Add(CreateInsertButton(kind));
+            index++;
+        }
+    }
+
+    private ToggleButton CreateInsertButton(ShapeKind kind)
+    {
+        var button = new ToggleButton
+        {
+            Style = (Style)FindResource("ToolbarIconButton"),
+            Content = new System.Windows.Shapes.Path
+            {
+                Width = 20,
+                Height = 20,
+                Stretch = Stretch.Uniform,
+                Fill = (Brush)FindResource("ToolbarIconBrush"),
+                Data = (Geometry)FindResource(kind.ToString() + "ShapeGeometry"),
+            },
+            ToolTip = ShapeName(kind),
+            IsChecked = _activeTool == BoardTool.Shape && _shapeKind == kind,
+        };
+        button.Click += (_, _) => ChooseShapeTool(kind);
+        return button;
+    }
+
+    private void RebuildSelectOptions()
+    {
+        if (SelectOptionsHost is null)
+        {
+            return;
+        }
+
+        SelectOptionsHost.Children.Clear();
+        SelectOptionsHost.Children.Add(CreateAreaToolButton(
+            AreaSelectionTool.Rectangle,
+            "ImageSelectGeometry",
+            "Drag on empty canvas to draw a rectangle"));
+        SelectOptionsHost.Children.Add(CreateAreaToolButton(
+            AreaSelectionTool.Lasso,
+            "LassoGeometry",
+            "Drag on empty canvas to draw a lasso"));
+    }
+
+    private ToggleButton CreateAreaToolButton(
+        AreaSelectionTool tool,
+        string geometryKey,
+        string tooltip)
+    {
+        var button = new ToggleButton
+        {
+            Style = (Style)FindResource("ToolbarIconButton"),
+            Content = new System.Windows.Shapes.Path
+            {
+                Width = 20,
+                Height = 20,
+                Stretch = Stretch.Uniform,
+                Fill = (Brush)FindResource("ToolbarIconBrush"),
+                Data = (Geometry)FindResource(geometryKey),
+            },
+            ToolTip = tooltip,
+            IsChecked = _settings.AreaSelectionTool == tool,
+        };
+        button.Click += (_, _) => ChooseAreaSelectionTool(tool);
+        return button;
+    }
+
+    /// <summary>
+    /// The chevron's choice is the Edit row's Lasso toggle, so whichever of the
+    /// two is used the other shows what was chosen.
+    /// </summary>
+    private void ChooseAreaSelectionTool(AreaSelectionTool tool)
+    {
+        _settings.AreaSelectionTool = tool;
+        SessionBar.SetLassoChecked(IsLassoArea);
+        PersistSettings();
+        SetActiveTool(BoardTool.Select);
+    }
+
+    private static string ShapeName(ShapeKind kind) => kind switch
+    {
+        ShapeKind.RoundedRectangle => "Rounded rectangle",
+        ShapeKind.BlockArrow => "Block arrow",
+        _ => kind.ToString(),
+    };
+
     private void ApplyPreferences()
     {
         ApplyToolbarPlacement();
@@ -4018,6 +4454,7 @@ public partial class MainWindow : Window
         ApplyPointerModes();
         SessionBar.SetLassoChecked(IsLassoArea);
         ApplyGrid();
+        ApplyInsertOnToolbar();
         if (!_settings.CheckForUpdates)
         {
             SessionBar.HideUpdateNotice();
@@ -5174,36 +5611,82 @@ public partial class MainWindow : Window
     }
 
     /// <summary>
-    /// A color for every selected stroke, as one step. The kind is untouched,
-    /// so recoloring a highlighter leaves it a highlighter with its own
-    /// transparency rather than turning it into a pen.
+    /// A color for every selected stroke and shape, as one step. A stroke's kind
+    /// is untouched, so recoloring a highlighter leaves it a highlighter with its
+    /// own transparency rather than turning it into a pen.
     /// </summary>
-    private void ApplySelectionColor(uint argb) =>
-        RestyleSelectedStrokes(style => style with { Argb = argb });
-
-    private void ApplySelectionThickness(double thickness) =>
-        RestyleSelectedStrokes(style => style with { Thickness = thickness });
-
-    private void RestyleSelectedStrokes(Func<PenStyle, PenStyle> restyle)
+    private void ApplySelectionColor(uint argb)
     {
-        InkStrokeObject[] before = SelectedObjects().OfType<InkStrokeObject>().ToArray();
-        if (before.Length == 0 || before.All(stroke => restyle(stroke.Style) == stroke.Style))
+        RestyleSelection(
+            style => style with { Argb = argb },
+            shape => shape with { OutlineArgb = argb });
+        _settings.Shape.OutlineArgb = argb;
+        PersistSettings();
+    }
+
+    private void ApplySelectionThickness(double thickness)
+    {
+        RestyleSelection(
+            style => style with { Thickness = thickness },
+            shape => shape with { Thickness = thickness });
+        _settings.Shape.Thickness = thickness;
+        PersistSettings();
+    }
+
+    private void ApplySelectionFill(uint? fill)
+    {
+        RestyleSelection(null, shape => shape with { FillArgb = fill });
+        _settings.Shape.FillArgb = fill;
+        PersistSettings();
+    }
+
+    /// <summary>
+    /// One property applied to everything selected that has it, as a single
+    /// step, and remembered as what the next shape is drawn with. A change that
+    /// leaves an object as it was is left out, so a mixed selection records only
+    /// what it actually altered.
+    /// </summary>
+    private void RestyleSelection(
+        Func<PenStyle, PenStyle>? restyleStroke,
+        Func<ShapeBoardObject, ShapeBoardObject>? restyleShape)
+    {
+        var before = new List<BoardObject>();
+        var after = new List<BoardObject>();
+        foreach (BoardObject item in SelectedObjects())
+        {
+            BoardObject? replacement = item switch
+            {
+                // Rebuilt rather than copied with a new style: the bounds carry
+                // half the nib, so a thicker stroke covers more board than the
+                // one it replaces.
+                InkStrokeObject stroke when restyleStroke is not null => InkStrokeObject.Create(
+                    stroke.Points,
+                    restyleStroke(stroke.Style),
+                    stroke.ZIndex,
+                    stroke.Id,
+                    stroke.ContainerId),
+                ShapeBoardObject shape when restyleShape is not null => restyleShape(shape),
+                _ => null,
+            };
+            if (replacement is null || replacement == item)
+            {
+                continue;
+            }
+
+            before.Add(item);
+            after.Add(replacement);
+        }
+
+        if (before.Count == 0)
         {
             return;
         }
 
-        // Rebuilt rather than copied with a new style: the bounds carry half the
-        // nib, so a thicker stroke covers more board than the one it replaces.
-        BoardObject[] after = before
-            .Select(stroke => (BoardObject)InkStrokeObject.Create(
-                stroke.Points,
-                restyle(stroke.Style),
-                stroke.ZIndex,
-                stroke.Id,
-                stroke.ContainerId))
-            .ToArray();
-        _history.Execute(new ReplaceObjectsCommand(before, after), _document);
+        _history.Execute(
+            new ReplaceObjectsCommand(before.ToArray(), after.ToArray()),
+            _document);
         SceneSurface.InvalidateVisual();
+        UpdateSelectionPropertyBar();
         InkSurface.Focus();
     }
 
@@ -6056,6 +6539,11 @@ public partial class MainWindow : Window
                 SceneSurface.InvalidateVisual();
             }
 
+            e.Handled = true;
+        }
+        else if (e.Key == Key.Escape && _activeTool == BoardTool.Shape)
+        {
+            SetActiveTool(BoardTool.Select);
             e.Handled = true;
         }
         else if (e.Key == Key.Escape && _selectedObjectIds.Count > 0)

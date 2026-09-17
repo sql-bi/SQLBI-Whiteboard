@@ -304,6 +304,18 @@
                                          swatches leave. That keeps this row, the widest in the
                                          palette, to the same two tool buttons as the pen row. -->
                                     <DockPanel>
+                                        <ToggleButton x:Name="DualInsertButton"
+                                                      DockPanel.Dock="Right"
+                                                      Style="{StaticResource ToolbarIconButton}"
+                                                      ToolTip="Insert a shape"
+                                                      Visibility="Collapsed"
+                                                      Click="InsertToolButton_Click">
+                                            <Path Width="20"
+                                                  Height="20"
+                                                  Stretch="Uniform"
+                                                  Fill="{Binding Foreground, RelativeSource={RelativeSource AncestorType=ToggleButton}}"
+                                                  Data="{StaticResource ShapesGeometry}" />
+                                        </ToggleButton>
                                         <ToggleButton x:Name="DualSelectButton"
                                                       DockPanel.Dock="Right"
                                                       Style="{StaticResource ToolbarIconButton}"
@@ -411,16 +423,45 @@
                                          Fill="#FFFACC15" />
                             </Grid>
                         </ToggleButton>
-                        <ToggleButton x:Name="SelectToolButton"
+                        <StackPanel x:Name="SelectFamilyCluster"
+                                    Orientation="Horizontal">
+                            <ToggleButton x:Name="SelectToolButton"
+                                          Style="{StaticResource ToolbarIconButton}"
+                                          ToolTip="Select image"
+                                          AutomationProperties.Name="Select image"
+                                          Click="SelectToolButton_Click">
+                                <Path Width="20"
+                                      Height="20"
+                                      Stretch="Uniform"
+                                      Fill="{Binding Foreground, RelativeSource={RelativeSource AncestorType=ToggleButton}}"
+                                      Data="{StaticResource ImageSelectGeometry}" />
+                            </ToggleButton>
+                            <!-- Both of these exist only while Insert and Lasso on
+                                 the toolbar is on. Collapsed they take no width, so
+                                 the default toolbar is the width it has always been. -->
+                            <ToggleButton x:Name="SelectChevronButton"
+                                          Style="{StaticResource ToolbarChevronButton}"
+                                          ToolTip="Rectangle or lasso"
+                                          Visibility="Collapsed"
+                                          Click="SelectChevronButton_Click">
+                                <Path Width="10"
+                                      Height="10"
+                                      Stretch="Uniform"
+                                      Fill="{Binding Foreground, RelativeSource={RelativeSource AncestorType=ToggleButton}}"
+                                      Data="{StaticResource ChevronDownGeometry}" />
+                            </ToggleButton>
+                        </StackPanel>
+                        <ToggleButton x:Name="InsertToolButton"
                                       Style="{StaticResource ToolbarIconButton}"
-                                      ToolTip="Select image"
-                                      AutomationProperties.Name="Select image"
-                                      Click="SelectToolButton_Click">
+                                      ToolTip="Insert a shape"
+                                      AutomationProperties.Name="Insert"
+                                      Visibility="Collapsed"
+                                      Click="InsertToolButton_Click">
                             <Path Width="20"
                                   Height="20"
                                   Stretch="Uniform"
                                   Fill="{Binding Foreground, RelativeSource={RelativeSource AncestorType=ToggleButton}}"
-                                  Data="{StaticResource ImageSelectGeometry}" />
+                                  Data="{StaticResource ShapesGeometry}" />
                         </ToggleButton>
                     </StackPanel>
 
@@ -467,6 +508,22 @@
                         </StackPanel>
                     </Border>
                 </DockPanel>
+                <!-- The Insert flyout and the Select chevron's, in the style of
+                     the ink options. Both are filled in code, the Insert one from
+                     the single list the Insert row also reads. -->
+                <Border x:Name="SelectOptionsPanel"
+                        Margin="2,8,2,2"
+                        Visibility="Collapsed">
+                    <StackPanel x:Name="SelectOptionsHost"
+                                HorizontalAlignment="Center"
+                                Orientation="Horizontal" />
+                </Border>
+                <Border x:Name="InsertOptionsPanel"
+                        Margin="2,8,2,2"
+                        Visibility="Collapsed">
+                    <StackPanel x:Name="InsertOptionsHost"
+                                HorizontalAlignment="Center" />
+                </Border>
                 <StackPanel x:Name="ExtraToolsRow"
                             Margin="0,4,0,0"
                             Orientation="Horizontal"
