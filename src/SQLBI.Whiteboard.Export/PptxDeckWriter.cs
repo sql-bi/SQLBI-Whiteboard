@@ -1,5 +1,7 @@
 using DocumentFormat.OpenXml;
 using DocumentFormat.OpenXml.Packaging;
+using SQLBI.Whiteboard.Core.Geometry;
+using SQLBI.Whiteboard.Core.Model;
 using A = DocumentFormat.OpenXml.Drawing;
 using P = DocumentFormat.OpenXml.Presentation;
 
@@ -25,6 +27,11 @@ public static class PptxDeckWriter
     private const long EmuPerPoint = 12700;
     private const int TextBoxBorderWidth = 9525;
     private const double TextBoxCornerRadius = 4;
+
+    // A stadium is the rounded rectangle whose corners have taken the whole of
+    // its shorter side, which is the outline the board draws for it.
+    private const double StadiumCornerFraction = 0.5;
+    private const double Epsilon = 0.000001;
 
     private const int TitleFontSize = 2000;
     private const string TitleColor = "1F2937";
@@ -146,6 +153,8 @@ public static class PptxDeckWriter
             AddImage(slidePart, image.Data, ImageType(image.ContentType)),
             fit.Frame(image.Bounds)),
         SlideTextElement text => TextBoxShape(id, text, fit),
+        SlideShapeElement shape => GeometryShape(id, shape, fit),
+        SlideLabelElement label => LabelShape(id, label, fit),
         _ => throw new ArgumentException($"Unsupported slide element {element.GetType().Name}.", nameof(element)),
     };
 
@@ -279,7 +288,134 @@ public static class PptxDeckWriter
             body);
     }
 
-    private static A.RunProperties RunProperties(uint argb, string typeface, int size, bool bold = false, bool italic = false)
+    /// <summary>
+    /// A shape as a shape: the preset whose outline is the one the board draws, a
+    /// tinted fill that keeps its translucency, and the outline as a line of the
+    /// width the screen gives it. The empty text body is what lets PowerPoint type
+    /// into the shape once the deck is open.
+    /// </summary>
+    private static P.Shape GeometryShape(uint id, SlideShapeElement shape, PageFit fit) => new(
+        new P.NonVisualShapeProperties(
+            new P.NonVisualDrawingProperties { Id = id, Name = $"Shape {id}" },
+            new P.NonVisualShapeDrawingProperties(),
+            new P.ApplicationNonVisualDrawingProperties()),
+        new P.ShapeProperties(
+            fit.Frame(shape.Bounds),
+            Preset(shape),
+            shape.FillArgb is { } fill ? new A.SolidFill(Translucent(fill)) : (OpenXmlElement)new A.NoFill(),
+            new A.Outline(new A.SolidFill(Rgb(shape.OutlineArgb)), new A.Round())
+            {
+                Width = Math.Max(1, (int)fit.Emu(shape.Thickness)),
+                CapType = A.LineCapValues.Round,
+            }),
+        new P.TextBody(
+            new A.BodyProperties(),
+            new A.ListStyle(),
+            new A.Paragraph(new A.EndParagraphRunProperties { Language = Language })));
+
+    /// <summary>
+    /// A label as a text box with no fill and no line, turned about its centre by
+    /// a:xfrm. Wrapping and autofit are off and the box is the size the board
+    /// measured the text at, so PowerPoint keeps the lines the screen shows rather
+    /// than reflowing them at its own idea of the width.
+    /// </summary>
+    private static P.Shape LabelShape(uint id, SlideLabelElement label, PageFit fit)
+    {
+        var size = fit.Points(label.FontSize);
+        var body = new P.TextBody(
+            new A.BodyProperties(new A.NoAutoFit())
+            {
+                Wrap = A.TextWrappingValues.None,
+                LeftInset = 0,
+                TopInset = 0,
+                RightInset = 0,
+                BottomInset = 0,
+                Anchor = A.TextAnchoringTypeValues.Top,
+                AnchorCenter = false,
+            },
+            new A.ListStyle());
+
+        foreach (var line in label.Text.Split('\n'))
+        {
+            var paragraph = new A.Paragraph(new A.ParagraphProperties { Alignment = A.TextAlignmentTypeValues.Left });
+            var text = line.TrimEnd('\r');
+            if (text.Length > 0)
+            {
+                paragraph.Append(new A.Run(
+                    RunProperties(label.Argb, label.FontFamily, size, label.Bold, label.Italic, label.Underline),
+                    new A.Text(text)));
+            }
+
+            paragraph.Append(new A.EndParagraphRunProperties { Language = Language, FontSize = size });
+            body.Append(paragraph);
+        }
+
+        var frame = fit.Frame(label.Bounds);
+        frame.Rotation = Rotation(label.AngleDegrees);
+        return new P.Shape(
+            new P.NonVisualShapeProperties(
+                new P.NonVisualDrawingProperties { Id = id, Name = $"Label {id}" },
+                new P.NonVisualShapeDrawingProperties { TextBox = true },
+                new P.ApplicationNonVisualDrawingProperties()),
+            new P.ShapeProperties(frame, Rectangle(), new A.NoFill(), new A.Outline(new A.NoFill())),
+            body);
+    }
+
+    /// <summary>
+    /// The preset whose outline is the one <see cref="ShapeGeometry"/> describes,
+    /// with the adjust values that put the corner, the slant, and the arrow's head
+    /// where the board puts them. A preset measures its adjusts against its shorter
+    /// side, so each fraction of the box is worked back through that side, and a
+    /// value past what a preset accepts is pinned by PowerPoint - which is what
+    /// makes a stadium out of a rounded rectangle.
+    /// </summary>
+    private static A.PresetGeometry Preset(SlideShapeElement shape)
+    {
+        var side = Math.Max(Epsilon, Math.Min(shape.Bounds.Width, shape.Bounds.Height));
+        return shape.Kind switch
+        {
+            ShapeKind.Ellipse => Geometry(A.ShapeTypeValues.Ellipse),
+            ShapeKind.Triangle => Geometry(A.ShapeTypeValues.Triangle),
+            ShapeKind.Pentagon => Geometry(A.ShapeTypeValues.Pentagon),
+            ShapeKind.Diamond => Geometry(A.ShapeTypeValues.Diamond),
+            ShapeKind.BlockArrow => Geometry(
+                A.ShapeTypeValues.RightArrow,
+                ("adj1", Adjust(ShapeGeometry.ArrowShaftFraction * shape.Bounds.Height / side)),
+                ("adj2", Adjust((1 - ShapeGeometry.ArrowHeadFraction) * shape.Bounds.Width / side))),
+            ShapeKind.Parallelogram => Geometry(
+                A.ShapeTypeValues.Parallelogram,
+                ("adj", Adjust(ShapeGeometry.SlantFraction * shape.Bounds.Width / side))),
+            ShapeKind.Stadium => Geometry(A.ShapeTypeValues.RoundRectangle, ("adj", Adjust(StadiumCornerFraction))),
+            _ => Geometry(A.ShapeTypeValues.RoundRectangle, ("adj", Adjust(ShapeGeometry.CornerFraction))),
+        };
+    }
+
+    private static A.PresetGeometry Geometry(A.ShapeTypeValues preset, params (string Name, int Value)[] adjusts)
+    {
+        var values = new A.AdjustValueList();
+        foreach (var (name, value) in adjusts)
+        {
+            values.Append(new A.ShapeGuide { Name = name, Formula = $"val {value}" });
+        }
+
+        return new A.PresetGeometry(values) { Preset = preset };
+    }
+
+    // An adjust is in hundred-thousandths of the shorter side.
+    private static int Adjust(double fraction) => Math.Max(0, (int)Math.Round(fraction * 100000));
+
+    // Sixtieth-thousandths of a degree, clockwise, which is the way the board
+    // turns a label too.
+    private static int Rotation(double angleDegrees) =>
+        (int)Math.Round((((angleDegrees % 360) + 360) % 360) * 60000);
+
+    private static A.RunProperties RunProperties(
+        uint argb,
+        string typeface,
+        int size,
+        bool bold = false,
+        bool italic = false,
+        bool underline = false)
     {
         var properties = new A.RunProperties(new A.SolidFill(Rgb(argb)), new A.LatinFont { Typeface = typeface })
         {
@@ -294,6 +430,11 @@ public static class PptxDeckWriter
         if (italic)
         {
             properties.Italic = true;
+        }
+
+        if (underline)
+        {
+            properties.Underline = A.TextUnderlineValues.Single;
         }
 
         return properties;
@@ -599,4 +740,18 @@ public static class PptxDeckWriter
 
     // DrawingML has no alpha in the hex; the screen's transparency is dropped.
     private static A.RgbColorModelHex Rgb(uint argb) => Rgb((argb & 0xFFFFFF).ToString("X6"));
+
+    // A fill that is meant to be seen through says so in a child element instead,
+    // in thousandths of a percent.
+    private static A.RgbColorModelHex Translucent(uint argb)
+    {
+        var color = Rgb(argb);
+        var alpha = argb >> 24;
+        if (alpha < 0xFF)
+        {
+            color.Append(new A.Alpha { Val = (int)Math.Round(alpha * 100000d / 0xFF) });
+        }
+
+        return color;
+    }
 }

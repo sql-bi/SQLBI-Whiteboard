@@ -3,6 +3,7 @@ using PdfSharp;
 using PdfSharp.Drawing;
 using PdfSharp.Fonts;
 using PdfSharp.Pdf;
+using SQLBI.Whiteboard.Core.Geometry;
 
 namespace SQLBI.Whiteboard.Export;
 
@@ -52,9 +53,14 @@ public static class PdfDocumentWriter
     private const double MinNibSize = 0.4;
     private const int PenNibSides = 16;
     private const int HighlighterAlpha = 128;
+    private const double MinOutlineWidth = 0.1;
+
+    // An underline thinner than this disappears on a screen at page size, whatever
+    // the face asks for.
+    private const double MinUnderlineThickness = 0.3;
+    private const double Epsilon = 0.000001;
 
     private const string FontFamily = "Segoe UI";
-    private const string MonospaceFontFamily = "Consolas";
     private const string Ellipsis = "…";
     private const string Application = "SQLBI Whiteboard";
     private const string DefaultTitle = "Board";
@@ -192,6 +198,12 @@ public static class PdfDocumentWriter
                     break;
                 case SlideTextElement text:
                     DrawTextBox(graphics, text, mapping);
+                    break;
+                case SlideShapeElement shape:
+                    DrawShape(graphics, shape, mapping);
+                    break;
+                case SlideLabelElement label:
+                    DrawLabel(graphics, label, mapping);
                     break;
                 case SlideInkElement ink:
                     DrawInk(graphics, ink, mapping);
@@ -371,6 +383,165 @@ public static class PdfDocumentWriter
         }
 
         return low;
+    }
+
+    /// <summary>
+    /// A shape as one path: the outline Core describes, walked as straight lines and
+    /// as cubic Béziers where it curves, filled with its tint and stroked with its
+    /// outline. The screen is drawn from the same description, so the page and the
+    /// board cannot disagree about where an edge of a shape is.
+    /// </summary>
+    private static void DrawShape(XGraphics graphics, SlideShapeElement shape, PixelMapping mapping)
+    {
+        ShapeOutline outline = ShapeGeometry.Describe(
+            shape.Kind,
+            new RectD(shape.Bounds.X, shape.Bounds.Y, shape.Bounds.Width, shape.Bounds.Height));
+        var path = new XGraphicsPath { FillMode = XFillMode.Winding };
+        PointD cursor = outline.Start;
+        foreach (ShapeSegment segment in outline.Segments)
+        {
+            if (segment.Kind == ShapeSegmentKind.Line)
+            {
+                path.AddLine(mapping.Map(cursor), mapping.Map(segment.End));
+                cursor = segment.End;
+                continue;
+            }
+
+            foreach ((PointD First, PointD Second, PointD End) curve in ArcCurves(cursor, segment))
+            {
+                path.AddBezier(
+                    mapping.Map(cursor),
+                    mapping.Map(curve.First),
+                    mapping.Map(curve.Second),
+                    mapping.Map(curve.End));
+                cursor = curve.End;
+            }
+        }
+
+        path.CloseFigure();
+        var pen = new XPen(Color(shape.OutlineArgb), Math.Max(MinOutlineWidth, mapping.Map(shape.Thickness)))
+        {
+            LineJoin = XLineJoin.Round,
+            LineCap = XLineCap.Round,
+        };
+        if (shape.FillArgb is { } fill)
+        {
+            graphics.DrawPath(pen, new XSolidBrush(Color(fill)), path);
+        }
+        else
+        {
+            graphics.DrawPath(pen, path);
+        }
+    }
+
+    /// <summary>
+    /// An arc as cubic Béziers, one for each quarter turn or less, where the error
+    /// of the usual approximation is a ten-thousandth of the radius - far below
+    /// anything a page shows. The last one ends on the point the outline names, so
+    /// rounding never leaves a gap in the path.
+    /// </summary>
+    private static IEnumerable<(PointD First, PointD Second, PointD End)> ArcCurves(PointD from, ShapeSegment segment)
+    {
+        var radiusX = Math.Max(Epsilon, segment.RadiusX);
+        var radiusY = Math.Max(Epsilon, segment.RadiusY);
+        PointD center = segment.Center;
+        var start = Math.Atan2((from.Y - center.Y) / radiusY, (from.X - center.X) / radiusX);
+        var end = Math.Atan2((segment.End.Y - center.Y) / radiusY, (segment.End.X - center.X) / radiusX);
+        if (segment.Clockwise)
+        {
+            while (end <= start)
+            {
+                end += 2 * Math.PI;
+            }
+        }
+        else
+        {
+            while (end >= start)
+            {
+                end -= 2 * Math.PI;
+            }
+        }
+
+        var steps = Math.Max(1, (int)Math.Ceiling(Math.Abs(end - start) / (Math.PI / 2)));
+        var sweep = (end - start) / steps;
+        var reach = 4.0 / 3 * Math.Tan(sweep / 4);
+        for (var step = 0; step < steps; step++)
+        {
+            var fromAngle = start + (step * sweep);
+            var toAngle = fromAngle + sweep;
+            PointD first = Along(fromAngle, reach);
+            PointD second = Along(toAngle, -reach);
+            yield return (first, second, step == steps - 1 ? segment.End : At(toAngle));
+        }
+
+        PointD At(double angle) => new(
+            center.X + (radiusX * Math.Cos(angle)),
+            center.Y + (radiusY * Math.Sin(angle)));
+
+        // The point on the curve, moved along the tangent there by the reach a
+        // Bézier control point takes.
+        PointD Along(double angle, double reachAlongTangent) => new(
+            center.X + (radiusX * Math.Cos(angle)) - (reachAlongTangent * radiusX * Math.Sin(angle)),
+            center.Y + (radiusY * Math.Sin(angle)) + (reachAlongTangent * radiusY * Math.Cos(angle)));
+    }
+
+    /// <summary>
+    /// A label as text, turned about the centre of its layout rectangle the way the
+    /// board turns it. The rectangle was measured by the framework that draws the
+    /// screen, so the lines are spread over the height it measured rather than over
+    /// this font's own, and a label takes the room on the page that it takes on the
+    /// board.
+    /// </summary>
+    private static void DrawLabel(XGraphics graphics, SlideLabelElement label, PixelMapping mapping)
+    {
+        var rect = mapping.Map(label.Bounds);
+        var size = Math.Max(1, mapping.Map(label.FontSize));
+        var font = new XFont(
+            label.FontFamily,
+            size,
+            (label.Bold ? XFontStyleEx.Bold : XFontStyleEx.Regular) |
+            (label.Italic ? XFontStyleEx.Italic : XFontStyleEx.Regular));
+        var brush = new XSolidBrush(Color(label.Argb, opaque: true));
+        var lines = label.Text.Split('\n');
+        var lineHeight = rect.Height / lines.Length;
+
+        var state = graphics.Save();
+        if (label.AngleDegrees != 0)
+        {
+            graphics.RotateAtTransform(label.AngleDegrees, new XPoint(rect.X + (rect.Width / 2), rect.Y + (rect.Height / 2)));
+        }
+
+        for (var index = 0; index < lines.Length; index++)
+        {
+            var line = lines[index].TrimEnd('\r');
+            if (line.Length == 0)
+            {
+                continue;
+            }
+
+            var top = rect.Y + (index * lineHeight);
+            graphics.DrawString(line, font, brush, new XPoint(rect.X, top), XStringFormats.TopLeft);
+            if (label.Underline)
+            {
+                // TopLeft puts the baseline an ascender below the top of the line,
+                // and the face says how far under that baseline its underline sits
+                // and how thick it is.
+                var units = Math.Max(1, font.Metrics.UnitsPerEm);
+                var depth = top +
+                            (font.GetHeight() * font.CellAscent / Math.Max(1, font.CellSpace)) +
+                            (size * Math.Abs(font.Metrics.UnderlinePosition) / units);
+                graphics.DrawLine(
+                    new XPen(
+                        Color(label.Argb, opaque: true),
+                        Math.Max(MinUnderlineThickness, size * Math.Abs(font.Metrics.UnderlineThickness) / units)),
+                    rect.X,
+                    depth,
+                    rect.X + graphics.MeasureString(line, font).Width,
+                    depth);
+            }
+        }
+
+        graphics.Restore(state);
     }
 
     /// <summary>
@@ -555,6 +726,8 @@ public static class PdfDocumentWriter
 
         public XPoint Map(XPoint point) => new(OriginX + point.X * Scale, OriginY + point.Y * Scale);
 
+        public XPoint Map(PointD point) => new(OriginX + point.X * Scale, OriginY + point.Y * Scale);
+
         public XPoint[] Map(XPoint[] points)
         {
             var mapped = new XPoint[points.Length];
@@ -573,9 +746,9 @@ public static class PdfDocumentWriter
     /// PDFsharp's Core build resolves no fonts by itself, and the Windows resolver it
     /// offers knows Arial but not Segoe UI, so the faces are read from the Windows fonts
     /// folder here: Segoe UI for the page furniture and the text boxes, Consolas for the
-    /// monospace ones, and Segoe UI again for any other family a board names. PDFsharp
-    /// accepts one resolver per process, so a single instance is installed once and
-    /// shared by every Write.
+    /// monospace ones, the curated list a label can be written in, and Segoe UI again
+    /// for any other family a board names. PDFsharp accepts one resolver per process,
+    /// so a single instance is installed once and shared by every Write.
     /// </summary>
     private sealed class WindowsFontResolver : IFontResolver
     {
@@ -586,19 +759,46 @@ public static class PdfDocumentWriter
             return resolver;
         });
 
-        // Arial and Courier New stand in on a Windows without Segoe UI or Consolas, such
-        // as a Server Core. Each family lists regular, bold, italic, and bold italic.
+        // Arial, Times New Roman, and Courier New stand in on a Windows without the
+        // family itself, such as a Server Core. Each family lists regular, bold,
+        // italic, and bold italic; a family Windows ships no italic file for names
+        // the upright face twice, because an upright label reads better than a
+        // sloped substitute.
+        private static readonly string[] ArialFiles = ["arial.ttf", "arialbd.ttf", "ariali.ttf", "arialbi.ttf"];
+        private static readonly string[] TimesFiles = ["times.ttf", "timesbd.ttf", "timesi.ttf", "timesbi.ttf"];
+        private static readonly string[] CourierFiles = ["cour.ttf", "courbd.ttf", "couri.ttf", "courbi.ttf"];
+
         private static readonly FontFiles SegoeUI = new(
             "SegoeUI",
             ["segoeui.ttf", "segoeuib.ttf", "segoeuii.ttf", "segoeuiz.ttf"],
-            ["arial.ttf", "arialbd.ttf", "ariali.ttf", "arialbi.ttf"]);
+            ArialFiles);
 
         private static readonly FontFiles Consolas = new(
             "Consolas",
             ["consola.ttf", "consolab.ttf", "consolai.ttf", "consolaz.ttf"],
-            ["cour.ttf", "courbd.ttf", "couri.ttf", "courbi.ttf"]);
+            CourierFiles);
 
-        private static readonly Dictionary<string, Lazy<byte[]>> Faces = new[] { SegoeUI, Consolas }
+        /// <summary>
+        /// The families a label offers, by the name a board saves. Cascadia Mono is
+        /// the one Windows ships only as a variable font, whose bold and italic are
+        /// axes rather than files, so its faces are Consolas: the same monospace
+        /// widths, and four real faces to embed.
+        /// </summary>
+        private static readonly Dictionary<string, FontFiles> Families = new(StringComparer.OrdinalIgnoreCase)
+        {
+            ["Segoe UI"] = SegoeUI,
+            ["Consolas"] = Consolas,
+            ["Cascadia Mono"] = Consolas,
+            ["Calibri"] = new("Calibri", ["calibri.ttf", "calibrib.ttf", "calibrii.ttf", "calibriz.ttf"], ArialFiles),
+            ["Arial"] = new("Arial", ArialFiles, ArialFiles),
+            ["Georgia"] = new("Georgia", ["georgia.ttf", "georgiab.ttf", "georgiai.ttf", "georgiaz.ttf"], TimesFiles),
+            ["Times New Roman"] = new("TimesNewRoman", TimesFiles, TimesFiles),
+            ["Comic Sans MS"] = new("ComicSansMS", ["comic.ttf", "comicbd.ttf", "comici.ttf", "comicz.ttf"], ArialFiles),
+            ["Segoe Print"] = new("SegoePrint", ["segoepr.ttf", "segoeprb.ttf", "segoepr.ttf", "segoeprb.ttf"], ArialFiles),
+        };
+
+        private static readonly Dictionary<string, Lazy<byte[]>> Faces = Families.Values
+            .DistinctBy(family => family.Name)
             .SelectMany(family => family.Faces())
             .ToDictionary(face => face.Name, face => face.Bytes, StringComparer.Ordinal);
 
@@ -606,7 +806,7 @@ public static class PdfDocumentWriter
 
         public FontResolverInfo? ResolveTypeface(string familyName, bool bold, bool italic)
         {
-            var family = string.Equals(familyName, MonospaceFontFamily, StringComparison.OrdinalIgnoreCase) ? Consolas : SegoeUI;
+            var family = Families.GetValueOrDefault(familyName ?? string.Empty, SegoeUI);
             return new FontResolverInfo(family.FaceName(bold, italic));
         }
 
