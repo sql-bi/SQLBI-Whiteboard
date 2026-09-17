@@ -2452,7 +2452,10 @@ public partial class MainWindow : Window
 
         // The handle belongs to the selection's own rectangle and sits outside
         // everything inside it, so it is asked before anything is hit tested.
-        if (!extend && SelectionBounds() is RectD bounds && IsOverHandle(screenPoint, bounds))
+        if (!extend &&
+            SingleSelected<ConnectorBoardObject>() is null &&
+            SelectionBounds() is RectD bounds &&
+            IsOverHandle(screenPoint, bounds))
         {
             _gestureIsResize = true;
 
@@ -4995,8 +4998,12 @@ public partial class MainWindow : Window
         return null;
     }
 
+    // A lone connector has no corner handle: its box is a box around a line,
+    // and what it offers instead is its two ends.
     private bool IsOverResizeHandle(PointD screen) =>
-        SelectionBounds() is RectD bounds && IsOverHandle(screen, bounds);
+        SingleSelected<ConnectorBoardObject>() is null &&
+        SelectionBounds() is RectD bounds &&
+        IsOverHandle(screen, bounds);
 
     private static PenKind ToPenKind(BoardTool tool) => tool switch
     {
