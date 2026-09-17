@@ -11,9 +11,10 @@ namespace SQLBI.Whiteboard.Export;
 /// <summary>
 /// An area as slide objects rather than as one picture: images and LiveView
 /// frames as pictures, text containers as text boxes with the colors the
-/// screen shows, and all the ink as one transparent picture on top. Every
-/// rectangle is in the pixel space of the picture the area would otherwise
-/// have been, so the two modes place things identically.
+/// screen shows, shapes and labels as shapes and text, and what is left - the
+/// ink, where the writer cannot draw strokes - as one transparent picture on
+/// top. Every rectangle is in the pixel space of the picture the area would
+/// otherwise have been, so the two modes place things identically.
 /// </summary>
 internal static class EditableSlide
 {
@@ -63,6 +64,8 @@ internal static class EditableSlide
                 ImageBoardObject image => ImageElement(document, image, camera),
                 LiveViewBoardObject liveView => LiveViewElement(document, liveView, camera, liveViewImageSourceProvider),
                 TextBoardObject text => TextElement(text, camera),
+                ShapeBoardObject shape => ShapeElement(shape, camera),
+                FreeTextBoardObject label => LabelElement(label, camera),
                 _ => null,
             };
             if (element is not null)
@@ -76,13 +79,7 @@ internal static class EditableSlide
             elements.Add(InkElement(strokes, pixelWidth, pixelHeight));
         }
 
-        // What no slide object carries goes out as one transparent picture over
-        // the page: the ink, unless it went out as strokes, and the design
-        // objects, which have no native form yet and so go out this way even
-        // when the ink did not.
-        Func<BoardObject, bool> overlayFilter = inkAsStrokes
-            ? static item => item is FreeTextBoardObject or ShapeBoardObject
-            : static item => item is InkStrokeObject or FreeTextBoardObject or ShapeBoardObject;
+        Func<BoardObject, bool> overlayFilter = item => NeedsOverlay(item, inkAsStrokes);
         if (area.Objects.Any(overlayFilter))
         {
             var overlay = BoardRasterizer.Render(
@@ -101,6 +98,18 @@ internal static class EditableSlide
 
         return elements;
     }
+
+    /// <summary>
+    /// Whether a kind has to go out as part of the transparent picture over the
+    /// page, because no slide element carries it on this path. Ink has an
+    /// element only where the writer draws strokes. This is the one place a kind
+    /// is listed until it has an element of its own.
+    /// </summary>
+    private static bool NeedsOverlay(BoardObject item, bool inkAsStrokes) => item switch
+    {
+        InkStrokeObject => !inkAsStrokes,
+        _ => false,
+    };
 
     private static SlideInkElement InkElement(List<SlideStroke> strokes, int pixelWidth, int pixelHeight) =>
         new(new SlideRect(0, 0, pixelWidth, pixelHeight), strokes);
@@ -174,6 +183,41 @@ internal static class EditableSlide
         }
 
         return null;
+    }
+
+    /// <summary>
+    /// A shape is its box and its kind: the writers describe the outline from
+    /// the same <see cref="ShapeGeometry"/> the screen draws, so the box is all
+    /// they need. The outline thickens with the zoom exactly as it does on
+    /// screen.
+    /// </summary>
+    private static SlideElement ShapeElement(ShapeBoardObject shape, Camera2D camera) => new SlideShapeElement(
+        ToPage(shape.Bounds, camera),
+        shape.Kind,
+        shape.OutlineArgb,
+        shape.FillArgb,
+        shape.Thickness * camera.Zoom);
+
+    /// <summary>
+    /// A label goes out as its layout rectangle before the turn, centred where
+    /// the board centres it, and the angle beside it: a writer that rotates
+    /// about the centre then puts the text where the screen has it.
+    /// </summary>
+    private static SlideElement LabelElement(FreeTextBoardObject label, Camera2D camera)
+    {
+        PointD center = camera.WorldToScreen(label.Bounds.Center);
+        var width = label.LayoutWidth * camera.Zoom;
+        var height = label.LayoutHeight * camera.Zoom;
+        return new SlideLabelElement(
+            new SlideRect(center.X - (width / 2), center.Y - (height / 2), Math.Max(1, width), Math.Max(1, height)),
+            label.AngleDegrees,
+            label.Text,
+            label.FontFamily,
+            label.FontSize * camera.Zoom,
+            label.Argb,
+            label.Bold,
+            label.Italic,
+            label.Underline);
     }
 
     private static SlideElement TextElement(TextBoardObject text, Camera2D camera)
