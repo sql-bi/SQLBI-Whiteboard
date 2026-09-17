@@ -76,19 +76,25 @@ internal static class EditableSlide
             elements.Add(InkElement(strokes, pixelWidth, pixelHeight));
         }
 
-        if (!inkAsStrokes && area.Objects.OfType<InkStrokeObject>().Any())
+        // The overlay carries the ink and the design objects that have no native
+        // mapping yet. A writer that draws the ink itself still gets one for the
+        // design objects, so nothing disappears from a vector PDF.
+        Func<BoardObject, bool> overlayFilter = inkAsStrokes
+            ? static item => item is ShapeBoardObject
+            : static item => item is InkStrokeObject or ShapeBoardObject;
+        if (area.Objects.Any(overlayFilter))
         {
-            var ink = BoardRasterizer.Render(
+            var overlay = BoardRasterizer.Render(
                 document,
                 area.Bounds,
                 pixelWidth,
                 pixelHeight,
                 liveViewImageSourceProvider,
                 drawBackground: false,
-                objectFilter: static item => item is InkStrokeObject);
+                objectFilter: overlayFilter);
             elements.Add(new SlideImageElement(
                 new SlideRect(0, 0, pixelWidth, pixelHeight),
-                WpfImageCodec.EncodePng(ink),
+                WpfImageCodec.EncodePng(overlay),
                 PngContentType));
         }
 
