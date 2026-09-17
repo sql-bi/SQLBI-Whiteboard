@@ -17,6 +17,29 @@ broke. The heading is parsed by `scripts/release-notes.ps1`, so keep its shape; 
 under it is ordinary Markdown, and the renderer handles paragraphs, lists, links, `code`
 and **bold**.
 
+## 1.6.0 - 17 September 2026
+
+### Shapes, connectors, and text on the board
+The new **Insert** tab draws eight shapes by dragging, with an outline color, a fill, and a
+line thickness; three connectors that bind to a shape's corner or side and follow it when it
+moves; and text typed straight on the board, with font, size, color, bold, italic, underline,
+and a turn in 45° steps. All of it is saved, undone, and exported to a deck or a PDF as
+objects rather than as a picture. **Preferences → Toolbar** can put **Insert** on the floating
+toolbar as well, and says whether a tool stays for the next one. A board holding any of these
+objects does not open in 1.5.x.
+
+### Select several things at once
+Drag with **Select** on empty canvas for a rectangle, or turn on **Lasso** on the Edit row for
+a freehand outline. Everything the area takes, ink included, moves, resizes, recolors, and
+deletes as one. **Preferences → Selection** says whether an object has to be wholly inside the
+area, and whether the selection grows to what it touches.
+
+### A background grid that shows the zoom
+**Preferences → Board → Background grid** draws faint **Lines** or **Dots** behind the board,
+and **Grid** on the View row turns them on and off. The spacing is fixed in board pixels, so
+zooming out spreads the grid and then steps it coarser. It is off by default, and it never
+appears in an export or a preview.
+
 ## 1.5.2 - 16 September 2026
 
 ### Prompt is a text type of its own
