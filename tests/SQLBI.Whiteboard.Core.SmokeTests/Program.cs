@@ -1835,6 +1835,114 @@ Assert(
             "Each picture element has its own image part.");
     }
 
+    // Shapes and labels go out as objects rather than as pixels. What is checked is
+    // the mapping a reader meets: one preset geometry per kind, the two rounded
+    // rectangles told apart by their corner adjust, a fill that keeps its
+    // translucency, and a label turned about its own centre with its style on it.
+    SlideElement[] designElements =
+    [
+        .. Enum.GetValues<ShapeKind>().Select((kind, index) => new SlideShapeElement(
+            new SlideRect(40 + (index * 190), 60, 160, 120),
+            kind,
+            0xFF035ACA,
+            kind == ShapeKind.Ellipse ? ShapeSettings.Tint(0xFFE64B3D) : null,
+            6)),
+        new SlideLabelElement(
+            new SlideRect(200, 500, 420, 120),
+            45,
+            "Design objects\nas objects",
+            "Georgia",
+            32,
+            0xFF1F2937,
+            Bold: true,
+            Italic: false,
+            Underline: true),
+    ];
+    ExportPage[] designPages = [new ExportPage("Design", null, onePixelPng, 1600, 900, designElements)];
+
+    using var designStream = new MemoryStream();
+    PptxDeckWriter.Write(designStream, designPages, new DeckOptions());
+    designStream.Position = 0;
+    using (var design = new ZipArchive(designStream, ZipArchiveMode.Read, leaveOpen: true))
+    {
+        using var reader = new StreamReader(design.GetEntry("ppt/slides/slide1.xml")!.Open());
+        var slideXml = reader.ReadToEnd();
+        foreach (var preset in new[] { "roundRect", "ellipse", "triangle", "pentagon", "rightArrow", "parallelogram", "diamond" })
+        {
+            Assert(
+                slideXml.Contains($"prst=\"{preset}\"", StringComparison.Ordinal),
+                $"A shape should go out as the {preset} preset.");
+        }
+
+        Assert(
+            slideXml.Split("<p:sp>").Length - 1 == Enum.GetValues<ShapeKind>().Length + 2,
+            "Every shape, the label, and the title are shapes on the slide.");
+        Assert(
+            slideXml.Contains("fmla=\"val 20000\"", StringComparison.Ordinal) &&
+            slideXml.Contains("fmla=\"val 50000\"", StringComparison.Ordinal),
+            "A rounded rectangle keeps its corner, and a stadium takes the whole of its side.");
+        Assert(
+            slideXml.Contains("<a:alpha val=\"25098\" />", StringComparison.Ordinal) &&
+            slideXml.Contains("<a:noFill />", StringComparison.Ordinal),
+            "A tinted fill is seen through, and None is no fill at all.");
+        Assert(
+            slideXml.Contains("rot=\"2700000\"", StringComparison.Ordinal) &&
+            slideXml.Contains("Design objects", StringComparison.Ordinal) &&
+            slideXml.Contains("as objects", StringComparison.Ordinal),
+            "A label is turned about its centre and holds its lines as text.");
+        Assert(
+            slideXml.Contains("u=\"sng\"", StringComparison.Ordinal) &&
+            slideXml.Contains("b=\"1\"", StringComparison.Ordinal) &&
+            slideXml.Contains("Georgia", StringComparison.Ordinal),
+            "The label's style and typeface travel with it.");
+    }
+
+    // The same elements as a vector page, and a label in each font a board offers:
+    // the faces are read from Windows and embedded, so the words stay words. Only
+    // Cascadia Mono is written in another face, because Windows ships it as a
+    // variable font with no bold or italic file of its own.
+    using var designPdfStream = new MemoryStream();
+    PdfDocumentWriter.Write(designPdfStream, designPages, new PdfOptions(BoardName: "Contoso workshop"));
+    designPdfStream.Position = 0;
+    using (var designPdf = PdfSharp.Pdf.IO.PdfReader.Open(designPdfStream, PdfSharp.Pdf.IO.PdfDocumentOpenMode.Import))
+    {
+        Assert(designPdf.PageCount == 1, "The design page is one page.");
+    }
+
+    using var fontStream = new MemoryStream();
+    PdfDocumentWriter.Write(
+        fontStream,
+        [
+            new ExportPage(
+                "Fonts",
+                null,
+                onePixelPng,
+                1600,
+                900,
+                [
+                    .. LabelStyles.Fonts.Select((font, index) => new SlideLabelElement(
+                        new SlideRect(60, 40 + (index * 90), 900, 70),
+                        0,
+                        $"The quick brown fox in {font}",
+                        font,
+                        36,
+                        0xFF1F2937,
+                        Bold: false,
+                        Italic: false,
+                        Underline: false)),
+                ]),
+        ],
+        new PdfOptions());
+    var fontBytes = System.Text.Encoding.Latin1.GetString(fontStream.ToArray());
+    foreach (var font in LabelStyles.Fonts)
+    {
+        // A base font is named after the family, with #20 where a space is.
+        var face = (font == "Cascadia Mono" ? "Consolas" : font).Replace(" ", "#20", StringComparison.Ordinal);
+        Assert(
+            fontBytes.Contains($"+{face}", StringComparison.Ordinal),
+            $"A label in {font} should be written in {face} rather than fall back to the default face.");
+    }
+
     // The same pages as a PDF: one page each, a bookmark each, and the page
     // size following the picture when asked.
     using var pdfStream = new MemoryStream();

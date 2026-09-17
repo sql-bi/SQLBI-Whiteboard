@@ -162,10 +162,36 @@ A second mode, **Editable**, keeps images and text as PowerPoint objects:
 - A text container becomes a text box in the language's monospace font, with syntax
   colors carried over as runs. The classification spans that color the screen are
   available for exactly this; nothing new is parsed.
+- A shape becomes a PowerPoint shape and a label a text box, so both are edited in
+  PowerPoint rather than looked at. A shape takes the preset geometry whose outline is
+  the one the board draws, its fill keeps its translucency through `a:alpha`, and its
+  outline keeps the width the screen gives it; a label carries its font, size, color,
+  and bold, italic, and underline on the runs, turned about its own centre by
+  `a:xfrm rot` with wrapping and autofit off so PowerPoint keeps the lines the board
+  measured.
 - All ink on the slide is one transparent PNG overlay on top. This keeps pressure,
   calligraphy, and the highlighter look with no second renderer. It also puts every
   stroke above every container, which is wrong only for a stroke that was drawn before an
   image was dropped on it — rare, and the picture mode is there for it.
+
+The presets are chosen for the outline, not for the name, and the adjust values are
+worked back from the box so that a shape stretched on the board is stretched the same
+way on the slide:
+
+| Shape | Preset |
+| --- | --- |
+| Rounded rectangle | `roundRect`, corner adjust 20000 |
+| Ellipse | `ellipse` |
+| Triangle | `triangle` |
+| Pentagon | `pentagon` |
+| Block arrow | `rightArrow`, shaft and head adjusts from the box |
+| Parallelogram | `parallelogram`, slant adjust from the box |
+| Diamond | `diamond` |
+| Stadium | `roundRect`, corner adjust 50000 |
+
+`flowChartTerminator` was the other candidate for the stadium, and was not taken: its
+ends are not semicircles on a box wider than it is tall, and a rounded rectangle whose
+corners have eaten the whole of its shorter side is exactly what the board draws.
 
 Ink as freeform shapes — an outline polygon per stroke, filled — would make the ink
 itself editable and vector. It is a third phase, only if someone asks: variable width
@@ -215,6 +241,23 @@ bitmaps, SVG rasterized. It makes the text selectable and the file smaller and i
 second stroke renderer the editable deck also wants, so the two later phases share it.
 Font embedding needs a check of the embedding permissions of the fonts in use before it
 ships.
+
+A vector page draws shapes and labels natively as well. A shape is one path built from
+the outline `ShapeGeometry` describes — the description the screen is drawn from, so the
+page and the board cannot disagree about an edge — with the straight parts as lines and
+the curved ones as cubic Béziers, a quarter turn at most each, filled with its tint
+through an alpha state and stroked with its outline. A label is text under a matrix
+turned about the label's centre, its lines spread over the height the board measured
+them at, and underlined by a stroked line at the face's own underline position and
+thickness.
+
+The faces are read from the Windows fonts folder and embedded, so a label stays text
+and stays searchable. Segoe UI, Calibri, Arial, Georgia, Times New Roman, Consolas,
+Comic Sans MS, and Segoe Print each embed their own regular, bold, italic, and bold
+italic; Segoe Print has no italic file on Windows, so an italic Segoe Print label is
+upright on the page, and Cascadia Mono is written in Consolas, because Windows ships it
+only as a variable font whose bold and italic are axes rather than files. Any other
+family a board names falls back to Segoe UI, as the page furniture already does.
 
 ### Writing the file
 
