@@ -162,10 +162,48 @@ A second mode, **Editable**, keeps images and text as PowerPoint objects:
 - A text container becomes a text box in the language's monospace font, with syntax
   colors carried over as runs. The classification spans that color the screen are
   available for exactly this; nothing new is parsed.
+- A shape becomes a PowerPoint shape and a label a text box, so both are edited in
+  PowerPoint rather than looked at. A shape takes the preset geometry whose outline is
+  the one the board draws, its fill keeps its translucency through `a:alpha`, and its
+  outline keeps the width the screen gives it; a label carries its font, size, color,
+  and bold, italic, and underline on the runs, turned about its own centre by
+  `a:xfrm rot` with wrapping and autofit off so PowerPoint keeps the lines the board
+  measured.
+- A connector becomes a PowerPoint connector with the line's color and width and a
+  triangle tail end, so the arrow stays an arrow when it is re-routed.
 - All ink on the slide is one transparent PNG overlay on top. This keeps pressure,
   calligraphy, and the highlighter look with no second renderer. It also puts every
-  stroke above every container, which is wrong only for a stroke that was drawn before an
-  image was dropped on it — rare, and the picture mode is there for it.
+  stroke above every container, which is wrong only for a stroke that was drawn before
+  the container it crosses — before an image was dropped on it, or before a shape or a
+  label was put over it. The picture mode is there for a board where that matters.
+
+The presets are chosen for the outline, not for the name, and the adjust values are
+worked back from the box so that a shape stretched on the board is stretched the same
+way on the slide:
+
+| Shape | Preset |
+| --- | --- |
+| Rounded rectangle | `roundRect`, corner adjust 20000 |
+| Ellipse | `ellipse` |
+| Triangle | `triangle` |
+| Pentagon | `pentagon` |
+| Block arrow | `rightArrow`, shaft and head adjusts from the box |
+| Parallelogram | `parallelogram`, slant adjust from the box |
+| Diamond | `diamond` |
+| Stadium | `roundRect`, corner adjust 50000 |
+| Line and Arrow connector | a connector with `straightConnector1`, flipped when it runs right to left or bottom to top |
+| Curved arrow | a freeform shape with an `a:custGeom` holding the board's own cubic |
+
+`flowChartTerminator` was the other candidate for the stadium, and was not taken: its
+ends are not semicircles on a box wider than it is tall, and a rounded rectangle whose
+corners have eaten the whole of its shorter side is exactly what the board draws.
+`curvedConnector3` was the other candidate for the curved arrow, and was not taken
+either: it leaves its ends along the box's own axes whatever the connector is bound to,
+while the board's curve leaves along the side it is bound to, so the two bend
+differently often enough to be noticed. The freeform carries the cubic itself and still
+takes the triangle tail end. It is a shape rather than a connector because a connector
+carrying a geometry of its own is legal but not something PowerPoint writes itself, and
+a curve with no connection sites has nothing to re-route to anyway.
 
 Ink as freeform shapes — an outline polygon per stroke, filled — would make the ink
 itself editable and vector. It is a third phase, only if someone asks: variable width
@@ -215,6 +253,26 @@ bitmaps, SVG rasterized. It makes the text selectable and the file smaller and i
 second stroke renderer the editable deck also wants, so the two later phases share it.
 Font embedding needs a check of the embedding permissions of the fonts in use before it
 ships.
+
+A vector page draws shapes, labels, and connectors natively as well. A connector is its
+path stroked with round caps — a line, or the same cubic flattening the board draws —
+stopped at the base of its own arrowhead so a thick line does not poke through the tip,
+with the head as a filled triangle. A shape is one path built from
+the outline `ShapeGeometry` describes — the description the screen is drawn from, so the
+page and the board cannot disagree about an edge — with the straight parts as lines and
+the curved ones as cubic Béziers, a quarter turn at most each, filled with its tint
+through an alpha state and stroked with its outline. A label is text under a matrix
+turned about the label's centre, its lines spread over the height the board measured
+them at, and underlined by a stroked line at the face's own underline position and
+thickness.
+
+The faces are read from the Windows fonts folder and embedded, so a label stays text
+and stays searchable. Segoe UI, Calibri, Arial, Georgia, Times New Roman, Consolas,
+Comic Sans MS, and Segoe Print each embed their own regular, bold, italic, and bold
+italic; Segoe Print has no italic file on Windows, so an italic Segoe Print label is
+upright on the page, and Cascadia Mono is written in Consolas, because Windows ships it
+only as a variable font whose bold and italic are axes rather than files. Any other
+family a board names falls back to Segoe UI, as the page furniture already does.
 
 ### Writing the file
 

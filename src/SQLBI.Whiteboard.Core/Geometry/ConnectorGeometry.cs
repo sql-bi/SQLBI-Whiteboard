@@ -115,19 +115,44 @@ public static class ConnectorGeometry
         PointD start,
         PointD end,
         ConnectorAnchor? startAnchor = null,
+        ConnectorAnchor? endAnchor = null) =>
+        Controls(kind, start, end, startAnchor, endAnchor) is { } controls
+            ? Flatten(start, controls.First, controls.Second, end)
+            : [start, end];
+
+    /// <summary>
+    /// The two control points of a curved connector's cubic, or nothing for a
+    /// straight one. A writer that draws curves asks for these rather than for
+    /// the flattened polyline, so the curve leaves the board and arrives in a
+    /// deck as the same cubic.
+    /// </summary>
+    public static (PointD First, PointD Second)? Controls(
+        ConnectorKind kind,
+        PointD start,
+        PointD end,
+        ConnectorAnchor? startAnchor = null,
         ConnectorAnchor? endAnchor = null)
     {
         if (kind != ConnectorKind.CurvedArrow)
         {
-            return [start, end];
+            return null;
         }
 
         var reach = Math.Max(1, Distance(start, end)) * CurveControlFraction;
         PointD startDirection = LeaveDirection(startAnchor, start, end);
         PointD endDirection = LeaveDirection(endAnchor, end, start);
-        PointD firstControl = new(start.X + (startDirection.X * reach), start.Y + (startDirection.Y * reach));
-        PointD secondControl = new(end.X + (endDirection.X * reach), end.Y + (endDirection.Y * reach));
+        return (
+            new PointD(start.X + (startDirection.X * reach), start.Y + (startDirection.Y * reach)),
+            new PointD(end.X + (endDirection.X * reach), end.Y + (endDirection.Y * reach)));
+    }
 
+    /// <summary>
+    /// The cubic as the polyline everything reads, at <see cref="CurveSegments"/>
+    /// steps. Public because the same flattening is what a page draws, and a
+    /// second one would be a second answer.
+    /// </summary>
+    public static IReadOnlyList<PointD> Flatten(PointD start, PointD firstControl, PointD secondControl, PointD end)
+    {
         var points = new PointD[CurveSegments + 1];
         for (var step = 0; step <= CurveSegments; step++)
         {

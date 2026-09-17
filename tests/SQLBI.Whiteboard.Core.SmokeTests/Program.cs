@@ -1835,6 +1835,172 @@ Assert(
             "Each picture element has its own image part.");
     }
 
+    // Shapes and labels go out as objects rather than as pixels. What is checked is
+    // the mapping a reader meets: one preset geometry per kind, the two rounded
+    // rectangles told apart by their corner adjust, a fill that keeps its
+    // translucency, and a label turned about its own centre with its style on it.
+    SlideElement[] designElements =
+    [
+        .. Enum.GetValues<ShapeKind>().Select((kind, index) => new SlideShapeElement(
+            new SlideRect(40 + (index * 190), 60, 160, 120),
+            kind,
+            0xFF035ACA,
+            kind == ShapeKind.Ellipse ? ShapeSettings.Tint(0xFFE64B3D) : null,
+            6)),
+        new SlideLabelElement(
+            new SlideRect(200, 500, 420, 120),
+            45,
+            "Design objects\nas objects",
+            "Georgia",
+            32,
+            0xFF1F2937,
+            Bold: true,
+            Italic: false,
+            Underline: true),
+        new SlideConnectorElement(
+            new SlideRect(700, 500, 400, 120),
+            ConnectorKind.Arrow,
+            new SlidePosition(1100, 620),
+            new SlidePosition(700, 500),
+            null,
+            null,
+            0xFF035ACA,
+            6),
+        new SlideConnectorElement(
+            new SlideRect(700, 700, 400, 200),
+            ConnectorKind.CurvedArrow,
+            new SlidePosition(700, 700),
+            new SlidePosition(1100, 900),
+            new SlidePosition(860, 700),
+            new SlidePosition(940, 900),
+            0xFF035ACA,
+            6),
+
+        // Two side midpoints facing each other: every point of the cubic is on one
+        // line, which is the box with no height at all.
+        new SlideConnectorElement(
+            new SlideRect(200, 860, 400, 0),
+            ConnectorKind.CurvedArrow,
+            new SlidePosition(200, 860),
+            new SlidePosition(600, 860),
+            new SlidePosition(360, 860),
+            new SlidePosition(440, 860),
+            0xFF035ACA,
+            6),
+    ];
+    ExportPage[] designPages = [new ExportPage("Design", null, onePixelPng, 1600, 900, designElements)];
+
+    using var designStream = new MemoryStream();
+    PptxDeckWriter.Write(designStream, designPages, new DeckOptions());
+    designStream.Position = 0;
+    using (var design = new ZipArchive(designStream, ZipArchiveMode.Read, leaveOpen: true))
+    {
+        using var reader = new StreamReader(design.GetEntry("ppt/slides/slide1.xml")!.Open());
+        var slideXml = reader.ReadToEnd();
+        foreach (var preset in new[] { "roundRect", "ellipse", "triangle", "pentagon", "rightArrow", "parallelogram", "diamond" })
+        {
+            Assert(
+                slideXml.Contains($"prst=\"{preset}\"", StringComparison.Ordinal),
+                $"A shape should go out as the {preset} preset.");
+        }
+
+        Assert(
+            slideXml.Split("<p:sp>").Length - 1 == Enum.GetValues<ShapeKind>().Length + 4,
+            "Every shape, the label, the two curved connectors, and the title are shapes on the slide.");
+        Assert(
+            slideXml.Contains("fmla=\"val 20000\"", StringComparison.Ordinal) &&
+            slideXml.Contains("fmla=\"val 50000\"", StringComparison.Ordinal),
+            "A rounded rectangle keeps its corner, and a stadium takes the whole of its side.");
+        Assert(
+            slideXml.Contains("<a:alpha val=\"25098\" />", StringComparison.Ordinal) &&
+            slideXml.Contains("<a:noFill />", StringComparison.Ordinal),
+            "A tinted fill is seen through, and None is no fill at all.");
+        Assert(
+            slideXml.Contains("rot=\"2700000\"", StringComparison.Ordinal) &&
+            slideXml.Contains("Design objects", StringComparison.Ordinal) &&
+            slideXml.Contains("as objects", StringComparison.Ordinal),
+            "A label is turned about its centre and holds its lines as text.");
+        Assert(
+            slideXml.Contains("u=\"sng\"", StringComparison.Ordinal) &&
+            slideXml.Contains("b=\"1\"", StringComparison.Ordinal) &&
+            slideXml.Contains("Georgia", StringComparison.Ordinal),
+            "The label's style and typeface travel with it.");
+        Assert(
+            slideXml.Split("<p:cxnSp>").Length - 1 == 1 &&
+            slideXml.Contains("prst=\"straightConnector1\"", StringComparison.Ordinal) &&
+            slideXml.Split("<a:cubicBezTo>").Length - 1 == 2,
+            "A straight connector is a connector with the preset, and a curved one is a freeform with its own cubic.");
+        Assert(
+            slideXml.Contains("flipH=\"1\"", StringComparison.Ordinal) &&
+            slideXml.Contains("flipV=\"1\"", StringComparison.Ordinal) &&
+            slideXml.Split("<a:tailEnd").Length - 1 == 3,
+            "A connector that runs right to left and bottom to top is flipped, and every arrow has a head.");
+        Assert(
+            !slideXml.Contains("<a:path w=\"0\"", StringComparison.Ordinal) &&
+            !slideXml.Contains("h=\"0\">", StringComparison.Ordinal),
+            "A flat curve still has a path to scale against.");
+    }
+
+    // The same elements as a vector page, and a label in each font a board offers:
+    // the faces are read from Windows and embedded, so the words stay words. Only
+    // Cascadia Mono is written in another face, because Windows ships it as a
+    // variable font with no bold or italic file of its own.
+    using var designPdfStream = new MemoryStream();
+    PdfDocumentWriter.Write(designPdfStream, designPages, new PdfOptions(BoardName: "Contoso workshop"));
+    designPdfStream.Position = 0;
+    using (var designPdf = PdfSharp.Pdf.IO.PdfReader.Open(designPdfStream, PdfSharp.Pdf.IO.PdfDocumentOpenMode.Import))
+    {
+        Assert(designPdf.PageCount == 1, "The design page is one page.");
+    }
+
+    // One document per font, so that the face a label was written in is the only
+    // one the document could have got it from: a page holding all nine would name
+    // Arial for its own sake and answer for every family that falls back to it.
+    foreach (var font in LabelStyles.Fonts)
+    {
+        using var fontStream = new MemoryStream();
+        PdfDocumentWriter.Write(
+            fontStream,
+            [
+                new ExportPage(
+                    font,
+                    null,
+                    onePixelPng,
+                    1600,
+                    900,
+                    [
+                        new SlideLabelElement(
+                            new SlideRect(60, 40, 900, 70),
+                            0,
+                            $"The quick brown fox in {font}",
+                            font,
+                            36,
+                            0xFF1F2937,
+                            Bold: false,
+                            Italic: false,
+                            Underline: false),
+                    ]),
+            ],
+            new PdfOptions(Footer: false));
+
+        // A base font is named after the family, with #20 where a space is. A
+        // Windows without the family embeds the stand-in the resolver names for it,
+        // so either answer is the resolver working; what is ruled out is the label
+        // quietly coming out in the page's own face instead.
+        var face = (font == "Cascadia Mono" ? "Consolas" : font).Replace(" ", "#20", StringComparison.Ordinal);
+        var standIn = font switch
+        {
+            "Georgia" or "Times New Roman" => "Times#20New#20Roman",
+            "Consolas" or "Cascadia Mono" => "Courier#20New",
+            _ => "Arial",
+        };
+        var fontBytes = System.Text.Encoding.Latin1.GetString(fontStream.ToArray());
+        Assert(
+            fontBytes.Contains($"+{face}", StringComparison.Ordinal) ||
+            fontBytes.Contains($"+{standIn}", StringComparison.Ordinal),
+            $"A label in {font} should be written in {face}, or in {standIn} where Windows has no such family.");
+    }
+
     // The same pages as a PDF: one page each, a bookmark each, and the page
     // size following the picture when asked.
     using var pdfStream = new MemoryStream();
