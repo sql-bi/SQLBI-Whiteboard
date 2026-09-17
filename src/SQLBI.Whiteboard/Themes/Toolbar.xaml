@@ -457,6 +457,58 @@
         </Setter>
     </Style>
 
+    <!--
+        Fluent has no plain T at this weight, so this one is drawn by hand on the
+        same 24-unit grid as the icons around it: a bar and a stem of the 1.5
+        units every other glyph here strokes with.
+    -->
+    <Geometry x:Key="TextGeometry">M4.75 3h14.5a.75.75 0 0 1 0 1.5h-6.5v16a.75.75 0 0 1-1.5 0v-16h-6.5a.75.75 0 0 1 0-1.5Z</Geometry>
+
+    <!--
+        A command in the property bar: the toolbar's icon button, at the size the
+        bar's rows are, and a Button because it does something rather than
+        standing for a state.
+    -->
+    <Style x:Key="PropertyBarButton"
+           TargetType="{x:Type Button}">
+        <Setter Property="Width"
+                Value="34" />
+        <Setter Property="Height"
+                Value="30" />
+        <Setter Property="Margin"
+                Value="2,0" />
+        <Setter Property="Background"
+                Value="Transparent" />
+        <Setter Property="BorderThickness"
+                Value="0" />
+        <Setter Property="Focusable"
+                Value="False" />
+        <Setter Property="ClickMode"
+                Value="Press" />
+        <Setter Property="Foreground"
+                Value="{StaticResource ToolbarIconBrush}" />
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="{x:Type Button}">
+                    <Border x:Name="Root"
+                            Background="{TemplateBinding Background}"
+                            CornerRadius="8">
+                        <ContentPresenter HorizontalAlignment="Center"
+                                          VerticalAlignment="Center" />
+                    </Border>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsMouseOver"
+                                 Value="True">
+                            <Setter TargetName="Root"
+                                    Property="Background"
+                                    Value="{StaticResource ToolbarHoverBrush}" />
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
     <Style x:Key="SessionShortcutHint"
            TargetType="TextBlock">
         <Setter Property="Margin"

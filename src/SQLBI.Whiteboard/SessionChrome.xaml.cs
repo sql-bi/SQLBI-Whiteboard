@@ -33,6 +33,7 @@ public enum SessionCommand
     Preferences,
     About,
     ToggleLasso,
+    InsertText,
 }
 
 public partial class SessionChrome : UserControl
@@ -283,8 +284,12 @@ public partial class SessionChrome : UserControl
         ShapeRequested?.Invoke(kind);
     }
 
+    // Insert stays open like Edit: picking a tool is the start of drawing with
+    // it, and the row is where the next one is picked from.
     private bool IsStickyTab(ToggleButton? tab) =>
-        ReferenceEquals(tab, EditTab) || ReferenceEquals(tab, HelpTab);
+        ReferenceEquals(tab, EditTab) ||
+        ReferenceEquals(tab, InsertTab) ||
+        ReferenceEquals(tab, HelpTab);
 
     private void ClearTabChecks()
     {
@@ -391,6 +396,7 @@ public partial class SessionChrome : UserControl
             'Z' when ViewRow.Visibility == Visibility.Visible => SessionCommand.FreezeLiveView,
             'D' when ViewRow.Visibility == Visibility.Visible => SessionCommand.DisconnectLiveView,
             'R' when ViewRow.Visibility == Visibility.Visible => SessionCommand.ReconnectLiveView,
+            'T' when InsertRow.Visibility == Visibility.Visible => SessionCommand.InsertText,
             'P' when HelpRow.Visibility == Visibility.Visible => SessionCommand.Preferences,
             'A' when HelpRow.Visibility == Visibility.Visible => SessionCommand.About,
             _ => null,

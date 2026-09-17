@@ -400,8 +400,10 @@
                             </StackPanel>
                         </Button>
                     </StackPanel>
-                    <!-- The shapes come first so the connectors and Text, which
-                         are appended after them, do not disturb this order. -->
+                    <!--
+                        The shapes and the connectors join this row in front of
+                        Text, which is the order the Insert flyout shows them in.
+                    -->
                     <StackPanel x:Name="InsertRow"
                                 Orientation="Horizontal"
                                 Visibility="Collapsed">
@@ -549,6 +551,25 @@
                                            TextAlignment="Center"
                                            TextWrapping="Wrap"
                                            Text="Stadium" />
+                            </StackPanel>
+                        </Button>
+                        <Border Style="{StaticResource SessionCommandSeparator}" />
+                        <Button Style="{StaticResource SessionCommandButton}"
+                                ToolTip="Click on the board to type a label"
+                                Tag="InsertText"
+                                Click="Command_Click">
+                            <StackPanel HorizontalAlignment="Center"
+                                        VerticalAlignment="Top">
+                                <Path Width="18"
+                                      Height="18"
+                                      Stretch="Uniform"
+                                      Fill="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"
+                                      Data="{StaticResource TextGeometry}" />
+                                <TextBlock Margin="0,4,0,0"
+                                           HorizontalAlignment="Center"
+                                           Text="Text" />
+                                <TextBlock Style="{StaticResource SessionShortcutHint}"
+                                           Text="T" />
                             </StackPanel>
                         </Button>
                     </StackPanel>

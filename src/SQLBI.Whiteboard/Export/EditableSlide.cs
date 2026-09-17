@@ -76,12 +76,13 @@ internal static class EditableSlide
             elements.Add(InkElement(strokes, pixelWidth, pixelHeight));
         }
 
-        // The overlay carries the ink and the design objects that have no native
-        // mapping yet. A writer that draws the ink itself still gets one for the
-        // design objects, so nothing disappears from a vector PDF.
+        // What no slide object carries goes out as one transparent picture over
+        // the page: the ink, unless it went out as strokes, and the design
+        // objects, which have no native form yet and so go out this way even
+        // when the ink did not.
         Func<BoardObject, bool> overlayFilter = inkAsStrokes
-            ? static item => item is ShapeBoardObject
-            : static item => item is InkStrokeObject or ShapeBoardObject;
+            ? static item => item is FreeTextBoardObject or ShapeBoardObject
+            : static item => item is InkStrokeObject or FreeTextBoardObject or ShapeBoardObject;
         if (area.Objects.Any(overlayFilter))
         {
             var overlay = BoardRasterizer.Render(

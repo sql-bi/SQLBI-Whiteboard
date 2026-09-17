@@ -627,6 +627,171 @@ public sealed record ShapeBoardObject(
     }
 }
 
+
+/// <summary>
+/// Text written straight onto the board, at an angle if it was turned. What is
+/// stored is the text, how it is written, and the size the layout took when it
+/// was last measured: Core never measures text, so the window writes the layout
+/// size in and everything here follows from it. <see cref="BoardObject.Bounds"/>
+/// is the axis-aligned box of that layout rectangle once it is turned about its
+/// centre, which is what the document indexes and what an export reads.
+/// </summary>
+public sealed record FreeTextBoardObject(
+    Guid Id,
+    int ZIndex,
+    RectD Bounds,
+    string Text,
+    string FontFamily,
+    double FontSize,
+    uint Argb,
+    bool Bold,
+    bool Italic,
+    bool Underline,
+    double AngleDegrees,
+    double LayoutWidth,
+    double LayoutHeight) : BoardObject(Id, ZIndex, Bounds), IBoardContainer
+{
+    public static FreeTextBoardObject Create(
+        Guid id,
+        int zIndex,
+        PointD center,
+        string text,
+        string fontFamily,
+        double fontSize,
+        uint argb,
+        bool bold,
+        bool italic,
+        bool underline,
+        double angleDegrees,
+        double layoutWidth,
+        double layoutHeight)
+    {
+        var angle = RotatedRectangle.NormalizeAngle(angleDegrees);
+        var width = Math.Max(1, layoutWidth);
+        var height = Math.Max(1, layoutHeight);
+        return new FreeTextBoardObject(
+            id,
+            zIndex,
+            RotatedRectangle.Bounds(center, width, height, angle),
+            text,
+            fontFamily,
+            fontSize,
+            argb,
+            bold,
+            italic,
+            underline,
+            angle,
+            width,
+            height);
+    }
+
+    /// <summary>
+    /// The text and the size it now measures, with the top-left corner of the
+    /// layout left where it was: text grows away from where it was started
+    /// rather than pushing outwards from the middle.
+    /// </summary>
+    public FreeTextBoardObject WithLayout(string text, double layoutWidth, double layoutHeight)
+    {
+        var width = Math.Max(1, layoutWidth);
+        var height = Math.Max(1, layoutHeight);
+        PointD topLeft = RotatedRectangle.TopLeft(
+            Bounds.Center,
+            LayoutWidth,
+            LayoutHeight,
+            AngleDegrees);
+        PointD center = RotatedRectangle.CenterFromTopLeft(topLeft, width, height, AngleDegrees);
+        return this with
+        {
+            Bounds = RotatedRectangle.Bounds(center, width, height, AngleDegrees),
+            Text = text,
+            LayoutWidth = width,
+            LayoutHeight = height,
+        };
+    }
+
+    /// <summary>
+    /// Turned about its centre, which is what keeps a label where it is while
+    /// the property bar steps it round.
+    /// </summary>
+    public FreeTextBoardObject WithAngle(double angleDegrees)
+    {
+        var angle = RotatedRectangle.NormalizeAngle(angleDegrees);
+        return this with
+        {
+            Bounds = RotatedRectangle.Bounds(Bounds.Center, LayoutWidth, LayoutHeight, angle),
+            AngleDegrees = angle,
+        };
+    }
+
+    public IReadOnlyList<PointD> Corners() =>
+        RotatedRectangle.Corners(Bounds.Center, LayoutWidth, LayoutHeight, AngleDegrees);
+
+    /// <summary>
+    /// The corner handle scales the text rather than the box: the font and the
+    /// layout take the same factor, and the box is what they come to. A move
+    /// leaves the size alone, since the factor is then one.
+    /// </summary>
+    public override BoardObject WithBounds(RectD bounds)
+    {
+        var scale = bounds.Width / Math.Max(0.000001, Bounds.Width);
+        if (!double.IsFinite(scale) || scale <= 0)
+        {
+            scale = 1;
+        }
+
+        var width = Math.Max(1, LayoutWidth * scale);
+        var height = Math.Max(1, LayoutHeight * scale);
+        return this with
+        {
+            Bounds = RotatedRectangle.Bounds(bounds.Center, width, height, AngleDegrees),
+            FontSize = FontSize * scale,
+            LayoutWidth = width,
+            LayoutHeight = height,
+        };
+    }
+
+    public override BoardObject WithZIndex(int zIndex) => this with { ZIndex = zIndex };
+
+    /// <summary>
+    /// Anywhere on the rotated rectangle, so a label is taken hold of where it
+    /// looks like it is rather than anywhere in the box around it.
+    /// </summary>
+    public override bool HitTest(PointD worldPoint, double zoom) =>
+        RotatedRectangle.Contains(Bounds.Center, LayoutWidth, LayoutHeight, AngleDegrees, worldPoint);
+
+    public override bool IsTakenBy(SelectionArea area, AreaSelection rule)
+    {
+        ArgumentNullException.ThrowIfNull(area);
+        IReadOnlyList<PointD> corners = Corners();
+        if (rule == AreaSelection.FullyInside)
+        {
+            return corners.All(area.Contains);
+        }
+
+        if (!area.IntersectsRectangle(Bounds))
+        {
+            return false;
+        }
+
+        if (corners.Any(area.Contains))
+        {
+            return true;
+        }
+
+        for (var index = 0; index < corners.Count; index++)
+        {
+            if (area.IntersectsSegment(corners[index], corners[(index + 1) % corners.Count]))
+            {
+                return true;
+            }
+        }
+
+        // An area drawn entirely within the label still takes it, which the
+        // edges alone cannot say.
+        return Polygon.Contains(corners, area.Bounds.Center);
+    }
+}
+
 public sealed record BoardAsset(
     string Id,
     string OriginalFileName,
