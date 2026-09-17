@@ -155,6 +155,31 @@ public sealed record RemoveObjectsCommand(IReadOnlyList<BoardObject> Items) : IB
     }
 }
 
+/// <summary>
+/// Several commands as one step of the history. Deleting a shape is the reason
+/// it exists: what is removed and the connectors that have to let go of it are
+/// two changes to the document and one thing that happened, so one undo puts
+/// both back.
+/// </summary>
+public sealed record CompositeCommand(IReadOnlyList<IBoardCommand> Commands) : IBoardCommand
+{
+    public void Execute(BoardDocument document)
+    {
+        foreach (var command in Commands)
+        {
+            command.Execute(document);
+        }
+    }
+
+    public void Undo(BoardDocument document)
+    {
+        for (var index = Commands.Count - 1; index >= 0; index--)
+        {
+            Commands[index].Undo(document);
+        }
+    }
+}
+
 public sealed record ReplaceObjectCommand(BoardObject Before, BoardObject After) : IBoardCommand
 {
     public void Execute(BoardDocument document) => document.ReplaceObject(After);

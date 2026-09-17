@@ -57,6 +57,12 @@ public partial class SessionChrome : UserControl
     /// </summary>
     public event Action<ShapeKind>? ShapeRequested;
 
+    /// <summary>
+    /// A connector picked from the Insert row, carrying its kind for the same
+    /// reason a shape does.
+    /// </summary>
+    public event Action<ConnectorKind>? ConnectorRequested;
+
     public event Action? ViewOpened;
 
     public event Action<string>? UpdateDownloadRequested;
@@ -282,6 +288,22 @@ public partial class SessionChrome : UserControl
         }
 
         ShapeRequested?.Invoke(kind);
+    }
+
+    private void Connector_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is not Button { Tag: string name } ||
+            !Enum.TryParse<ConnectorKind>(name, out var kind))
+        {
+            return;
+        }
+
+        if (!IsStickyTab(_openTab))
+        {
+            Collapse();
+        }
+
+        ConnectorRequested?.Invoke(kind);
     }
 
     // Insert stays open like Edit: picking a tool is the start of drawing with

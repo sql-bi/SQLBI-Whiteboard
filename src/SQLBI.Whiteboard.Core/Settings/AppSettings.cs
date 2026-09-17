@@ -195,6 +195,12 @@ public sealed class AppSettings
     public ShapeSettings Shape { get; set; } = new();
 
     /// <summary>
+    /// What the last connector was drawn with, so the next one is drawn the
+    /// same way.
+    /// </summary>
+    public ConnectorSettings Connector { get; set; } = new();
+
+    /// <summary>
     /// What the last label was written with, so the next one is written the
     /// same way. Like the pen's color and size, it is remembered rather than
     /// configured, and so has no row in Preferences.
@@ -371,6 +377,7 @@ public static class AppSettingsSerializer
         }
 
         settings.Shape = ShapeSettings.Normalize(settings.Shape);
+        settings.Connector = ConnectorSettings.Normalize(settings.Connector);
 
         if (settings.StartupMonitor == StartupMonitorKind.Named)
         {

@@ -39,6 +39,7 @@ public partial class MainWindow : Window
         Pan,
         Laser,
         Shape,
+        Connector,
         Text,
     }
 
@@ -51,6 +52,7 @@ public partial class MainWindow : Window
         Laser,
         Ink,
         Shape,
+        Connector,
     }
 
     private readonly Camera2D _camera = new();
@@ -157,6 +159,26 @@ public partial class MainWindow : Window
     private bool _shapeDragged;
     private PointD _shapeStartScreen;
     private PointD _shapeStartWorld;
+
+    // A press with a connector tool drags the line out from where it started.
+    // A press that never moves makes nothing: a connector with no length says
+    // nothing about what it joins.
+    private ConnectorKind _connectorKind = ConnectorKind.Arrow;
+    private bool _connectorActive;
+    private bool _connectorDragged;
+    private PointD _connectorStartScreen;
+    private PointD _connectorStartWorld;
+
+    // Dragging one end of a selected connector, which re-routes it and can
+    // re-bind it. It is the gesture the corner handle would otherwise be.
+    private ConnectorBoardObject? _endpointBefore;
+    private bool _endpointIsStart;
+    private PointD _endpointWorld;
+
+    // The connectors bound to something the gesture is moving that are not
+    // themselves selected. They are recomputed rather than transformed, and go
+    // into the same command, so one undo puts everything back where it was.
+    private ConnectorBoardObject[] _gestureConnectors = [];
     private bool _isInsertOptionsOpen;
     private bool _isSelectOptionsOpen;
     // The label editor is the other text edit on the editor layer: a plain box
@@ -225,6 +247,8 @@ public partial class MainWindow : Window
         SelectionPropertyBar.ThicknessChosen += ApplySelectionThickness;
         SelectionPropertyBar.FillChosen += ApplySelectionFill;
         SessionBar.ShapeRequested += ChooseShapeTool;
+        SessionBar.ConnectorRequested += ChooseConnectorTool;
+        SelectionPropertyBar.ConnectorKindChosen += ApplySelectionConnectorKind;
         SelectionPropertyBar.FontChosen += ApplySelectionFont;
         SelectionPropertyBar.FontSizeChosen += ApplySelectionFontSize;
         SelectionPropertyBar.FontStyleChosen += ApplySelectionFontStyle;
@@ -261,6 +285,7 @@ public partial class MainWindow : Window
         SceneSurface.LiveViewImageSourceProvider = GetLiveViewImageSource;
         InkSurface.Cursor = Cursors.Arrow;
         _settings = AppSettingsStore.Load();
+        _connectorKind = _settings.Connector.Kind;
         LoadInkFromSettings();
         ApplyLaserSettings();
         ApplyToolbarPlacement();
@@ -782,6 +807,13 @@ public partial class MainWindow : Window
             InkSurface.CaptureStylus();
             e.Handled = true;
         }
+        else if (EffectiveTool == BoardTool.Connector)
+        {
+            BeginConnectorGesture(screen);
+            _stylusAction = PointerAction.Connector;
+            InkSurface.CaptureStylus();
+            e.Handled = true;
+        }
         else if (EffectiveTool == BoardTool.Laser && !e.StylusDevice.Inverted)
         {
             BeginLaserContact(e);
@@ -848,6 +880,10 @@ public partial class MainWindow : Window
                 break;
             case PointerAction.Shape:
                 UpdateShapeGesture(screen);
+                e.Handled = true;
+                break;
+            case PointerAction.Connector:
+                UpdateConnectorGesture(screen);
                 e.Handled = true;
                 break;
         }
@@ -945,6 +981,10 @@ public partial class MainWindow : Window
                 break;
             case PointerAction.Shape:
                 CompleteShapeGesture(screen);
+                e.Handled = true;
+                break;
+            case PointerAction.Connector:
+                CompleteConnectorGesture(screen);
                 e.Handled = true;
                 break;
         }
@@ -1596,6 +1636,10 @@ public partial class MainWindow : Window
                 BeginShapeGesture(screen);
                 _mouseAction = PointerAction.Shape;
                 break;
+            case BoardTool.Connector:
+                BeginConnectorGesture(screen);
+                _mouseAction = PointerAction.Connector;
+                break;
             case BoardTool.Text:
                 InsertLabelAt(screen);
                 _mouseAction = PointerAction.None;
@@ -1730,10 +1774,10 @@ public partial class MainWindow : Window
             ShowPointerDot(e.GetPosition(RootGrid));
             InkSurface.Cursor = Cursors.None;
         }
-        else if (EffectiveTool == BoardTool.Shape)
+        else if (EffectiveTool is BoardTool.Shape or BoardTool.Connector)
         {
-            // The crosshair says the next press drags a box out rather than
-            // taking hold of something already on the board.
+            // The crosshair says the next press drags something out rather than
+            // taking hold of what is already on the board.
             HidePointerDot();
             InkSurface.Cursor = Cursors.Cross;
         }
@@ -1762,6 +1806,9 @@ public partial class MainWindow : Window
                 break;
             case PointerAction.Shape:
                 UpdateShapeGesture(screen);
+                break;
+            case PointerAction.Connector:
+                UpdateConnectorGesture(screen);
                 break;
         }
     }
@@ -1823,6 +1870,10 @@ public partial class MainWindow : Window
         {
             ResetShapeGesture();
         }
+        else if (_mouseAction == PointerAction.Connector)
+        {
+            ResetConnectorGesture();
+        }
 
         _mouseAction = PointerAction.None;
         if (!hadMouseAction)
@@ -1871,6 +1922,9 @@ public partial class MainWindow : Window
                 break;
             case PointerAction.Shape:
                 CompleteShapeGesture(screen);
+                break;
+            case PointerAction.Connector:
+                CompleteConnectorGesture(screen);
                 break;
         }
 
@@ -2104,6 +2158,9 @@ public partial class MainWindow : Window
                 break;
             case PointerAction.Shape:
                 ResetShapeGesture();
+                break;
+            case PointerAction.Connector:
+                ResetConnectorGesture();
                 break;
         }
 
@@ -2385,9 +2442,20 @@ public partial class MainWindow : Window
         var extend = Keyboard.Modifiers.HasFlag(ModifierKeys.Control);
         ResetContainerGesture();
 
+        // A lone connector has two endpoint handles where everything else has
+        // one corner handle, so they are asked for first, and for the same
+        // reason: they sit over whatever the line crosses.
+        if (!extend && BeginConnectorEndpointGesture(screenPoint))
+        {
+            return;
+        }
+
         // The handle belongs to the selection's own rectangle and sits outside
         // everything inside it, so it is asked before anything is hit tested.
-        if (!extend && SelectionBounds() is RectD bounds && IsOverHandle(screenPoint, bounds))
+        if (!extend &&
+            SingleSelected<ConnectorBoardObject>() is null &&
+            SelectionBounds() is RectD bounds &&
+            IsOverHandle(screenPoint, bounds))
         {
             _gestureIsResize = true;
 
@@ -2459,8 +2527,17 @@ public partial class MainWindow : Window
             .Where(stroke => !ids.Contains(stroke.Id))
             .DistinctBy(stroke => stroke.Id)
             .ToArray();
+        // Every connector bound to something that is moving and not selected
+        // itself. They are recomputed from their anchors rather than carried by
+        // the box, and they go into the same command, so an undo puts the
+        // arrows back where the shapes put them.
+        _gestureConnectors = selected
+            .SelectMany(item => _document.ConnectorsAttachedTo(item.Id))
+            .Where(connector => !ids.Contains(connector.Id))
+            .DistinctBy(connector => connector.Id)
+            .ToArray();
         _gestureBefore = [.. selected, .. linked];
-        _gestureAfter = _gestureBefore;
+        _gestureAfter = [.. _gestureBefore, .. _gestureConnectors];
         _gestureBounds = UnionBounds(selected);
         _gestureAfterBounds = _gestureBounds;
         _gestureStartWorld = worldPoint;
@@ -2472,6 +2549,12 @@ public partial class MainWindow : Window
         if (_areaActive)
         {
             UpdateAreaGesture(worldPoint);
+            return;
+        }
+
+        if (_endpointBefore is not null)
+        {
+            UpdateConnectorEndpointGesture(worldPoint);
             return;
         }
 
@@ -2499,11 +2582,11 @@ public partial class MainWindow : Window
                 reflowed.LanguageId,
                 pixelsPerDip) + " columns";
             _gestureAfterBounds = reflowedBounds;
-            _gestureAfter = _gestureBefore
+            _gestureAfter = WithFollowingConnectors(_gestureBefore
                 .Select(item => item.Id == reflowed.Id
                     ? reflowed with { Bounds = reflowedBounds }
                     : TransformInGesture(item, reflowed.Bounds, reflowedBounds))
-                .ToArray();
+                .ToArray());
             _document.ReplaceObjects(_gestureAfter);
             return;
         }
@@ -2517,10 +2600,47 @@ public partial class MainWindow : Window
         }
 
         _gestureAfterBounds = after;
-        _gestureAfter = _gestureBefore
+        _gestureAfter = WithFollowingConnectors(_gestureBefore
             .Select(item => TransformInGesture(item, _gestureBounds, after))
-            .ToArray();
+            .ToArray());
         _document.ReplaceObjects(_gestureAfter);
+    }
+
+    /// <summary>
+    /// The gesture's own objects, and behind them every connector bound to one
+    /// of them brought to where its anchors now are. A connector is recomputed
+    /// rather than transformed: the anchor says where on the object the line
+    /// ends, and that is true whatever the gesture did to the object.
+    /// </summary>
+    private BoardObject[] WithFollowingConnectors(BoardObject[] transformed)
+    {
+        if (_gestureConnectors.Length == 0)
+        {
+            return transformed;
+        }
+
+        Dictionary<Guid, BoardObject> movedById = transformed.ToDictionary(item => item.Id);
+        return
+        [
+            .. transformed,
+            .. _gestureConnectors.Select(connector =>
+            {
+                ConnectorBoardObject followed = connector;
+                if (connector.StartAnchor is { } start &&
+                    movedById.TryGetValue(start.ObjectId, out BoardObject? startObject))
+                {
+                    followed = followed.Follow(startObject);
+                }
+
+                if (connector.EndAnchor is { } end &&
+                    movedById.TryGetValue(end.ObjectId, out BoardObject? endObject))
+                {
+                    followed = followed.Follow(endObject);
+                }
+
+                return (BoardObject)followed;
+            }),
+        ];
     }
 
     /// <summary>
@@ -2590,9 +2710,28 @@ public partial class MainWindow : Window
             return;
         }
 
+        if (_endpointBefore is not null)
+        {
+            CompleteConnectorEndpointGesture();
+            ResetContainerGesture();
+            return;
+        }
+
         if (_gestureBefore.Length > 0 && _gestureAfterBounds != _gestureBounds)
         {
-            _history.RecordExecuted(new ReplaceObjectsCommand(_gestureBefore, _gestureAfter));
+            BoardObject[] after = _gestureAfter;
+
+            // A connector dragged by its body was taken away from what it
+            // joined: it keeps the shape the hand gave it rather than springing
+            // back the next time either object moves.
+            if (!_gestureIsResize && after is [ConnectorBoardObject moved])
+            {
+                after = [moved.Detach()];
+                _document.ReplaceObjects(after);
+            }
+
+            _history.RecordExecuted(
+                new ReplaceObjectsCommand([.. _gestureBefore, .. _gestureConnectors], after));
         }
 
         ResetContainerGesture();
@@ -2603,6 +2742,14 @@ public partial class MainWindow : Window
     {
         _gestureBefore = [];
         _gestureAfter = [];
+        _gestureConnectors = [];
+        _endpointBefore = null;
+        if (SceneSurface.BindingDots is not null)
+        {
+            SceneSurface.BindingDots = null;
+            SceneSurface.InvalidateVisual();
+        }
+
         _gestureBounds = default;
         _gestureAfterBounds = default;
         _gestureIsResize = false;
@@ -2852,6 +2999,303 @@ public partial class MainWindow : Window
         _settings.Shape.FillArgb,
         _settings.Shape.Thickness);
 
+    /// <summary>
+    /// A connector tool picked from the Insert row or the toolbar flyout. The
+    /// kind is remembered here and in the settings, so the tool that stays after
+    /// a drag draws the same thing again and so does the next session.
+    /// </summary>
+    private void ChooseConnectorTool(ConnectorKind kind)
+    {
+        _connectorKind = kind;
+        _settings.Connector.Kind = kind;
+        PersistSettings();
+        SetInsertOptionsOpen(false);
+        ChooseTool(BoardTool.Connector);
+    }
+
+    private void BeginConnectorGesture(PointD screen)
+    {
+        _connectorActive = true;
+        _connectorDragged = false;
+        _connectorStartScreen = screen;
+        _connectorStartWorld = _camera.ScreenToWorld(screen);
+        HideSelectionPropertyBar();
+    }
+
+    private void UpdateConnectorGesture(PointD screen)
+    {
+        if (!_connectorActive)
+        {
+            return;
+        }
+
+        if (!_connectorDragged &&
+            Distance(ToPoint(screen), ToPoint(_connectorStartScreen)) > AreaDragThreshold)
+        {
+            _connectorDragged = true;
+        }
+
+        PointD world = _camera.ScreenToWorld(screen);
+        SceneSurface.PendingConnector = _connectorDragged
+            ? NewConnector(_connectorStartWorld, world, null, null)
+            : null;
+
+        // The dots belong to the end being dragged, which is the one the hand is
+        // asking about.
+        SceneSurface.BindingDots = _connectorDragged ? BindingDotsAt(world) : null;
+        SceneSurface.InvalidateVisual();
+    }
+
+    /// <summary>
+    /// The connector the drag drew, bound at whichever ends were let go near
+    /// something. A press that never moved makes nothing: a connector with no
+    /// length says nothing about what it joins, and a tap is how somebody finds
+    /// out what the tool does.
+    /// </summary>
+    private void CompleteConnectorGesture(PointD screen)
+    {
+        if (!_connectorActive)
+        {
+            return;
+        }
+
+        var dragged = _connectorDragged;
+        PointD world = _camera.ScreenToWorld(screen);
+        ResetConnectorGesture();
+        if (!dragged)
+        {
+            return;
+        }
+
+        ConnectorBoardObject connector = NewConnector(
+            _connectorStartWorld,
+            world,
+            BindingAt(_connectorStartWorld),
+            BindingAt(world));
+        _history.Execute(new AddObjectCommand(connector), _document);
+
+        // The new connector is the selection, so the property bar is there to
+        // recolor it or change its kind without anything else being picked up.
+        SelectOnly(connector.Id);
+        SceneSurface.InvalidateVisual();
+        UpdateLiveViewActionOverlay();
+        ReturnToSelectAfterInsert();
+    }
+
+    private void ResetConnectorGesture()
+    {
+        _connectorActive = false;
+        _connectorDragged = false;
+        if (SceneSurface.PendingConnector is not null || SceneSurface.BindingDots is not null)
+        {
+            SceneSurface.PendingConnector = null;
+            SceneSurface.BindingDots = null;
+            SceneSurface.InvalidateVisual();
+        }
+    }
+
+    private ConnectorBoardObject NewConnector(
+        PointD start,
+        PointD end,
+        ConnectorAnchor? startAnchor,
+        ConnectorAnchor? endAnchor) => ConnectorBoardObject.Create(
+        Guid.NewGuid(),
+        _document.NextZIndex,
+        _connectorKind,
+        startAnchor is { } bound ? AnchorPoint(bound, start) : start,
+        endAnchor is { } endBound ? AnchorPoint(endBound, end) : end,
+        _settings.Connector.Argb,
+        _settings.Connector.Thickness,
+        startAnchor,
+        endAnchor);
+
+    private PointD AnchorPoint(ConnectorAnchor anchor, PointD fallback) =>
+        _document.Objects.FirstOrDefault(item => item.Id == anchor.ObjectId) is { } target
+            ? ConnectorGeometry.PointOn(target.Bounds, anchor)
+            : fallback;
+
+    /// <summary>
+    /// What an endpoint dropped here would bind to: the topmost thing a tap
+    /// would reach, or - since a shape's inside is not a hit - the topmost one
+    /// whose box the pointer is in. A frame, a stroke, and another connector are
+    /// not things an arrow points at.
+    /// </summary>
+    private BoardObject? BindingTargetAt(PointD worldPoint)
+    {
+        if (_document.HitTestTopSelectable(worldPoint, _camera.Zoom) is { } hit &&
+            ConnectorBoardObject.CanBind(hit))
+        {
+            return hit;
+        }
+
+        return _document.Objects
+            .Where(item => ConnectorBoardObject.CanBind(item) && item.Bounds.Contains(worldPoint))
+            .OrderByDescending(item => item.ZIndex)
+            .FirstOrDefault();
+    }
+
+    /// <summary>
+    /// The eight points of the target under the pointer, while one of them is
+    /// near enough to be taken. They are shown rather than described because
+    /// where an arrow will land is the whole question while it is being dragged.
+    /// </summary>
+    private IReadOnlyList<PointD>? BindingDotsAt(PointD worldPoint)
+    {
+        if (BindingTargetAt(worldPoint) is not { } target)
+        {
+            return null;
+        }
+
+        IReadOnlyList<PointD> points = ConnectorGeometry.BindingPoints(target.Bounds);
+        var reach = ConnectorBoardObject.BindingReach / _camera.Zoom;
+        return points.Any(point => Distance(ToPoint(point), ToPoint(worldPoint)) <= reach) ? points : null;
+    }
+
+    /// <summary>
+    /// The anchor an endpoint let go here takes: the nearest of the eight
+    /// points when the pointer is within reach of one, and with Ctrl the nearest
+    /// point anywhere on the target's border instead.
+    /// </summary>
+    private ConnectorAnchor? BindingAt(PointD worldPoint)
+    {
+        if (BindingTargetAt(worldPoint) is not { } target)
+        {
+            return null;
+        }
+
+        if (Keyboard.Modifiers.HasFlag(ModifierKeys.Control))
+        {
+            return ConnectorGeometry.NearestBorderPoint(
+                target.Id,
+                target.Bounds,
+                (target as ShapeBoardObject)?.Outline(),
+                worldPoint);
+        }
+
+        ConnectorAnchor nearest = ConnectorGeometry.NearestBindingPoint(target.Id, target.Bounds, worldPoint);
+        var reach = ConnectorBoardObject.BindingReach / _camera.Zoom;
+        return Distance(ToPoint(ConnectorGeometry.PointOn(target.Bounds, nearest)), ToPoint(worldPoint)) <= reach
+            ? nearest
+            : null;
+    }
+
+    /// <summary>
+    /// A press on one end of the selected connector, which is what that
+    /// connector offers instead of the corner handle.
+    /// </summary>
+    private bool BeginConnectorEndpointGesture(PointD screenPoint)
+    {
+        if (SingleSelected<ConnectorBoardObject>() is not { } connector)
+        {
+            return false;
+        }
+
+        var toStart = Distance(ToPoint(_camera.WorldToScreen(connector.Start)), ToPoint(screenPoint));
+        var toEnd = Distance(ToPoint(_camera.WorldToScreen(connector.End)), ToPoint(screenPoint));
+        if (Math.Min(toStart, toEnd) > ConnectorBoardObject.BindingReach)
+        {
+            return false;
+        }
+
+        _endpointBefore = connector;
+        _endpointIsStart = toStart <= toEnd;
+        _endpointWorld = _camera.ScreenToWorld(screenPoint);
+        HideSelectionPropertyBar();
+        return true;
+    }
+
+    private void UpdateConnectorEndpointGesture(PointD worldPoint)
+    {
+        if (_endpointBefore is not { } before)
+        {
+            return;
+        }
+
+        _endpointWorld = worldPoint;
+        _document.ReplaceObject(MovedEndpoint(before, worldPoint, null));
+        SceneSurface.BindingDots = BindingDotsAt(worldPoint);
+        SceneSurface.InvalidateVisual();
+    }
+
+    private void CompleteConnectorEndpointGesture()
+    {
+        if (_endpointBefore is not { } before)
+        {
+            return;
+        }
+
+        ConnectorBoardObject after = MovedEndpoint(before, _endpointWorld, BindingAt(_endpointWorld));
+        _endpointBefore = null;
+        SceneSurface.BindingDots = null;
+        _document.ReplaceObject(after);
+        if (after != before)
+        {
+            _history.RecordExecuted(new ReplaceObjectCommand(before, after));
+        }
+
+        SceneSurface.InvalidateVisual();
+        UpdateSelectionPropertyBar();
+    }
+
+    /// <summary>
+    /// The connector with the end being dragged where the pointer is, bound to
+    /// what it was let go on. The other end is left exactly as it was, anchor
+    /// and all.
+    /// </summary>
+    private ConnectorBoardObject MovedEndpoint(
+        ConnectorBoardObject connector,
+        PointD worldPoint,
+        ConnectorAnchor? anchor)
+    {
+        PointD point = anchor is { } bound ? AnchorPoint(bound, worldPoint) : worldPoint;
+        return _endpointIsStart
+            ? connector.WithEndpoints(point, connector.End, anchor, connector.EndAnchor)
+            : connector.WithEndpoints(connector.Start, point, connector.StartAnchor, anchor);
+    }
+
+    /// <summary>
+    /// A connector kind for every selected connector, as one step, and what the
+    /// next one is drawn as.
+    /// </summary>
+    private void ApplySelectionConnectorKind(ConnectorKind kind)
+    {
+        _connectorKind = kind;
+        _settings.Connector.Kind = kind;
+        PersistSettings();
+        RestyleSelection(null, null, connector => connector.WithKind(kind));
+    }
+
+    /// <summary>
+    /// Deleting these objects, and freeing the connectors that pointed at them.
+    /// An arrow whose shape is deleted stays where it was drawn rather than
+    /// going with it, and the two changes are one step, so one undo restores
+    /// both.
+    /// </summary>
+    private IBoardCommand DeleteCommandFor(IReadOnlyList<BoardObject> deletionGroup)
+    {
+        HashSet<Guid> removed = deletionGroup.Select(item => item.Id).ToHashSet();
+        ConnectorBoardObject[] attached = removed
+            .SelectMany(_document.ConnectorsAttachedTo)
+            .Where(connector => !removed.Contains(connector.Id))
+            .DistinctBy(connector => connector.Id)
+            .ToArray();
+        if (attached.Length == 0)
+        {
+            return new RemoveObjectsCommand(deletionGroup);
+        }
+
+        BoardObject[] detached = attached
+            .Select(connector => (BoardObject)removed.Aggregate(
+                connector,
+                static (current, id) => current.Detach(id)))
+            .ToArray();
+        return new CompositeCommand(
+        [
+            new RemoveObjectsCommand(deletionGroup),
+            new ReplaceObjectsCommand(attached, detached),
+        ]);
+    }
+
     private bool IsOverHandle(PointD screen, RectD bounds)
     {
         PointD handle = _camera.WorldToScreen(new PointD(bounds.Right, bounds.Bottom));
@@ -3034,7 +3478,7 @@ public partial class MainWindow : Window
             else
             {
                 _document.ReplaceObject(before);
-                _history.Execute(new RemoveObjectsCommand([before]), _document);
+                _history.Execute(DeleteCommandFor([before]), _document);
             }
 
             SelectOnly(null);
@@ -3064,7 +3508,7 @@ public partial class MainWindow : Window
     private void ReturnToSelectAfterInsert()
     {
         if (_settings.AfterInsert == AfterInsert.ReturnToSelect &&
-            _activeTool is BoardTool.Shape or BoardTool.Text)
+            _activeTool is BoardTool.Shape or BoardTool.Connector or BoardTool.Text)
         {
             SetActiveTool(BoardTool.Select);
         }
@@ -3830,7 +4274,7 @@ public partial class MainWindow : Window
             SetNibPickerOpen(false);
         }
 
-        if (tool is not (BoardTool.Shape or BoardTool.Text))
+        if (tool is not (BoardTool.Shape or BoardTool.Connector or BoardTool.Text))
         {
             SetInsertOptionsOpen(false);
         }
@@ -3840,6 +4284,11 @@ public partial class MainWindow : Window
             ResetShapeGesture();
         }
 
+        if (tool != BoardTool.Connector)
+        {
+            ResetConnectorGesture();
+        }
+
         SetSelectOptionsOpen(false);
 
         if (tool == BoardTool.Select)
@@ -3847,7 +4296,7 @@ public partial class MainWindow : Window
             HidePointerDot();
             InkSurface.Cursor = Cursors.Arrow;
         }
-        else if (tool == BoardTool.Shape)
+        else if (tool is BoardTool.Shape or BoardTool.Connector)
         {
             HidePointerDot();
             InkSurface.Cursor = Cursors.Cross;
@@ -4549,8 +4998,12 @@ public partial class MainWindow : Window
         return null;
     }
 
+    // A lone connector has no corner handle: its box is a box around a line,
+    // and what it offers instead is its two ends.
     private bool IsOverResizeHandle(PointD screen) =>
-        SelectionBounds() is RectD bounds && IsOverHandle(screen, bounds);
+        SingleSelected<ConnectorBoardObject>() is null &&
+        SelectionBounds() is RectD bounds &&
+        IsOverHandle(screen, bounds);
 
     private static PenKind ToPenKind(BoardTool tool) => tool switch
     {
@@ -4675,7 +5128,8 @@ public partial class MainWindow : Window
     /// </summary>
     private void UpdateInsertButtonChecks()
     {
-        var on = _activeTool is BoardTool.Shape or BoardTool.Text || _isInsertOptionsOpen;
+        var on = _activeTool is BoardTool.Shape or BoardTool.Connector or BoardTool.Text ||
+                 _isInsertOptionsOpen;
         if (InsertToolButton is not null)
         {
             InsertToolButton.IsChecked = on;
@@ -4724,8 +5178,20 @@ public partial class MainWindow : Window
             index++;
         }
 
-        // Text closes the flyout as it closes the row. The connectors will be
-        // inserted between it and the shapes.
+        // The connectors, then Text, each on its own row: the flyout follows the
+        // Insert row, where a separator stands between the three groups.
+        row = new StackPanel
+        {
+            Orientation = Orientation.Horizontal,
+            HorizontalAlignment = HorizontalAlignment.Center,
+            Margin = new Thickness(0, 4, 0, 0),
+        };
+        InsertOptionsHost.Children.Add(row);
+        foreach ((ConnectorKind kind, string name) in PropertyBar.ConnectorKinds)
+        {
+            row.Children.Add(CreateConnectorButton(kind, name));
+        }
+
         row = new StackPanel
         {
             Orientation = Orientation.Horizontal,
@@ -4734,6 +5200,26 @@ public partial class MainWindow : Window
         };
         InsertOptionsHost.Children.Add(row);
         row.Children.Add(CreateTextToolButton());
+    }
+
+    private ToggleButton CreateConnectorButton(ConnectorKind kind, string name)
+    {
+        var button = new ToggleButton
+        {
+            Style = (Style)FindResource("ToolbarIconButton"),
+            Content = new System.Windows.Shapes.Path
+            {
+                Width = 20,
+                Height = 20,
+                Stretch = Stretch.Uniform,
+                Fill = (Brush)FindResource("ToolbarIconBrush"),
+                Data = (Geometry)FindResource(PropertyBar.ConnectorGeometryKey(kind)),
+            },
+            ToolTip = name,
+            IsChecked = _activeTool == BoardTool.Connector && _connectorKind == kind,
+        };
+        button.Click += (_, _) => ChooseConnectorTool(kind);
+        return button;
     }
 
     private ToggleButton CreateTextToolButton()
@@ -6016,8 +6502,10 @@ public partial class MainWindow : Window
     {
         RestyleSelection(
             style => style with { Argb = argb },
-            shape => shape with { OutlineArgb = argb });
+            shape => shape with { OutlineArgb = argb },
+            connector => connector with { Argb = argb });
         _settings.Shape.OutlineArgb = argb;
+        _settings.Connector.Argb = argb;
         _settings.Label.Argb = argb;
         PersistSettings();
 
@@ -6030,14 +6518,19 @@ public partial class MainWindow : Window
     {
         RestyleSelection(
             style => style with { Thickness = thickness },
-            shape => shape with { Thickness = thickness });
+            shape => shape with { Thickness = thickness },
+            // Rebuilt rather than copied: the arrowhead is a multiple of the
+            // thickness, so a thicker line reaches further than the one it
+            // replaces.
+            connector => connector.WithThickness(thickness));
         _settings.Shape.Thickness = thickness;
+        _settings.Connector.Thickness = thickness;
         PersistSettings();
     }
 
     private void ApplySelectionFill(uint? fill)
     {
-        RestyleSelection(null, shape => shape with { FillArgb = fill });
+        RestyleSelection(null, shape => shape with { FillArgb = fill }, null);
         _settings.Shape.FillArgb = fill;
         PersistSettings();
     }
@@ -6050,7 +6543,8 @@ public partial class MainWindow : Window
     /// </summary>
     private void RestyleSelection(
         Func<PenStyle, PenStyle>? restyleStroke,
-        Func<ShapeBoardObject, ShapeBoardObject>? restyleShape)
+        Func<ShapeBoardObject, ShapeBoardObject>? restyleShape,
+        Func<ConnectorBoardObject, ConnectorBoardObject>? restyleConnector)
     {
         var before = new List<BoardObject>();
         var after = new List<BoardObject>();
@@ -6068,6 +6562,7 @@ public partial class MainWindow : Window
                     stroke.Id,
                     stroke.ContainerId),
                 ShapeBoardObject shape when restyleShape is not null => restyleShape(shape),
+                ConnectorBoardObject connector when restyleConnector is not null => restyleConnector(connector),
                 _ => null,
             };
             if (replacement is null || replacement == item)
@@ -6976,14 +7471,14 @@ public partial class MainWindow : Window
             var deletionGroup = _document.GetDeletionGroup(_selectedObjectIds);
             if (deletionGroup.Count > 0)
             {
-                _history.Execute(new RemoveObjectsCommand(deletionGroup), _document);
+                _history.Execute(DeleteCommandFor(deletionGroup), _document);
                 SelectOnly(null);
                 SceneSurface.InvalidateVisual();
             }
 
             e.Handled = true;
         }
-        else if (e.Key == Key.Escape && _activeTool == BoardTool.Shape)
+        else if (e.Key == Key.Escape && _activeTool is BoardTool.Shape or BoardTool.Connector)
         {
             SetActiveTool(BoardTool.Select);
             e.Handled = true;

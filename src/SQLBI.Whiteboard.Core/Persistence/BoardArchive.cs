@@ -33,7 +33,7 @@ public static class BoardArchive
     /// labels and shapes here as they arrive.
     /// </summary>
     private static bool NeedsVersion7(BoardObject item) =>
-        item is FreeTextBoardObject or ShapeBoardObject;
+        item is FreeTextBoardObject or ShapeBoardObject or ConnectorBoardObject;
     private const string SceneEntryName = "scene.json";
     public const string PreviewEntryName = "preview.png";
 
@@ -125,9 +125,13 @@ public static class BoardArchive
                 memory.ToArray()));
         }
 
+        // An anchor is only an anchor while what it names is in the file: a
+        // board saved from a selection, or edited by hand, can carry a connector
+        // bound to something that is not there, and that endpoint is simply free.
+        var savedIds = scene.Objects.Select(item => item.Id).ToHashSet();
         foreach (var objectDto in scene.Objects.OrderBy(item => item.ZIndex))
         {
-            document.AddObject(FromDto(objectDto));
+            document.AddObject(FromDto(objectDto, savedIds));
         }
 
         return document;
@@ -259,10 +263,33 @@ public static class BoardArchive
             OutlineArgb: shape.OutlineArgb,
             FillArgb: shape.FillArgb,
             Thickness: shape.Thickness),
+        // The line's color and width travel in the fields the label and the
+        // shape already have, since they mean the same thing here.
+        ConnectorBoardObject connector => new ObjectDto(
+            "connector",
+            connector.Id,
+            connector.ZIndex,
+            connector.Bounds,
+            null,
+            null,
+            null,
+            null,
+            Argb: connector.Argb,
+            Thickness: connector.Thickness,
+            ConnectorKind: connector.Kind.ToString(),
+            StartX: connector.Start.X,
+            StartY: connector.Start.Y,
+            EndX: connector.End.X,
+            EndY: connector.End.Y,
+            StartAnchor: ToAnchorDto(connector.StartAnchor),
+            EndAnchor: ToAnchorDto(connector.EndAnchor)),
         _ => throw new NotSupportedException($"Unsupported board object type {item.GetType().Name}."),
     };
 
-    private static BoardObject FromDto(ObjectDto dto) => dto.Type switch
+    private static ConnectorAnchorDto? ToAnchorDto(ConnectorAnchor? anchor) =>
+        anchor is { } bound ? new ConnectorAnchorDto(bound.ObjectId, bound.U, bound.V) : null;
+
+    private static BoardObject FromDto(ObjectDto dto, IReadOnlySet<Guid> savedIds) => dto.Type switch
     {
         "ink" when dto.Points is { Length: > 0 } && dto.Style is not null =>
             InkStrokeObject.Create(
@@ -305,8 +332,47 @@ public static class BoardArchive
             dto.OutlineArgb ?? PenStyle.Default.Argb,
             dto.FillArgb,
             NormalizeShapeThickness(dto.Thickness)),
+        "connector" => ConnectorFromDto(dto, savedIds),
         _ => throw new InvalidDataException($"Invalid board object type '{dto.Type}'."),
     };
+
+    /// <summary>
+    /// A connector as the file has it, with the box worked out again from the
+    /// two ends rather than trusted: a normalized kind curves where the saved
+    /// box says it ran straight.
+    /// </summary>
+    private static ConnectorBoardObject ConnectorFromDto(ObjectDto dto, IReadOnlySet<Guid> savedIds) =>
+        ConnectorBoardObject.Create(
+            dto.Id,
+            dto.ZIndex,
+            NormalizeConnectorKind(dto.ConnectorKind),
+            new PointD(dto.StartX ?? dto.Bounds.Left, dto.StartY ?? dto.Bounds.Top),
+            new PointD(dto.EndX ?? dto.Bounds.Right, dto.EndY ?? dto.Bounds.Bottom),
+            dto.Argb ?? PenStyle.Default.Argb,
+            NormalizeConnectorThickness(dto.Thickness),
+            NormalizeAnchor(dto.StartAnchor, savedIds),
+            NormalizeAnchor(dto.EndAnchor, savedIds));
+
+    /// <summary>
+    /// An arrow is what a connector whose kind this release does not know
+    /// becomes: it is the one of the three that says which way it was pointing.
+    /// </summary>
+    private static ConnectorKind NormalizeConnectorKind(string? kind) =>
+        Enum.TryParse(kind, ignoreCase: true, out ConnectorKind parsed) && Enum.IsDefined(parsed)
+            ? parsed
+            : ConnectorKind.Arrow;
+
+    private static double NormalizeConnectorThickness(double? thickness) =>
+        thickness is > 0 and <= 100
+            ? thickness.Value
+            : ConnectorBoardObject.DefaultThickness;
+
+    private static ConnectorAnchor? NormalizeAnchor(
+        ConnectorAnchorDto? anchor,
+        IReadOnlySet<Guid> savedIds) =>
+        anchor is { } bound && savedIds.Contains(bound.ObjectId)
+            ? ConnectorAnchor.Normalize(bound.ObjectId, bound.U, bound.V)
+            : null;
 
     /// <summary>
     /// A label as the file has it, with everything the file could have got
@@ -396,7 +462,16 @@ public static class BoardArchive
         string? ShapeKind = null,
         uint? OutlineArgb = null,
         uint? FillArgb = null,
-        double? Thickness = null);
+        double? Thickness = null,
+        string? ConnectorKind = null,
+        double? StartX = null,
+        double? StartY = null,
+        double? EndX = null,
+        double? EndY = null,
+        ConnectorAnchorDto? StartAnchor = null,
+        ConnectorAnchorDto? EndAnchor = null);
+
+    private sealed record ConnectorAnchorDto(Guid ObjectId, double U, double V);
 
     private sealed record InkPointDto(double X, double Y, float Pressure, long Timestamp);
 
