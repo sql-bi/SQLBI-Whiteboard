@@ -2947,10 +2947,12 @@ public partial class MainWindow : Window
         LabelEditor.Foreground = LabelVisual.Brush(label.Argb);
         LabelEditor.CaretBrush = LabelEditor.Foreground;
 
-        // Room for the border and for the caret at the end of the longest line,
-        // neither of which the measured text accounts for.
-        LabelEditor.Width = (label.LayoutWidth * zoom) + 8;
-        LabelEditor.Height = (label.LayoutHeight * zoom) + 4;
+        // Room for the border, the box's own inset, and the caret at the end of
+        // the longest line, none of which the measured text accounts for. The
+        // box is a little wider than the label it stands over; what matters is
+        // that the text is never clipped while it is being typed.
+        LabelEditor.Width = (label.LayoutWidth * zoom) + 12;
+        LabelEditor.Height = (label.LayoutHeight * zoom) + 6;
         LabelEditorRotation.Angle = label.AngleDegrees;
         PointD topLeft = _camera.WorldToScreen(new PointD(label.Bounds.Left, label.Bounds.Top));
         Canvas.SetLeft(LabelEditor, topLeft.X);
@@ -6285,7 +6287,14 @@ public partial class MainWindow : Window
             return;
         }
 
-        if (SessionBar.IsCommandRowOpen && !controlDown && !altDown)
+        // Not while something is being typed: a row that stays open - Edit,
+        // Insert - would otherwise read the letters of a label or a snippet as
+        // its own access keys, and a word with a T in it would pick a tool.
+        if (SessionBar.IsCommandRowOpen &&
+            !controlDown &&
+            !altDown &&
+            _labelEditBefore is null &&
+            _textEditBefore is null)
         {
             var isMove = mnemonicKey is Key.Left or Key.Right or Key.Home or Key.End;
             if ((isMove || !e.IsRepeat) && SessionBar.TryHandleCommandKey(mnemonicKey))

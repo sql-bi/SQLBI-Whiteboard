@@ -230,6 +230,7 @@
                          BorderBrush="#FF2563EB"
                          Background="Transparent"
                          FontFamily="Segoe UI"
+                         TextOptions.TextFormattingMode="Ideal"
                          HorizontalScrollBarVisibility="Hidden"
                          VerticalScrollBarVisibility="Hidden"
                          SnapsToDevicePixels="True"
