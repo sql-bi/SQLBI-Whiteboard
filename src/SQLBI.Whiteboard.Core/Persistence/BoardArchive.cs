@@ -2,12 +2,13 @@ using System.IO.Compression;
 using System.Text.Json;
 using SQLBI.Whiteboard.Core.Geometry;
 using SQLBI.Whiteboard.Core.Model;
+using SQLBI.Whiteboard.Core.Settings;
 
 namespace SQLBI.Whiteboard.Core.Persistence;
 
 public static class BoardArchive
 {
-    public const int CurrentVersion = 6;
+    public const int CurrentVersion = 7;
 
     /// <summary>
     /// Frames arrived in version 6. A board without one is still written as
@@ -16,8 +17,22 @@ public static class BoardArchive
     /// </summary>
     public const int VersionBeforeFrames = 5;
 
+    /// <summary>
+    /// Frames but none of the design objects, which arrived in version 7 and
+    /// extend the same rule one step further.
+    /// </summary>
+    public const int VersionWithFrames = 6;
+
     public static int VersionFor(BoardDocument document) =>
-        document.Objects.Any(item => item is FrameBoardObject) ? CurrentVersion : VersionBeforeFrames;
+        document.Objects.Any(NeedsVersion7) ? CurrentVersion
+            : document.Objects.Any(item => item is FrameBoardObject) ? VersionWithFrames
+            : VersionBeforeFrames;
+
+    /// <summary>
+    /// The objects that only a reader of version 7 understands. Shapes and
+    /// connectors join labels here as they arrive.
+    /// </summary>
+    private static bool NeedsVersion7(BoardObject item) => item is FreeTextBoardObject;
     private const string SceneEntryName = "scene.json";
     public const string PreviewEntryName = "preview.png";
 
@@ -209,6 +224,27 @@ public static class BoardArchive
             null,
             null,
             TextTitle: frame.Title),
+        // A label's text travels in the same field as a container's, since it is
+        // the same thing to a reader: what the object says.
+        FreeTextBoardObject label => new ObjectDto(
+            "label",
+            label.Id,
+            label.ZIndex,
+            label.Bounds,
+            null,
+            null,
+            null,
+            null,
+            TextContent: label.Text,
+            FontFamily: label.FontFamily,
+            FontSize: label.FontSize,
+            Argb: label.Argb,
+            Bold: label.Bold,
+            Italic: label.Italic,
+            Underline: label.Underline,
+            AngleDegrees: label.AngleDegrees,
+            LayoutWidth: label.LayoutWidth,
+            LayoutHeight: label.LayoutHeight),
         _ => throw new NotSupportedException($"Unsupported board object type {item.GetType().Name}."),
     };
 
@@ -246,8 +282,45 @@ public static class BoardArchive
                 dto.CaptureCursor ?? false,
                 dto.IsFrozen ?? true),
         "frame" => new FrameBoardObject(dto.Id, dto.ZIndex, dto.Bounds, dto.TextTitle ?? ""),
+        "label" => LabelFromDto(dto),
         _ => throw new InvalidDataException($"Invalid board object type '{dto.Type}'."),
     };
+
+    /// <summary>
+    /// A label as the file has it, with everything the file could have got
+    /// wrong put right: an uninstalled font becomes the default, a size outside
+    /// what a label can be read at is brought back into range, and an angle
+    /// that is not a multiple of 45 is snapped. The bounds are recomputed from
+    /// the centre rather than trusted, because a snapped angle makes the saved
+    /// box the box of a rectangle that is no longer there.
+    /// </summary>
+    private static FreeTextBoardObject LabelFromDto(ObjectDto dto)
+    {
+        var savedSize = dto.FontSize ?? LabelStyles.DefaultFontSize;
+        var fontSize = LabelStyles.ClampFontSize(savedSize);
+
+        // The layout was measured at the size the file carries, so a size
+        // brought back into range takes the layout with it and the text still
+        // fills the box it is drawn in.
+        var scale = double.IsFinite(savedSize) && savedSize > 0 ? fontSize / savedSize : 1;
+        return FreeTextBoardObject.Create(
+            dto.Id,
+            dto.ZIndex,
+            dto.Bounds.Center,
+            dto.TextContent ?? "",
+            LabelStyles.NormalizeFont(dto.FontFamily),
+            fontSize,
+            dto.Argb ?? LabelStyles.DefaultArgb,
+            dto.Bold ?? false,
+            dto.Italic ?? false,
+            dto.Underline ?? false,
+            dto.AngleDegrees ?? 0,
+            NormalizeLayoutSize(dto.LayoutWidth, fontSize * 4) * scale,
+            NormalizeLayoutSize(dto.LayoutHeight, fontSize * 1.4) * scale);
+    }
+
+    private static double NormalizeLayoutSize(double? size, double fallback) =>
+        size is { } value && double.IsFinite(value) && value > 0 ? value : fallback;
 
     private static int NormalizeFrameRate(int? frameRate) => frameRate is 15 or 30 or 60
         ? frameRate.Value
@@ -274,7 +347,16 @@ public static class BoardArchive
         string? TextTitle = null,
         string? TextContent = null,
         double? TextVisualScale = null,
-        string? TextLanguageId = null);
+        string? TextLanguageId = null,
+        string? FontFamily = null,
+        double? FontSize = null,
+        uint? Argb = null,
+        bool? Bold = null,
+        bool? Italic = null,
+        bool? Underline = null,
+        double? AngleDegrees = null,
+        double? LayoutWidth = null,
+        double? LayoutHeight = null);
 
     private sealed record InkPointDto(double X, double Y, float Pressure, long Timestamp);
 

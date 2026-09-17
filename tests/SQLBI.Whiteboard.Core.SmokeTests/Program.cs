@@ -662,9 +662,9 @@ await BoardArchive.SaveAsync(document, framedArchive);
 framedArchive.Position = 0;
 var loadedWithFrame = await BoardArchive.LoadAsync(framedArchive);
 Assert(
-    BoardArchive.VersionFor(document) == BoardArchive.CurrentVersion &&
+    BoardArchive.VersionFor(document) == BoardArchive.VersionWithFrames &&
     loadedWithFrame.Objects.OfType<FrameBoardObject>().Single() is { Title: "Slide 1", Bounds.Width: 1000 },
-    "A frame round-trips with its title, and asks for the current version.");
+    "A frame round-trips with its title, and asks for the version that brought frames.");
 document.RemoveObject(archivedFrame.Id);
 Assert(loaded.Assets[asset.Id].Data.SequenceEqual(asset.Data), "Archive should round-trip asset bytes.");
 Assert(
@@ -2293,6 +2293,226 @@ Assert(
     Assert(
         AppSettingsSerializer.Parse("{ }").Version == 19,
         "Settings are written as version 19.");
+}
+
+// A label is a rectangle of text turned about its own centre. What is stored is
+// the layout size and the angle; the box the document indexes follows from them,
+// and so do the hit test, the area test, and what the corner handle does.
+{
+    var labelCenter = new PointD(100, 100);
+    var upright = FreeTextBoardObject.Create(
+        Guid.NewGuid(),
+        0,
+        labelCenter,
+        "Design objects",
+        "Segoe UI",
+        24,
+        0xFF1F2937,
+        false,
+        false,
+        false,
+        0,
+        200,
+        40);
+    AssertNear(200, upright.Bounds.Width, "An upright label is as wide as its layout.");
+    AssertNear(40, upright.Bounds.Height, "An upright label is as tall as its layout.");
+    AssertNear(100, upright.Bounds.Center.X, "The layout is centred on the box.");
+
+    var quarter = upright.WithAngle(90);
+    AssertNear(40, quarter.Bounds.Width, "A quarter turn swaps the width for the height.");
+    AssertNear(200, quarter.Bounds.Height, "A quarter turn swaps the height for the width.");
+    AssertNear(100, quarter.Bounds.Center.X, "A turn is about the centre, which does not move.");
+    AssertNear(100, quarter.Bounds.Center.Y, "A turn is about the centre on both axes.");
+
+    var square = FreeTextBoardObject.Create(
+        Guid.NewGuid(), 0, labelCenter, "X", "Segoe UI", 24, 0xFF1F2937,
+        false, false, false, 45, 100, 100);
+    AssertNear(
+        100 * Math.Sqrt(2),
+        square.Bounds.Width,
+        "A square turned by 45 degrees stands on a corner, and its box grows by the square root of two.");
+    AssertNear(square.Bounds.Width, square.Bounds.Height, "That box is square as well.");
+
+    // Turned, the corners of the box are outside the label: a tap there reaches
+    // whatever is behind it rather than the label.
+    Assert(square.HitTest(labelCenter, 1), "A label is hit at its centre.");
+    Assert(
+        square.HitTest(new PointD(labelCenter.X + 45, labelCenter.Y), 1),
+        "A label is hit anywhere on the rectangle it is drawn in.");
+    Assert(
+        !square.HitTest(new PointD(square.Bounds.Left + 2, square.Bounds.Top + 2), 1),
+        "The empty corner of the box around a turned label is not the label.");
+
+    // The corner handle scales the text rather than reflowing it.
+    var scaled = (FreeTextBoardObject)upright.WithBounds(
+        new RectD(upright.Bounds.Left, upright.Bounds.Top, 400, 80));
+    AssertNear(48, scaled.FontSize, "Scaling the box to twice the size doubles the font size.");
+    AssertNear(400, scaled.LayoutWidth, "The layout is scaled with the font.");
+    AssertNear(400, scaled.Bounds.Width, "The box follows the layout.");
+
+    var moved = (FreeTextBoardObject)upright.WithBounds(upright.Bounds.Translate(new PointD(30, -20)));
+    AssertNear(24, moved.FontSize, "Moving a label leaves its size alone.");
+    AssertNear(upright.Bounds.Left + 30, moved.Bounds.Left, "Moving a label moves its box.");
+
+    // The angle is a multiple of 45, whatever a file says.
+    AssertNear(45, RotatedRectangle.NormalizeAngle(50), "An angle of 50 degrees snaps to 45.");
+    AssertNear(315, RotatedRectangle.NormalizeAngle(-45), "A negative angle comes back inside one turn.");
+    AssertNear(0, RotatedRectangle.NormalizeAngle(360), "A whole turn is no turn.");
+    AssertNear(0, RotatedRectangle.NormalizeAngle(double.NaN), "An angle that is not a number is no turn.");
+
+    // An area takes a turned label by its corners rather than by its box.
+    var areaOverCorner = SelectionArea.Rectangle(
+        new RectD(square.Bounds.Left - 10, square.Bounds.Top - 10, 14, 14));
+    Assert(
+        !square.IsTakenBy(areaOverCorner, AreaSelection.PartlyInside),
+        "A band over the empty corner of the box does not take the label.");
+    Assert(
+        square.IsTakenBy(
+            SelectionArea.Rectangle(new RectD(90, 90, 20, 20)),
+            AreaSelection.PartlyInside),
+        "A band inside the label takes it.");
+    Assert(
+        square.IsTakenBy(
+            SelectionArea.Rectangle(new RectD(0, 0, 200, 200)),
+            AreaSelection.FullyInside),
+        "A band around the whole label takes it under either rule.");
+    Assert(
+        !square.IsTakenBy(
+            SelectionArea.Rectangle(square.Bounds.Inflate(-8)),
+            AreaSelection.FullyInside),
+        "Fully inside means every corner of the turned rectangle, not of the box.");
+
+    // Ink that touches only a label links to it, as it does to any container.
+    var labelBoard = new BoardDocument();
+    labelBoard.AddObject(upright);
+    var overLabel = InkStrokeObject.Create(
+        [
+            new InkPoint(new PointD(60, 95), 0.5f, 0),
+            new InkPoint(new PointD(140, 105), 0.5f, 1),
+        ],
+        PenStyle.Default,
+        labelBoard.NextZIndex);
+    Assert(
+        labelBoard.FindSingleTouchedContainer(overLabel)?.Id == upright.Id,
+        "A stroke drawn across a label alone links to the label.");
+    labelBoard.AddObject(overLabel with { ContainerId = upright.Id });
+    Assert(
+        labelBoard.GetDeletionGroup([upright.Id]).Count == 2,
+        "Deleting a label takes the ink linked to it.");
+
+    Assert(
+        BoardPartitioner.DefaultTitle(labelBoard, upright) == "Design objects",
+        "A label names an export area with its first line.");
+}
+
+// A label in a board, saved and read back: every property survives, the board
+// asks for version 7, and what a file could have got wrong is put right.
+{
+    var labelDocument = new BoardDocument();
+    var saved = FreeTextBoardObject.Create(
+        Guid.NewGuid(),
+        labelDocument.NextZIndex,
+        new PointD(240, 160),
+        "Two\nlines",
+        "Georgia",
+        32,
+        0xFFE64B3D,
+        true,
+        true,
+        true,
+        90,
+        180,
+        96);
+    labelDocument.AddObject(saved);
+    Assert(
+        BoardArchive.VersionFor(labelDocument) == BoardArchive.CurrentVersion,
+        "A board with a label asks for version 7.");
+
+    await using var labelArchive = new MemoryStream();
+    await BoardArchive.SaveAsync(labelDocument, labelArchive);
+    labelArchive.Position = 0;
+    BoardDocument reloaded = await BoardArchive.LoadAsync(labelArchive);
+    FreeTextBoardObject restored = reloaded.Objects.OfType<FreeTextBoardObject>().Single();
+    Assert(
+        restored is
+        {
+            Text: "Two\nlines",
+            FontFamily: "Georgia",
+            FontSize: 32,
+            Argb: 0xFFE64B3D,
+            Bold: true,
+            Italic: true,
+            Underline: true,
+            AngleDegrees: 90,
+            LayoutWidth: 180,
+            LayoutHeight: 96,
+        },
+        "A label round-trips with everything it is written with.");
+    AssertNear(saved.Bounds.Left, restored.Bounds.Left, "The box comes back where it was.");
+    AssertNear(saved.Bounds.Width, restored.Bounds.Width, "The box comes back the size it was.");
+
+    var strangeScene = "{\"version\":7,\"objects\":[{\"type\":\"label\"," +
+        "\"id\":\"3f2504e0-4f89-11d3-9a0c-0305e82c3301\",\"zIndex\":0," +
+        "\"bounds\":{\"x\":0,\"y\":0,\"width\":120,\"height\":40}," +
+        "\"textContent\":\"Askew\",\"fontFamily\":\"Papyrus\",\"fontSize\":26," +
+        "\"angleDegrees\":50,\"layoutWidth\":120,\"layoutHeight\":40}],\"assets\":[]}";
+    await using var strangeArchive = new MemoryStream();
+    using (var writer = new ZipArchive(strangeArchive, ZipArchiveMode.Create, leaveOpen: true))
+    {
+        var entry = writer.CreateEntry("scene.json");
+        await using var entryStream = entry.Open();
+        await entryStream.WriteAsync(Encoding.UTF8.GetBytes(strangeScene));
+    }
+
+    strangeArchive.Position = 0;
+    FreeTextBoardObject normalized = (await BoardArchive.LoadAsync(strangeArchive))
+        .Objects.OfType<FreeTextBoardObject>().Single();
+    Assert(normalized.FontFamily == "Segoe UI", "A font nobody has falls back to the default.");
+    AssertNear(45, normalized.AngleDegrees, "A saved angle of 50 degrees is snapped to 45.");
+    AssertNear(26, normalized.FontSize, "A size inside the range is left alone.");
+    Assert(
+        normalized.Underline == false && normalized.Bold == false,
+        "A label that says nothing about its style is written plainly.");
+}
+
+// The label defaults: what the last label was written with, remembered for the
+// next one and normalized like every other setting.
+{
+    var labelSettings = AppSettingsSerializer.Parse(AppSettingsSerializer.Format(new AppSettings
+    {
+        Label = new LabelSettings
+        {
+            FontFamily = "Consolas",
+            FontSize = 40,
+            Argb = 0xFF009E73,
+            Bold = true,
+            Underline = true,
+        },
+    }));
+    Assert(
+        labelSettings.Label is
+        {
+            FontFamily: "Consolas",
+            FontSize: 40,
+            Argb: 0xFF009E73,
+            Bold: true,
+            Italic: false,
+            Underline: true,
+        },
+        "The label defaults survive a round trip.");
+    Assert(
+        AppSettingsSerializer.Parse("{ }").Label is
+        {
+            FontFamily: "Segoe UI",
+            FontSize: 24,
+            Argb: 0xFF1F2937,
+            Bold: false,
+        },
+        "A file that says nothing about labels takes Segoe UI 24 in near-black.");
+    Assert(
+        AppSettingsSerializer.Parse("{ \"label\": { \"fontFamily\": \"Papyrus\", \"fontSize\": 37 } }")
+            .Label is { FontFamily: "Segoe UI", FontSize: 24 },
+        "A font or a size that is not one of the choices falls back to the default.");
 }
 
 Console.WriteLine("SQLBI.Whiteboard.Core smoke tests passed.");

@@ -148,6 +148,9 @@ internal sealed class BoardSurface : FrameworkElement
                 case LiveViewBoardObject liveView:
                     DrawLiveView(drawingContext, liveView, _document, _camera);
                     break;
+                case FreeTextBoardObject label:
+                    DrawLabel(drawingContext, label, _camera);
+                    break;
                 case TextBoardObject text:
                     TextContainerVisual.Draw(
                         drawingContext,
@@ -211,6 +214,12 @@ internal sealed class BoardSurface : FrameworkElement
         {
             foreach (var item in selected)
             {
+                if (item is FreeTextBoardObject member)
+                {
+                    DrawLabelOutline(drawingContext, member, camera, SelectionMemberPen);
+                    continue;
+                }
+
                 drawingContext.DrawRectangle(
                     null,
                     SelectionMemberPen,
@@ -222,11 +231,69 @@ internal sealed class BoardSurface : FrameworkElement
         var top = selected.Min(item => item.Bounds.Top);
         var right = selected.Max(item => item.Bounds.Right);
         var bottom = selected.Max(item => item.Bounds.Bottom);
-        DrawSelection(
-            drawingContext,
-            new RectD(left, top, right - left, bottom - top),
-            camera,
-            includeHandle: true);
+        var bounds = new RectD(left, top, right - left, bottom - top);
+
+        // A label on its own is outlined where it is, turned: the box around a
+        // turned label says nothing about which of its corners is which. The
+        // handle stays on the box, which is where the gesture looks for it.
+        if (selected is [FreeTextBoardObject label])
+        {
+            DrawLabelOutline(drawingContext, label, camera, SelectionPen);
+            DrawSelection(drawingContext, bounds, camera, includeHandle: true, includeOutline: false);
+            return;
+        }
+
+        DrawSelection(drawingContext, bounds, camera, includeHandle: true);
+    }
+
+    private void DrawLabel(DrawingContext drawingContext, FreeTextBoardObject label, Camera2D camera)
+    {
+        PointD center = camera.WorldToScreen(label.Bounds.Center);
+        FormattedText text = LabelVisual.Format(
+            label,
+            label.FontSize * camera.Zoom,
+            VisualTreeHelper.GetDpi(this).PixelsPerDip);
+        var origin = new Point(
+            center.X - (label.LayoutWidth * camera.Zoom / 2),
+            center.Y - (label.LayoutHeight * camera.Zoom / 2));
+
+        if (label.AngleDegrees == 0)
+        {
+            drawingContext.DrawText(text, origin);
+            return;
+        }
+
+        var rotation = new RotateTransform(label.AngleDegrees, center.X, center.Y);
+        rotation.Freeze();
+        drawingContext.PushTransform(rotation);
+        drawingContext.DrawText(text, origin);
+        drawingContext.Pop();
+    }
+
+    private static void DrawLabelOutline(
+        DrawingContext drawingContext,
+        FreeTextBoardObject label,
+        Camera2D camera,
+        Pen pen)
+    {
+        var geometry = new StreamGeometry();
+        using (var context = geometry.Open())
+        {
+            IReadOnlyList<PointD> corners = label.Corners();
+            PointD first = camera.WorldToScreen(corners[0]);
+            context.BeginFigure(new Point(first.X, first.Y), false, true);
+            context.PolyLineTo(
+                [.. corners.Skip(1).Select(corner =>
+                {
+                    PointD screen = camera.WorldToScreen(corner);
+                    return new Point(screen.X, screen.Y);
+                })],
+                true,
+                false);
+        }
+
+        geometry.Freeze();
+        drawingContext.DrawGeometry(null, pen, geometry);
     }
 
     private static void DrawPendingArea(
@@ -488,7 +555,8 @@ internal sealed class BoardSurface : FrameworkElement
         DrawingContext drawingContext,
         RectD bounds,
         Camera2D camera,
-        bool includeHandle)
+        bool includeHandle,
+        bool includeOutline = true)
     {
         var topLeft = camera.WorldToScreen(new PointD(bounds.Left, bounds.Top));
         var bottomRight = camera.WorldToScreen(new PointD(bounds.Right, bounds.Bottom));
@@ -497,7 +565,11 @@ internal sealed class BoardSurface : FrameworkElement
             topLeft.Y,
             Math.Max(1, bottomRight.X - topLeft.X),
             Math.Max(1, bottomRight.Y - topLeft.Y));
-        drawingContext.DrawRectangle(null, SelectionPen, rectangle);
+        if (includeOutline)
+        {
+            drawingContext.DrawRectangle(null, SelectionPen, rectangle);
+        }
+
         if (includeHandle)
         {
             drawingContext.DrawEllipse(

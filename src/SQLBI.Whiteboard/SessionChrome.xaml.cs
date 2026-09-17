@@ -32,6 +32,7 @@ public enum SessionCommand
     Preferences,
     About,
     ToggleLasso,
+    InsertText,
 }
 
 public partial class SessionChrome : UserControl
@@ -174,6 +175,7 @@ public partial class SessionChrome : UserControl
             Key.F => FileTab,
             Key.E => EditTab,
             Key.V => ViewTab,
+            Key.I => InsertTab,
             Key.H => HelpTab,
             _ => null,
         };
@@ -207,6 +209,7 @@ public partial class SessionChrome : UserControl
         FileRow.Visibility = Visibility.Collapsed;
         EditRow.Visibility = Visibility.Collapsed;
         ViewRow.Visibility = Visibility.Collapsed;
+        InsertRow.Visibility = Visibility.Collapsed;
         HelpRow.Visibility = Visibility.Collapsed;
         if (ReferenceEquals(tab, FileTab))
         {
@@ -219,6 +222,10 @@ public partial class SessionChrome : UserControl
         else if (ReferenceEquals(tab, ViewTab))
         {
             ViewRow.Visibility = Visibility.Visible;
+        }
+        else if (ReferenceEquals(tab, InsertTab))
+        {
+            InsertRow.Visibility = Visibility.Visible;
         }
         else
         {
@@ -253,14 +260,19 @@ public partial class SessionChrome : UserControl
         CommandRequested?.Invoke(command);
     }
 
+    // Insert stays open like Edit: picking a tool is the start of drawing with
+    // it, and the row is where the next one is picked from.
     private bool IsStickyTab(ToggleButton? tab) =>
-        ReferenceEquals(tab, EditTab) || ReferenceEquals(tab, HelpTab);
+        ReferenceEquals(tab, EditTab) ||
+        ReferenceEquals(tab, InsertTab) ||
+        ReferenceEquals(tab, HelpTab);
 
     private void ClearTabChecks()
     {
         FileTab.IsChecked = false;
         EditTab.IsChecked = false;
         ViewTab.IsChecked = false;
+        InsertTab.IsChecked = false;
         HelpTab.IsChecked = false;
     }
 
@@ -360,6 +372,7 @@ public partial class SessionChrome : UserControl
             'Z' when ViewRow.Visibility == Visibility.Visible => SessionCommand.FreezeLiveView,
             'D' when ViewRow.Visibility == Visibility.Visible => SessionCommand.DisconnectLiveView,
             'R' when ViewRow.Visibility == Visibility.Visible => SessionCommand.ReconnectLiveView,
+            'T' when InsertRow.Visibility == Visibility.Visible => SessionCommand.InsertText,
             'P' when HelpRow.Visibility == Visibility.Visible => SessionCommand.Preferences,
             'A' when HelpRow.Visibility == Visibility.Visible => SessionCommand.About,
             _ => null,
@@ -401,6 +414,7 @@ public partial class SessionChrome : UserControl
         var row = FileRow.Visibility == Visibility.Visible ? FileRow
             : EditRow.Visibility == Visibility.Visible ? EditRow
             : ViewRow.Visibility == Visibility.Visible ? ViewRow
+            : InsertRow.Visibility == Visibility.Visible ? InsertRow
             : HelpRow.Visibility == Visibility.Visible ? HelpRow
             : null;
         return row?.Children.OfType<Button>() ?? [];

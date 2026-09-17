@@ -100,8 +100,14 @@ public static class BoardPartitioner
             Path.GetFileNameWithoutExtension(asset.OriginalFileName),
         LiveViewBoardObject liveView when !string.IsNullOrWhiteSpace(liveView.Source.DisplayName) =>
             liveView.Source.DisplayName,
+        // A label has no title of its own, so its first line is the nearest
+        // thing to one: a label big enough to name an area is usually a heading.
+        FreeTextBoardObject label when FirstLine(label.Text) is { Length: > 0 } line => line,
         _ => null,
     };
+
+    private static string FirstLine(string text) =>
+        text.Split('\n', 2)[0].Trim();
 
     private static string? ResolveTitle(
         BoardDocument document,
