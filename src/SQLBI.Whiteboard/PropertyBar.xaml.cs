@@ -40,6 +40,7 @@ public partial class PropertyBar : UserControl
         InitializeComponent();
         AddRow(HasPrimaryColor, BuildColorRow());
         AddRow(HasThickness, BuildThicknessRow());
+        AddRow(HasFill, BuildFillRow());
         AddRow(IsLabel, BuildFontRow());
     }
 
@@ -50,9 +51,12 @@ public partial class PropertyBar : UserControl
     /// row rather than rewriting it.
     /// </summary>
     private static bool HasPrimaryColor(BoardObject item) =>
-        item is InkStrokeObject or FreeTextBoardObject;
+        item is InkStrokeObject or FreeTextBoardObject or ShapeBoardObject;
 
-    private static bool HasThickness(BoardObject item) => item is InkStrokeObject;
+    private static bool HasThickness(BoardObject item) =>
+        item is InkStrokeObject or ShapeBoardObject;
+
+    private static bool HasFill(BoardObject item) => item is ShapeBoardObject;
 
     private static bool IsLabel(BoardObject item) => item is FreeTextBoardObject;
 
@@ -65,6 +69,11 @@ public partial class PropertyBar : UserControl
     /// A pen thickness chosen for everything selected.
     /// </summary>
     public event Action<double>? ThicknessChosen;
+
+    /// <summary>
+    /// A fill chosen for every selected shape. Null is None.
+    /// </summary>
+    public event Action<uint?>? FillChosen;
 
     /// <summary>
     /// A font, a size, a style, or a quarter turn chosen for every selected
@@ -231,8 +240,7 @@ public partial class PropertyBar : UserControl
                         continue;
                     }
 
-                    button.IsChecked = selection.All(item =>
-                        item is InkStrokeObject stroke && stroke.Style.Thickness == thickness);
+                    button.IsChecked = selection.All(item => ThicknessOf(item) == thickness);
                     if (button.Content is StrokePreview preview)
                     {
                         preview.PenStyle = sample with { Thickness = thickness };
@@ -411,6 +419,44 @@ public partial class PropertyBar : UserControl
         return labels.All(label => property(label).Equals(first)) ? first : null;
     }
 
+    /// <summary>
+    /// None first, then the six pen colors as tints. A shape's fill is there to
+    /// group what is inside it rather than to hide it, so None is the choice a
+    /// shape starts with and the one that is always reachable.
+    /// </summary>
+    private PropertyBarRow BuildFillRow()
+    {
+        var host = new StackPanel { Orientation = Orientation.Horizontal };
+        foreach (uint? fill in ShapeSettings.Fills)
+        {
+            var button = new ToggleButton
+            {
+                Style = (Style)FindResource("ColorSwatchButton"),
+                Background = fill is { } argb ? ToFrozenBrush(argb) : Brushes.Transparent,
+                ToolTip = fill is null
+                    ? "No fill"
+                    : InkPalettes.Pen.First(swatch => ShapeSettings.Tint(swatch.Argb) == fill).Name + " fill",
+                Tag = fill,
+            };
+            button.Click += (_, _) => FillChosen?.Invoke(fill);
+            host.Children.Add(button);
+        }
+
+        return new PropertyBarRow
+        {
+            Content = host,
+            Refresh = selection =>
+            {
+                foreach (var button in host.Children.OfType<ToggleButton>())
+                {
+                    var fill = button.Tag as uint?;
+                    button.IsChecked = selection.All(item =>
+                        item is ShapeBoardObject shape && shape.FillArgb == fill);
+                }
+            },
+        };
+    }
+
     private static bool Shared(IReadOnlyList<BoardObject> selection, uint argb) =>
         selection.All(item => ColorOf(item) == argb);
 
@@ -418,6 +464,14 @@ public partial class PropertyBar : UserControl
     {
         InkStrokeObject stroke => stroke.Style.Argb,
         FreeTextBoardObject label => label.Argb,
+        ShapeBoardObject shape => shape.OutlineArgb,
+        _ => null,
+    };
+
+    private static double? ThicknessOf(BoardObject item) => item switch
+    {
+        InkStrokeObject stroke => stroke.Style.Thickness,
+        ShapeBoardObject shape => shape.Thickness,
         _ => null,
     };
 

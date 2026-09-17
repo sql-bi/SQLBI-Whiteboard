@@ -29,10 +29,11 @@ public static class BoardArchive
             : VersionBeforeFrames;
 
     /// <summary>
-    /// The objects that only a reader of version 7 understands. Shapes and
-    /// connectors join labels here as they arrive.
+    /// The objects that only a reader of version 7 understands. Connectors join
+    /// labels and shapes here as they arrive.
     /// </summary>
-    private static bool NeedsVersion7(BoardObject item) => item is FreeTextBoardObject;
+    private static bool NeedsVersion7(BoardObject item) =>
+        item is FreeTextBoardObject or ShapeBoardObject;
     private const string SceneEntryName = "scene.json";
     public const string PreviewEntryName = "preview.png";
 
@@ -245,6 +246,19 @@ public static class BoardArchive
             AngleDegrees: label.AngleDegrees,
             LayoutWidth: label.LayoutWidth,
             LayoutHeight: label.LayoutHeight),
+        ShapeBoardObject shape => new ObjectDto(
+            "shape",
+            shape.Id,
+            shape.ZIndex,
+            shape.Bounds,
+            null,
+            null,
+            null,
+            null,
+            ShapeKind: shape.Kind.ToString(),
+            OutlineArgb: shape.OutlineArgb,
+            FillArgb: shape.FillArgb,
+            Thickness: shape.Thickness),
         _ => throw new NotSupportedException($"Unsupported board object type {item.GetType().Name}."),
     };
 
@@ -283,6 +297,14 @@ public static class BoardArchive
                 dto.IsFrozen ?? true),
         "frame" => new FrameBoardObject(dto.Id, dto.ZIndex, dto.Bounds, dto.TextTitle ?? ""),
         "label" => LabelFromDto(dto),
+        "shape" => new ShapeBoardObject(
+            dto.Id,
+            dto.ZIndex,
+            dto.Bounds,
+            NormalizeShapeKind(dto.ShapeKind),
+            dto.OutlineArgb ?? PenStyle.Default.Argb,
+            dto.FillArgb,
+            NormalizeShapeThickness(dto.Thickness)),
         _ => throw new InvalidDataException($"Invalid board object type '{dto.Type}'."),
     };
 
@@ -326,6 +348,20 @@ public static class BoardArchive
         ? frameRate.Value
         : 15;
 
+    /// <summary>
+    /// A kind this release does not know becomes a rounded rectangle, so a board
+    /// written by a later one still opens with its shapes where they were.
+    /// </summary>
+    private static ShapeKind NormalizeShapeKind(string? kind) =>
+        Enum.TryParse(kind, ignoreCase: true, out ShapeKind parsed) && Enum.IsDefined(parsed)
+            ? parsed
+            : ShapeKind.RoundedRectangle;
+
+    private static double NormalizeShapeThickness(double? thickness) =>
+        thickness is > 0 and <= 100
+            ? thickness.Value
+            : ShapeBoardObject.DefaultThickness;
+
     private static double NormalizeTextVisualScale(double? scale) =>
         scale is > 0 and < 100 ? scale.Value : 1;
 
@@ -356,7 +392,11 @@ public static class BoardArchive
         bool? Underline = null,
         double? AngleDegrees = null,
         double? LayoutWidth = null,
-        double? LayoutHeight = null);
+        double? LayoutHeight = null,
+        string? ShapeKind = null,
+        uint? OutlineArgb = null,
+        uint? FillArgb = null,
+        double? Thickness = null);
 
     private sealed record InkPointDto(double X, double Y, float Pressure, long Timestamp);
 

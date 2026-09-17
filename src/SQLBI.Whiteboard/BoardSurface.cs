@@ -98,6 +98,12 @@ internal sealed class BoardSurface : FrameworkElement
 
     public PenStyle PendingStrokeStyle { get; set; }
 
+    /// <summary>
+    /// The shape being dragged out right now. It is drawn over the board rather
+    /// than added to it, so nothing is recorded until the pointer lifts.
+    /// </summary>
+    public ShapeBoardObject? PendingShape { get; set; }
+
     public void Configure(BoardDocument document, Camera2D camera)
     {
         _document = document;
@@ -159,6 +165,9 @@ internal sealed class BoardSurface : FrameworkElement
                         VisualTreeHelper.GetDpi(this).PixelsPerDip,
                         LanguageChipTitleReserve(text));
                     break;
+                case ShapeBoardObject shape:
+                    DrawShape(drawingContext, shape, _camera);
+                    break;
             }
         }
 
@@ -179,6 +188,11 @@ internal sealed class BoardSurface : FrameworkElement
         if (PendingStroke is { Count: > 1 } pending)
         {
             DrawStroke(drawingContext, pending, PendingStrokeStyle, _camera);
+        }
+
+        if (PendingShape is { } pendingShape)
+        {
+            DrawShape(drawingContext, pendingShape, _camera);
         }
 
         if (HoveredObjectId is Guid hoveredId &&
@@ -624,5 +638,66 @@ internal sealed class BoardSurface : FrameworkElement
         };
         pen.Freeze();
         return pen;
+    }
+
+    private static Point ToScreenPoint(PointD world, Camera2D camera)
+    {
+        PointD screen = camera.WorldToScreen(world);
+        return new Point(screen.X, screen.Y);
+    }
+
+    /// <summary>
+    /// A shape from the outline Core describes, filled and then stroked in the
+    /// camera's own space. The arcs are handed to WPF as arcs rather than as the
+    /// polygon the hit test walks, so a circle stays a circle at any zoom, and
+    /// the outline thickens with the zoom exactly as ink does.
+    /// </summary>
+    private static void DrawShape(
+        DrawingContext drawingContext,
+        ShapeBoardObject shape,
+        Camera2D camera)
+    {
+        ShapeOutline outline = ShapeGeometry.Describe(shape.Kind, shape.Bounds);
+        var geometry = new StreamGeometry();
+        using (var context = geometry.Open())
+        {
+            context.BeginFigure(ToScreenPoint(outline.Start, camera), isFilled: true, isClosed: true);
+            foreach (ShapeSegment segment in outline.Segments)
+            {
+                if (segment.Kind == ShapeSegmentKind.Line)
+                {
+                    context.LineTo(
+                        ToScreenPoint(segment.End, camera),
+                        isStroked: true,
+                        isSmoothJoin: false);
+                }
+                else
+                {
+                    context.ArcTo(
+                        ToScreenPoint(segment.End, camera),
+                        new Size(segment.RadiusX * camera.Zoom, segment.RadiusY * camera.Zoom),
+                        0,
+                        isLargeArc: false,
+                        segment.Clockwise ? SweepDirection.Clockwise : SweepDirection.Counterclockwise,
+                        isStroked: true,
+                        isSmoothJoin: false);
+                }
+            }
+        }
+
+        geometry.Freeze();
+        var pen = new Pen(
+            CreateFrozenBrush(shape.OutlineArgb),
+            Math.Max(0.1, shape.Thickness * camera.Zoom))
+        {
+            LineJoin = PenLineJoin.Round,
+            StartLineCap = PenLineCap.Round,
+            EndLineCap = PenLineCap.Round,
+        };
+        pen.Freeze();
+        drawingContext.DrawGeometry(
+            shape.FillArgb is { } fill ? CreateFrozenBrush(fill) : null,
+            pen,
+            geometry);
     }
 }

@@ -897,6 +897,7 @@ public partial class PreferencesWindow : Window
                 SettingsCatalog.Ids.WarnWhenNoDigitizer => _settings.WarnWhenNoDigitizer,
                 SettingsCatalog.Ids.RestoreLastSession => _settings.RestoreLastSession,
                 SettingsCatalog.Ids.SuggestMouseMode => _settings.SuggestMouseMode,
+                SettingsCatalog.Ids.InsertOnToolbar => _settings.InsertOnToolbar,
                 SettingsCatalog.Ids.CheckForUpdates => _settings.CheckForUpdates,
                 _ => false,
             },
@@ -1070,6 +1071,7 @@ public partial class PreferencesWindow : Window
             SettingsCatalog.Ids.ExtendSelection => _settings.ExtendSelection.ToString(),
             SettingsCatalog.Ids.PenButton => _settings.PenButtons.Barrel.ToString(),
             SettingsCatalog.Ids.Grid => _settings.Grid.ToString(),
+            SettingsCatalog.Ids.AfterInsert => _settings.AfterInsert.ToString(),
             SettingsCatalog.Ids.ShowEraserButton => _settings.ShowEraserButton
                 ? SettingsCatalog.EraserButton.On
                 : SettingsCatalog.EraserButton.Off,
@@ -1098,6 +1100,10 @@ public partial class PreferencesWindow : Window
         else if (setting.Id == SettingsCatalog.Ids.SuggestMouseMode)
         {
             _settings.SuggestMouseMode = value;
+        }
+        else if (setting.Id == SettingsCatalog.Ids.InsertOnToolbar)
+        {
+            _settings.InsertOnToolbar = value;
         }
         else if (setting.Id == SettingsCatalog.Ids.CheckForUpdates)
         {
@@ -1188,6 +1194,10 @@ public partial class PreferencesWindow : Window
                 break;
             case SettingsCatalog.Ids.ShowEraserButton:
                 _settings.ShowEraserButton = id == SettingsCatalog.EraserButton.On;
+                break;
+            case SettingsCatalog.Ids.AfterInsert
+                when Enum.TryParse<AfterInsert>(id, out var afterInsert):
+                _settings.AfterInsert = afterInsert;
                 break;
             case SettingsCatalog.Ids.Grid
                 when Enum.TryParse<GridStyle>(id, out var grid):

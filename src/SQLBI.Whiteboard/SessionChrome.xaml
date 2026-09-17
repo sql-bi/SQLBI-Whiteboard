@@ -408,10 +408,158 @@
                                 Orientation="Horizontal"
                                 Visibility="Collapsed">
                         <Button Style="{StaticResource SessionCommandButton}"
+                                ToolTip="Drag on the board to draw a rounded rectangle"
+                                Tag="RoundedRectangle"
+                                Click="Shape_Click">
+                            <!-- Top rather than centred, so the one label that
+                                 wraps does not lift its icon out of line. -->
+                            <StackPanel HorizontalAlignment="Center"
+                                        VerticalAlignment="Top">
+                                <Path Width="18"
+                                      Height="18"
+                                      Stretch="Uniform"
+                                      Fill="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"
+                                      Data="{StaticResource RoundedRectangleShapeGeometry}" />
+                                <TextBlock Margin="0,4,0,0"
+                                           HorizontalAlignment="Center"
+                                           TextAlignment="Center"
+                                           TextWrapping="Wrap"
+                                           Text="Rounded" />
+                            </StackPanel>
+                        </Button>
+                        <Button Style="{StaticResource SessionCommandButton}"
+                                ToolTip="Drag on the board to draw a ellipse"
+                                Tag="Ellipse"
+                                Click="Shape_Click">
+                            <StackPanel HorizontalAlignment="Center"
+                                        VerticalAlignment="Top">
+                                <Path Width="18"
+                                      Height="18"
+                                      Stretch="Uniform"
+                                      Fill="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"
+                                      Data="{StaticResource EllipseShapeGeometry}" />
+                                <TextBlock Margin="0,4,0,0"
+                                           HorizontalAlignment="Center"
+                                           TextAlignment="Center"
+                                           TextWrapping="Wrap"
+                                           Text="Ellipse" />
+                            </StackPanel>
+                        </Button>
+                        <Button Style="{StaticResource SessionCommandButton}"
+                                ToolTip="Drag on the board to draw a triangle"
+                                Tag="Triangle"
+                                Click="Shape_Click">
+                            <StackPanel HorizontalAlignment="Center"
+                                        VerticalAlignment="Top">
+                                <Path Width="18"
+                                      Height="18"
+                                      Stretch="Uniform"
+                                      Fill="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"
+                                      Data="{StaticResource TriangleShapeGeometry}" />
+                                <TextBlock Margin="0,4,0,0"
+                                           HorizontalAlignment="Center"
+                                           TextAlignment="Center"
+                                           TextWrapping="Wrap"
+                                           Text="Triangle" />
+                            </StackPanel>
+                        </Button>
+                        <Button Style="{StaticResource SessionCommandButton}"
+                                ToolTip="Drag on the board to draw a pentagon"
+                                Tag="Pentagon"
+                                Click="Shape_Click">
+                            <StackPanel HorizontalAlignment="Center"
+                                        VerticalAlignment="Top">
+                                <Path Width="18"
+                                      Height="18"
+                                      Stretch="Uniform"
+                                      Fill="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"
+                                      Data="{StaticResource PentagonShapeGeometry}" />
+                                <TextBlock Margin="0,4,0,0"
+                                           HorizontalAlignment="Center"
+                                           TextAlignment="Center"
+                                           TextWrapping="Wrap"
+                                           Text="Pentagon" />
+                            </StackPanel>
+                        </Button>
+                        <Button Style="{StaticResource SessionCommandButton}"
+                                ToolTip="Drag on the board to draw a block arrow"
+                                Tag="BlockArrow"
+                                Click="Shape_Click">
+                            <StackPanel HorizontalAlignment="Center"
+                                        VerticalAlignment="Top">
+                                <Path Width="18"
+                                      Height="18"
+                                      Stretch="Uniform"
+                                      Fill="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"
+                                      Data="{StaticResource BlockArrowShapeGeometry}" />
+                                <TextBlock Margin="0,4,0,0"
+                                           HorizontalAlignment="Center"
+                                           TextAlignment="Center"
+                                           TextWrapping="Wrap"
+                                           Text="Arrow" />
+                            </StackPanel>
+                        </Button>
+                        <Button Style="{StaticResource SessionCommandButton}"
+                                ToolTip="Drag on the board to draw a parallelogram"
+                                Tag="Parallelogram"
+                                Click="Shape_Click">
+                            <StackPanel HorizontalAlignment="Center"
+                                        VerticalAlignment="Top">
+                                <Path Width="18"
+                                      Height="18"
+                                      Stretch="Uniform"
+                                      Fill="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"
+                                      Data="{StaticResource ParallelogramShapeGeometry}" />
+                                <TextBlock Margin="0,4,0,0"
+                                           HorizontalAlignment="Center"
+                                           TextAlignment="Center"
+                                           TextWrapping="Wrap"
+                                           Text="Parallelogram" />
+                            </StackPanel>
+                        </Button>
+                        <Button Style="{StaticResource SessionCommandButton}"
+                                ToolTip="Drag on the board to draw a diamond"
+                                Tag="Diamond"
+                                Click="Shape_Click">
+                            <StackPanel HorizontalAlignment="Center"
+                                        VerticalAlignment="Top">
+                                <Path Width="18"
+                                      Height="18"
+                                      Stretch="Uniform"
+                                      Fill="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"
+                                      Data="{StaticResource DiamondShapeGeometry}" />
+                                <TextBlock Margin="0,4,0,0"
+                                           HorizontalAlignment="Center"
+                                           TextAlignment="Center"
+                                           TextWrapping="Wrap"
+                                           Text="Diamond" />
+                            </StackPanel>
+                        </Button>
+                        <Button Style="{StaticResource SessionCommandButton}"
+                                ToolTip="Drag on the board to draw a stadium"
+                                Tag="Stadium"
+                                Click="Shape_Click">
+                            <StackPanel HorizontalAlignment="Center"
+                                        VerticalAlignment="Top">
+                                <Path Width="18"
+                                      Height="18"
+                                      Stretch="Uniform"
+                                      Fill="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"
+                                      Data="{StaticResource StadiumShapeGeometry}" />
+                                <TextBlock Margin="0,4,0,0"
+                                           HorizontalAlignment="Center"
+                                           TextAlignment="Center"
+                                           TextWrapping="Wrap"
+                                           Text="Stadium" />
+                            </StackPanel>
+                        </Button>
+                        <Border Style="{StaticResource SessionCommandSeparator}" />
+                        <Button Style="{StaticResource SessionCommandButton}"
                                 ToolTip="Click on the board to type a label"
                                 Tag="InsertText"
                                 Click="Command_Click">
-                            <StackPanel HorizontalAlignment="Center">
+                            <StackPanel HorizontalAlignment="Center"
+                                        VerticalAlignment="Top">
                                 <Path Width="18"
                                       Height="18"
                                       Stretch="Uniform"

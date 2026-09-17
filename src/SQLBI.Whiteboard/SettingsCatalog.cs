@@ -112,6 +112,8 @@ internal static class SettingsCatalog
         public const string ToolbarPlacement = "toolbar.placement";
         public const string ToolbarLayout = "toolbar.layout";
         public const string ShowEraserButton = "toolbar.eraserButton";
+        public const string InsertOnToolbar = "toolbar.insert";
+        public const string AfterInsert = "toolbar.afterInsert";
         public const string WarnWhenNoDigitizer = "startup.noDigitizerNotice";
         public const string RestoreLastSession = "startup.restoreLastSession";
         public const string FingerMode = "input.fingerMode";
@@ -436,6 +438,31 @@ internal static class SettingsCatalog
             [
                 new() { Id = EraserButton.Off, Title = "Off" },
                 new() { Id = EraserButton.On, Title = "On" },
+            ],
+        },
+        new()
+        {
+            Id = Ids.InsertOnToolbar,
+            Category = Toolbar,
+            Title = "Insert and Lasso on the toolbar",
+            Summary = "An Insert button and a Lasso chevron on the floating toolbar, which grows wider",
+            Description = "Off, the Insert tab in the tab strip is where shapes, connectors, and text come from, and the Edit row's Lasso toggle switches what a drag on empty canvas draws. On, the floating toolbar gains an Insert button beside Select whose flyout offers the same things, and a chevron on Select offering Rectangle and Lasso. It is off by default because the toolbar sits under a presenter picture-in-picture during recording, and both controls make it wider.",
+            Keywords = ["insert", "shape", "toolbar", "lasso", "select", "chevron", "flyout", "button"],
+            Editor = SettingEditorKind.BooleanSwitch,
+        },
+        new()
+        {
+            Id = Ids.AfterInsert,
+            Category = Toolbar,
+            Title = "After inserting an object",
+            Summary = "Whether the Insert tool stays for the next drag",
+            Description = "Keep the tool leaves the shape, connector, or text tool active, so the next drag draws another of the same thing; Escape or any tool button still leaves it. Return to Select hands the tool back as soon as one object has been drawn, which is what you want when a shape is something you add now and then rather than a row of them.",
+            Keywords = ["insert", "shape", "connector", "text", "tool", "sticky", "select", "after"],
+            Editor = SettingEditorKind.EnumChoice,
+            Choices =
+            [
+                new() { Id = nameof(Core.Settings.AfterInsert.KeepTool), Title = "Keep the tool" },
+                new() { Id = nameof(Core.Settings.AfterInsert.ReturnToSelect), Title = "Return to Select" },
             ],
         },
         new()

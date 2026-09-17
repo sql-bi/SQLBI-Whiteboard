@@ -122,6 +122,17 @@ public enum GridStyle
     Dots = 2,
 }
 
+/// <summary>
+/// What happens to the Insert tool once it has drawn something. Keeping it is
+/// the default, so the next drag draws another; Escape and any tool button
+/// leave it either way.
+/// </summary>
+public enum AfterInsert
+{
+    KeepTool = 0,
+    ReturnToSelect = 1,
+}
+
 public sealed class AppSettings
 {
     public int Version { get; set; } = AppSettingsSerializer.CurrentVersion;
@@ -171,6 +182,17 @@ public sealed class AppSettings
     /// than nothing at all.
     /// </summary>
     public GridStyle LastGridStyle { get; set; } = GridStyle.Lines;
+
+    /// <summary>
+    /// Whether the floating toolbar carries an Insert button and a Lasso
+    /// chevron. Off, because it is critical that the compact layouts stay the
+    /// width they are; the Insert tab holds the same things whatever this says.
+    /// </summary>
+    public bool InsertOnToolbar { get; set; }
+
+    public AfterInsert AfterInsert { get; set; } = AfterInsert.KeepTool;
+
+    public ShapeSettings Shape { get; set; } = new();
 
     /// <summary>
     /// What the last label was written with, so the next one is written the
@@ -342,6 +364,13 @@ public static class AppSettingsSerializer
         {
             settings.LastGridStyle = GridStyle.Lines;
         }
+
+        if (!Enum.IsDefined(settings.AfterInsert))
+        {
+            settings.AfterInsert = AfterInsert.KeepTool;
+        }
+
+        settings.Shape = ShapeSettings.Normalize(settings.Shape);
 
         if (settings.StartupMonitor == StartupMonitorKind.Named)
         {

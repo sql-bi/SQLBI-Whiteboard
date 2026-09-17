@@ -2295,6 +2295,224 @@ Assert(
         "Settings are written as version 19.");
 }
 
+// Shapes: the outline every kind is made of, what a tap on one reaches, how a
+// board carrying one is written, and what the next one is drawn with.
+{
+    var shapeBox = new RectD(0, 0, 100, 60);
+
+    IReadOnlyList<PointD> rounded = ShapeGeometry.Outline(ShapeKind.RoundedRectangle, shapeBox);
+    Assert(
+        HasShapePoint(rounded, 12, 0) && HasShapePoint(rounded, 88, 0) && HasShapePoint(rounded, 100, 12),
+        "A rounded rectangle's straight runs stop a corner radius short of each corner.");
+    Assert(
+        !HasShapePoint(rounded, 0, 0),
+        "The corner itself is not on a rounded rectangle: that is what makes it rounded.");
+
+    IReadOnlyList<PointD> ellipse = ShapeGeometry.Outline(ShapeKind.Ellipse, shapeBox);
+    Assert(
+        HasShapePoint(ellipse, 0, 30) && HasShapePoint(ellipse, 100, 30) &&
+        HasShapePoint(ellipse, 50, 0) && HasShapePoint(ellipse, 50, 60),
+        "An ellipse touches its box at the middle of each side.");
+    Assert(
+        ellipse.All(point => shapeBox.Inflate(0.000001).Contains(point)),
+        "The ellipse is inscribed in the box rather than escaping it between the samples.");
+
+    Assert(
+        ShapeGeometry.Outline(ShapeKind.Triangle, shapeBox)
+            .SequenceEqual([new PointD(50, 0), new PointD(100, 60), new PointD(0, 60)]),
+        "A triangle is its apex and the two bottom corners of the box.");
+    Assert(
+        ShapeGeometry.Outline(ShapeKind.Diamond, shapeBox)
+            .SequenceEqual([new PointD(50, 0), new PointD(100, 30), new PointD(50, 60), new PointD(0, 30)]),
+        "A diamond is the middle of each side.");
+    Assert(
+        ShapeGeometry.Outline(ShapeKind.Parallelogram, shapeBox)
+            .SequenceEqual([new PointD(25, 0), new PointD(100, 0), new PointD(75, 60), new PointD(0, 60)]),
+        "A parallelogram slants by a quarter of its width.");
+    Assert(
+        ShapeGeometry.Outline(ShapeKind.BlockArrow, shapeBox)
+            .SequenceEqual(
+            [
+                new PointD(0, 15), new PointD(60, 15), new PointD(60, 0), new PointD(100, 30),
+                new PointD(60, 60), new PointD(60, 45), new PointD(0, 45),
+            ]),
+        "A block arrow's head begins at three fifths of the box and its shaft is half the height.");
+
+    IReadOnlyList<PointD> pentagon = ShapeGeometry.Outline(ShapeKind.Pentagon, shapeBox);
+    Assert(
+        pentagon.Count == 5 && HasShapePoint(pentagon, 50, 0),
+        "A pentagon has five points and one of them is the top of the box.");
+    Assert(
+        pentagon.Min(point => point.X) == 0 && pentagon.Max(point => point.X) == 100 &&
+        pentagon.Max(point => point.Y) == 60,
+        "The pentagon fills the box it was dragged out of rather than a circle inside it.");
+
+    IReadOnlyList<PointD> stadium = ShapeGeometry.Outline(ShapeKind.Stadium, shapeBox);
+    Assert(
+        HasShapePoint(stadium, 30, 0) && HasShapePoint(stadium, 70, 0) && HasShapePoint(stadium, 100, 30),
+        "A stadium wider than it is tall has straight sides and semicircular ends.");
+
+    // The band along the outline, and nothing else: what is drawn inside a shape
+    // has to stay reachable.
+    var banded = new ShapeBoardObject(
+        Guid.NewGuid(),
+        0,
+        shapeBox,
+        ShapeKind.Ellipse,
+        0xFF1F2937,
+        null,
+        4);
+    Assert(banded.HitTest(new PointD(0, 30), 1), "A tap on the outline takes hold of the shape.");
+    Assert(
+        banded.HitTest(new PointD(3, 30), 1) && !banded.HitTest(new PointD(20, 30), 1),
+        "The band reaches eight screen pixels in from the outline and no further.");
+    Assert(!banded.HitTest(new PointD(50, 30), 1), "A tap in the middle of a shape is not the shape.");
+    Assert(!banded.HitTest(new PointD(130, 30), 1), "A tap well outside the box is not the shape.");
+    Assert(
+        banded.HitTest(new PointD(-3, 30), 1) && !banded.HitTest(new PointD(-3, 30), 8),
+        "The band is screen pixels, so zooming in narrows what it covers on the board.");
+
+    // The area asks the outline too, so an empty corner of a shape's box is not
+    // the shape.
+    Assert(
+        !banded.IsTakenBy(SelectionArea.Rectangle(new RectD(-5, -5, 15, 15)), AreaSelection.PartlyInside),
+        "A band over the empty corner of an ellipse's box does not take the ellipse.");
+    Assert(
+        banded.IsTakenBy(SelectionArea.Rectangle(new RectD(-5, 25, 20, 10)), AreaSelection.PartlyInside),
+        "A band that crosses the outline takes the shape.");
+    Assert(
+        banded.IsTakenBy(SelectionArea.Rectangle(new RectD(-10, -10, 120, 80)), AreaSelection.FullyInside),
+        "An area around the whole shape takes it under the stricter rule as well.");
+    Assert(
+        !banded.IsTakenBy(SelectionArea.Rectangle(new RectD(-5, 25, 20, 10)), AreaSelection.FullyInside),
+        "Under Only objects fully inside, every point of the outline has to be inside.");
+
+    // A shape is a container, so ink that touches only it links to it.
+    var shapeBoard = new BoardDocument();
+    var linkedShape = new ShapeBoardObject(
+        Guid.NewGuid(),
+        shapeBoard.NextZIndex,
+        new RectD(0, 0, 200, 120),
+        ShapeKind.RoundedRectangle,
+        0xFF1F2937,
+        null,
+        4);
+    shapeBoard.AddObject(linkedShape);
+    var shapeStroke = InkStrokeObject.Create(
+        [new InkPoint(new PointD(40, 40), 0.5f, 0), new InkPoint(new PointD(160, 80), 0.5f, 1)],
+        PenStyle.Default,
+        shapeBoard.NextZIndex);
+    Assert(
+        shapeBoard.FindSingleTouchedContainer(shapeStroke)?.Id == linkedShape.Id,
+        "A stroke that touches only a shape links to it, as it does to any other container.");
+
+    // Version 7 is asked for by the board that needs it, and by nothing else.
+    var shapeArchiveBoard = new BoardDocument();
+    Assert(
+        BoardArchive.VersionFor(shapeArchiveBoard) == BoardArchive.VersionBeforeFrames,
+        "A board with neither a frame nor a design object is still written as version 5.");
+    shapeArchiveBoard.AddObject(new FrameBoardObject(
+        Guid.NewGuid(),
+        shapeArchiveBoard.NextZIndex,
+        new RectD(0, 0, 400, 300),
+        "Slide"));
+    Assert(
+        BoardArchive.VersionFor(shapeArchiveBoard) == BoardArchive.VersionWithFrames,
+        "A board with only frames stays on the version frames arrived in.");
+    var filledShape = new ShapeBoardObject(
+        Guid.NewGuid(),
+        shapeArchiveBoard.NextZIndex,
+        new RectD(10, 20, 300, 140),
+        ShapeKind.Stadium,
+        0xFF009E73,
+        0x40CC79A7,
+        8);
+    shapeArchiveBoard.AddObject(filledShape);
+    var hollowShape = new ShapeBoardObject(
+        Guid.NewGuid(),
+        shapeArchiveBoard.NextZIndex,
+        new RectD(400, 20, 120, 120),
+        ShapeKind.Pentagon,
+        0xFFE64B3D,
+        null,
+        2);
+    shapeArchiveBoard.AddObject(hollowShape);
+    Assert(
+        BoardArchive.VersionFor(shapeArchiveBoard) == BoardArchive.CurrentVersion,
+        "A board that holds a shape asks for version 7.");
+
+    await using var shapeArchive = new MemoryStream();
+    await BoardArchive.SaveAsync(shapeArchiveBoard, shapeArchive);
+    shapeArchive.Position = 0;
+    var loadedShapes = await BoardArchive.LoadAsync(shapeArchive);
+    Assert(
+        loadedShapes.Objects.OfType<ShapeBoardObject>().Single(item => item.Id == filledShape.Id) == filledShape,
+        "A filled shape round-trips with its kind, outline, fill, and thickness.");
+    Assert(
+        loadedShapes.Objects.OfType<ShapeBoardObject>().Single(item => item.Id == hollowShape.Id) == hollowShape,
+        "A shape with no fill round-trips as one, rather than picking one up on the way.");
+
+    // A kind a later release invented becomes a rounded rectangle, and the
+    // fields a hand-written board leaves out take their defaults.
+    var strangeId = Guid.NewGuid();
+    await using var strangeArchive = new MemoryStream();
+    using (var writer = new ZipArchive(strangeArchive, ZipArchiveMode.Create, leaveOpen: true))
+    {
+        var entry = writer.CreateEntry("scene.json");
+        await using var entryStream = entry.Open();
+        await using var text = new StreamWriter(entryStream, Encoding.UTF8);
+        await text.WriteAsync(
+            "{\"version\":7,\"objects\":[{\"type\":\"shape\",\"id\":\"" + strangeId +
+            "\",\"zIndex\":0,\"bounds\":{\"x\":0,\"y\":0,\"width\":100,\"height\":60}," +
+            "\"shapeKind\":\"Hexagon\"}],\"assets\":[]}");
+    }
+
+    strangeArchive.Position = 0;
+    var loadedStrange = await BoardArchive.LoadAsync(strangeArchive);
+    Assert(
+        loadedStrange.Objects.OfType<ShapeBoardObject>().Single() is
+        {
+            Kind: ShapeKind.RoundedRectangle,
+            FillArgb: null,
+            Thickness: 4,
+        },
+        "An unknown shape kind reads as a rounded rectangle, and the missing fields take their defaults.");
+
+    // The two Toolbar settings and the shape defaults.
+    var insertSettings = AppSettingsSerializer.Parse(AppSettingsSerializer.Format(new AppSettings
+    {
+        InsertOnToolbar = true,
+        AfterInsert = AfterInsert.ReturnToSelect,
+        Shape = new ShapeSettings
+        {
+            OutlineArgb = 0xFF009E73,
+            FillArgb = ShapeSettings.Tint(0xFFCC79A7),
+            Thickness = 8,
+        },
+    }));
+    Assert(
+        insertSettings is { InsertOnToolbar: true, AfterInsert: AfterInsert.ReturnToSelect } &&
+        insertSettings.Shape is { OutlineArgb: 0xFF009E73, Thickness: 8 } &&
+        insertSettings.Shape.FillArgb == ShapeSettings.Tint(0xFFCC79A7),
+        "The Toolbar settings and the shape defaults survive a round trip.");
+    Assert(
+        AppSettingsSerializer.Parse("{ }") is
+        {
+            InsertOnToolbar: false,
+            AfterInsert: AfterInsert.KeepTool,
+        },
+        "A file that says nothing about the Insert toolbar takes the defaults.");
+    Assert(
+        AppSettingsSerializer.Parse(
+            "{ \"afterInsert\": 99, \"shape\": { \"outlineArgb\": 123, \"fillArgb\": 456, \"thickness\": 99 } }") is
+        {
+            AfterInsert: AfterInsert.KeepTool,
+            Shape: { FillArgb: null, Thickness: 4 },
+        },
+        "A shape default that is not on the palette normalizes back to one that is.");
+}
+
+
 // A label is a rectangle of text turned about its own centre. What is stored is
 // the layout size and the angle; the box the document indexes follows from them,
 // and so do the hit test, the area test, and what the corner handle does.
@@ -2526,6 +2744,9 @@ static InkStrokeObject ExportStroke(double x, double y, double width, double hei
         PenStyle.Default,
         zIndex,
         containerId: containerId);
+
+static bool HasShapePoint(IReadOnlyList<PointD> outline, double x, double y) =>
+    outline.Any(point => Math.Abs(point.X - x) <= 0.000001 && Math.Abs(point.Y - y) <= 0.000001);
 
 static void Assert(bool condition, string message)
 {

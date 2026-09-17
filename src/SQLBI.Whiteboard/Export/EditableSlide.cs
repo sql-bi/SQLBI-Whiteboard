@@ -81,8 +81,8 @@ internal static class EditableSlide
         // objects, which have no native form yet and so go out this way even
         // when the ink did not.
         Func<BoardObject, bool> overlayFilter = inkAsStrokes
-            ? static item => item is FreeTextBoardObject
-            : static item => item is InkStrokeObject or FreeTextBoardObject;
+            ? static item => item is FreeTextBoardObject or ShapeBoardObject
+            : static item => item is InkStrokeObject or FreeTextBoardObject or ShapeBoardObject;
         if (area.Objects.Any(overlayFilter))
         {
             var overlay = BoardRasterizer.Render(

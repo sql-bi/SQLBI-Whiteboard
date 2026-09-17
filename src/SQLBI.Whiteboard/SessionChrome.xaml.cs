@@ -4,6 +4,7 @@ using System.Windows.Controls.Primitives;
 using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Threading;
+using SQLBI.Whiteboard.Core.Model;
 
 namespace SQLBI.Whiteboard;
 
@@ -48,6 +49,13 @@ public partial class SessionChrome : UserControl
     }
 
     public event Action<SessionCommand>? CommandRequested;
+
+    /// <summary>
+    /// A shape picked from the Insert row. It carries its kind rather than
+    /// joining <see cref="SessionCommand"/> eight times over, and the toolbar
+    /// flyout raises the same choice through the window.
+    /// </summary>
+    public event Action<ShapeKind>? ShapeRequested;
 
     public event Action? ViewOpened;
 
@@ -258,6 +266,22 @@ public partial class SessionChrome : UserControl
         }
 
         CommandRequested?.Invoke(command);
+    }
+
+    private void Shape_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is not Button { Tag: string name } ||
+            !Enum.TryParse<ShapeKind>(name, out var kind))
+        {
+            return;
+        }
+
+        if (!IsStickyTab(_openTab))
+        {
+            Collapse();
+        }
+
+        ShapeRequested?.Invoke(kind);
     }
 
     // Insert stays open like Edit: picking a tool is the start of drawing with
