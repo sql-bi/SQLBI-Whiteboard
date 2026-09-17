@@ -38,6 +38,7 @@ public partial class MainWindow : Window
         Select,
         Pan,
         Laser,
+        Text,
     }
 
     private enum PointerAction
@@ -144,6 +145,13 @@ public partial class MainWindow : Window
     private bool _areaDragged;
     private PointD _areaStartScreen;
     private readonly List<PointD> _areaPoints = [];
+    // The label editor is the other text edit on the editor layer: a plain box
+    // in the label's own font, with no title bar and nothing to highlight. Only
+    // one of the two is ever open, and committing either commits both.
+    private FreeTextBoardObject? _labelEditBefore;
+    private FreeTextBoardObject? _labelEditCurrent;
+    private bool _labelEditIsNew;
+    private bool _updatingLabelEditor;
     private TextBoardObject? _textEditBefore;
     private InkStrokeObject[] _textEditLinkedBefore = [];
     private RectD _textEditBounds;
@@ -201,6 +209,10 @@ public partial class MainWindow : Window
         SessionBar.UpdateDismissed += SessionBar_UpdateDismissed;
         SelectionPropertyBar.ColorChosen += ApplySelectionColor;
         SelectionPropertyBar.ThicknessChosen += ApplySelectionThickness;
+        SelectionPropertyBar.FontChosen += ApplySelectionFont;
+        SelectionPropertyBar.FontSizeChosen += ApplySelectionFontSize;
+        SelectionPropertyBar.FontStyleChosen += ApplySelectionFontStyle;
+        SelectionPropertyBar.RotationStepped += StepSelectionRotation;
         UpdateWindowTitle();
         _initialBoardPath = initialBoardPath;
         TextEditorLanguageCombo.ItemsSource = TextLanguageRegistry.All;
@@ -462,6 +474,7 @@ public partial class MainWindow : Window
         SceneSurface.InvalidateVisual();
         UpdateLiveViewActionOverlay();
         UpdateTextEditorOverlay();
+        UpdateLabelEditorOverlay();
     }
 
     private void Document_Changed(object? sender, EventArgs e)
@@ -750,6 +763,12 @@ public partial class MainWindow : Window
             BeginLaserContact(e);
             _stylusAction = PointerAction.Laser;
             InkSurface.CaptureStylus();
+            e.Handled = true;
+        }
+        else if (EffectiveTool == BoardTool.Text)
+        {
+            InsertLabelAt(screen);
+            _stylusAction = PointerAction.None;
             e.Handled = true;
         }
         else
@@ -1467,6 +1486,7 @@ public partial class MainWindow : Window
         }
         else if (e.ChangedButton == MouseButton.Left &&
                  e.ClickCount >= 2 &&
+                 EffectiveTool != BoardTool.Text &&
                  (borrowSelect || EffectiveTool is BoardTool.Select or BoardTool.Pan))
         {
             // Two quick dabs with an ink tool are two strokes, not a request to
@@ -1481,6 +1501,16 @@ public partial class MainWindow : Window
             _mouseAction = PointerAction.Laser;
             _mouseToolBorrowed = false;
             Mouse.Capture(InkSurface);
+            e.Handled = true;
+        }
+        else if (e.ChangedButton == MouseButton.Left &&
+                 EffectiveTool == BoardTool.Text &&
+                 !Keyboard.Modifiers.HasFlag(ModifierKeys.Control))
+        {
+            // The Text tool answers a plain left click whether or not the mouse
+            // draws, as the Laser does. Ctrl still borrows Select, so a label
+            // can be moved with the mouse without leaving the tool.
+            InsertLabelAt(screen);
             e.Handled = true;
         }
         else if (e.ChangedButton == MouseButton.Left && borrowSelect)
@@ -1529,6 +1559,10 @@ public partial class MainWindow : Window
             case BoardTool.Select:
                 BeginContainerGesture(screen);
                 _mouseAction = PointerAction.Container;
+                break;
+            case BoardTool.Text:
+                InsertLabelAt(screen);
+                _mouseAction = PointerAction.None;
                 break;
             default:
                 BeginMouseInk(screen);
@@ -2134,6 +2168,7 @@ public partial class MainWindow : Window
         SceneSurface.InvalidateVisual();
         UpdateLiveViewActionOverlay();
         UpdateTextEditorOverlay();
+        UpdateLabelEditorOverlay();
         UpdateSelectionPropertyBar();
     }
 
@@ -2159,7 +2194,11 @@ public partial class MainWindow : Window
     /// </summary>
     private void PublishSelection()
     {
-        SceneSurface.SelectedObjectIds = new HashSet<Guid>(_selectedObjectIds);
+        // A label being typed has the editor's own border, so the surface is
+        // left to draw the board rather than a second outline around it.
+        SceneSurface.SelectedObjectIds = _labelEditBefore is null
+            ? new HashSet<Guid>(_selectedObjectIds)
+            : new HashSet<Guid>();
         UpdateSelectionPropertyBar();
     }
 
@@ -2700,6 +2739,300 @@ public partial class MainWindow : Window
         UpdateZOrderCommands();
     }
 
+    private double SurfacePixelsPerDip => VisualTreeHelper.GetDpi(SceneSurface).PixelsPerDip;
+
+    /// <summary>
+    /// A label where the Text tool was clicked, written in whatever the last
+    /// label was written in, with its editor open on the empty text. The click
+    /// is the top-left of the text, as it is in PowerPoint.
+    /// </summary>
+    private void InsertLabelAt(PointD screenPoint)
+    {
+        CommitTextEdit();
+        LabelSettings defaults = _settings.Label;
+        Size layout = LabelVisual.Measure(
+            string.Empty,
+            defaults.FontFamily,
+            defaults.FontSize,
+            defaults.Bold,
+            defaults.Italic,
+            SurfacePixelsPerDip);
+        PointD topLeft = _camera.ScreenToWorld(screenPoint);
+        var label = FreeTextBoardObject.Create(
+            Guid.NewGuid(),
+            _document.NextZIndex,
+            RotatedRectangle.CenterFromTopLeft(topLeft, layout.Width, layout.Height, 0),
+            string.Empty,
+            defaults.FontFamily,
+            defaults.FontSize,
+            defaults.Argb,
+            defaults.Bold,
+            defaults.Italic,
+            defaults.Underline,
+            0,
+            layout.Width,
+            layout.Height);
+
+        // Added outside the history on purpose: a label that is thought better
+        // of leaves nothing behind, so the step is recorded on commit.
+        _document.AddObject(label);
+        BeginLabelEdit(label, isNew: true);
+    }
+
+    private void BeginLabelEdit(FreeTextBoardObject label, bool isNew)
+    {
+        if (_labelEditBefore?.Id == label.Id)
+        {
+            LabelEditor.Focus();
+            return;
+        }
+
+        CommitTextEdit();
+        ResetContainerGesture();
+        _labelEditBefore = label;
+        _labelEditCurrent = label;
+        _labelEditIsNew = isNew;
+        SceneSurface.HiddenObjectId = label.Id;
+        SceneSurface.HoveredObjectId = null;
+        SelectOnly(label.Id);
+
+        _updatingLabelEditor = true;
+        LabelEditor.Text = label.Text;
+        _updatingLabelEditor = false;
+        UpdateLabelEditorOverlay();
+        SceneSurface.InvalidateVisual();
+        UpdateLiveViewActionOverlay();
+        _ = Dispatcher.InvokeAsync(
+            () =>
+            {
+                LabelEditor.Focus();
+                Keyboard.Focus(LabelEditor);
+                LabelEditor.CaretIndex = LabelEditor.Text.Length;
+            },
+            DispatcherPriority.Input);
+    }
+
+    /// <summary>
+    /// The label as it now stands, recorded as one step. A label with nothing
+    /// in it is not a label: a new one leaves no trace, and one that had text
+    /// before is removed as a step that can be undone.
+    /// </summary>
+    private void CommitLabelEdit()
+    {
+        if (_labelEditBefore is not { } before || _labelEditCurrent is not { } current)
+        {
+            return;
+        }
+
+        var wasNew = _labelEditIsNew;
+        EndLabelEditVisual();
+        if (string.IsNullOrWhiteSpace(current.Text))
+        {
+            if (wasNew)
+            {
+                _document.RemoveObject(current.Id);
+            }
+            else
+            {
+                _document.ReplaceObject(before);
+                _history.Execute(new RemoveObjectsCommand([before]), _document);
+            }
+
+            SelectOnly(null);
+            SceneSurface.InvalidateVisual();
+            return;
+        }
+
+        if (wasNew)
+        {
+            _history.RecordExecuted(new AddObjectCommand(current));
+        }
+        else if (current != before)
+        {
+            _history.RecordExecuted(new ReplaceObjectCommand(before, current));
+        }
+
+        SelectOnly(current.Id);
+        SceneSurface.InvalidateVisual();
+    }
+
+    private void CancelLabelEdit()
+    {
+        if (_labelEditBefore is not { } before || _labelEditCurrent is not { } current)
+        {
+            return;
+        }
+
+        var wasNew = _labelEditIsNew;
+        EndLabelEditVisual();
+        if (wasNew)
+        {
+            _document.RemoveObject(current.Id);
+            SelectOnly(null);
+        }
+        else
+        {
+            _document.ReplaceObject(before);
+            SelectOnly(before.Id);
+        }
+
+        SceneSurface.InvalidateVisual();
+    }
+
+    private void EndLabelEditVisual()
+    {
+        _labelEditBefore = null;
+        _labelEditCurrent = null;
+        _labelEditIsNew = false;
+        _updatingLabelEditor = false;
+        LabelEditor.Visibility = Visibility.Collapsed;
+        SceneSurface.HiddenObjectId = null;
+        InkSurface.Focus();
+    }
+
+    private void LabelEditor_TextChanged(object sender, TextChangedEventArgs e)
+    {
+        if (_updatingLabelEditor || _labelEditCurrent is not { } label)
+        {
+            return;
+        }
+
+        ApplyLabelDuringEdit(Remeasure(label with { Text = LabelEditor.Text }));
+    }
+
+    /// <summary>
+    /// The label re-measured for what it now says and how it is written. Only
+    /// the window can measure text, so every change to either comes through
+    /// here before the object is put back.
+    /// </summary>
+    private FreeTextBoardObject Remeasure(FreeTextBoardObject label)
+    {
+        Size layout = LabelVisual.Measure(label, SurfacePixelsPerDip);
+        return label.WithLayout(label.Text, layout.Width, layout.Height);
+    }
+
+    /// <summary>
+    /// A change to the label being typed. It goes straight into the document
+    /// rather than through the history, because the whole edit is one step and
+    /// that step is recorded when the editor closes.
+    /// </summary>
+    private void ApplyLabelDuringEdit(FreeTextBoardObject label)
+    {
+        _labelEditCurrent = label;
+        _document.ReplaceObject(label);
+        UpdateLabelEditorOverlay();
+        UpdateSelectionPropertyBar();
+    }
+
+    /// <summary>
+    /// The editor over the label it is editing: the same font at the same size
+    /// on screen, turned by the same angle. The box is positioned by the
+    /// label's own bounds, which are the bounds of the turned rectangle, and so
+    /// are the bounds of the turned editor.
+    /// </summary>
+    private void UpdateLabelEditorOverlay()
+    {
+        if (_labelEditCurrent is not { } label)
+        {
+            LabelEditor.Visibility = Visibility.Collapsed;
+            return;
+        }
+
+        double zoom = _camera.Zoom;
+        LabelEditor.FontFamily = new FontFamily(label.FontFamily);
+        LabelEditor.FontSize = Math.Max(1, label.FontSize * zoom);
+        LabelEditor.FontWeight = label.Bold ? FontWeights.Bold : FontWeights.Normal;
+        LabelEditor.FontStyle = label.Italic ? FontStyles.Italic : FontStyles.Normal;
+        LabelEditor.TextDecorations = label.Underline ? TextDecorations.Underline : null;
+        LabelEditor.Foreground = LabelVisual.Brush(label.Argb);
+        LabelEditor.CaretBrush = LabelEditor.Foreground;
+
+        // Room for the border, the box's own inset, and the caret at the end of
+        // the longest line, none of which the measured text accounts for. The
+        // box is a little wider than the label it stands over; what matters is
+        // that the text is never clipped while it is being typed.
+        LabelEditor.Width = (label.LayoutWidth * zoom) + 12;
+        LabelEditor.Height = (label.LayoutHeight * zoom) + 6;
+        LabelEditorRotation.Angle = label.AngleDegrees;
+        PointD topLeft = _camera.WorldToScreen(new PointD(label.Bounds.Left, label.Bounds.Top));
+        Canvas.SetLeft(LabelEditor, topLeft.X);
+        Canvas.SetTop(LabelEditor, topLeft.Y);
+        LabelEditor.Visibility = Visibility.Visible;
+    }
+
+    private void ApplySelectionFont(string fontFamily)
+    {
+        var font = LabelStyles.NormalizeFont(fontFamily);
+        _settings.Label.FontFamily = font;
+        PersistSettings();
+        RestyleSelectedLabels(label => label with { FontFamily = font });
+    }
+
+    private void ApplySelectionFontSize(double fontSize)
+    {
+        _settings.Label.FontSize = LabelStyles.NormalizeFontSize(fontSize);
+        PersistSettings();
+        RestyleSelectedLabels(label => label with { FontSize = fontSize });
+    }
+
+    private void ApplySelectionFontStyle(LabelFontStyle style, bool on)
+    {
+        switch (style)
+        {
+            case LabelFontStyle.Bold:
+                _settings.Label.Bold = on;
+                break;
+            case LabelFontStyle.Italic:
+                _settings.Label.Italic = on;
+                break;
+            default:
+                _settings.Label.Underline = on;
+                break;
+        }
+
+        PersistSettings();
+        RestyleSelectedLabels(label => style switch
+        {
+            LabelFontStyle.Bold => label with { Bold = on },
+            LabelFontStyle.Italic => label with { Italic = on },
+            _ => label with { Underline = on },
+        });
+    }
+
+    private void StepSelectionRotation(double degrees) =>
+        RestyleSelectedLabels(label => label.WithAngle(label.AngleDegrees + degrees));
+
+    /// <summary>
+    /// A change from the font row, applied to every selected label as one step
+    /// - or, while one is being typed, to that one as part of the edit, so the
+    /// box under the hand changes with it.
+    /// </summary>
+    private void RestyleSelectedLabels(Func<FreeTextBoardObject, FreeTextBoardObject> restyle)
+    {
+        if (_labelEditCurrent is { } editing)
+        {
+            ApplyLabelDuringEdit(Remeasure(restyle(editing)));
+            LabelEditor.Focus();
+            return;
+        }
+
+        FreeTextBoardObject[] before = SelectedObjects().OfType<FreeTextBoardObject>().ToArray();
+        if (before.Length == 0)
+        {
+            return;
+        }
+
+        BoardObject[] after = before.Select(label => (BoardObject)Remeasure(restyle(label))).ToArray();
+        if (after.SequenceEqual<BoardObject>(before))
+        {
+            return;
+        }
+
+        _history.Execute(new ReplaceObjectsCommand(before, after), _document);
+        SceneSurface.InvalidateVisual();
+        InkSurface.Focus();
+    }
+
     private void BeginTextEdit(TextBoardObject textObject)
     {
         if (_textEditBefore?.Id == textObject.Id)
@@ -2746,6 +3079,10 @@ public partial class MainWindow : Window
 
     private void CommitTextEdit()
     {
+        // Every click-away, tool change, and save already comes through here,
+        // and a label is the same edit by another editor, so it settles here
+        // too rather than at each of those call sites again.
+        CommitLabelEdit();
         if (_textEditBefore is not { } before)
         {
             return;
@@ -3283,6 +3620,12 @@ public partial class MainWindow : Window
         {
             HidePointerDot();
             InkSurface.Cursor = Cursors.Arrow;
+        }
+
+        if (tool == BoardTool.Text)
+        {
+            HidePointerDot();
+            InkSurface.Cursor = Cursors.IBeam;
         }
 
         if (tool != BoardTool.Laser)
@@ -4203,6 +4546,9 @@ public partial class MainWindow : Window
                 break;
             case SessionCommand.ToggleLasso:
                 ToggleAreaSelectionTool();
+                break;
+            case SessionCommand.InsertText:
+                ChooseTool(BoardTool.Text);
                 break;
             case SessionCommand.Preferences:
                 PreferencesMenuItem_Click(this, new RoutedEventArgs());
@@ -5178,8 +5524,13 @@ public partial class MainWindow : Window
     /// so recoloring a highlighter leaves it a highlighter with its own
     /// transparency rather than turning it into a pen.
     /// </summary>
-    private void ApplySelectionColor(uint argb) =>
+    private void ApplySelectionColor(uint argb)
+    {
         RestyleSelectedStrokes(style => style with { Argb = argb });
+        _settings.Label.Argb = argb;
+        PersistSettings();
+        RestyleSelectedLabels(label => label with { Argb = argb });
+    }
 
     private void ApplySelectionThickness(double thickness) =>
         RestyleSelectedStrokes(style => style with { Thickness = thickness });
@@ -5558,6 +5909,12 @@ public partial class MainWindow : Window
                 return;
             }
 
+            if (selected is FreeTextBoardObject label)
+            {
+                Clipboard.SetText(label.Text, TextDataFormat.UnicodeText);
+                return;
+            }
+
             string? assetId = selected switch
             {
                 ImageBoardObject image => image.AssetId,
@@ -5930,7 +6287,14 @@ public partial class MainWindow : Window
             return;
         }
 
-        if (SessionBar.IsCommandRowOpen && !controlDown && !altDown)
+        // Not while something is being typed: a row that stays open - Edit,
+        // Insert - would otherwise read the letters of a label or a snippet as
+        // its own access keys, and a word with a T in it would pick a tool.
+        if (SessionBar.IsCommandRowOpen &&
+            !controlDown &&
+            !altDown &&
+            _labelEditBefore is null &&
+            _textEditBefore is null)
         {
             var isMove = mnemonicKey is Key.Left or Key.Right or Key.Home or Key.End;
             if ((isMove || !e.IsRepeat) && SessionBar.TryHandleCommandKey(mnemonicKey))
@@ -5939,6 +6303,28 @@ public partial class MainWindow : Window
                 return;
             }
         }
+        if (_labelEditBefore is not null)
+        {
+            if (controlDown && e.Key == Key.Enter)
+            {
+                CommitLabelEdit();
+                e.Handled = true;
+            }
+            else if (e.Key == Key.Escape)
+            {
+                CancelLabelEdit();
+                e.Handled = true;
+            }
+            else if (controlDown && e.Key == Key.S)
+            {
+                CommitLabelEdit();
+                _ = SaveBoardAsync();
+                e.Handled = true;
+            }
+
+            return;
+        }
+
         if (_textEditBefore is not null)
         {
             if (e.Key == Key.F6 && !e.IsRepeat)
@@ -6001,6 +6387,11 @@ public partial class MainWindow : Window
             BeginTextEdit(textObject);
             e.Handled = true;
         }
+        else if (e.Key == Key.F2 && SingleSelected<FreeTextBoardObject>() is { } selectedLabel)
+        {
+            BeginLabelEdit(selectedLabel, isNew: false);
+            e.Handled = true;
+        }
         else if (e.Key == Key.F2 && SingleSelected<FrameBoardObject>() is { } selectedFrame)
         {
             RenameFrame(selectedFrame);
@@ -6061,6 +6452,13 @@ public partial class MainWindow : Window
         else if (e.Key == Key.Escape && _selectedObjectIds.Count > 0)
         {
             ClearSelection();
+            e.Handled = true;
+        }
+        else if (e.Key == Key.Escape && _activeTool == BoardTool.Text)
+        {
+            // The tool stays after a label is typed, so Escape is what puts it
+            // down again.
+            SetActiveTool(BoardTool.Select);
             e.Handled = true;
         }
         else if (modifiers.HasFlag(ModifierKeys.Alt) &&

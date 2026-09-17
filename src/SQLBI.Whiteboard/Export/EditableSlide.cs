@@ -76,19 +76,26 @@ internal static class EditableSlide
             elements.Add(InkElement(strokes, pixelWidth, pixelHeight));
         }
 
-        if (!inkAsStrokes && area.Objects.OfType<InkStrokeObject>().Any())
+        // What no slide object carries goes out as one transparent picture over
+        // the page: the ink, unless it went out as strokes, and the design
+        // objects, which have no native form yet and so go out this way even
+        // when the ink did not.
+        Func<BoardObject, bool> overlayFilter = inkAsStrokes
+            ? static item => item is FreeTextBoardObject
+            : static item => item is InkStrokeObject or FreeTextBoardObject;
+        if (area.Objects.Any(overlayFilter))
         {
-            var ink = BoardRasterizer.Render(
+            var overlay = BoardRasterizer.Render(
                 document,
                 area.Bounds,
                 pixelWidth,
                 pixelHeight,
                 liveViewImageSourceProvider,
                 drawBackground: false,
-                objectFilter: static item => item is InkStrokeObject);
+                objectFilter: overlayFilter);
             elements.Add(new SlideImageElement(
                 new SlideRect(0, 0, pixelWidth, pixelHeight),
-                WpfImageCodec.EncodePng(ink),
+                WpfImageCodec.EncodePng(overlay),
                 PngContentType));
         }
 

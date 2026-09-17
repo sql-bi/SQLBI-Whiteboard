@@ -24,6 +24,11 @@
                           Click="Tab_Click">
                 <AccessText Text="_View" />
             </ToggleButton>
+            <ToggleButton x:Name="InsertTab"
+                          Style="{StaticResource SessionTabButton}"
+                          Click="Tab_Click">
+                <AccessText Text="_Insert" />
+            </ToggleButton>
             <ToggleButton x:Name="HelpTab"
                           Style="{StaticResource SessionTabButton}"
                           Click="Tab_Click">
@@ -392,6 +397,31 @@
                                 <TextBlock Margin="0,4,0,0"
                                            HorizontalAlignment="Center"
                                            Text="Reconnect" />
+                            </StackPanel>
+                        </Button>
+                    </StackPanel>
+                    <!--
+                        The shapes and the connectors join this row in front of
+                        Text, which is the order the Insert flyout shows them in.
+                    -->
+                    <StackPanel x:Name="InsertRow"
+                                Orientation="Horizontal"
+                                Visibility="Collapsed">
+                        <Button Style="{StaticResource SessionCommandButton}"
+                                ToolTip="Click on the board to type a label"
+                                Tag="InsertText"
+                                Click="Command_Click">
+                            <StackPanel HorizontalAlignment="Center">
+                                <Path Width="18"
+                                      Height="18"
+                                      Stretch="Uniform"
+                                      Fill="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"
+                                      Data="{StaticResource TextGeometry}" />
+                                <TextBlock Margin="0,4,0,0"
+                                           HorizontalAlignment="Center"
+                                           Text="Text" />
+                                <TextBlock Style="{StaticResource SessionShortcutHint}"
+                                           Text="T" />
                             </StackPanel>
                         </Button>
                     </StackPanel>

@@ -172,6 +172,13 @@ public sealed class AppSettings
     /// </summary>
     public GridStyle LastGridStyle { get; set; } = GridStyle.Lines;
 
+    /// <summary>
+    /// What the last label was written with, so the next one is written the
+    /// same way. Like the pen's color and size, it is remembered rather than
+    /// configured, and so has no row in Preferences.
+    /// </summary>
+    public LabelSettings Label { get; set; } = new();
+
     public List<string> SnippetFormatOrder { get; set; } = [.. TextLanguageIds.DetectionOrder];
 
     public InkToolSettings Pen { get; set; } = InkToolSettings.From(InkPalettes.DefaultPen);
@@ -357,6 +364,7 @@ public static class AppSettingsSerializer
         settings.Highlighter = InkPalettes.Normalize(settings.Highlighter, PenKind.Highlighter);
         settings.Calligraphy = InkPalettes.Normalize(settings.Calligraphy, PenKind.Calligraphy);
         settings.Laser = LaserSettings.Normalize(settings.Laser);
+        settings.Label = LabelStyles.Normalize(settings.Label);
         settings.PenButtons = PenButtonSettings.Normalize(settings.PenButtons);
         settings.Export = ExportSettings.Normalize(settings.Export);
         settings.Import = ImportSettings.Normalize(settings.Import);

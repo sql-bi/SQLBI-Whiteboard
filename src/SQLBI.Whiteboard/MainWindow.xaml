@@ -215,6 +215,32 @@
                           SelectionChanged="LanguageChipCombo_SelectionChanged"
                           PreviewMouseDown="LanguageChipCombo_PreviewMouseDown"
                           PreviewMouseWheel="TextEditorBorder_PreviewMouseWheel" />
+                <!--
+                    A label is typed in a box with no chrome of its own: the
+                    label's font and color, a thin border to say where it is,
+                    and the same turn the label has.
+                -->
+                <TextBox x:Name="LabelEditor"
+                         Visibility="Collapsed"
+                         AcceptsReturn="True"
+                         AcceptsTab="False"
+                         TextWrapping="NoWrap"
+                         Padding="0"
+                         BorderThickness="1"
+                         BorderBrush="#FF2563EB"
+                         Background="Transparent"
+                         FontFamily="Segoe UI"
+                         TextOptions.TextFormattingMode="Ideal"
+                         HorizontalScrollBarVisibility="Hidden"
+                         VerticalScrollBarVisibility="Hidden"
+                         SnapsToDevicePixels="True"
+                         Stylus.IsPressAndHoldEnabled="False"
+                         TextChanged="LabelEditor_TextChanged"
+                         PreviewMouseWheel="TextEditorBorder_PreviewMouseWheel">
+                    <TextBox.LayoutTransform>
+                        <RotateTransform x:Name="LabelEditorRotation" />
+                    </TextBox.LayoutTransform>
+                </TextBox>
                 <local:PropertyBar x:Name="SelectionPropertyBar" />
             </Canvas>
         </Grid>
