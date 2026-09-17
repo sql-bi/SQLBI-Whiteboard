@@ -125,7 +125,8 @@ public static class BoardPartitioner
 
     private static List<Unit> BuildUnits(IReadOnlyList<BoardObject> objects)
     {
-        var units = new List<Unit>();
+        var groups = new List<List<BoardObject>?>();
+        var groupByObject = new Dictionary<Guid, int>();
         var strokesByContainer = objects
             .OfType<InkStrokeObject>()
             .Where(stroke => stroke.ContainerId is not null)
@@ -139,7 +140,8 @@ public static class BoardPartitioner
                 containerIds.Add(item.Id);
                 var members = new List<BoardObject> { item };
                 members.AddRange(strokesByContainer[item.Id]);
-                units.Add(Unit.Of(members));
+                groupByObject[item.Id] = groups.Count;
+                groups.Add(members);
             }
         }
 
@@ -148,15 +150,57 @@ public static class BoardPartitioner
             if (item is InkStrokeObject stroke &&
                 (stroke.ContainerId is null || !containerIds.Contains(stroke.ContainerId.Value)))
             {
-                units.Add(Unit.Of([stroke]));
+                groups.Add([stroke]);
             }
-            else if (item is not InkStrokeObject && item is not IBoardContainer && item is not FrameBoardObject)
+            else if (item is not InkStrokeObject &&
+                     item is not IBoardContainer &&
+                     item is not FrameBoardObject &&
+                     item is not ConnectorBoardObject)
             {
-                units.Add(Unit.Of([item]));
+                groups.Add([item]);
             }
         }
 
-        return units;
+        // Connectors last, once there is something to join: one joins the unit
+        // of what it is bound to, and one bound at both ends brings those two
+        // units together, so a cut never falls between a shape and its arrow.
+        foreach (var connector in objects.OfType<ConnectorBoardObject>())
+        {
+            var first = GroupOf(groupByObject, connector.StartAnchor);
+            var second = GroupOf(groupByObject, connector.EndAnchor);
+            var target = first ?? second;
+            if (target is null)
+            {
+                groups.Add([connector]);
+                continue;
+            }
+
+            if (first is { } left && second is { } right && left != right)
+            {
+                Merge(groups, groupByObject, left, right);
+            }
+
+            groups[target.Value]!.Add(connector);
+        }
+
+        return groups.Where(group => group is not null).Select(group => Unit.Of(group!)).ToList();
+    }
+
+    private static int? GroupOf(IReadOnlyDictionary<Guid, int> groupByObject, ConnectorAnchor? anchor) =>
+        anchor is { } bound && groupByObject.TryGetValue(bound.ObjectId, out var group) ? group : null;
+
+    private static void Merge(
+        List<List<BoardObject>?> groups,
+        Dictionary<Guid, int> groupByObject,
+        int into,
+        int from)
+    {
+        groups[into]!.AddRange(groups[from]!);
+        groups[from] = null;
+        foreach (var id in groupByObject.Where(pair => pair.Value == from).Select(pair => pair.Key).ToArray())
+        {
+            groupByObject[id] = into;
+        }
     }
 
     private static void Split(List<Unit> units, ExportLayoutOptions options, List<Region> leaves)
