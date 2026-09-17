@@ -1857,6 +1857,24 @@ Assert(
             Bold: true,
             Italic: false,
             Underline: true),
+        new SlideConnectorElement(
+            new SlideRect(700, 500, 400, 120),
+            ConnectorKind.Arrow,
+            new SlidePosition(1100, 620),
+            new SlidePosition(700, 500),
+            null,
+            null,
+            0xFF035ACA,
+            6),
+        new SlideConnectorElement(
+            new SlideRect(700, 700, 400, 200),
+            ConnectorKind.CurvedArrow,
+            new SlidePosition(700, 700),
+            new SlidePosition(1100, 900),
+            new SlidePosition(860, 700),
+            new SlidePosition(940, 900),
+            0xFF035ACA,
+            6),
     ];
     ExportPage[] designPages = [new ExportPage("Design", null, onePixelPng, 1600, 900, designElements)];
 
@@ -1875,8 +1893,8 @@ Assert(
         }
 
         Assert(
-            slideXml.Split("<p:sp>").Length - 1 == Enum.GetValues<ShapeKind>().Length + 2,
-            "Every shape, the label, and the title are shapes on the slide.");
+            slideXml.Split("<p:sp>").Length - 1 == Enum.GetValues<ShapeKind>().Length + 3,
+            "Every shape, the label, the curved connector, and the title are shapes on the slide.");
         Assert(
             slideXml.Contains("fmla=\"val 20000\"", StringComparison.Ordinal) &&
             slideXml.Contains("fmla=\"val 50000\"", StringComparison.Ordinal),
@@ -1895,6 +1913,16 @@ Assert(
             slideXml.Contains("b=\"1\"", StringComparison.Ordinal) &&
             slideXml.Contains("Georgia", StringComparison.Ordinal),
             "The label's style and typeface travel with it.");
+        Assert(
+            slideXml.Split("<p:cxnSp>").Length - 1 == 1 &&
+            slideXml.Contains("prst=\"straightConnector1\"", StringComparison.Ordinal) &&
+            slideXml.Contains("<a:cubicBezTo>", StringComparison.Ordinal),
+            "A straight connector is a connector with the preset, and a curved one is a freeform with its own cubic.");
+        Assert(
+            slideXml.Contains("flipH=\"1\"", StringComparison.Ordinal) &&
+            slideXml.Contains("flipV=\"1\"", StringComparison.Ordinal) &&
+            slideXml.Split("<a:tailEnd").Length - 1 == 2,
+            "A connector that runs right to left and bottom to top is flipped, and both arrows have a head.");
     }
 
     // The same elements as a vector page, and a label in each font a board offers:
@@ -1936,11 +1964,21 @@ Assert(
     var fontBytes = System.Text.Encoding.Latin1.GetString(fontStream.ToArray());
     foreach (var font in LabelStyles.Fonts)
     {
-        // A base font is named after the family, with #20 where a space is.
+        // A base font is named after the family, with #20 where a space is. A
+        // Windows without the family embeds the stand-in the resolver names for
+        // it, so either answer is the resolver working: what is checked is that
+        // the label was not quietly written in the default face instead.
         var face = (font == "Cascadia Mono" ? "Consolas" : font).Replace(" ", "#20", StringComparison.Ordinal);
+        var standIn = font switch
+        {
+            "Georgia" or "Times New Roman" => "Times#20New#20Roman",
+            "Consolas" or "Cascadia Mono" => "Courier#20New",
+            _ => "Arial",
+        };
         Assert(
-            fontBytes.Contains($"+{face}", StringComparison.Ordinal),
-            $"A label in {font} should be written in {face} rather than fall back to the default face.");
+            fontBytes.Contains($"+{face}", StringComparison.Ordinal) ||
+            fontBytes.Contains($"+{standIn}", StringComparison.Ordinal),
+            $"A label in {font} should be written in {face}, or in {standIn} where Windows has no such family.");
     }
 
     // The same pages as a PDF: one page each, a bookmark each, and the page

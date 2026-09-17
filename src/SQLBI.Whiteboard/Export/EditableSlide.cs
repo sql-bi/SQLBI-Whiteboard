@@ -11,10 +11,11 @@ namespace SQLBI.Whiteboard.Export;
 /// <summary>
 /// An area as slide objects rather than as one picture: images and LiveView
 /// frames as pictures, text containers as text boxes with the colors the
-/// screen shows, shapes and labels as shapes and text, and what is left - the
-/// ink, where the writer cannot draw strokes - as one transparent picture on
-/// top. Every rectangle is in the pixel space of the picture the area would
-/// otherwise have been, so the two modes place things identically.
+/// screen shows, shapes, labels, and connectors as shapes, text, and lines, and
+/// what is left - the ink, where the writer cannot draw strokes - as one
+/// transparent picture on top. Every rectangle is in the pixel space of the
+/// picture the area would otherwise have been, so the two modes place things
+/// identically.
 /// </summary>
 internal static class EditableSlide
 {
@@ -66,6 +67,7 @@ internal static class EditableSlide
                 TextBoardObject text => TextElement(text, camera),
                 ShapeBoardObject shape => ShapeElement(shape, camera),
                 FreeTextBoardObject label => LabelElement(label, camera),
+                ConnectorBoardObject connector => ConnectorElement(connector, camera),
                 _ => null,
             };
             if (element is not null)
@@ -108,7 +110,6 @@ internal static class EditableSlide
     private static bool NeedsOverlay(BoardObject item, bool inkAsStrokes) => item switch
     {
         InkStrokeObject => !inkAsStrokes,
-        ConnectorBoardObject => true,
         _ => false,
     };
 
@@ -219,6 +220,61 @@ internal static class EditableSlide
             label.Bold,
             label.Italic,
             label.Underline);
+    }
+
+    /// <summary>
+    /// A connector as where it runs and what draws it. A curve hands over the
+    /// control points of its cubic as well, so the writers draw the curve the
+    /// board drew rather than a curve of their own.
+    /// </summary>
+    private static SlideElement ConnectorElement(ConnectorBoardObject connector, Camera2D camera)
+    {
+        SlidePosition start = ToPage(connector.Start, camera);
+        SlidePosition end = ToPage(connector.End, camera);
+        (PointD First, PointD Second)? controls = ConnectorGeometry.Controls(
+            connector.Kind,
+            connector.Start,
+            connector.End,
+            connector.StartAnchor,
+            connector.EndAnchor);
+        SlidePosition? first = controls is { } curve ? ToPage(curve.First, camera) : null;
+        SlidePosition? second = controls is { } bend ? ToPage(bend.Second, camera) : null;
+
+        // A cubic stays inside the box of its four points, so that box holds the
+        // whole connector however it bends.
+        var corners = new List<SlidePosition> { start, end };
+        if (first is { } leaving)
+        {
+            corners.Add(leaving);
+        }
+
+        if (second is { } arriving)
+        {
+            corners.Add(arriving);
+        }
+
+        return new SlideConnectorElement(
+            Box(corners),
+            connector.Kind,
+            start,
+            end,
+            first,
+            second,
+            connector.Argb,
+            connector.Thickness * camera.Zoom);
+    }
+
+    private static SlideRect Box(IReadOnlyList<SlidePosition> points)
+    {
+        var left = points.Min(point => point.X);
+        var top = points.Min(point => point.Y);
+        return new SlideRect(left, top, points.Max(point => point.X) - left, points.Max(point => point.Y) - top);
+    }
+
+    private static SlidePosition ToPage(PointD point, Camera2D camera)
+    {
+        PointD screen = camera.WorldToScreen(point);
+        return new SlidePosition(screen.X, screen.Y);
     }
 
     private static SlideElement TextElement(TextBoardObject text, Camera2D camera)

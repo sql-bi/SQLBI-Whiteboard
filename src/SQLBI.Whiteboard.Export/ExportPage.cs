@@ -91,6 +91,26 @@ public sealed record SlideLabelElement(
     bool Italic,
     bool Underline) : SlideElement(Bounds);
 
+/// <summary>A point in the page's pixel space.</summary>
+public readonly record struct SlidePosition(double X, double Y);
+
+/// <summary>
+/// A connector as a line rather than as pixels: where it runs, what it is drawn
+/// with, and, for a curved one, the two control points of the cubic the board
+/// draws, so a writer never works the curve out a second time. Bounds is the box
+/// of every point named here, which is the box the curve stays inside. An Arrow
+/// and a CurvedArrow carry a filled head at the end; a Line does not.
+/// </summary>
+public sealed record SlideConnectorElement(
+    SlideRect Bounds,
+    ConnectorKind Kind,
+    SlidePosition Start,
+    SlidePosition End,
+    SlidePosition? FirstControl,
+    SlidePosition? SecondControl,
+    uint Argb,
+    double Thickness) : SlideElement(Bounds);
+
 public enum SlideStrokeKind
 {
     /// <summary>An ellipse nib whose diameter follows pressure.</summary>

@@ -8,8 +8,9 @@ namespace SQLBI.Whiteboard.SmokeTests;
 
 /// <summary>
 /// What an editable slide carries for the objects that have a native form: one
-/// element per shape and per label, with the colors, the angle, and the style the
-/// screen shows, and a picture over the page only for what is left. The writers
+/// element per shape, label, and connector, with the colors, the angle, the style,
+/// and the curve the screen shows, and a picture over the page only for what is
+/// left, which is the ink and only where it cannot go as strokes. The writers
 /// are checked in the Core harness, which can open what they produce; what only
 /// this side can answer is what the board hands them.
 /// </summary>
@@ -57,6 +58,27 @@ internal static class DesignExportSmokeTests
         document.AddObject(label);
         document.AddObject(Label(document, angleDegrees: 0, new PointD(900, 700)));
 
+        // A curve bound to the right-hand side of the first shape, and a straight
+        // line attached to nothing.
+        ShapeBoardObject bound = document.Objects.OfType<ShapeBoardObject>().First();
+        document.AddObject(ConnectorBoardObject.Create(
+            Guid.NewGuid(),
+            document.NextZIndex,
+            ConnectorKind.CurvedArrow,
+            new PointD(bound.Bounds.Right, bound.Bounds.Center.Y),
+            new PointD(900, 600),
+            Outline,
+            ConnectorBoardObject.DefaultThickness,
+            new ConnectorAnchor(bound.Id, 1, 0.5)));
+        document.AddObject(ConnectorBoardObject.Create(
+            Guid.NewGuid(),
+            document.NextZIndex,
+            ConnectorKind.Line,
+            new PointD(400, 700),
+            new PointD(100, 500),
+            Outline,
+            ConnectorBoardObject.DefaultThickness));
+
         IReadOnlyList<SlideElement> elements = Build(document);
         SlideShapeElement[] shapes = elements.OfType<SlideShapeElement>().ToArray();
         Assert(shapes.Length == kinds.Length, "Every shape leaves as a shape element.");
@@ -87,6 +109,33 @@ internal static class DesignExportSmokeTests
             Math.Abs(text.Bounds.Width / text.Bounds.Height - (label.LayoutWidth / label.LayoutHeight)) < 0.01,
             "A label's rectangle is the layout it was measured at, not its turned box.");
 
+        SlideConnectorElement[] connectors = elements.OfType<SlideConnectorElement>().ToArray();
+        Assert(connectors.Length == 2, "Both connectors leave as connector elements.");
+        SlideConnectorElement curve = connectors[0];
+        SlideConnectorElement straight = connectors[1];
+        Assert(
+            curve is { Kind: ConnectorKind.CurvedArrow, FirstControl: not null, SecondControl: not null } &&
+            straight is { Kind: ConnectorKind.Line, FirstControl: null, SecondControl: null },
+            "A curve hands over its control points; a straight line has none to hand over.");
+        Assert(
+            curve.Argb == Outline && curve.Thickness > 0 && straight.Thickness > 0,
+            "A connector keeps its color and takes a width in slide pixels.");
+
+        // The curve leaves the side it is bound to, so its first control point is to
+        // the right of where it starts.
+        Assert(
+            curve.FirstControl!.Value.X > curve.Start.X,
+            "A curve bound to a right-hand side leaves it to the right.");
+
+        // The box holds the whole cubic, which is what the writers place it in.
+        Assert(
+            curve.Bounds.X <= Math.Min(curve.Start.X, curve.End.X) + 0.01 &&
+            curve.Bounds.X + curve.Bounds.Width >= curve.FirstControl.Value.X - 0.01,
+            "A connector's box holds its ends and its control points.");
+        Assert(
+            straight.End.X < straight.Start.X && straight.End.Y < straight.Start.Y,
+            "A line that runs right to left and bottom to top keeps that direction, for the flips.");
+
         // The turn is the angle and nothing else: the same words upright measure the
         // same rectangle, and the writers are the ones that turn it.
         SlideLabelElement upright = elements.OfType<SlideLabelElement>().Last();
@@ -106,10 +155,18 @@ internal static class DesignExportSmokeTests
         var document = new BoardDocument();
         document.AddObject(Shape(document, ShapeKind.Ellipse, 0));
         document.AddObject(Label(document, angleDegrees: 0));
+        document.AddObject(ConnectorBoardObject.Create(
+            Guid.NewGuid(),
+            document.NextZIndex,
+            ConnectorKind.Arrow,
+            new PointD(0, 0),
+            new PointD(200, 160),
+            Outline,
+            ConnectorBoardObject.DefaultThickness));
 
         Assert(
             Build(document).OfType<SlideImageElement>().Any() == false,
-            "Shapes and labels alone leave no picture over the slide.");
+            "Shapes, labels, and connectors alone leave no picture over the slide.");
         Assert(
             Build(document, inkAsStrokes: true).OfType<SlideImageElement>().Any() == false,
             "And none over a vector page either.");

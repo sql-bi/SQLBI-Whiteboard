@@ -205,6 +205,9 @@ public static class PdfDocumentWriter
                 case SlideLabelElement label:
                     DrawLabel(graphics, label, mapping);
                     break;
+                case SlideConnectorElement connector:
+                    DrawConnector(graphics, connector, mapping);
+                    break;
                 case SlideInkElement ink:
                     DrawInk(graphics, ink, mapping);
                     break;
@@ -486,6 +489,39 @@ public static class PdfDocumentWriter
     }
 
     /// <summary>
+    /// A connector as the line the board draws: the path stopped at the base of its
+    /// own arrowhead, so a thick line does not poke through the tip, and the head as
+    /// a filled triangle. A curve is the cubic flattened by Core, which is what the
+    /// screen draws and what the shortening is measured along.
+    /// </summary>
+    private static void DrawConnector(XGraphics graphics, SlideConnectorElement connector, PixelMapping mapping)
+    {
+        PointD start = Point(connector.Start);
+        PointD end = Point(connector.End);
+        IReadOnlyList<PointD> polyline =
+            connector.FirstControl is { } first && connector.SecondControl is { } second
+                ? ConnectorGeometry.Flatten(start, Point(first), Point(second), end)
+                : [start, end];
+
+        var path = new XGraphicsPath();
+        path.AddLines(mapping.Map(ConnectorGeometry.LinePath(connector.Kind, polyline, connector.Thickness)));
+        graphics.DrawPath(
+            new XPen(Color(connector.Argb), Math.Max(MinOutlineWidth, mapping.Map(connector.Thickness)))
+            {
+                LineJoin = XLineJoin.Round,
+                LineCap = XLineCap.Round,
+            },
+            path);
+
+        if (ConnectorGeometry.Arrowhead(connector.Kind, polyline, connector.Thickness) is { } head)
+        {
+            graphics.DrawPolygon(new XSolidBrush(Color(connector.Argb)), mapping.Map(head), XFillMode.Winding);
+        }
+
+        static PointD Point(SlidePosition position) => new(position.X, position.Y);
+    }
+
+    /// <summary>
     /// A label as text, turned about the centre of its layout rectangle the way the
     /// board turns it. The rectangle was measured by the framework that draws the
     /// screen, so the lines are spread over the height it measured rather than over
@@ -727,6 +763,17 @@ public static class PdfDocumentWriter
         public XPoint Map(XPoint point) => new(OriginX + point.X * Scale, OriginY + point.Y * Scale);
 
         public XPoint Map(PointD point) => new(OriginX + point.X * Scale, OriginY + point.Y * Scale);
+
+        public XPoint[] Map(IReadOnlyList<PointD> points)
+        {
+            var mapped = new XPoint[points.Count];
+            for (var index = 0; index < points.Count; index++)
+            {
+                mapped[index] = Map(points[index]);
+            }
+
+            return mapped;
+        }
 
         public XPoint[] Map(XPoint[] points)
         {

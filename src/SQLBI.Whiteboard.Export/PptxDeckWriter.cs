@@ -1,3 +1,4 @@
+using System.Globalization;
 using DocumentFormat.OpenXml;
 using DocumentFormat.OpenXml.Packaging;
 using SQLBI.Whiteboard.Core.Geometry;
@@ -155,6 +156,7 @@ public static class PptxDeckWriter
         SlideTextElement text => TextBoxShape(id, text, fit),
         SlideShapeElement shape => GeometryShape(id, shape, fit),
         SlideLabelElement label => LabelShape(id, label, fit),
+        SlideConnectorElement connector => ConnectorShape(id, connector, fit),
         _ => throw new ArgumentException($"Unsupported slide element {element.GetType().Name}.", nameof(element)),
     };
 
@@ -362,6 +364,101 @@ public static class PptxDeckWriter
     }
 
     /// <summary>
+    /// A straight connector is a connector, turned by the flips PowerPoint expects
+    /// when it runs right to left or bottom to top. A curved one is a freeform
+    /// shape holding the cubic the board drew, because no preset bends the way that
+    /// cubic does and a connector with a geometry of its own is not something
+    /// PowerPoint writes itself. Either way the head is PowerPoint's own triangle
+    /// tail end rather than a filled shape of ours, so it stays an arrow when the
+    /// line is recoloured or reshaped.
+    /// </summary>
+    private static OpenXmlElement ConnectorShape(uint id, SlideConnectorElement connector, PageFit fit)
+    {
+        var line = new A.Outline(new A.SolidFill(Rgb(connector.Argb)), new A.Round())
+        {
+            Width = Math.Max(1, (int)fit.Emu(connector.Thickness)),
+            CapType = A.LineCapValues.Round,
+        };
+        if (connector.Kind != ConnectorKind.Line)
+        {
+            line.Append(new A.TailEnd
+            {
+                Type = A.LineEndValues.Triangle,
+                Width = A.LineEndWidthValues.Medium,
+                Length = A.LineEndLengthValues.Medium,
+            });
+        }
+
+        var frame = fit.Frame(connector.Bounds);
+        if (connector.FirstControl is { } first && connector.SecondControl is { } second)
+        {
+            return new P.Shape(
+                new P.NonVisualShapeProperties(
+                    new P.NonVisualDrawingProperties { Id = id, Name = $"Connector {id}" },
+                    new P.NonVisualShapeDrawingProperties(),
+                    new P.ApplicationNonVisualDrawingProperties()),
+                new P.ShapeProperties(frame, CurvePath(connector, first, second, fit), new A.NoFill(), line),
+                new P.TextBody(
+                    new A.BodyProperties(),
+                    new A.ListStyle(),
+                    new A.Paragraph(new A.EndParagraphRunProperties { Language = Language })));
+        }
+
+        if (connector.End.X < connector.Start.X)
+        {
+            frame.HorizontalFlip = true;
+        }
+
+        if (connector.End.Y < connector.Start.Y)
+        {
+            frame.VerticalFlip = true;
+        }
+
+        return new P.ConnectionShape(
+            new P.NonVisualConnectionShapeProperties(
+                new P.NonVisualDrawingProperties { Id = id, Name = $"Connector {id}" },
+                new P.NonVisualConnectorShapeDrawingProperties(),
+                new P.ApplicationNonVisualDrawingProperties()),
+            new P.ShapeProperties(
+                frame,
+                Geometry(A.ShapeTypeValues.StraightConnector1),
+                new A.NoFill(),
+                line));
+    }
+
+    /// <summary>
+    /// The cubic as a freeform path in the shape's own space, which runs from the
+    /// box's top-left corner rather than from the slide's. The path is given the
+    /// extents as its own width and height, so one EMU on the path is one EMU on
+    /// the slide and the curve needs no flips.
+    /// </summary>
+    private static A.CustomGeometry CurvePath(
+        SlideConnectorElement connector,
+        SlidePosition first,
+        SlidePosition second,
+        PageFit fit)
+    {
+        var width = fit.Emu(connector.Bounds.Width);
+        var height = fit.Emu(connector.Bounds.Height);
+        A.Point Local(SlidePosition point) => new()
+        {
+            X = fit.Emu(point.X - connector.Bounds.X).ToString(CultureInfo.InvariantCulture),
+            Y = fit.Emu(point.Y - connector.Bounds.Y).ToString(CultureInfo.InvariantCulture),
+        };
+
+        var path = new A.Path { Width = width, Height = height };
+        path.Append(new A.MoveTo(Local(connector.Start)));
+        path.Append(new A.CubicBezierCurveTo(Local(first), Local(second), Local(connector.End)));
+        return new A.CustomGeometry(
+            new A.AdjustValueList(),
+            new A.ShapeGuideList(),
+            new A.AdjustHandleList(),
+            new A.ConnectionSiteList(),
+            new A.Rectangle { Left = "l", Top = "t", Right = "r", Bottom = "b" },
+            new A.PathList(path));
+    }
+
+    /// <summary>
     /// The preset whose outline is the one <see cref="ShapeGeometry"/> describes,
     /// with the adjust values that put the corner, the slant, and the arrow's head
     /// where the board puts them. A preset measures its adjusts against its shorter
@@ -378,9 +475,12 @@ public static class PptxDeckWriter
             ShapeKind.Triangle => Geometry(A.ShapeTypeValues.Triangle),
             ShapeKind.Pentagon => Geometry(A.ShapeTypeValues.Pentagon),
             ShapeKind.Diamond => Geometry(A.ShapeTypeValues.Diamond),
+            // The arrow is the one preset that measures a thickness against the
+            // height rather than against the shorter side, so its shaft is the
+            // fraction as it stands and only its head goes through the side.
             ShapeKind.BlockArrow => Geometry(
                 A.ShapeTypeValues.RightArrow,
-                ("adj1", Adjust(ShapeGeometry.ArrowShaftFraction * shape.Bounds.Height / side)),
+                ("adj1", Adjust(ShapeGeometry.ArrowShaftFraction)),
                 ("adj2", Adjust((1 - ShapeGeometry.ArrowHeadFraction) * shape.Bounds.Width / side))),
             ShapeKind.Parallelogram => Geometry(
                 A.ShapeTypeValues.Parallelogram,
