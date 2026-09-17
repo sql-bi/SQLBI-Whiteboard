@@ -805,6 +805,66 @@ below follows from that.
 
 ---
 
+## 31. Design objects are board objects, and a shape is picked up by its outline
+
+**Implemented** in 1.6.0, shipping issues
+[129](https://github.com/sql-bi/SQLBI-Whiteboard/issues/129) to
+[133](https://github.com/sql-bi/SQLBI-Whiteboard/issues/133). The plan and the twelve
+calls behind it are [design-objects.md](design-objects.md).
+
+Shapes, text labels, and connectors are records in `BoardObjects.cs` beside pictures, text
+containers, LiveViews, and frames, drawn by the same surface in the same z-order. Nothing
+about them is a second canvas: they save in the board, undo, export, and appear in the
+Explorer thumbnail and the VS Code preview because the one surface already does all of
+that. The alternative — a design layer of its own — would have needed every one of those
+paths written twice.
+
+- **The file asks for version 7 only when it has to.** A board holding a shape, a label, or
+  a connector is written as 7; a board with only frames is still 6, and one with neither is
+  still 5. That is decision 27's rule kept going, so a board keeps opening in the release
+  that can read it, and a person who never draws a shape never loses a reader.
+
+- **Shapes and labels are containers; connectors are not.** Ink that touches only a shape
+  links to it and travels with it, which is what makes a shape worth drawing round a
+  sketch. A connector carries its own two ends and would link nothing sensibly, so it stays
+  outside that rule, as a frame does.
+
+- **A shape is selected by its outline, never by its interior.** The same eight-pixel band a
+  frame's edge uses. A shape drawn around something is drawn around it on purpose, so a tap
+  in the middle has to reach what is inside; picking the shape up by its fill would bury
+  every stroke and picture under it. A label has no such inside and is selected anywhere on
+  its rotated rectangle.
+
+- **A connector binds to eight points and follows.** The four corners and four side
+  midpoints of a shape or a container, taken when an end is released within 16 screen
+  pixels; Ctrl at release binds to the nearest point anywhere on the border instead. What is
+  stored is the fraction along the bounds, not the point, so an endpoint follows a move, a
+  resize, and a load without the file saying the same thing twice. Deleting a shape frees
+  its arrows rather than taking them with it.
+
+- **The Insert tab is in the strip, and the toolbar button is a preference.** The compact
+  floating toolbar sits under a presenter picture-in-picture during a recording, and keeping
+  its width is worth more than the shortcut. So the tab strip holds the shapes, the
+  connectors, and Text, and **Insert and Lasso on the toolbar** — off — is how somebody who
+  wants them under their hand asks for a wider toolbar.
+
+- **An area takes what it partly covers, and can extend.** Partly inside is the default
+  because a sweep over a diagram is how a selection is usually made; fully inside is for
+  picking one thing out of several. **Extend to touching** then grows the set by one round
+  or by rounds until nothing is added, which is how a whole connected diagram comes from one
+  stroke in it.
+
+- **The grid is an application preference, never a board's and never an export's.** It says
+  how one person likes to work — a board opened somewhere else should not arrive carrying
+  their graph paper — and it exists to make the zoom level visible, which is a thing about
+  the screen. So `BoardRasterizer` and `BoardPreviewRenderer` turn it off as they already
+  turn frames off.
+
+Left out of 1.6.0 on purpose: text inside a shape, rotating a shape, elbow connectors,
+arrowheads at both ends, per-board grid settings, and grouping as a saved object.
+
+---
+
 ## Open questions
 
 - arm64 is not built; add it if Surface devices matter for a pen application.

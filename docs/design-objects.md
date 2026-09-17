@@ -1,6 +1,6 @@
 # Design objects: grid, area selection, shapes, text, and connectors
 
-Status: approved on 16 September 2026, implementation in progress. This is the plan for
+Status: shipped in 1.6.0, on 17 September 2026. This was the plan for
 version 1.6.0, which ships issues
 [#129](https://github.com/sql-bi/SQLBI-Whiteboard/issues/129) (background grid),
 [#133](https://github.com/sql-bi/SQLBI-Whiteboard/issues/133) (selection by area),
