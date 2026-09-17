@@ -104,6 +104,18 @@ internal sealed class BoardSurface : FrameworkElement
     /// </summary>
     public ShapeBoardObject? PendingShape { get; set; }
 
+    /// <summary>
+    /// The connector being dragged out right now, or the selected one being
+    /// re-routed by an endpoint. Drawn over the board rather than added to it.
+    /// </summary>
+    public ConnectorBoardObject? PendingConnector { get; set; }
+
+    /// <summary>
+    /// The eight binding points of the object under the pointer, while a
+    /// connector endpoint is near enough to one of them to take it.
+    /// </summary>
+    public IReadOnlyList<PointD>? BindingDots { get; set; }
+
     public void Configure(BoardDocument document, Camera2D camera)
     {
         _document = document;
@@ -168,6 +180,9 @@ internal sealed class BoardSurface : FrameworkElement
                 case ShapeBoardObject shape:
                     DrawShape(drawingContext, shape, _camera);
                     break;
+                case ConnectorBoardObject connector:
+                    DrawConnector(drawingContext, connector, _camera);
+                    break;
             }
         }
 
@@ -195,6 +210,11 @@ internal sealed class BoardSurface : FrameworkElement
             DrawShape(drawingContext, pendingShape, _camera);
         }
 
+        if (PendingConnector is { } pendingConnector)
+        {
+            DrawConnector(drawingContext, pendingConnector, _camera);
+        }
+
         if (HoveredObjectId is Guid hoveredId &&
             !SelectedObjectIds.Contains(hoveredId) &&
             _document.Objects.FirstOrDefault(item => item.Id == hoveredId) is { } hovered)
@@ -206,6 +226,16 @@ internal sealed class BoardSurface : FrameworkElement
         if (PendingArea is { Count: > 1 } area)
         {
             DrawPendingArea(drawingContext, area, _camera);
+        }
+
+        // Over the selection, because they are what the hand is aiming at: the
+        // eight places this endpoint would bind to if it were let go here.
+        if (BindingDots is { Count: > 0 } dots)
+        {
+            foreach (PointD dot in dots)
+            {
+                drawingContext.DrawEllipse(SelectionHandleBrush, SelectionPen, ToScreenPoint(dot, _camera), 4, 4);
+            }
         }
     }
 
@@ -254,6 +284,18 @@ internal sealed class BoardSurface : FrameworkElement
         {
             DrawLabelOutline(drawingContext, label, camera, SelectionPen);
             DrawSelection(drawingContext, bounds, camera, includeHandle: true, includeOutline: false);
+            return;
+        }
+
+        // A connector has no corner to take hold of: what a lone one offers is
+        // its two ends, which is what re-routes it and what re-binds it.
+        if (selected is [ConnectorBoardObject connector])
+        {
+            DrawSelection(drawingContext, bounds, camera, includeHandle: false);
+            drawingContext.DrawEllipse(
+                SelectionHandleBrush, SelectionPen, ToScreenPoint(connector.Start, camera), 7, 7);
+            drawingContext.DrawEllipse(
+                SelectionHandleBrush, SelectionPen, ToScreenPoint(connector.End, camera), 7, 7);
             return;
         }
 
@@ -699,5 +741,62 @@ internal sealed class BoardSurface : FrameworkElement
             shape.FillArgb is { } fill ? CreateFrozenBrush(fill) : null,
             pen,
             geometry);
+    }
+
+    /// <summary>
+    /// The line Core describes, and the filled head at the end of it. The line
+    /// stops at the base of the head, so a thick connector does not push a
+    /// rounded cap out through its own tip.
+    /// </summary>
+    private static void DrawConnector(
+        DrawingContext drawingContext,
+        ConnectorBoardObject connector,
+        Camera2D camera)
+    {
+        IReadOnlyList<PointD> polyline = connector.Polyline();
+        SolidColorBrush brush = CreateFrozenBrush(connector.Argb);
+        var pen = new Pen(brush, Math.Max(0.1, connector.Thickness * camera.Zoom))
+        {
+            LineJoin = PenLineJoin.Round,
+            StartLineCap = PenLineCap.Round,
+            EndLineCap = PenLineCap.Round,
+        };
+        pen.Freeze();
+        drawingContext.DrawGeometry(
+            null,
+            pen,
+            PolylineGeometry(
+                ConnectorGeometry.LinePath(connector.Kind, polyline, connector.Thickness),
+                camera,
+                isClosed: false,
+                isFilled: false));
+
+        if (ConnectorGeometry.Arrowhead(connector.Kind, polyline, connector.Thickness) is { } head)
+        {
+            drawingContext.DrawGeometry(
+                brush,
+                null,
+                PolylineGeometry(head, camera, isClosed: true, isFilled: true));
+        }
+    }
+
+    private static StreamGeometry PolylineGeometry(
+        IReadOnlyList<PointD> points,
+        Camera2D camera,
+        bool isClosed,
+        bool isFilled)
+    {
+        var geometry = new StreamGeometry();
+        using (var context = geometry.Open())
+        {
+            context.BeginFigure(ToScreenPoint(points[0], camera), isFilled, isClosed);
+            context.PolyLineTo(
+                [.. points.Skip(1).Select(point => ToScreenPoint(point, camera))],
+                isStroked: true,
+                isSmoothJoin: false);
+        }
+
+        geometry.Freeze();
+        return geometry;
     }
 }

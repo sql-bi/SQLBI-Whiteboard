@@ -110,6 +110,15 @@
                            RadiusX="3.5"
                            RadiusY="3.5" />
     </GeometryGroup>
+    <!--
+        The three connectors, drawn by hand on the same 24-unit grid: the Fluent
+        set has arrows, but none of them is a line between two things. Filled
+        rather than stroked, like the shape glyphs, so the weight follows the
+        button's size; F1 so the head and the line may overlap without a hole.
+    -->
+    <Geometry x:Key="LineConnectorGeometry">F1 M3,11 L21,11 L21,13 L3,13 Z</Geometry>
+    <Geometry x:Key="ArrowConnectorGeometry">F1 M3,11 L14,11 L14,13 L3,13 Z M13,5.5 L21.5,12 L13,18.5 Z</Geometry>
+    <Geometry x:Key="CurvedArrowConnectorGeometry">F1 M3,19 C3,10.5 7.5,6 14,6 L14,8 C8.5,8 5,11.5 5,19 Z M12.5,2.5 L21,7 L12.5,11.5 Z</Geometry>
     <GeometryGroup x:Key="ShapesGeometry"
                    FillRule="EvenOdd">
         <PathGeometry Figures="M12,1.8 L18.8,9.6 L5.2,9.6 Z" />
