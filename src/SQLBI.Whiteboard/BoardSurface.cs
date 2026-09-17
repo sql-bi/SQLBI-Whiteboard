@@ -4,6 +4,7 @@ using System.Windows.Input;
 using System.Windows.Media;
 using SQLBI.Whiteboard.Core.Geometry;
 using SQLBI.Whiteboard.Core.Model;
+using SQLBI.Whiteboard.Core.Settings;
 using SQLBI.Whiteboard.Core.Viewport;
 
 namespace SQLBI.Whiteboard;
@@ -15,6 +16,14 @@ internal sealed class BoardSurface : FrameworkElement
     private static readonly Brush SelectionHandleBrush = CreateFrozenBrush(0xFFFFFFFF);
     private static readonly Brush MissingImageBrush = CreateFrozenBrush(0xFFE5E7EB);
     private static readonly Pen MissingImagePen = CreateFrozenPen(0xFF9CA3AF, 1);
+    private static readonly Pen GridPen = CreateFrozenPen(0x14000000, 1);
+    private static readonly Brush GridDotBrush = CreateFrozenBrush(0x14000000);
+
+    // A dot reaches 1.5 pixels out from its intersection rather than measuring
+    // 1.5 across: at the grid's own faint gray, a dot narrower than this covers
+    // so little of a pixel that antialiasing thins it away to nothing.
+    private const double GridDotRadius = 1.5;
+
     private static readonly Brush FrameBrush = CreateFrozenBrush(0xFF64748B);
     private static readonly Brush FrameTitleBrush = CreateFrozenBrush(0xFFFFFFFF);
     private static readonly Typeface FrameTypeface = new(
@@ -52,6 +61,13 @@ internal sealed class BoardSurface : FrameworkElement
     /// left out of every export and preview.
     /// </summary>
     public bool DrawFrames { get; set; } = true;
+
+    /// <summary>
+    /// The background grid, under everything and on screen only. Off by default
+    /// for the same reason as <see cref="DrawFrames"/> is turned off by an
+    /// export: it is a guide for the person drawing, not part of the board.
+    /// </summary>
+    public GridStyle GridStyle { get; set; } = GridStyle.Off;
 
     /// <summary>
     /// A word or two beside the resize handle while a gesture needs one, such
@@ -93,6 +109,11 @@ internal sealed class BoardSurface : FrameworkElement
         if (_document is null || _camera is null)
         {
             return;
+        }
+
+        if (DrawBackground && GridStyle != GridStyle.Off)
+        {
+            DrawGrid(drawingContext, _camera);
         }
 
         foreach (var item in _document.Query(_camera.VisibleWorldBounds))
@@ -155,6 +176,75 @@ internal sealed class BoardSurface : FrameworkElement
         {
             DrawSelection(drawingContext, selected.Bounds, _camera, includeHandle: true);
         }
+    }
+
+    /// <summary>
+    /// The grid is faint enough that half a pixel of it disappears, so the lines
+    /// are snapped: a whole-pixel position plus half the pen's width puts the
+    /// stroke inside one device pixel instead of spreading it over two paler ones.
+    /// </summary>
+    private void DrawGrid(DrawingContext drawingContext, Camera2D camera)
+    {
+        var visible = camera.VisibleWorldBounds;
+        var spacing = GridGeometry.SpacingFor(camera.Zoom);
+        var columns = GridGeometry.VerticalLines(visible, spacing)
+            .Select(x => Math.Round(camera.WorldToScreen(new PointD(x, visible.Top)).X))
+            .ToArray();
+        var rows = GridGeometry.HorizontalLines(visible, spacing)
+            .Select(y => Math.Round(camera.WorldToScreen(new PointD(visible.Left, y)).Y))
+            .ToArray();
+        var width = RenderSize.Width;
+        var height = RenderSize.Height;
+
+        if (GridStyle == GridStyle.Lines)
+        {
+            foreach (var x in columns)
+            {
+                drawingContext.DrawLine(GridPen, new Point(x + 0.5, 0), new Point(x + 0.5, height));
+            }
+
+            foreach (var y in rows)
+            {
+                drawingContext.DrawLine(GridPen, new Point(0, y + 0.5), new Point(width, y + 0.5));
+            }
+
+            return;
+        }
+
+        // One geometry rather than a drawing record for every dot: the surface is
+        // redrawn on each frame of a pan, and a dense grid runs to tens of
+        // thousands of intersections.
+        var radius = new Size(GridDotRadius, GridDotRadius);
+        var dots = new StreamGeometry();
+        using (var context = dots.Open())
+        {
+            foreach (var y in rows)
+            {
+                foreach (var x in columns)
+                {
+                    context.BeginFigure(new Point(x - GridDotRadius, y), isFilled: true, isClosed: true);
+                    context.ArcTo(
+                        new Point(x + GridDotRadius, y),
+                        radius,
+                        0,
+                        isLargeArc: false,
+                        SweepDirection.Clockwise,
+                        isStroked: false,
+                        isSmoothJoin: false);
+                    context.ArcTo(
+                        new Point(x - GridDotRadius, y),
+                        radius,
+                        0,
+                        isLargeArc: false,
+                        SweepDirection.Clockwise,
+                        isStroked: false,
+                        isSmoothJoin: false);
+                }
+            }
+        }
+
+        dots.Freeze();
+        drawingContext.DrawGeometry(GridDotBrush, null, dots);
     }
 
     private static void DrawStroke(
