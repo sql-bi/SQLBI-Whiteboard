@@ -23,10 +23,10 @@ and **bold**.
 The new **Insert** tab draws eight shapes by dragging, with an outline, a fill, and a
 thickness; three connectors that bind to a shape's corner or side and follow it when it moves;
 and text typed on the board, in nine fonts and any pen color, with bold, italic, underline,
-and a turn in 45° steps. All of it is saved, undone, and exported to a deck or a PDF as objects rather than as a
-picture. **Preferences → Toolbar** can add **Insert** to the floating toolbar, and says
-whether a tool stays for the next one. A board holding any of these objects does not open in
-1.5.x.
+and a turn in 45° steps. All of it is saved, undone, and exported to a deck or a PDF as
+objects rather than as a picture. **Preferences → Toolbar** can add **Insert** to the floating
+toolbar, and says whether a tool stays for the next one. A board holding any of these objects
+does not open in 1.5.x.
 
 ### Select several things at once
 Drag with **Select** on empty canvas for a rectangle, or turn on **Lasso** on the Edit row for
