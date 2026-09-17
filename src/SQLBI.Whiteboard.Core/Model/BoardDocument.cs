@@ -274,6 +274,16 @@ public sealed class BoardDocument
         return match;
     }
 
+    /// <summary>
+    /// The connectors with an end bound to this object. A gesture that moves it
+    /// carries them, and deleting it detaches them.
+    /// </summary>
+    public IReadOnlyList<ConnectorBoardObject> ConnectorsAttachedTo(Guid objectId) =>
+        _objects.OfType<ConnectorBoardObject>()
+            .Where(connector => connector.StartAnchor?.ObjectId == objectId ||
+                                connector.EndAnchor?.ObjectId == objectId)
+            .ToArray();
+
     public IEnumerable<InkStrokeObject> LinkedStrokes(Guid containerId) =>
         _objects.OfType<InkStrokeObject>()
             .Where(stroke => stroke.ContainerId == containerId);

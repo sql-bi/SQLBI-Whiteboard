@@ -2841,6 +2841,349 @@ Assert(
         "A font or a size that is not one of the choices falls back to the default.");
 }
 
+// Connectors: where the line runs, what it points at, how it follows what it is
+// bound to, and what happens to it when that is deleted.
+{
+    var straight = ConnectorBoardObject.Create(
+        Guid.NewGuid(),
+        0,
+        ConnectorKind.Arrow,
+        new PointD(0, 0),
+        new PointD(200, 0),
+        0xFF1F2937,
+        4);
+    Assert(
+        straight.Polyline().SequenceEqual([new PointD(0, 0), new PointD(200, 0)]),
+        "A straight connector is its two ends and nothing in between.");
+    Assert(
+        straight.Bounds.Left <= 0 && straight.Bounds.Right >= 200,
+        "The box covers both ends of the line.");
+    Assert(
+        straight.Bounds.Top < 0 && straight.Bounds.Bottom > 0,
+        "The box is inflated by half the line's width, so a horizontal line is not a box of no height.");
+
+    // A curve leaves each end along the outward normal of the side its anchor
+    // sits on, so an arrow between two boxes bows out rather than cutting across.
+    var curveTarget = Guid.NewGuid();
+    var curved = ConnectorBoardObject.Create(
+        Guid.NewGuid(),
+        0,
+        ConnectorKind.CurvedArrow,
+        new PointD(0, 0),
+        new PointD(200, 200),
+        0xFF1F2937,
+        4,
+        new ConnectorAnchor(curveTarget, 0, 0.5),
+        null);
+    IReadOnlyList<PointD> curvePath = curved.Polyline();
+    Assert(
+        curvePath.Count == ConnectorGeometry.CurveSegments + 1,
+        "A curve is flattened into the segments everything else reads it as.");
+    Assert(
+        curvePath[0] == new PointD(0, 0) && curvePath[^1] == new PointD(200, 200),
+        "The flattened curve starts and ends where the connector does.");
+    Assert(
+        curvePath[1].X < 0,
+        "An end bound to the left side of a box leaves it leftwards, away from the box.");
+    Assert(
+        curved.Bounds.Left < 0,
+        "The box of a curve covers where the curve actually goes, not just its two ends.");
+    Assert(
+        ConnectorGeometry.Polyline(ConnectorKind.CurvedArrow, new PointD(0, 0), new PointD(200, 0))[1].X > 0,
+        "A free end leaves horizontally, towards the other end.");
+
+    // The head follows the last segment, and the line stops at the base of it.
+    IReadOnlyList<PointD> head = straight.Arrowhead()!;
+    Assert(head.Count == 3 && head[0] == new PointD(200, 0), "The arrowhead is a triangle with its tip at the end.");
+    AssertNear(16, 200 - head[1].X, "The head is four times the thickness long.");
+    AssertNear(10, head[1].Y - head[2].Y, "The head is two and a half times the thickness wide.");
+    Assert(
+        ConnectorGeometry.Arrowhead(ConnectorKind.Line, straight.Polyline(), 4) is null,
+        "A plain line has no head.");
+    var upward = ConnectorBoardObject.Create(
+        Guid.NewGuid(), 0, ConnectorKind.Arrow, new PointD(0, 200), new PointD(0, 0), 0xFF1F2937, 4);
+    IReadOnlyList<PointD> upwardHead = upward.Arrowhead()!;
+    Assert(
+        upwardHead[1].Y > 0 && upwardHead[2].Y > 0,
+        "An arrow drawn upwards has its head pointing up: the triangle sits below its tip.");
+    IReadOnlyList<PointD> shortened = ConnectorGeometry.LinePath(ConnectorKind.Arrow, straight.Polyline(), 4);
+    AssertNear(184, shortened[^1].X, "The line stops at the base of the head rather than poking through the tip.");
+
+    Assert(straight.HitTest(new PointD(100, 3), 1), "A tap within the band of the line takes the connector.");
+    Assert(!straight.HitTest(new PointD(100, 30), 1), "A tap well off the line is not the connector.");
+    Assert(
+        !straight.HitTest(new PointD(100, 6), 8),
+        "The band is screen pixels, so zooming in narrows what it covers on the board.");
+    Assert(curved.HitTest(curvePath[16], 1), "A tap on the curve itself takes a curved connector.");
+    Assert(
+        !curved.HitTest(new PointD(190, 10), 1),
+        "The empty corner of a curve's box is not the curve.");
+
+    // The eight binding points, and what Ctrl asks for instead.
+    var box = new RectD(100, 100, 200, 100);
+    IReadOnlyList<PointD> dots = ConnectorGeometry.BindingPoints(box);
+    Assert(dots.Count == 8, "A box offers eight binding points.");
+    Assert(
+        dots.Contains(new PointD(100, 100)) && dots.Contains(new PointD(300, 200)) &&
+        dots.Contains(new PointD(200, 100)) && dots.Contains(new PointD(100, 150)),
+        "They are the four corners and the four side midpoints.");
+    var boxId = Guid.NewGuid();
+    Assert(
+        ConnectorGeometry.NearestBindingPoint(boxId, box, new PointD(205, 108)) ==
+        new ConnectorAnchor(boxId, 0.5, 0),
+        "A drop near the top of a box binds to the midpoint of that side.");
+    Assert(
+        ConnectorGeometry.NearestBindingPoint(boxId, box, new PointD(296, 104)) ==
+        new ConnectorAnchor(boxId, 1, 0),
+        "A drop near a corner binds to the corner.");
+    ConnectorAnchor border = ConnectorGeometry.NearestBorderPoint(boxId, box, null, new PointD(240, 90));
+    Assert(
+        border.V == 0 && Math.Abs(border.U - 0.7) < 0.000001,
+        "With Ctrl the endpoint takes the nearest point anywhere on the border, as a fraction of the box.");
+    ConnectorAnchor outlineBorder = ConnectorGeometry.NearestBorderPoint(
+        boxId,
+        box,
+        ShapeGeometry.Outline(ShapeKind.Diamond, box),
+        new PointD(100, 100));
+    Assert(
+        outlineBorder.U > 0 && outlineBorder.U < 0.5 && outlineBorder.V > 0 && outlineBorder.V < 0.5,
+        "A shape's own outline answers for it, so a corner of a diamond's box binds to the slope between its points.");
+
+    // Following: what is bound moves and the endpoint goes with it, whether it
+    // sits on a corner or on the middle of a side.
+    var followed = new ShapeBoardObject(
+        Guid.NewGuid(), 0, box, ShapeKind.RoundedRectangle, 0xFF1F2937, null, 4);
+    var bound = ConnectorBoardObject.Create(
+        Guid.NewGuid(),
+        1,
+        ConnectorKind.Arrow,
+        new PointD(300, 150),
+        new PointD(600, 400),
+        0xFF1F2937,
+        4,
+        new ConnectorAnchor(followed.Id, 1, 0.5),
+        null);
+    var movedShape = (ShapeBoardObject)followed.WithBounds(box.Translate(new PointD(50, 20)));
+    ConnectorBoardObject afterMove = bound.Follow(movedShape);
+    Assert(afterMove.Start == new PointD(350, 170), "A move carries the bound endpoint with the object.");
+    Assert(afterMove.End == bound.End, "The free end stays where it was.");
+    var resizedShape = (ShapeBoardObject)followed.WithBounds(new RectD(100, 100, 400, 200));
+    Assert(
+        bound.Follow(resizedShape).Start == new PointD(500, 200),
+        "A resize keeps the endpoint on the middle of the same side.");
+    var corner = bound.WithEndpoints(
+        bound.Start,
+        bound.End,
+        new ConnectorAnchor(followed.Id, 1, 1),
+        null);
+    Assert(
+        corner.Follow(resizedShape).Start == new PointD(500, 300),
+        "A corner anchor stays on that corner through a resize.");
+    Assert(
+        corner.Follow(new ShapeBoardObject(
+            Guid.NewGuid(), 0, box, ShapeKind.Ellipse, 0xFF1F2937, null, 4)) == corner,
+        "An object the connector is not bound to moves without touching it.");
+
+    // A group gesture carries the connector by its box, anchors and all.
+    ConnectorBoardObject dragged = (ConnectorBoardObject)bound.WithBounds(
+        bound.Bounds.Translate(new PointD(10, 10)));
+    Assert(
+        dragged.Start == new PointD(310, 160) && dragged.EndAnchor is null &&
+        dragged.StartAnchor == bound.StartAnchor,
+        "Moving a connector's box moves both ends and keeps what they are bound to.");
+    Assert(
+        bound.Detach(followed.Id).StartAnchor is null && bound.Detach(followed.Id).Start == bound.Start,
+        "Detaching clears the anchor and leaves the endpoint where it was.");
+
+    // An area takes a connector by its path, as it takes a stroke by its points.
+    Assert(
+        straight.IsTakenBy(SelectionArea.Rectangle(new RectD(90, -5, 20, 10)), AreaSelection.PartlyInside),
+        "A band across the line takes the connector.");
+    Assert(
+        !curved.IsTakenBy(SelectionArea.Rectangle(new RectD(170, 0, 30, 30)), AreaSelection.PartlyInside),
+        "A band over the empty corner of a curve's box does not take it.");
+    Assert(
+        straight.IsTakenBy(SelectionArea.Rectangle(new RectD(-20, -20, 260, 40)), AreaSelection.FullyInside),
+        "An area around the whole line takes it under the stricter rule as well.");
+    Assert(
+        !straight.IsTakenBy(SelectionArea.Rectangle(new RectD(-20, -20, 150, 40)), AreaSelection.FullyInside),
+        "Under Only objects fully inside, both ends have to be inside.");
+
+    // Deleting what a connector points at detaches it, in the same step.
+    var connectorBoard = new BoardDocument();
+    var deleted = new ShapeBoardObject(
+        Guid.NewGuid(),
+        connectorBoard.NextZIndex,
+        new RectD(0, 0, 100, 100),
+        ShapeKind.Ellipse,
+        0xFF1F2937,
+        null,
+        4);
+    connectorBoard.AddObject(deleted);
+    var pointing = ConnectorBoardObject.Create(
+        Guid.NewGuid(),
+        connectorBoard.NextZIndex,
+        ConnectorKind.Arrow,
+        new PointD(100, 50),
+        new PointD(400, 50),
+        0xFF1F2937,
+        4,
+        new ConnectorAnchor(deleted.Id, 1, 0.5),
+        null);
+    connectorBoard.AddObject(pointing);
+    Assert(
+        connectorBoard.ConnectorsAttachedTo(deleted.Id).Single().Id == pointing.Id,
+        "The board finds the connectors bound to an object.");
+    var connectorHistory = new CommandHistory();
+    connectorHistory.Execute(
+        new CompositeCommand(
+        [
+            new RemoveObjectsCommand(connectorBoard.GetDeletionGroup([deleted.Id])),
+            new ReplaceObjectsCommand([pointing], [pointing.Detach(deleted.Id)]),
+        ]),
+        connectorBoard);
+    Assert(
+        connectorBoard.Objects.OfType<ShapeBoardObject>().Any() == false &&
+        connectorBoard.Objects.OfType<ConnectorBoardObject>().Single() is { StartAnchor: null } left &&
+        left.Start == new PointD(100, 50),
+        "Deleting a shape leaves the arrow where it was, freed from it.");
+    connectorHistory.Undo(connectorBoard);
+    Assert(
+        connectorBoard.Objects.Count == 2 &&
+        connectorBoard.Objects.OfType<ConnectorBoardObject>().Single().StartAnchor?.ObjectId == deleted.Id,
+        "One undo puts the shape back and binds the arrow to it again.");
+
+    // An export area is never cut between a shape and its arrow.
+    var partitionBoard = new BoardDocument();
+    var leftShape = new ShapeBoardObject(
+        Guid.NewGuid(), partitionBoard.NextZIndex, new RectD(0, 0, 200, 100),
+        ShapeKind.RoundedRectangle, 0xFF1F2937, null, 4);
+    partitionBoard.AddObject(leftShape);
+    var rightShape = new ShapeBoardObject(
+        Guid.NewGuid(), partitionBoard.NextZIndex, new RectD(1600, 0, 200, 100),
+        ShapeKind.RoundedRectangle, 0xFF1F2937, null, 4);
+    partitionBoard.AddObject(rightShape);
+    Assert(
+        BoardPartitioner.Partition(partitionBoard).Count == 2,
+        "Two shapes a board apart are two export areas.");
+    var joining = ConnectorBoardObject.Create(
+        Guid.NewGuid(),
+        partitionBoard.NextZIndex,
+        ConnectorKind.Arrow,
+        new PointD(200, 50),
+        new PointD(1600, 50),
+        0xFF1F2937,
+        4,
+        new ConnectorAnchor(leftShape.Id, 1, 0.5),
+        new ConnectorAnchor(rightShape.Id, 0, 0.5));
+    partitionBoard.AddObject(joining);
+    IReadOnlyList<ExportArea> joined = BoardPartitioner.Partition(partitionBoard);
+    Assert(
+        joined.Count == 1 && joined[0].Objects.Count == 3,
+        "A connector bound to both brings the two units together, so the arrow is not cut off from what it joins.");
+    var lonely = new BoardDocument();
+    lonely.AddObject(ConnectorBoardObject.Create(
+        Guid.NewGuid(), 0, ConnectorKind.Line, new PointD(0, 0), new PointD(100, 100), 0xFF1F2937, 4));
+    Assert(
+        BoardPartitioner.Partition(lonely).Count == 1,
+        "A connector bound to nothing is an area of its own.");
+
+    // A board that carries a connector, written and read back.
+    var savedBoard = new BoardDocument();
+    var firstShape = new ShapeBoardObject(
+        Guid.NewGuid(), savedBoard.NextZIndex, new RectD(0, 0, 120, 80),
+        ShapeKind.Diamond, 0xFF1F2937, null, 4);
+    savedBoard.AddObject(firstShape);
+    var secondShape = new ShapeBoardObject(
+        Guid.NewGuid(), savedBoard.NextZIndex, new RectD(300, 200, 120, 80),
+        ShapeKind.Ellipse, 0xFF1F2937, null, 4);
+    savedBoard.AddObject(secondShape);
+    var savedConnector = ConnectorBoardObject.Create(
+        Guid.NewGuid(),
+        savedBoard.NextZIndex,
+        ConnectorKind.CurvedArrow,
+        new PointD(120, 40),
+        new PointD(300, 240),
+        0xFF009E73,
+        8,
+        new ConnectorAnchor(firstShape.Id, 1, 0.5),
+        new ConnectorAnchor(secondShape.Id, 0, 0.5));
+    savedBoard.AddObject(savedConnector);
+    Assert(
+        BoardArchive.VersionFor(savedBoard) == BoardArchive.CurrentVersion,
+        "A board that holds a connector asks for version 7.");
+
+    await using var connectorArchive = new MemoryStream();
+    await BoardArchive.SaveAsync(savedBoard, connectorArchive);
+    connectorArchive.Position = 0;
+    ConnectorBoardObject restoredConnector = (await BoardArchive.LoadAsync(connectorArchive))
+        .Objects.OfType<ConnectorBoardObject>().Single();
+    Assert(
+        restoredConnector == savedConnector,
+        "A connector round-trips with its kind, colour, thickness, ends, and both anchors.");
+
+    // What a file could have got wrong: a kind from a later release, an anchor
+    // naming an object that is not there, and fractions outside the box.
+    var danglingScene = "{\"version\":7,\"objects\":[{\"type\":\"connector\"," +
+        "\"id\":\"3f2504e0-4f89-11d3-9a0c-0305e82c3302\",\"zIndex\":0," +
+        "\"bounds\":{\"x\":0,\"y\":0,\"width\":10,\"height\":10}," +
+        "\"connectorKind\":\"Elbow\",\"thickness\":0,\"startX\":0,\"startY\":0," +
+        "\"endX\":200,\"endY\":0,\"startAnchor\":{\"objectId\":" +
+        "\"3f2504e0-4f89-11d3-9a0c-0305e82c3303\",\"u\":4,\"v\":-1}}],\"assets\":[]}";
+    await using var danglingArchive = new MemoryStream();
+    using (var writer = new ZipArchive(danglingArchive, ZipArchiveMode.Create, leaveOpen: true))
+    {
+        var entry = writer.CreateEntry("scene.json");
+        await using var entryStream = entry.Open();
+        await entryStream.WriteAsync(Encoding.UTF8.GetBytes(danglingScene));
+    }
+
+    danglingArchive.Position = 0;
+    ConnectorBoardObject dangling = (await BoardArchive.LoadAsync(danglingArchive))
+        .Objects.OfType<ConnectorBoardObject>().Single();
+    Assert(
+        dangling is { Kind: ConnectorKind.Arrow, Thickness: 4, StartAnchor: null },
+        "An unknown kind reads as an arrow, a thickness of nothing takes the default, and an anchor naming " +
+        "an object the file does not have is dropped.");
+    Assert(
+        dangling.Bounds.Right >= 200,
+        "The box is worked out again from the ends rather than trusted to the file.");
+    Assert(
+        ConnectorAnchor.Normalize(Guid.Empty, 4, -1) == new ConnectorAnchor(Guid.Empty, 1, 0),
+        "A fraction outside the box is brought back onto it.");
+
+    // The connector defaults: what the last one was drawn with.
+    var connectorSettings = AppSettingsSerializer.Parse(AppSettingsSerializer.Format(new AppSettings
+    {
+        Connector = new ConnectorSettings
+        {
+            Argb = 0xFF009E73,
+            Thickness = 8,
+            Kind = ConnectorKind.CurvedArrow,
+        },
+    }));
+    Assert(
+        connectorSettings.Connector is
+        {
+            Argb: 0xFF009E73,
+            Thickness: 8,
+            Kind: ConnectorKind.CurvedArrow,
+        },
+        "The connector defaults survive a round trip.");
+    Assert(
+        AppSettingsSerializer.Parse("{ }").Connector is
+        {
+            Argb: 0xFFE64B3D,
+            Thickness: 4,
+            Kind: ConnectorKind.Arrow,
+        },
+        "A file that says nothing about connectors draws the next one as an arrow in the pen's colour.");
+    Assert(
+        AppSettingsSerializer.Parse("{ \"connector\": { \"argb\": 123, \"thickness\": 99, \"kind\": 42 } }")
+            .Connector is { Argb: 0xFFE64B3D, Thickness: 4, Kind: ConnectorKind.Arrow },
+        "A connector default that is not one of the choices normalizes back to one that is.");
+}
+
 Console.WriteLine("SQLBI.Whiteboard.Core smoke tests passed.");
 
 static InkStrokeObject ExportStroke(double x, double y, double width, double height, int zIndex, Guid? containerId = null) =>

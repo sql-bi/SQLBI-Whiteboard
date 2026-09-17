@@ -108,6 +108,7 @@ internal static class EditableSlide
     private static bool NeedsOverlay(BoardObject item, bool inkAsStrokes) => item switch
     {
         InkStrokeObject => !inkAsStrokes,
+        ConnectorBoardObject => true,
         _ => false,
     };
 

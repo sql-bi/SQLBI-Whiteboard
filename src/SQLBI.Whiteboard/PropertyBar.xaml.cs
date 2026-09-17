@@ -41,6 +41,7 @@ public partial class PropertyBar : UserControl
         AddRow(HasPrimaryColor, BuildColorRow());
         AddRow(HasThickness, BuildThicknessRow());
         AddRow(HasFill, BuildFillRow());
+        AddRow(IsConnector, BuildLineKindRow());
         AddRow(IsLabel, BuildFontRow());
     }
 
@@ -51,12 +52,14 @@ public partial class PropertyBar : UserControl
     /// row rather than rewriting it.
     /// </summary>
     private static bool HasPrimaryColor(BoardObject item) =>
-        item is InkStrokeObject or FreeTextBoardObject or ShapeBoardObject;
+        item is InkStrokeObject or FreeTextBoardObject or ShapeBoardObject or ConnectorBoardObject;
 
     private static bool HasThickness(BoardObject item) =>
-        item is InkStrokeObject or ShapeBoardObject;
+        item is InkStrokeObject or ShapeBoardObject or ConnectorBoardObject;
 
     private static bool HasFill(BoardObject item) => item is ShapeBoardObject;
+
+    private static bool IsConnector(BoardObject item) => item is ConnectorBoardObject;
 
     private static bool IsLabel(BoardObject item) => item is FreeTextBoardObject;
 
@@ -74,6 +77,11 @@ public partial class PropertyBar : UserControl
     /// A fill chosen for every selected shape. Null is None.
     /// </summary>
     public event Action<uint?>? FillChosen;
+
+    /// <summary>
+    /// A kind chosen for every selected connector.
+    /// </summary>
+    public event Action<ConnectorKind>? ConnectorKindChosen;
 
     /// <summary>
     /// A font, a size, a style, or a quarter turn chosen for every selected
@@ -457,6 +465,68 @@ public partial class PropertyBar : UserControl
         };
     }
 
+    /// <summary>
+    /// Line, arrow, curved arrow: the three a connector can be, offered as the
+    /// pictures of themselves the Insert row offers.
+    /// </summary>
+    private PropertyBarRow BuildLineKindRow()
+    {
+        var host = new StackPanel { Orientation = Orientation.Horizontal };
+        foreach ((ConnectorKind kind, string name) in ConnectorKinds)
+        {
+            var button = new ToggleButton
+            {
+                Style = (Style)FindResource("SizeChipButton"),
+                Width = 44,
+                Height = 30,
+                ToolTip = name,
+                Tag = kind,
+                Content = new System.Windows.Shapes.Path
+                {
+                    Width = 20,
+                    Height = 20,
+                    Stretch = Stretch.Uniform,
+                    Fill = (Brush)FindResource("ToolbarIconBrush"),
+                    Data = (Geometry)FindResource(ConnectorGeometryKey(kind)),
+                },
+            };
+            button.Click += (_, _) => ConnectorKindChosen?.Invoke(kind);
+            host.Children.Add(button);
+        }
+
+        return new PropertyBarRow
+        {
+            Content = host,
+            Refresh = selection =>
+            {
+                foreach (var button in host.Children.OfType<ToggleButton>())
+                {
+                    button.IsChecked = button.Tag is ConnectorKind kind &&
+                                       selection.All(item =>
+                                           item is ConnectorBoardObject connector && connector.Kind == kind);
+                }
+            },
+        };
+    }
+
+    /// <summary>
+    /// The three connectors, in the order the Insert row offers them, with the
+    /// names that row uses.
+    /// </summary>
+    public static IReadOnlyList<(ConnectorKind Kind, string Name)> ConnectorKinds { get; } =
+    [
+        (ConnectorKind.Line, "Line"),
+        (ConnectorKind.Arrow, "Arrow"),
+        (ConnectorKind.CurvedArrow, "Curved arrow"),
+    ];
+
+    public static string ConnectorGeometryKey(ConnectorKind kind) => kind switch
+    {
+        ConnectorKind.Line => "LineConnectorGeometry",
+        ConnectorKind.CurvedArrow => "CurvedArrowConnectorGeometry",
+        _ => "ArrowConnectorGeometry",
+    };
+
     private static bool Shared(IReadOnlyList<BoardObject> selection, uint argb) =>
         selection.All(item => ColorOf(item) == argb);
 
@@ -465,6 +535,7 @@ public partial class PropertyBar : UserControl
         InkStrokeObject stroke => stroke.Style.Argb,
         FreeTextBoardObject label => label.Argb,
         ShapeBoardObject shape => shape.OutlineArgb,
+        ConnectorBoardObject connector => connector.Argb,
         _ => null,
     };
 
@@ -472,6 +543,7 @@ public partial class PropertyBar : UserControl
     {
         InkStrokeObject stroke => stroke.Style.Thickness,
         ShapeBoardObject shape => shape.Thickness,
+        ConnectorBoardObject connector => connector.Thickness,
         _ => null,
     };
 

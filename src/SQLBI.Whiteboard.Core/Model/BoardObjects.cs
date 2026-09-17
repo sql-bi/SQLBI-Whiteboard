@@ -792,6 +792,220 @@ public sealed record FreeTextBoardObject(
     }
 }
 
+/// <summary>
+/// The three connectors, in the order the Insert row and the toolbar flyout
+/// offer them.
+/// </summary>
+public enum ConnectorKind
+{
+    Line,
+    Arrow,
+    CurvedArrow,
+}
+
+/// <summary>
+/// An endpoint tied to a point on another object's box, as a fraction of it
+/// each way: a corner is 0 or 1 in both, a side midpoint has a half in one. The
+/// fraction rather than the point is what is kept, so the endpoint follows the
+/// object through a move, a scale, and a stretch without being recorded twice.
+/// </summary>
+public readonly record struct ConnectorAnchor(Guid ObjectId, double U, double V)
+{
+    /// <summary>
+    /// The anchor as a file could have it, with a fraction outside the box
+    /// brought back onto it.
+    /// </summary>
+    public static ConnectorAnchor Normalize(Guid objectId, double u, double v) => new(
+        objectId,
+        double.IsFinite(u) ? Math.Clamp(u, 0, 1) : 0,
+        double.IsFinite(v) ? Math.Clamp(v, 0, 1) : 0);
+}
+
+/// <summary>
+/// A line between two points, either of which may be bound to another object.
+/// It is not a container: nothing links to a connector, and a connector inside a
+/// shape is not part of it. What is stored is where the two ends are, so a board
+/// opens with its connectors where they were drawn without anything having to
+/// be worked out from the objects around them.
+/// </summary>
+public sealed record ConnectorBoardObject(
+    Guid Id,
+    int ZIndex,
+    RectD Bounds,
+    ConnectorKind Kind,
+    PointD Start,
+    PointD End,
+    uint Argb,
+    double Thickness,
+    ConnectorAnchor? StartAnchor = null,
+    ConnectorAnchor? EndAnchor = null) : BoardObject(Id, ZIndex, Bounds)
+{
+    /// <summary>
+    /// What a connector is drawn with when nothing says otherwise, and what a
+    /// saved thickness that makes no sense falls back to.
+    /// </summary>
+    public const double DefaultThickness = 4;
+
+    /// <summary>
+    /// How near the pointer has to be to a binding point, in screen pixels, for
+    /// the eight to be offered and the nearest one taken on release. Twice the
+    /// band a tap uses, because this is a drop rather than a tap: the endpoint
+    /// is already where the hand put it, and the question is only whether it
+    /// meant the object.
+    /// </summary>
+    public const double BindingReach = 16;
+
+    /// <summary>
+    /// Whether an endpoint can bind to this object. A shape or a container, and
+    /// never a frame, a stroke, or another connector: those are not things an
+    /// arrow points at.
+    /// </summary>
+    public static bool CanBind(BoardObject item) => item is IBoardContainer;
+
+    public static ConnectorBoardObject Create(
+        Guid id,
+        int zIndex,
+        ConnectorKind kind,
+        PointD start,
+        PointD end,
+        uint argb,
+        double thickness,
+        ConnectorAnchor? startAnchor = null,
+        ConnectorAnchor? endAnchor = null) => new(
+        id,
+        zIndex,
+        ConnectorGeometry.Bounds(kind, start, end, thickness, startAnchor, endAnchor),
+        kind,
+        start,
+        end,
+        argb,
+        thickness,
+        startAnchor,
+        endAnchor);
+
+    public IReadOnlyList<PointD> Polyline() =>
+        ConnectorGeometry.Polyline(Kind, Start, End, StartAnchor, EndAnchor);
+
+    public IReadOnlyList<PointD>? Arrowhead() =>
+        ConnectorGeometry.Arrowhead(Kind, Polyline(), Thickness);
+
+    /// <summary>
+    /// The same connector between two other points, with its box worked out
+    /// again: a curve's box is the curve's, not the two ends'.
+    /// </summary>
+    public ConnectorBoardObject WithEndpoints(
+        PointD start,
+        PointD end,
+        ConnectorAnchor? startAnchor,
+        ConnectorAnchor? endAnchor) => this with
+        {
+            Bounds = ConnectorGeometry.Bounds(Kind, start, end, Thickness, startAnchor, endAnchor),
+            Start = start,
+            End = end,
+            StartAnchor = startAnchor,
+            EndAnchor = endAnchor,
+        };
+
+    public ConnectorBoardObject WithKind(ConnectorKind kind) =>
+        (this with { Kind = kind }).WithEndpoints(Start, End, StartAnchor, EndAnchor);
+
+    public ConnectorBoardObject WithThickness(double thickness) =>
+        (this with { Thickness = thickness }).WithEndpoints(Start, End, StartAnchor, EndAnchor);
+
+    /// <summary>
+    /// The endpoints bound to this object, brought to where its box now is. It
+    /// is how a connector follows what it points at through a move, a resize,
+    /// an undo, and a group gesture.
+    /// </summary>
+    public ConnectorBoardObject Follow(BoardObject attached)
+    {
+        ArgumentNullException.ThrowIfNull(attached);
+        PointD start = StartAnchor is { } startAnchor && startAnchor.ObjectId == attached.Id
+            ? ConnectorGeometry.PointOn(attached.Bounds, startAnchor)
+            : Start;
+        PointD end = EndAnchor is { } endAnchor && endAnchor.ObjectId == attached.Id
+            ? ConnectorGeometry.PointOn(attached.Bounds, endAnchor)
+            : End;
+        return start == Start && end == End
+            ? this
+            : WithEndpoints(start, end, StartAnchor, EndAnchor);
+    }
+
+    /// <summary>
+    /// Freed from that object, left where it is. Deleting a shape detaches the
+    /// arrows that pointed at it rather than taking them with it.
+    /// </summary>
+    public ConnectorBoardObject Detach(Guid objectId)
+    {
+        ConnectorAnchor? start = StartAnchor?.ObjectId == objectId ? null : StartAnchor;
+        ConnectorAnchor? end = EndAnchor?.ObjectId == objectId ? null : EndAnchor;
+        return start == StartAnchor && end == EndAnchor
+            ? this
+            : WithEndpoints(Start, End, start, end);
+    }
+
+    /// <summary>
+    /// Freed from everything, which is what dragging a connector by its body
+    /// means: it was taken away from what it joined.
+    /// </summary>
+    public ConnectorBoardObject Detach() =>
+        StartAnchor is null && EndAnchor is null ? this : WithEndpoints(Start, End, null, null);
+
+    /// <summary>
+    /// The ends carried with the box, which is what a move or a group scale
+    /// does to a connector. The anchors stay: what a gesture moved is the
+    /// object the connector is bound to as well.
+    /// </summary>
+    public override BoardObject WithBounds(RectD bounds) => WithEndpoints(
+        MapPoint(Start, Bounds, bounds),
+        MapPoint(End, Bounds, bounds),
+        StartAnchor,
+        EndAnchor);
+
+    public override BoardObject WithZIndex(int zIndex) => this with { ZIndex = zIndex };
+
+    public override bool HitTest(PointD worldPoint, double zoom) =>
+        ConnectorGeometry.IsOnPath(Polyline(), worldPoint, HitBand / Math.Max(zoom, 0.000001));
+
+    /// <summary>
+    /// The path answers the area, as a stroke's points do: the box of a curve
+    /// or a diagonal is mostly empty.
+    /// </summary>
+    public override bool IsTakenBy(SelectionArea area, AreaSelection rule)
+    {
+        ArgumentNullException.ThrowIfNull(area);
+        IReadOnlyList<PointD> path = Polyline();
+        if (rule == AreaSelection.FullyInside)
+        {
+            return path.All(area.Contains);
+        }
+
+        if (!area.IntersectsRectangle(Bounds))
+        {
+            return false;
+        }
+
+        if (path.Any(area.Contains))
+        {
+            return true;
+        }
+
+        for (var index = 1; index < path.Count; index++)
+        {
+            if (area.IntersectsSegment(path[index - 1], path[index]))
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private static PointD MapPoint(PointD point, RectD before, RectD after) => new(
+        after.Left + ((point.X - before.Left) * (after.Width / Math.Max(0.000001, before.Width))),
+        after.Top + ((point.Y - before.Top) * (after.Height / Math.Max(0.000001, before.Height))));
+}
+
 public sealed record BoardAsset(
     string Id,
     string OriginalFileName,
