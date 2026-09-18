@@ -282,7 +282,7 @@ internal sealed class BoardSurface : FrameworkElement
         BoardObject target,
         Camera2D camera)
     {
-        if (target is not ShapeBoardObject shape)
+        if (target is not ShapeBoardObject shape || shape.Outline() is not { Count: > 1 } outline)
         {
             drawingContext.DrawRectangle(
                 null,
@@ -291,7 +291,6 @@ internal sealed class BoardSurface : FrameworkElement
             return;
         }
 
-        IReadOnlyList<PointD> outline = shape.Outline();
         var geometry = new StreamGeometry();
         using (var context = geometry.Open())
         {
