@@ -113,6 +113,7 @@ internal static class SettingsCatalog
         public const string ToolbarLayout = "toolbar.layout";
         public const string ShowEraserButton = "toolbar.eraserButton";
         public const string InsertOnToolbar = "toolbar.insert";
+        public const string InsertPalette = "toolbar.insertPalette";
         public const string AfterInsert = "toolbar.afterInsert";
         public const string WarnWhenNoDigitizer = "startup.noDigitizerNotice";
         public const string RestoreLastSession = "startup.restoreLastSession";
@@ -448,6 +449,16 @@ internal static class SettingsCatalog
             Summary = "An Insert button and a Lasso chevron on the floating toolbar, which grows wider",
             Description = "Off, the Insert tab in the tab strip is where shapes, connectors, and text come from, and holding the Select button switches what a drag on empty canvas draws. On, the floating toolbar gains an Insert button beside Select whose flyout offers the same things, and a chevron on Select offering Rectangle and Lasso. It is off by default because the toolbar sits under a presenter picture-in-picture during recording, and both controls make it wider.",
             Keywords = ["insert", "shape", "toolbar", "lasso", "select", "chevron", "flyout", "button"],
+            Editor = SettingEditorKind.BooleanSwitch,
+        },
+        new()
+        {
+            Id = Ids.InsertPalette,
+            Category = Toolbar,
+            Title = "Insert palette",
+            Summary = "A second palette with the shapes, connectors, and Text, that you can move",
+            Description = "On, a panel in the toolbar's own chrome holds the eight shapes, the three connectors, and Text, and the grip along its left edge drags it anywhere in the window with a mouse, a pen, or a finger. Where it is left is kept as a fraction of the window, so another window size or another monitor puts it back roughly where it was. The pin at the end of the Insert row asks for the same thing as this row, and a right-click on the palette hides it as one on the toolbar hides that. The floating toolbar is unchanged either way.",
+            Keywords = ["insert", "palette", "shape", "connector", "text", "pin", "float", "move", "drag"],
             Editor = SettingEditorKind.BooleanSwitch,
         },
         new()

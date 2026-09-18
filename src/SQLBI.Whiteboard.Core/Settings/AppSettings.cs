@@ -193,6 +193,24 @@ public sealed class AppSettings
 
     public AfterInsert AfterInsert { get; set; } = AfterInsert.ReturnToSelect;
 
+    /// <summary>
+    /// Whether the Insert palette - the shapes, the connectors, and Text on a
+    /// panel of their own - is on the board. The pin at the end of the Insert
+    /// row and the Preferences row both ask for the same thing, so the answer
+    /// is kept here rather than in either of them.
+    /// </summary>
+    public bool InsertPaletteShown { get; set; }
+
+    /// <summary>
+    /// Where that palette was left, as a fraction of the window's client size,
+    /// so another window size or another monitor puts it back roughly where it
+    /// was. Null until it is first dragged, which is what lets the default keep
+    /// following <see cref="ToolbarPlacement"/>.
+    /// </summary>
+    public double? InsertPaletteX { get; set; }
+
+    public double? InsertPaletteY { get; set; }
+
     public ShapeSettings Shape { get; set; } = new();
 
     /// <summary>
@@ -377,6 +395,9 @@ public static class AppSettingsSerializer
             settings.AfterInsert = AfterInsert.ReturnToSelect;
         }
 
+        settings.InsertPaletteX = NormalizeFraction(settings.InsertPaletteX);
+        settings.InsertPaletteY = NormalizeFraction(settings.InsertPaletteY);
+
         settings.Shape = ShapeSettings.Normalize(settings.Shape);
         settings.Connector = ConnectorSettings.Normalize(settings.Connector);
 
@@ -421,6 +442,22 @@ public static class AppSettingsSerializer
 
         settings.Version = CurrentVersion;
         return settings;
+    }
+
+    /// <summary>
+    /// A palette position is a fraction of the window, so anything outside 0..1
+    /// is a file edited by hand or a window that has since changed shape. It is
+    /// pulled back to the edge rather than dropped, which keeps the palette on
+    /// the board and near where it was asked for.
+    /// </summary>
+    private static double? NormalizeFraction(double? value)
+    {
+        if (value is not { } fraction || !double.IsFinite(fraction))
+        {
+            return null;
+        }
+
+        return Math.Clamp(fraction, 0, 1);
     }
 
     private static string? NormalizeVersionId(string? value)
