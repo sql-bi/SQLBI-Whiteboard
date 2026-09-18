@@ -160,6 +160,71 @@ public static class ConnectorGeometry
     }
 
     /// <summary>
+    /// The candidate that belongs to none of the eight dots, which is what Ctrl
+    /// asks for and what a point on the border between two of them is.
+    /// </summary>
+    public const int NoDot = -1;
+
+    /// <summary>
+    /// What an endpoint let go here would take from this target: the anchor to
+    /// record, the point the preview snaps to, and which of the eight dots is
+    /// the one, so that the drag shows the answer rather than describing it.
+    /// </summary>
+    public readonly record struct BindingCandidate(ConnectorAnchor Anchor, PointD Point, int DotIndex);
+
+    /// <summary>
+    /// Whether the pointer counts as over this target: the rectangle its
+    /// anchors are fractions of, out by the reach, rather than within the reach
+    /// of one of the eight points. Being over the object is the question an
+    /// arrow asks, and the middle of a shape is as plainly over it as its
+    /// corner is. The point is turned back before it is asked, so a turned
+    /// shape answers for where it is drawn rather than for the box around it.
+    /// </summary>
+    public static bool IsWithinBindingReach(AnchorFrame frame, PointD point, double reach) =>
+        frame.Layout.Inflate(reach).Contains(frame.ToLayout(point));
+
+    /// <summary>
+    /// The candidate this point takes on this target. Anywhere over the target
+    /// binds, so the nearest of the eight is always an answer; with
+    /// <paramref name="toBorder"/> - Ctrl - it is the nearest point anywhere on
+    /// the border instead, which belongs to no dot.
+    /// </summary>
+    public static BindingCandidate BindingCandidateFor(
+        Guid objectId,
+        AnchorFrame frame,
+        IReadOnlyList<PointD>? outline,
+        PointD point,
+        bool toBorder)
+    {
+        if (toBorder)
+        {
+            ConnectorAnchor border = NearestBorderPoint(objectId, frame, outline, point);
+            return new BindingCandidate(border, PointOn(frame, border), NoDot);
+        }
+
+        ConnectorAnchor nearest = NearestBindingPoint(objectId, frame, point);
+        return new BindingCandidate(nearest, PointOn(frame, nearest), DotIndexOf(nearest));
+    }
+
+    /// <summary>
+    /// Which of the eight this anchor is, or <see cref="NoDot"/> when it is not
+    /// one of them.
+    /// </summary>
+    public static int DotIndexOf(ConnectorAnchor anchor)
+    {
+        for (var index = 0; index < BindingFractions.Length; index++)
+        {
+            if (Math.Abs(BindingFractions[index].U - anchor.U) <= Epsilon &&
+                Math.Abs(BindingFractions[index].V - anchor.V) <= Epsilon)
+            {
+                return index;
+            }
+        }
+
+        return NoDot;
+    }
+
+    /// <summary>
     /// The path of the connector, as the polyline everything else reads: two
     /// points for a straight one, the flattened cubic for a curved one.
     /// </summary>

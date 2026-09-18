@@ -2690,14 +2690,14 @@ Assert(
         AppSettingsSerializer.Parse("{ }") is
         {
             InsertOnToolbar: false,
-            AfterInsert: AfterInsert.KeepTool,
+            AfterInsert: AfterInsert.ReturnToSelect,
         },
         "A file that says nothing about the Insert toolbar takes the defaults.");
     Assert(
         AppSettingsSerializer.Parse(
             "{ \"afterInsert\": 99, \"shape\": { \"outlineArgb\": 123, \"fillArgb\": 456, \"thickness\": 99 } }") is
         {
-            AfterInsert: AfterInsert.KeepTool,
+            AfterInsert: AfterInsert.ReturnToSelect,
             Shape: { FillArgb: null, Thickness: 4 },
         },
         "A shape default that is not on the palette normalizes back to one that is.");
@@ -2808,6 +2808,81 @@ Assert(
     Assert(
         grown is { LayoutWidth: 200, LayoutHeight: 120 } && grown.Bounds == new RectD(0, 0, 200, 120),
         "An upright shape still takes the box it is given, width and height alike.");
+
+    // The rotation handle leaves a shape at any angle, and everything that
+    // follows from the angle follows from a free one as it does from a quarter.
+    var free = flat.WithAngle(30);
+    AssertNear(30, free.AngleDegrees, "A shape takes the angle it is given.");
+    AssertNear(100, free.LayoutWidth, "The box the shape was drawn in is kept through a free turn too.");
+    AssertNear(
+        (100 * Math.Cos(Math.PI / 6)) + (60 * Math.Sin(Math.PI / 6)),
+        free.Bounds.Width,
+        "The box of a shape turned by 30 degrees is the box of the turned rectangle.");
+    AssertNear(
+        (100 * Math.Sin(Math.PI / 6)) + (60 * Math.Cos(Math.PI / 6)),
+        free.Bounds.Height,
+        "On the other axis too.");
+    AssertNear(50, free.Bounds.Center.X, "A free turn is about the centre, which does not move.");
+    IReadOnlyList<PointD> freeCorners = free.Corners();
+    AssertNear(
+        50 - (50 * Math.Cos(Math.PI / 6)) + (30 * Math.Sin(Math.PI / 6)),
+        freeCorners[0].X,
+        "The top-left corner of the rectangle is where a free turn puts it.");
+    AssertNear(
+        30 - (50 * Math.Sin(Math.PI / 6)) - (30 * Math.Cos(Math.PI / 6)),
+        freeCorners[0].Y,
+        "On the other axis too.");
+
+    // A bound arrow follows a free turn the way it follows a quarter: the
+    // anchor is a fraction of the rectangle before the turn either way.
+    ConnectorBoardObject freeFollowed = tied.Follow(free);
+    AssertNear(
+        50 + (50 * Math.Cos(Math.PI / 6)),
+        freeFollowed.Start.X,
+        "A free turn carries the bound endpoint to the middle of the side where it now is.");
+    AssertNear(
+        30 + (50 * Math.Sin(Math.PI / 6)),
+        freeFollowed.Start.Y,
+        "On the other axis too.");
+
+    // The rotation handle stands clear of the middle of the shape's own top
+    // edge, which is the edge that is up for the shape rather than up on screen.
+    AssertNear(50, flat.AnchorFrame.RotationHandle(1).X, "The handle of an upright shape is over the middle of its top.");
+    AssertNear(-24, flat.AnchorFrame.RotationHandle(1).Y, "And 24 pixels clear of it.");
+    AssertNear(
+        50 + 30 + 24,
+        quarter.AnchorFrame.RotationHandle(1).X,
+        "A quarter turn takes the handle round to the side.");
+    AssertNear(30, quarter.AnchorFrame.RotationHandle(1).Y, "Level with the middle of the edge it stands over.");
+}
+
+// Ink linked to a shape or a label is turned with it, about the same centre.
+{
+    var horizontal = InkStrokeObject.Create(
+        [
+            new InkPoint(new PointD(40, 100), 0.5f, 0),
+            new InkPoint(new PointD(60, 100), 0.5f, 1),
+        ],
+        PenStyle.Default,
+        0);
+    var turnedInk = horizontal.Rotate(new PointD(50, 100), 90);
+    AssertNear(50, turnedInk.Points[1].Position.X, "A quarter turn takes a point ten to the right ten below.");
+    AssertNear(110, turnedInk.Points[1].Position.Y, "Which is what turning clockwise about the centre means.");
+    AssertNear(50, turnedInk.Points[0].Position.X, "The other end goes the other way.");
+    AssertNear(90, turnedInk.Points[0].Position.Y, "By the same amount.");
+    AssertNear(
+        horizontal.Bounds.Height,
+        turnedInk.Bounds.Width,
+        "The box is worked out again from the points the turn left, so a stroke lying flat now stands up.");
+    AssertNear(horizontal.Bounds.Width, turnedInk.Bounds.Height, "And what was its length is now its height.");
+    AssertNear(
+        horizontal.Style.Thickness,
+        turnedInk.Style.Thickness,
+        "A turn says nothing about the pen, so the thickness is left as it is.");
+    Assert(
+        turnedInk.Id == horizontal.Id && turnedInk.ContainerId == horizontal.ContainerId,
+        "The stroke is the same stroke, so it stays linked to what it was drawn on.");
+    Assert(ReferenceEquals(horizontal, horizontal.Rotate(new PointD(50, 100), 0)), "No turn is no change.");
 }
 
 // A turned shape in a board, saved and read back, and a shape from a board
@@ -2822,7 +2897,7 @@ Assert(
         0xFF035ACA,
         0x40CC79A7,
         6,
-        135);
+        30);
     turnedDocument.AddObject(savedShape);
 
     await using var turnedArchive = new MemoryStream();
@@ -2831,8 +2906,8 @@ Assert(
     ShapeBoardObject restoredShape = (await BoardArchive.LoadAsync(turnedArchive))
         .Objects.OfType<ShapeBoardObject>().Single();
     Assert(
-        restoredShape is { AngleDegrees: 135, LayoutWidth: 240, LayoutHeight: 100, Kind: ShapeKind.BlockArrow },
-        "A turned shape round-trips with its angle and the box it was drawn in.");
+        restoredShape is { AngleDegrees: 30, LayoutWidth: 240, LayoutHeight: 100, Kind: ShapeKind.BlockArrow },
+        "A shape turned to a free angle round-trips with that angle and the box it was drawn in.");
     AssertNear(savedShape.Bounds.Left, restoredShape.Bounds.Left, "The box comes back where it was.");
     AssertNear(savedShape.Bounds.Width, restoredShape.Bounds.Width, "The box comes back the size it was.");
 
@@ -2870,14 +2945,14 @@ Assert(
     }
 
     askewArchive.Position = 0;
-    ShapeBoardObject snapped = (await BoardArchive.LoadAsync(askewArchive))
+    ShapeBoardObject askewShape = (await BoardArchive.LoadAsync(askewArchive))
         .Objects.OfType<ShapeBoardObject>().Single();
-    AssertNear(45, snapped.AngleDegrees, "A saved angle of 50 degrees is snapped to 45.");
-    AssertNear(60, snapped.Bounds.Center.X, "The shape stays centred where the file put it.");
+    AssertNear(50, askewShape.AngleDegrees, "A saved angle off the grid is the angle the shape comes back at.");
+    AssertNear(60, askewShape.Bounds.Center.X, "The shape stays centred where the file put it.");
     AssertNear(
-        160 / Math.Sqrt(2),
-        snapped.Bounds.Width,
-        "The box is worked out again from the snapped angle rather than trusted.");
+        (100 * Math.Cos(50 * Math.PI / 180)) + (60 * Math.Sin(50 * Math.PI / 180)),
+        askewShape.Bounds.Width,
+        "The box is worked out again from the angle and the rectangle rather than trusted.");
 }
 
 // A shape carries its own text: where it is laid out, what a file keeps of it,
@@ -2940,6 +3015,23 @@ Assert(
         written.TextBounds.Center.X,
         written.WithAngle(45).TextBounds.Center.X,
         "A turned shape describes its text box in the rectangle it was drawn in, as it does its outline.");
+
+    // The rotation handle turns a shape through WithAngle, so what it says has
+    // to come through the turn with it.
+    ShapeBoardObject turnedByHandle = written.WithAngle(37.5);
+    Assert(
+        turnedByHandle is
+        {
+            AngleDegrees: 37.5,
+            Text: "Sales\nby region",
+            FontFamily: "Georgia",
+            Bold: true,
+            Italic: true,
+            Underline: true,
+        } &&
+        turnedByHandle.FontSize == 32 &&
+        turnedByHandle.TextArgb == 0xFFE64B3D,
+        "A shape keeps its text, and the hand it is written in, through a turn to any angle.");
 
     // The corner handle takes the font with it only when both axes take the same
     // factor; otherwise the words stay the size they were and reflow.
@@ -3058,11 +3150,59 @@ Assert(
     AssertNear(24, moved.FontSize, "Moving a label leaves its size alone.");
     AssertNear(upright.Bounds.Left + 30, moved.Bounds.Left, "Moving a label moves its box.");
 
-    // The angle is a multiple of 45, whatever a file says.
-    AssertNear(45, RotatedRectangle.NormalizeAngle(50), "An angle of 50 degrees snaps to 45.");
+    // An angle is any angle: the rotation handle turns an object freely, and
+    // what is put right is only an angle outside one turn or no angle at all.
+    AssertNear(50, RotatedRectangle.NormalizeAngle(50), "An angle off the grid is kept as it is.");
+    AssertNear(10, RotatedRectangle.NormalizeAngle(370), "An angle past a whole turn comes back inside one.");
     AssertNear(315, RotatedRectangle.NormalizeAngle(-45), "A negative angle comes back inside one turn.");
     AssertNear(0, RotatedRectangle.NormalizeAngle(360), "A whole turn is no turn.");
     AssertNear(0, RotatedRectangle.NormalizeAngle(double.NaN), "An angle that is not a number is no turn.");
+    AssertNear(0, RotatedRectangle.NormalizeAngle(double.PositiveInfinity), "Nor is an angle without end.");
+
+    // The property bar's two buttons step by 45 and land on the grid, so a free
+    // angle is back on it after one press rather than keeping its stray degrees.
+    AssertNear(90, RotatedRectangle.StepAngle(50, 45), "A step of 45 from 50 lands on the nearest multiple, 90.");
+    AssertNear(0, RotatedRectangle.StepAngle(50, -45), "A step back from 50 lands on 0.");
+    AssertNear(45, RotatedRectangle.StepAngle(0, 45), "A step from the grid is a plain step.");
+    AssertNear(315, RotatedRectangle.StepAngle(0, -45), "A step back from nothing comes round the other way.");
+
+    // A free angle, which is what the rotation handle leaves behind.
+    var askew = upright.WithAngle(30);
+    AssertNear(30, askew.AngleDegrees, "A label takes the angle it is given.");
+    AssertNear(
+        (200 * Math.Cos(Math.PI / 6)) + (40 * Math.Sin(Math.PI / 6)),
+        askew.Bounds.Width,
+        "The box of a label turned by 30 degrees is the box of the turned rectangle.");
+    AssertNear(
+        (200 * Math.Sin(Math.PI / 6)) + (40 * Math.Cos(Math.PI / 6)),
+        askew.Bounds.Height,
+        "On the other axis too.");
+    AssertNear(100, askew.Bounds.Center.X, "A free turn is about the centre, which does not move.");
+    IReadOnlyList<PointD> askewCorners = askew.Corners();
+    AssertNear(
+        100 - (100 * Math.Cos(Math.PI / 6)) + (20 * Math.Sin(Math.PI / 6)),
+        askewCorners[0].X,
+        "The top-left corner of the layout is where the turn puts it.");
+    AssertNear(
+        100 - (100 * Math.Sin(Math.PI / 6)) - (20 * Math.Cos(Math.PI / 6)),
+        askewCorners[0].Y,
+        "On the other axis too.");
+
+    // The handle stands clear of the middle of the object's own top edge, so it
+    // is above the label when the label is upright and beside it when it is not.
+    AnchorFrame uprightFrame = upright.AnchorFrame;
+    AssertNear(100, uprightFrame.RotationHandle(1).X, "The handle of an upright object is over the middle of its top.");
+    AssertNear(80 - 24, uprightFrame.RotationHandle(1).Y, "And 24 pixels clear of it.");
+    AssertNear(
+        80 - 12,
+        uprightFrame.RotationHandle(2).Y,
+        "The 24 pixels are the screen's, so the handle keeps its distance as the board is zoomed.");
+    AnchorFrame quarterFrame = quarter.AnchorFrame;
+    AssertNear(
+        100 + 20 + 24,
+        quarterFrame.RotationHandle(1).X,
+        "A quarter turn takes the handle round to the side, clear of the edge that is now up for the object.");
+    AssertNear(100, quarterFrame.RotationHandle(1).Y, "Level with the centre, which is where that edge's middle now is.");
 
     // An area takes a turned label by its corners rather than by its box.
     var areaOverCorner = SelectionArea.Rectangle(
@@ -3172,7 +3312,7 @@ Assert(
     FreeTextBoardObject normalized = (await BoardArchive.LoadAsync(strangeArchive))
         .Objects.OfType<FreeTextBoardObject>().Single();
     Assert(normalized.FontFamily == "Segoe UI", "A font nobody has falls back to the default.");
-    AssertNear(45, normalized.AngleDegrees, "A saved angle of 50 degrees is snapped to 45.");
+    AssertNear(50, normalized.AngleDegrees, "A saved angle off the grid is the angle the label comes back at.");
     AssertNear(26, normalized.FontSize, "A size inside the range is left alone.");
     Assert(
         normalized.Underline == false && normalized.Bold == false,
@@ -3754,6 +3894,149 @@ Assert(
         zDocument.Objects.Select(item => item.Id).SequenceEqual(
             [stack[1].Id, stack[2].Id, stack[0].Id, stack[3].Id]),
         "Send backward takes the block past the one object below it.");
+}
+
+// One shape, then Select. The preference stays for whoever wants a sticky
+// tool, but a shape is something most people add now and then.
+{
+    Assert(
+        new AppSettings().AfterInsert == AfterInsert.ReturnToSelect,
+        "A fresh setup hands the Insert tool back to Select once one object is drawn.");
+    Assert(
+        AppSettingsSerializer.Parse("{ }").AfterInsert == AfterInsert.ReturnToSelect,
+        "A settings file that says nothing about the Insert tool returns to Select.");
+    Assert(
+        AppSettingsSerializer.Parse("{ \"afterInsert\": 0 }").AfterInsert == AfterInsert.KeepTool,
+        "Keeping the tool is still honoured where somebody asked for it.");
+    Assert(
+        AppSettingsSerializer.Parse("{ \"afterInsert\": 42 }").AfterInsert == AfterInsert.ReturnToSelect,
+        "A stored value that is not one of the choices normalizes to the default.");
+}
+
+// Select all: the same set an area could take, and the ink alone.
+{
+    var allBoard = new BoardDocument();
+    var allPicture = new ImageBoardObject(
+        Guid.NewGuid(),
+        allBoard.NextZIndex,
+        new RectD(0, 0, 100, 100),
+        "select-all-picture");
+    allBoard.AddObject(allPicture);
+    ShapeBoardObject allShape = ShapeBoardObject.Create(
+        Guid.NewGuid(),
+        allBoard.NextZIndex,
+        new RectD(200, 0, 120, 80),
+        ShapeKind.RoundedRectangle,
+        0xFF1F2937,
+        null,
+        4);
+    allBoard.AddObject(allShape);
+    var allStroke = InkStrokeObject.Create(
+        [
+            new InkPoint(new PointD(10, 10), 0.5f, 0),
+            new InkPoint(new PointD(60, 60), 0.5f, 1),
+        ],
+        PenStyle.Default,
+        allBoard.NextZIndex);
+    allBoard.AddObject(allStroke);
+    var allFrame = new FrameBoardObject(
+        Guid.NewGuid(),
+        allBoard.NextZIndex,
+        new RectD(-50, -50, 800, 800),
+        "Slide 1");
+    allBoard.AddObject(allFrame);
+
+    Assert(
+        allBoard.AllSelectable(strokesOnly: false)
+            .Select(item => item.Id)
+            .ToHashSet()
+            .SetEquals(new[] { allPicture.Id, allShape.Id, allStroke.Id }),
+        "Ctrl+A takes everything an area could take.");
+    Assert(
+        allBoard.AllSelectable(strokesOnly: false).All(item => item is not FrameBoardObject),
+        "A frame is no more taken by select-all than by a band drawn over it.");
+    Assert(
+        allBoard.AllSelectable(strokesOnly: true)
+            .Select(item => item.Id)
+            .SequenceEqual([allStroke.Id]),
+        "Ctrl+Shift+A takes the ink and nothing else.");
+    Assert(
+        new BoardDocument().AllSelectable(strokesOnly: false).Count == 0,
+        "Select-all on an empty board takes nothing rather than failing.");
+}
+
+// A connector binds wherever it is dropped on a shape: over the middle, near
+// an edge, and with Ctrl asking for the border instead. A turned shape answers
+// for where it is drawn, not for the box around it.
+{
+    var bindingId = Guid.NewGuid();
+    ShapeBoardObject bindingShape = ShapeBoardObject.Create(
+        bindingId,
+        0,
+        new RectD(0, 0, 200, 100),
+        ShapeKind.Diamond,
+        0xFF1F2937,
+        null,
+        4);
+    AnchorFrame bindingFrame = bindingShape.AnchorFrame;
+    IReadOnlyList<PointD> bindingOutline = bindingShape.Outline();
+
+    Assert(
+        ConnectorGeometry.IsWithinBindingReach(bindingFrame, new PointD(100, 50), 16),
+        "The middle of a shape counts as over it, though a tap there is not a hit on it.");
+    Assert(
+        ConnectorGeometry.IsWithinBindingReach(bindingFrame, new PointD(-10, 50), 16),
+        "Just outside the box is still over it: the reach is what gives an arrow something to aim at.");
+    Assert(
+        !ConnectorGeometry.IsWithinBindingReach(bindingFrame, new PointD(-40, 50), 16),
+        "Well clear of the box is over nothing, and the end stays free.");
+
+    ConnectorGeometry.BindingCandidate middle = ConnectorGeometry.BindingCandidateFor(
+        bindingId, bindingFrame, bindingOutline, new PointD(104, 44), toBorder: false);
+    Assert(
+        middle.Anchor == new ConnectorAnchor(bindingId, 0.5, 0),
+        "From the middle the nearest of the eight is taken, rather than nothing at all.");
+    AssertNear(100, middle.Point.X, "The preview snaps to the binding point's X.");
+    AssertNear(0, middle.Point.Y, "The preview snaps to the binding point's Y.");
+    Assert(middle.DotIndex == 1, "The dot that would be taken is the top side midpoint, the second of the eight.");
+
+    ConnectorGeometry.BindingCandidate corner = ConnectorGeometry.BindingCandidateFor(
+        bindingId, bindingFrame, bindingOutline, new PointD(190, 96), toBorder: false);
+    Assert(
+        corner.Anchor == new ConnectorAnchor(bindingId, 1, 1),
+        "Near an edge the nearest of the eight is the corner it is near.");
+    Assert(corner.DotIndex == 4, "The bottom-right corner is the fifth of the eight, clockwise from the top left.");
+
+    ConnectorGeometry.BindingCandidate border = ConnectorGeometry.BindingCandidateFor(
+        bindingId, bindingFrame, bindingOutline, new PointD(60, 20), toBorder: true);
+    Assert(
+        border.DotIndex == ConnectorGeometry.NoDot,
+        "Ctrl takes a point on the border, which is none of the eight, so no dot is filled.");
+    Assert(
+        border.Anchor.U is > 0 and < 0.5,
+        "The border point on a diamond's upper-left edge lies between the corner and the top midpoint.");
+    Assert(
+        ConnectorGeometry.DotIndexOf(new ConnectorAnchor(bindingId, 0, 0.5)) == 7,
+        "The left side midpoint is the last of the eight.");
+
+    // Turned a quarter about its centre, the shape stands 100 wide and 200 tall.
+    // What was its top side midpoint is now on its right, and that is where the
+    // dot is drawn and where the preview snaps.
+    ShapeBoardObject turned = bindingShape.WithAngle(90);
+    AnchorFrame turnedFrame = turned.AnchorFrame;
+    Assert(
+        ConnectorGeometry.IsWithinBindingReach(turnedFrame, new PointD(100, 140), 16),
+        "A turned shape is over the ground it is drawn on.");
+    Assert(
+        !ConnectorGeometry.IsWithinBindingReach(turnedFrame, new PointD(10, 10), 16),
+        "The empty corner of the box around a turned shape is not over it.");
+    ConnectorGeometry.BindingCandidate onTurned = ConnectorGeometry.BindingCandidateFor(
+        bindingId, turnedFrame, turned.Outline(), new PointD(140, 46), toBorder: false);
+    Assert(
+        onTurned.Anchor == new ConnectorAnchor(bindingId, 0.5, 0),
+        "The anchor is still the fraction it always was, read before the turn.");
+    AssertNear(150, onTurned.Point.X, "The dot is drawn where the turn put it, on the X.");
+    AssertNear(50, onTurned.Point.Y, "The dot is drawn where the turn put it, on the Y.");
 }
 
 Console.WriteLine("SQLBI.Whiteboard.Core smoke tests passed.");

@@ -10,13 +10,16 @@ namespace SQLBI.Whiteboard.Core.Geometry;
 public static class RotatedRectangle
 {
     /// <summary>
-    /// The step a rotation is allowed to take. Anything else - a hand-edited
-    /// file, a board from a later release - is snapped to it on the way in.
+    /// The step the property bar's two buttons take. An angle itself is free -
+    /// the rotation handle turns an object to anything - so the step is only
+    /// what a press is worth.
     /// </summary>
     public const double AngleStep = 45;
 
     /// <summary>
-    /// The angle as a multiple of <see cref="AngleStep"/> in [0, 360).
+    /// The angle in [0, 360). Any angle is allowed; what is rejected is an
+    /// angle that is not a number, which a hand-edited file can carry and which
+    /// would otherwise spread through every box computed from it.
     /// </summary>
     public static double NormalizeAngle(double angleDegrees)
     {
@@ -25,9 +28,26 @@ public static class RotatedRectangle
             return 0;
         }
 
-        var steps = (int)Math.Round(angleDegrees / AngleStep, MidpointRounding.AwayFromZero);
-        var turn = (int)(360 / AngleStep);
-        return (((steps % turn) + turn) % turn) * AngleStep;
+        var turned = angleDegrees % 360;
+        return turned < 0 ? turned + 360 : turned;
+    }
+
+    /// <summary>
+    /// A press of one of the property bar's buttons: a step of
+    /// <see cref="AngleStep"/> from where the object is, rounded to the nearest
+    /// multiple of the step, so an object turned freely by the handle comes back
+    /// onto the grid with one press rather than keeping its stray degrees for
+    /// ever.
+    /// </summary>
+    public static double StepAngle(double angleDegrees, double stepDegrees)
+    {
+        if (!double.IsFinite(angleDegrees) || !double.IsFinite(stepDegrees))
+        {
+            return 0;
+        }
+
+        var stepped = angleDegrees + stepDegrees;
+        return NormalizeAngle(Math.Round(stepped / AngleStep, MidpointRounding.AwayFromZero) * AngleStep);
     }
 
     /// <summary>
