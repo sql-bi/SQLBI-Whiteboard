@@ -4164,6 +4164,119 @@ Assert(
         "The fraction reads back as the same place in a window of the same size.");
 }
 
+// The four arrows a selected shape offers: outside the middle of each side,
+// along the way that side faces, so they turn with the shape; and what a drag
+// out of one records at each end.
+{
+    var handleId = Guid.NewGuid();
+    ShapeBoardObject handleShape = ShapeBoardObject.Create(
+        handleId,
+        0,
+        new RectD(100, 200, 200, 100),
+        ShapeKind.RoundedRectangle,
+        0xFF1F2937,
+        null,
+        4);
+
+    IReadOnlyList<ConnectorHandle> upright = handleShape.AnchorFrame.ConnectorHandles(1);
+    Assert(upright.Count == 4, "A shape offers one handle a side.");
+    Assert(
+        upright.Select(handle => handle.Side).SequenceEqual(
+            [FrameSide.Top, FrameSide.Right, FrameSide.Bottom, FrameSide.Left]),
+        "They come back clockwise from the top, which is the order they are drawn in.");
+    AssertNear(200, upright[0].Point.X, "The top handle stands over the middle of the top side.");
+    AssertNear(186, upright[0].Point.Y, "And 14 pixels clear of it.");
+    AssertNear(314, upright[1].Point.X, "The right handle stands 14 pixels outside the right side.");
+    AssertNear(250, upright[1].Point.Y, "Level with the middle of that side.");
+    AssertNear(200, upright[2].Point.X, "The bottom handle stands under the middle of the bottom side.");
+    AssertNear(314, upright[2].Point.Y, "And 14 pixels clear of it.");
+    AssertNear(86, upright[3].Point.X, "The left handle stands 14 pixels outside the left side.");
+    AssertNear(250, upright[3].Point.Y, "Level with the middle of that side.");
+    AssertNear(-1, upright[0].Normal.Y, "The top handle points up, away from the shape.");
+    AssertNear(1, upright[1].Normal.X, "The right handle points right.");
+
+    AssertNear(
+        193,
+        handleShape.AnchorFrame.ConnectorHandles(2)[0].Point.Y,
+        "Zoomed in, the handle stands the same 14 screen pixels out, which is half as far on the board.");
+
+    // A shape's text is laid out inside it and says nothing about where its
+    // sides are, so it moves no handle.
+    Assert(
+        (handleShape with { Text = "Sales" }).AnchorFrame.ConnectorHandles(1)
+            .Select(handle => handle.Point)
+            .SequenceEqual(upright.Select(handle => handle.Point)),
+        "A shape that carries text offers its handles in the same four places as one that does not.");
+
+    // Turned a quarter about its centre, the shape stands 100 wide and 200
+    // tall. What was its top side is now on its right, and its handle with it.
+    IReadOnlyList<ConnectorHandle> quartered = handleShape.WithAngle(90).AnchorFrame.ConnectorHandles(1);
+    Assert(
+        quartered[0].Side == FrameSide.Top,
+        "The side a handle belongs to is read before the turn, so it is still the shape's own top.");
+    AssertNear(264, quartered[0].Point.X, "The top handle has come round to the right of the shape.");
+    AssertNear(250, quartered[0].Point.Y, "Level with the centre, which is where that side's middle now is.");
+    AssertNear(1, quartered[0].Normal.X, "And it points the way that side now faces.");
+    AssertNear(200, quartered[1].Point.X, "The right handle has come round to the bottom.");
+    AssertNear(364, quartered[1].Point.Y, "14 pixels clear of the side it belongs to.");
+    AssertNear(136, quartered[2].Point.X, "The bottom handle is on the left.");
+    AssertNear(250, quartered[2].Point.Y, "Level with the centre.");
+    AssertNear(200, quartered[3].Point.X, "And the left handle is on top.");
+    AssertNear(136, quartered[3].Point.Y, "14 pixels above it.");
+
+    Assert(
+        ConnectorGeometry.SideAnchor(handleId, FrameSide.Top) == new ConnectorAnchor(handleId, 0.5, 0),
+        "The top handle starts an arrow at the middle of the top side.");
+    Assert(
+        ConnectorGeometry.SideAnchor(handleId, FrameSide.Right) == new ConnectorAnchor(handleId, 1, 0.5),
+        "The right handle at the middle of the right side.");
+    Assert(
+        ConnectorGeometry.SideAnchor(handleId, FrameSide.Bottom) == new ConnectorAnchor(handleId, 0.5, 1),
+        "The bottom handle at the middle of the bottom side.");
+    Assert(
+        ConnectorGeometry.SideAnchor(handleId, FrameSide.Left) == new ConnectorAnchor(handleId, 0, 0.5),
+        "The left handle at the middle of the left side.");
+    Assert(
+        ConnectorGeometry.DotIndexOf(ConnectorGeometry.SideAnchor(handleId, FrameSide.Right)) == 3,
+        "Each of the four is one of the eight an endpoint binds to.");
+
+    var handleTargetId = Guid.NewGuid();
+    ShapeBoardObject handleTarget = ShapeBoardObject.Create(
+        handleTargetId,
+        1,
+        new RectD(500, 200, 100, 100),
+        ShapeKind.RoundedRectangle,
+        0xFF1F2937,
+        null,
+        4);
+
+    (ConnectorAnchor Start, ConnectorAnchor? End) onTarget = ConnectorGeometry.ConnectorHandleAnchors(
+        handleId,
+        FrameSide.Right,
+        (handleTargetId, handleTarget.AnchorFrame, handleTarget.Outline()),
+        new PointD(520, 215),
+        toBorder: false);
+    Assert(
+        onTarget.Start == new ConnectorAnchor(handleId, 1, 0.5),
+        "The start stays on the side the drag came out of, wherever the hand went.");
+    Assert(
+        onTarget.End == new ConnectorAnchor(handleTargetId, 0, 0),
+        "Let go over a shape, the far end binds to the nearest of its eight, as any other end would.");
+
+    (ConnectorAnchor Start, ConnectorAnchor? End) overNothing = ConnectorGeometry.ConnectorHandleAnchors(
+        handleId,
+        FrameSide.Right,
+        null,
+        new PointD(900, 900),
+        toBorder: false);
+    Assert(
+        overNothing.Start == new ConnectorAnchor(handleId, 1, 0.5),
+        "The start is the same whether or not the far end found anything.");
+    Assert(
+        overNothing.End is null,
+        "Let go over nothing, the far end stays free where the hand put it.");
+}
+
 Console.WriteLine("SQLBI.Whiteboard.Core smoke tests passed.");
 
 static InkStrokeObject ExportStroke(double x, double y, double width, double height, int zIndex, Guid? containerId = null) =>

@@ -51,4 +51,80 @@ public readonly record struct AnchorFrame(RectD Layout, double AngleDegrees)
         RotatedRectangle.Rotate(
             new PointD(0, -RotationHandleOffset / Math.Max(zoom, 0.000001)),
             AngleDegrees);
+
+    /// <summary>
+    /// Screen pixels between a side and the connector handle that starts an
+    /// arrow from it, so the four arrows stand the same distance clear of the
+    /// object at any zoom, as the rotation handle does.
+    /// </summary>
+    public const double ConnectorHandleOffset = 14;
+
+    /// <summary>
+    /// The middle of one side, where it is drawn.
+    /// </summary>
+    public PointD SideMidpoint(FrameSide side) => ToWorld(side switch
+    {
+        FrameSide.Top => new PointD(Layout.Center.X, Layout.Top),
+        FrameSide.Right => new PointD(Layout.Right, Layout.Center.Y),
+        FrameSide.Bottom => new PointD(Layout.Center.X, Layout.Bottom),
+        _ => new PointD(Layout.Left, Layout.Center.Y),
+    });
+
+    /// <summary>
+    /// The way a side faces, turned with the object: what is up for the object
+    /// rather than up on the screen.
+    /// </summary>
+    public PointD OutwardNormal(FrameSide side)
+    {
+        PointD normal = side switch
+        {
+            FrameSide.Top => new PointD(0, -1),
+            FrameSide.Right => new PointD(1, 0),
+            FrameSide.Bottom => new PointD(0, 1),
+            _ => new PointD(-1, 0),
+        };
+
+        return AngleDegrees == 0 ? normal : RotatedRectangle.Rotate(normal, AngleDegrees);
+    }
+
+    /// <summary>
+    /// The four places an arrow can be pulled out of this object: clear of each
+    /// side's middle, along the way that side faces, so they turn with the
+    /// object and none of them ever sits on the outline it belongs to.
+    /// </summary>
+    public IReadOnlyList<ConnectorHandle> ConnectorHandles(double zoom)
+    {
+        var offset = ConnectorHandleOffset / Math.Max(zoom, 0.000001);
+        return
+        [
+            HandleOn(FrameSide.Top, offset),
+            HandleOn(FrameSide.Right, offset),
+            HandleOn(FrameSide.Bottom, offset),
+            HandleOn(FrameSide.Left, offset),
+        ];
+    }
+
+    private ConnectorHandle HandleOn(FrameSide side, double offset)
+    {
+        PointD normal = OutwardNormal(side);
+        return new ConnectorHandle(side, SideMidpoint(side) + (normal * offset), normal);
+    }
 }
+
+/// <summary>
+/// A side of an object's frame, read before the turn: the top side stays the
+/// object's own top however the object is standing.
+/// </summary>
+public enum FrameSide
+{
+    Top,
+    Right,
+    Bottom,
+    Left,
+}
+
+/// <summary>
+/// One of the four arrows a selected shape offers: which side it belongs to,
+/// where it is drawn, and the way it points.
+/// </summary>
+public readonly record struct ConnectorHandle(FrameSide Side, PointD Point, PointD Normal);
