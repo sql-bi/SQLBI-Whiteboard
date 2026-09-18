@@ -2862,6 +2862,26 @@ public partial class MainWindow : Window
 
     private bool IsLassoArea => _settings.AreaSelectionTool == AreaSelectionTool.Lasso;
 
+    /// <summary>
+    /// Ctrl+A takes everything an area could take; Ctrl+Shift+A takes the ink
+    /// strokes alone. It goes through the same set the area gestures fill, so
+    /// the property bar, Delete, Copy, the z-order commands, and the group
+    /// gesture all follow without being told about it. Asking for the set with
+    /// another tool in hand is asking for those gestures too, so the tool comes
+    /// back to Select first.
+    /// </summary>
+    private void SelectAll(bool strokesOnly)
+    {
+        if (_activeTool != BoardTool.Select)
+        {
+            ChooseTool(BoardTool.Select);
+        }
+
+        SelectMany(_document.AllSelectable(strokesOnly).Select(item => item.Id), extend: false);
+        SceneSurface.InvalidateVisual();
+        UpdateLiveViewActionOverlay();
+    }
+
     private RectD CurrentAreaRectangle()
     {
         PointD start = _areaPoints[0];
@@ -7570,6 +7590,11 @@ public partial class MainWindow : Window
         else if (shiftDown && e.Key == Key.F12)
         {
             _ = SaveBoardAsync(saveAs: true);
+            e.Handled = true;
+        }
+        else if (controlDown && e.Key == Key.A)
+        {
+            SelectAll(strokesOnly: shiftDown);
             e.Handled = true;
         }
         else if (controlDown && e.Key == Key.C)
