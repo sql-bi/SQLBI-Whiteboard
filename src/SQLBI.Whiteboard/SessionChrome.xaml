@@ -298,6 +298,42 @@
                                            Text="S" />
                             </StackPanel>
                         </Button>
+                        <Button x:Name="BringForwardButton"
+                                Style="{StaticResource SessionCommandButton}"
+                                ToolTip="Bring the selection one step forward"
+                                Tag="BringForward"
+                                Click="Command_Click">
+                            <StackPanel HorizontalAlignment="Center">
+                                <Path Width="18"
+                                      Height="18"
+                                      Stretch="Uniform"
+                                      Fill="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"
+                                      Data="{StaticResource BringForwardGeometry}" />
+                                <TextBlock Margin="0,4,0,0"
+                                           HorizontalAlignment="Center"
+                                           Text="Bring forward" />
+                                <TextBlock Style="{StaticResource SessionShortcutHint}"
+                                           Text="W" />
+                            </StackPanel>
+                        </Button>
+                        <Button x:Name="SendBackwardButton"
+                                Style="{StaticResource SessionCommandButton}"
+                                ToolTip="Send the selection one step back"
+                                Tag="SendBackward"
+                                Click="Command_Click">
+                            <StackPanel HorizontalAlignment="Center">
+                                <Path Width="18"
+                                      Height="18"
+                                      Stretch="Uniform"
+                                      Fill="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"
+                                      Data="{StaticResource SendBackwardGeometry}" />
+                                <TextBlock Margin="0,4,0,0"
+                                           HorizontalAlignment="Center"
+                                           Text="Send backward" />
+                                <TextBlock Style="{StaticResource SessionShortcutHint}"
+                                           Text="K" />
+                            </StackPanel>
+                        </Button>
                         <Border Style="{StaticResource SessionCommandSeparator}" />
                         <Button Style="{StaticResource SessionCommandButton}"
                                 ToolTip="Add a frame: a slide drawn on the board, which Export uses as it is"

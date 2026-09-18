@@ -274,20 +274,22 @@ internal sealed class BoardSurface : FrameworkElement
     }
 
     /// <summary>
-    /// The object a connector endpoint is over, traced along its own outline so
-    /// that an end let go in the middle of a shape says which shape took it.
+    /// The object a connector endpoint is over, traced where it is drawn - a
+    /// shape along its own outline, anything else around the rectangle its
+    /// anchors belong to - so that an end let go in the middle of a turned
+    /// shape says which shape took it.
     /// </summary>
     private static void DrawBindingTarget(
         DrawingContext drawingContext,
         BoardObject target,
         Camera2D camera)
     {
-        if (target is not ShapeBoardObject shape || shape.Outline() is not { Count: > 1 } outline)
+        IReadOnlyList<PointD> outline =
+            target is ShapeBoardObject shape && shape.Outline() is { Count: > 1 } shapeOutline
+                ? shapeOutline
+                : target.AnchorFrame.Corners();
+        if (outline.Count < 2)
         {
-            drawingContext.DrawRectangle(
-                null,
-                BindingTargetPen,
-                ToScreenRectangle(target.Bounds, camera));
             return;
         }
 
@@ -324,9 +326,9 @@ internal sealed class BoardSurface : FrameworkElement
         {
             foreach (var item in selected)
             {
-                if (item is FreeTextBoardObject member)
+                if (TurnedOutline(item) is { } outline)
                 {
-                    DrawLabelOutline(drawingContext, member, camera, SelectionMemberPen);
+                    DrawTurnedOutline(drawingContext, outline, camera, SelectionMemberPen);
                     continue;
                 }
 
@@ -343,12 +345,13 @@ internal sealed class BoardSurface : FrameworkElement
         var bottom = selected.Max(item => item.Bounds.Bottom);
         var bounds = new RectD(left, top, right - left, bottom - top);
 
-        // A label on its own is outlined where it is, turned: the box around a
-        // turned label says nothing about which of its corners is which. The
-        // handle stays on the box, which is where the gesture looks for it.
-        if (selected is [FreeTextBoardObject label])
+        // A label or a shape on its own is outlined where it is, turned: the box
+        // around a turned object says nothing about which of its corners is
+        // which. The handle stays on the box, which is where the gesture looks
+        // for it.
+        if (selected is [{ } lone] && TurnedOutline(lone) is { } loneOutline)
         {
-            DrawLabelOutline(drawingContext, label, camera, SelectionPen);
+            DrawTurnedOutline(drawingContext, loneOutline, camera, SelectionPen);
             DrawSelection(drawingContext, bounds, camera, includeHandle: true, includeOutline: false);
             return;
         }
@@ -392,16 +395,27 @@ internal sealed class BoardSurface : FrameworkElement
         drawingContext.Pop();
     }
 
-    private static void DrawLabelOutline(
+    /// <summary>
+    /// The four corners a selection outline follows instead of the box, for the
+    /// objects that are drawn turned. An upright one has nothing to say here and
+    /// takes the rectangle.
+    /// </summary>
+    private static IReadOnlyList<PointD>? TurnedOutline(BoardObject item) => item switch
+    {
+        FreeTextBoardObject label => label.Corners(),
+        ShapeBoardObject { AngleDegrees: not 0 } shape => shape.Corners(),
+        _ => null,
+    };
+
+    private static void DrawTurnedOutline(
         DrawingContext drawingContext,
-        FreeTextBoardObject label,
+        IReadOnlyList<PointD> corners,
         Camera2D camera,
         Pen pen)
     {
         var geometry = new StreamGeometry();
         using (var context = geometry.Open())
         {
-            IReadOnlyList<PointD> corners = label.Corners();
             PointD first = camera.WorldToScreen(corners[0]);
             context.BeginFigure(new Point(first.X, first.Y), false, true);
             context.PolyLineTo(
@@ -758,14 +772,16 @@ internal sealed class BoardSurface : FrameworkElement
     /// A shape from the outline Core describes, filled and then stroked in the
     /// camera's own space. The arcs are handed to WPF as arcs rather than as the
     /// polygon the hit test walks, so a circle stays a circle at any zoom, and
-    /// the outline thickens with the zoom exactly as ink does.
+    /// the outline thickens with the zoom exactly as ink does. A turned shape is
+    /// described in the box it was drawn in and turned about its centre, as a
+    /// label is, so an arc stays an arc rather than being walked point by point.
     /// </summary>
     private static void DrawShape(
         DrawingContext drawingContext,
         ShapeBoardObject shape,
         Camera2D camera)
     {
-        ShapeOutline outline = ShapeGeometry.Describe(shape.Kind, shape.Bounds);
+        ShapeOutline outline = ShapeGeometry.Describe(shape.Kind, shape.LayoutBounds);
         var geometry = new StreamGeometry();
         using (var context = geometry.Open())
         {
@@ -803,10 +819,19 @@ internal sealed class BoardSurface : FrameworkElement
             EndLineCap = PenLineCap.Round,
         };
         pen.Freeze();
-        drawingContext.DrawGeometry(
-            shape.FillArgb is { } fill ? CreateFrozenBrush(fill) : null,
-            pen,
-            geometry);
+        SolidColorBrush? fill = shape.FillArgb is { } argb ? CreateFrozenBrush(argb) : null;
+        if (shape.AngleDegrees == 0)
+        {
+            drawingContext.DrawGeometry(fill, pen, geometry);
+            return;
+        }
+
+        PointD center = camera.WorldToScreen(shape.Bounds.Center);
+        var rotation = new RotateTransform(shape.AngleDegrees, center.X, center.Y);
+        rotation.Freeze();
+        drawingContext.PushTransform(rotation);
+        drawingContext.DrawGeometry(fill, pen, geometry);
+        drawingContext.Pop();
     }
 
     /// <summary>

@@ -25,6 +25,8 @@ public enum SessionCommand
     ToggleGrid,
     BringToFront,
     SendToBack,
+    BringForward,
+    SendBackward,
     AddLiveView,
     AddFrame,
     FreezeLiveView,
@@ -100,6 +102,11 @@ public partial class SessionChrome : UserControl
         RedoButton.IsEnabled = canRedo;
     }
 
+    /// <summary>
+    /// The four depth commands take two answers: a selection that can be brought
+    /// to the front is exactly one that has something above it to pass, and the
+    /// same the other way down.
+    /// </summary>
     public void SetZOrderEnabled(bool canBringToFront, bool canSendToBack)
     {
         if (BringToFrontButton is null)
@@ -109,6 +116,8 @@ public partial class SessionChrome : UserControl
 
         BringToFrontButton.IsEnabled = canBringToFront;
         SendToBackButton.IsEnabled = canSendToBack;
+        BringForwardButton.IsEnabled = canBringToFront;
+        SendBackwardButton.IsEnabled = canSendToBack;
     }
 
     /// <summary>
@@ -388,6 +397,8 @@ public partial class SessionChrome : UserControl
             'G' when ViewRow.Visibility == Visibility.Visible => SessionCommand.ToggleGrid,
             'B' when ViewRow.Visibility == Visibility.Visible => SessionCommand.BringToFront,
             'S' when ViewRow.Visibility == Visibility.Visible => SessionCommand.SendToBack,
+            'W' when ViewRow.Visibility == Visibility.Visible => SessionCommand.BringForward,
+            'K' when ViewRow.Visibility == Visibility.Visible => SessionCommand.SendBackward,
             'L' when ViewRow.Visibility == Visibility.Visible => SessionCommand.AddLiveView,
             'A' when ViewRow.Visibility == Visibility.Visible => SessionCommand.AddFrame,
             'Z' when ViewRow.Visibility == Visibility.Visible => SessionCommand.FreezeLiveView,

@@ -191,14 +191,16 @@ internal static class EditableSlide
     /// A shape is its box and its kind: the writers describe the outline from
     /// the same <see cref="ShapeGeometry"/> the screen draws, so the box is all
     /// they need. The outline thickens with the zoom exactly as it does on
-    /// screen.
+    /// screen. The box is the one the shape was drawn in, before the turn, and
+    /// the angle travels beside it as a label's does.
     /// </summary>
     private static SlideElement ShapeElement(ShapeBoardObject shape, Camera2D camera) => new SlideShapeElement(
-        ToPage(shape.Bounds, camera),
+        ToPage(shape.LayoutBounds, camera),
         shape.Kind,
         shape.OutlineArgb,
         shape.FillArgb,
-        shape.Thickness * camera.Zoom);
+        shape.Thickness * camera.Zoom,
+        shape.AngleDegrees);
 
     /// <summary>
     /// A label goes out as its layout rectangle before the turn, centred where

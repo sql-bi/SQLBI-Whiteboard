@@ -518,6 +518,74 @@
         </Setter>
     </Style>
 
+    <SolidColorBrush x:Key="ToolbarHintBrush"
+                     Color="#FF9CA3AF" />
+
+    <!-- The Fluent "more horizontal" glyph: the three dots the overflow opens from. -->
+    <Geometry x:Key="MoreHorizontalGeometry">M5 10a2 2 0 1 1 0 4 2 2 0 0 1 0-4Zm7 0a2 2 0 1 1 0 4 2 2 0 0 1 0-4Zm7 0a2 2 0 1 1 0 4 2 2 0 0 1 0-4Z</Geometry>
+
+    <!--
+        One step through the depth, drawn by hand on the same 24-unit grid as
+        BringToFrontGeometry and SendToBackGeometry, which the Fluent set has no
+        forward and backward companions for. The square that moves is solid and
+        carries the arrow; the one it passes is the outline behind or in front of
+        it.
+    -->
+    <Geometry x:Key="BringForwardGeometry">M6.25 3h7.5C15.55 3 17 4.46 17 6.25v7.5c0 1.8-1.45 3.25-3.25 3.25h-7.5A3.25 3.25 0 0 1 3 13.75v-7.5C3 4.46 4.45 3 6.25 3Z M10 5.5L14 10h-2.75v4.5h-2.5V10H6Z M17.75 8.5c1.8 0 3.25 1.46 3.25 3.25v6c0 1.8-1.45 3.25-3.25 3.25h-6a3.25 3.25 0 0 1-3.25-3.25v-.25h1.5v.25c0 .97.78 1.75 1.75 1.75h6c.97 0 1.75-.78 1.75-1.75v-6c0-.97-.78-1.75-1.75-1.75h-.25V8.5h.25Z</Geometry>
+    <Geometry x:Key="SendBackwardGeometry">M10.25 7h7.5C19.55 7 21 8.46 21 10.25v7.5c0 1.8-1.45 3.25-3.25 3.25h-7.5A3.25 3.25 0 0 1 7 17.75v-7.5C7 8.46 8.45 7 10.25 7Z M14 18.5L10 14h2.75V9.5h2.5V14H18Z M6.25 3h6c1.8 0 3.25 1.46 3.25 3.25v.25H14v-.25c0-.97-.78-1.75-1.75-1.75h-6c-.97 0-1.75.78-1.75 1.75v6c0 .97.78 1.75 1.75 1.75h.25v1.5h-.25A3.25 3.25 0 0 1 3 12.25v-6C3 4.46 4.45 3 6.25 3Z</Geometry>
+
+    <!--
+        A line of the property bar's overflow menu. A Button rather than a
+        MenuItem, so that a pen tap can be promoted to a click the way the bar's
+        own buttons are.
+    -->
+    <Style x:Key="PropertyBarMenuItem"
+           TargetType="{x:Type Button}">
+        <Setter Property="Height"
+                Value="32" />
+        <Setter Property="Padding"
+                Value="10,0" />
+        <Setter Property="Background"
+                Value="Transparent" />
+        <Setter Property="BorderThickness"
+                Value="0" />
+        <Setter Property="Focusable"
+                Value="False" />
+        <Setter Property="ClickMode"
+                Value="Press" />
+        <Setter Property="HorizontalContentAlignment"
+                Value="Stretch" />
+        <Setter Property="Foreground"
+                Value="{StaticResource ToolbarIconBrush}" />
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="{x:Type Button}">
+                    <Border x:Name="Root"
+                            Background="{TemplateBinding Background}"
+                            CornerRadius="6"
+                            Padding="{TemplateBinding Padding}">
+                        <ContentPresenter HorizontalAlignment="Stretch"
+                                          VerticalAlignment="Center" />
+                    </Border>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsMouseOver"
+                                 Value="True">
+                            <Setter TargetName="Root"
+                                    Property="Background"
+                                    Value="{StaticResource ToolbarHoverBrush}" />
+                        </Trigger>
+                        <Trigger Property="IsEnabled"
+                                 Value="False">
+                            <Setter TargetName="Root"
+                                    Property="Opacity"
+                                    Value="0.4" />
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
     <Style x:Key="SessionShortcutHint"
            TargetType="TextBlock">
         <Setter Property="Margin"

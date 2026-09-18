@@ -254,6 +254,7 @@ public partial class MainWindow : Window
         SelectionPropertyBar.FontSizeChosen += ApplySelectionFontSize;
         SelectionPropertyBar.FontStyleChosen += ApplySelectionFontStyle;
         SelectionPropertyBar.RotationStepped += StepSelectionRotation;
+        SelectionPropertyBar.CommandChosen += RunSelectionCommand;
         UpdateWindowTitle();
         _initialBoardPath = initialBoardPath;
         TextEditorLanguageCombo.ItemsSource = TextLanguageRegistry.All;
@@ -3018,7 +3019,7 @@ public partial class MainWindow : Window
             height);
     }
 
-    private ShapeBoardObject NewShape(RectD bounds) => new(
+    private ShapeBoardObject NewShape(RectD bounds) => ShapeBoardObject.Create(
         Guid.NewGuid(),
         _document.NextZIndex,
         bounds,
@@ -3153,7 +3154,7 @@ public partial class MainWindow : Window
 
     private PointD AnchorPoint(ConnectorAnchor anchor, PointD fallback) =>
         _document.Objects.FirstOrDefault(item => item.Id == anchor.ObjectId) is { } target
-            ? ConnectorGeometry.PointOn(target.Bounds, anchor)
+            ? ConnectorGeometry.PointOn(target.AnchorFrame, anchor)
             : fallback;
 
     /// <summary>
@@ -3168,7 +3169,7 @@ public partial class MainWindow : Window
         var reach = ConnectorBoardObject.BindingReach / _camera.Zoom;
         return _document.Objects
             .Where(item => ConnectorBoardObject.CanBind(item) &&
-                           ConnectorGeometry.IsWithinBindingReach(item.Bounds, worldPoint, reach))
+                           ConnectorGeometry.IsWithinBindingReach(item.AnchorFrame, worldPoint, reach))
             .OrderByDescending(item => item.ZIndex)
             .FirstOrDefault();
     }
@@ -3189,7 +3190,7 @@ public partial class MainWindow : Window
 
         return (target, ConnectorGeometry.BindingCandidateFor(
             target.Id,
-            target.Bounds,
+            target.AnchorFrame,
             (target as ShapeBoardObject)?.Outline(),
             worldPoint,
             Keyboard.Modifiers.HasFlag(ModifierKeys.Control)));
@@ -3217,7 +3218,7 @@ public partial class MainWindow : Window
             return;
         }
 
-        SceneSurface.BindingDots = ConnectorGeometry.BindingPoints(found.Target.Bounds);
+        SceneSurface.BindingDots = ConnectorGeometry.BindingPoints(found.Target.AnchorFrame);
         SceneSurface.BindingDotIndex = found.Candidate.DotIndex == ConnectorGeometry.NoDot
             ? null
             : found.Candidate.DotIndex;
@@ -3357,18 +3358,18 @@ public partial class MainWindow : Window
         return Distance(ToPoint(handle), ToPoint(screen)) <= 16;
     }
 
+    /// <summary>
+    /// The View row and the property bar's overflow, told what the selection can
+    /// still do with its depth. Both offer the same four commands, so they are
+    /// answered in one place rather than asking the same question twice.
+    /// </summary>
     private void UpdateZOrderCommands()
     {
         BoardObject[] group = _textEditBefore is null ? SelectedZGroup() : [];
-        if (group.Length == 0)
-        {
-            SessionBar.SetZOrderEnabled(canBringToFront: false, canSendToBack: false);
-            return;
-        }
-
-        SessionBar.SetZOrderEnabled(
-            canBringToFront: !IsZGroupAtFront(group),
-            canSendToBack: !IsZGroupAtBack(group));
+        var canBringToFront = group.Length > 0 && !IsZGroupAtFront(group);
+        var canSendToBack = group.Length > 0 && !IsZGroupAtBack(group);
+        SessionBar.SetZOrderEnabled(canBringToFront, canSendToBack);
+        SelectionPropertyBar?.SetZOrderEnabled(canBringToFront, canSendToBack);
     }
 
     /// <summary>
@@ -3383,20 +3384,46 @@ public partial class MainWindow : Window
                 .OrderBy(item => item.ZIndex)
                 .ToArray();
 
-    private bool IsZGroupAtFront(IReadOnlyList<BoardObject> group)
+    private bool IsZGroupAtFront(IReadOnlyList<BoardObject> group) =>
+        ZOrder.IsAtFront(_document.Objects, group.Select(item => item.Id).ToArray());
+
+    private bool IsZGroupAtBack(IReadOnlyList<BoardObject> group) =>
+        ZOrder.IsAtBack(_document.Objects, group.Select(item => item.Id).ToArray());
+
+    private void BringSelectionForward()
     {
-        HashSet<Guid> ids = group.Select(item => item.Id).ToHashSet();
-        int maxGroup = group.Max(item => item.ZIndex);
-        return _document.Objects.Where(item => !ids.Contains(item.Id))
-            .All(item => item.ZIndex < maxGroup);
+        MoveSelectedZGroup(forward: true);
     }
 
-    private bool IsZGroupAtBack(IReadOnlyList<BoardObject> group)
+    private void SendSelectionBackward()
     {
-        HashSet<Guid> ids = group.Select(item => item.Id).ToHashSet();
-        int minGroup = group.Min(item => item.ZIndex);
-        return _document.Objects.Where(item => !ids.Contains(item.Id))
-            .All(item => item.ZIndex > minGroup);
+        MoveSelectedZGroup(forward: false);
+    }
+
+    /// <summary>
+    /// The selection past the one object it meets next in the depth, as one
+    /// step of the history. Bring to front and Send to back move it all the way;
+    /// this is the same block moving by one.
+    /// </summary>
+    private void MoveSelectedZGroup(bool forward)
+    {
+        BoardObject[] group = SelectedZGroup();
+        if (group.Length == 0)
+        {
+            return;
+        }
+
+        (IReadOnlyList<BoardObject> before, IReadOnlyList<BoardObject> after) = ZOrder.Step(
+            _document.Objects,
+            group.Select(item => item.Id).ToArray(),
+            forward);
+        if (before.Count == 0)
+        {
+            return;
+        }
+
+        _history.Execute(new ReplaceObjectsCommand(before, after), _document);
+        UpdateZOrderCommands();
     }
 
     private void BringSelectedContainerToFront()
@@ -3435,6 +3462,105 @@ public partial class MainWindow : Window
 
         _history.Execute(new ReplaceObjectsCommand(before, after), _document);
         UpdateZOrderCommands();
+    }
+
+    /// <summary>
+    /// What the overflow menu asks for. Every item here is something the
+    /// keyboard or the View row already does, called through the same method, so
+    /// the menu cannot drift away from what the shortcut does.
+    /// </summary>
+    private void RunSelectionCommand(SelectionCommand command)
+    {
+        switch (command)
+        {
+            case SelectionCommand.Delete:
+                DeleteSelection();
+                break;
+            case SelectionCommand.Copy:
+                CopySelectionToClipboard();
+                break;
+            case SelectionCommand.Duplicate:
+                DuplicateSelection();
+                break;
+            case SelectionCommand.BringToFront:
+                BringSelectedContainerToFront();
+                break;
+            case SelectionCommand.BringForward:
+                BringSelectionForward();
+                break;
+            case SelectionCommand.SendBackward:
+                SendSelectionBackward();
+                break;
+            case SelectionCommand.SendToBack:
+                SendSelectedContainerToBack();
+                break;
+        }
+    }
+
+    private void DeleteSelection()
+    {
+        if (_selectedObjectIds.Count == 0)
+        {
+            return;
+        }
+
+        IReadOnlyList<BoardObject> deletionGroup = _document.GetDeletionGroup(_selectedObjectIds);
+        if (deletionGroup.Count == 0)
+        {
+            return;
+        }
+
+        _history.Execute(DeleteCommandFor(deletionGroup), _document);
+        SelectOnly(null);
+        SceneSurface.InvalidateVisual();
+    }
+
+    /// <summary>
+    /// A copy of the selection, 24 screen pixels down and to the right of it and
+    /// above everything on the board, which becomes the selection: pressing the
+    /// shortcut again therefore lays the next copy 24 pixels further on. The
+    /// assets are left alone, since a picture and its copy are the same picture.
+    /// </summary>
+    private void DuplicateSelection()
+    {
+        if (_selectedObjectIds.Count == 0 || _textEditBefore is not null || _labelEditBefore is not null)
+        {
+            return;
+        }
+
+        try
+        {
+            BoardObject[] selected = SelectedObjects();
+            InkStrokeObject[] linkedStrokes = selected
+                .Where(item => item is IBoardContainer)
+                .SelectMany(item => _document.LinkedStrokes(item.Id))
+                .Where(stroke => !_selectedObjectIds.Contains(stroke.Id))
+                .DistinctBy(stroke => stroke.Id)
+                .ToArray();
+            var offset = 24 / Math.Max(_camera.Zoom, 0.000001);
+            IReadOnlyList<BoardObject> copies = SelectionDuplicator.Duplicate(
+                selected,
+                linkedStrokes,
+                selected.OfType<ConnectorBoardObject>().ToArray(),
+                new PointD(offset, offset),
+                _document.NextZIndex);
+            if (copies.Count == 0)
+            {
+                return;
+            }
+
+            _history.Execute(new AddImportCommand(copies, []), _document);
+
+            // The copies come back in the order they were given, so the first of
+            // them are the ones the selection asked for; a stroke that came along
+            // with its container is no more selected than it was before.
+            SelectMany(copies.Take(selected.Length).Select(item => item.Id), extend: false);
+            SceneSurface.InvalidateVisual();
+        }
+        catch (Exception exception)
+        {
+            ShowError("Could not duplicate the selection", exception);
+        }
     }
 
     private double SurfacePixelsPerDip => VisualTreeHelper.GetDpi(SceneSurface).PixelsPerDip;
@@ -3712,8 +3838,75 @@ public partial class MainWindow : Window
         });
     }
 
-    private void StepSelectionRotation(double degrees) =>
-        RestyleSelectedLabels(label => label.WithAngle(label.AngleDegrees + degrees));
+    /// <summary>
+    /// A quarter turn from the property bar, for every selected label and
+    /// shape, as one step - with the connectors bound to what turned brought to
+    /// where their anchors now are, since a turn moves the points an arrow is
+    /// tied to as surely as a move does.
+    /// </summary>
+    private void StepSelectionRotation(double degrees)
+    {
+        if (_labelEditCurrent is not null)
+        {
+            RestyleSelectedLabels(label => label.WithAngle(label.AngleDegrees + degrees));
+            return;
+        }
+
+        var before = new List<BoardObject>();
+        var after = new List<BoardObject>();
+        foreach (BoardObject item in SelectedObjects())
+        {
+            BoardObject? turned = item switch
+            {
+                FreeTextBoardObject label => Remeasure(label.WithAngle(label.AngleDegrees + degrees)),
+                ShapeBoardObject shape => shape.WithAngle(shape.AngleDegrees + degrees),
+                _ => null,
+            };
+            if (turned is null || turned == item)
+            {
+                continue;
+            }
+
+            before.Add(item);
+            after.Add(turned);
+        }
+
+        if (before.Count == 0)
+        {
+            return;
+        }
+
+        Dictionary<Guid, BoardObject> turnedById = after.ToDictionary(item => item.Id);
+        ConnectorBoardObject[] attached = before
+            .SelectMany(item => _document.ConnectorsAttachedTo(item.Id))
+            .Where(connector => !turnedById.ContainsKey(connector.Id))
+            .DistinctBy(connector => connector.Id)
+            .ToArray();
+        foreach (ConnectorBoardObject connector in attached)
+        {
+            ConnectorBoardObject followed = connector;
+            if (connector.StartAnchor is { } start && turnedById.TryGetValue(start.ObjectId, out BoardObject? from))
+            {
+                followed = followed.Follow(from);
+            }
+
+            if (connector.EndAnchor is { } end && turnedById.TryGetValue(end.ObjectId, out BoardObject? to))
+            {
+                followed = followed.Follow(to);
+            }
+
+            if (followed != connector)
+            {
+                before.Add(connector);
+                after.Add(followed);
+            }
+        }
+
+        _history.Execute(new ReplaceObjectsCommand(before.ToArray(), after.ToArray()), _document);
+        SceneSurface.InvalidateVisual();
+        UpdateSelectionPropertyBar();
+        InkSurface.Focus();
+    }
 
     /// <summary>
     /// A change from the font row, applied to every selected label as one step
@@ -5664,6 +5857,12 @@ public partial class MainWindow : Window
             case SessionCommand.BringToFront:
                 BringSelectedContainerToFront();
                 break;
+            case SessionCommand.BringForward:
+                BringSelectionForward();
+                break;
+            case SessionCommand.SendBackward:
+                SendSelectionBackward();
+                break;
             case SessionCommand.SendToBack:
                 SendSelectedContainerToBack();
                 break;
@@ -6613,6 +6812,10 @@ public partial class MainWindow : Window
         {
             return;
         }
+
+        // The overflow offers the same four depth commands the View row does, so
+        // they are answered here too, whether or not the bar ends up shown.
+        UpdateZOrderCommands();
 
         if (_textEditBefore is not null ||
             _gestureBefore.Length > 0 ||
@@ -7602,6 +7805,11 @@ public partial class MainWindow : Window
             CopySelectionToClipboard();
             e.Handled = true;
         }
+        else if (controlDown && e.Key == Key.D)
+        {
+            DuplicateSelection();
+            e.Handled = true;
+        }
         else if (controlDown && e.Key == Key.Z)
         {
             _history.Undo(_document);
@@ -7634,14 +7842,7 @@ public partial class MainWindow : Window
         }
         else if (e.Key == Key.Delete && _selectedObjectIds.Count > 0)
         {
-            var deletionGroup = _document.GetDeletionGroup(_selectedObjectIds);
-            if (deletionGroup.Count > 0)
-            {
-                _history.Execute(DeleteCommandFor(deletionGroup), _document);
-                SelectOnly(null);
-                SceneSurface.InvalidateVisual();
-            }
-
+            DeleteSelection();
             e.Handled = true;
         }
         else if (e.Key == Key.Escape && _activeTool is BoardTool.Shape or BoardTool.Connector)
