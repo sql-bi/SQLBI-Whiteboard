@@ -7,12 +7,15 @@ using SQLBI.Whiteboard.Core.Import;
 using SQLBI.Whiteboard.Core.Model;
 using SQLBI.Whiteboard.Core.Persistence;
 using SQLBI.Whiteboard.Core.Settings;
+using SQLBI.Whiteboard.Core.SmokeTests;
 using SQLBI.Whiteboard.Core.Updates;
 using SQLBI.Whiteboard.Core.Viewport;
 using SQLBI.Whiteboard.Dax;
 using SQLBI.Whiteboard.Export;
 using SQLBI.Whiteboard.Kql;
 using SQLBI.Whiteboard.SqlServer;
+
+ImportLayoutSmokeTests.Run();
 
 var camera = new Camera2D();
 camera.Resize(1000, 800);

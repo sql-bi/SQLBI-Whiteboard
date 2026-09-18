@@ -246,7 +246,7 @@ A `.wimport` file is Markdown that builds containers on a board. It is import-on
 - `#` is an optional title (not a container).
 - `##` starts one container. The heading is the title.
 - An image (`![](path)`), a `dax` / `sql` fence, a link to `.dax` / `.sql` / an image file, or leftover prose chooses the container kind.
-- A thematic break (`---`) starts a new row. Items otherwise flow left to right and wrap.
+- A thematic break (`---`) starts a new row. When the file uses these breaks, each row stays together regardless of width; only files without breaks wrap automatically.
 - Paths are local and relative to the `.wimport` file. Missing files are skipped and listed in a dialog.
 
 Drop a `.wimport` onto an open board to add its containers, with the pointer as the group’s top-left. **File → Open** or double-click (released installer) starts a new untitled board from the recipe.

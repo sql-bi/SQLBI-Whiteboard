@@ -7167,8 +7167,10 @@ public partial class MainWindow : Window
         var sizes = new List<(double Width, double Height, bool StartNewRow)>(imported.Items.Count);
         var decoded = new List<(ImportItem Item, byte[]? Bytes, double Width, double Height)>(
             imported.Items.Count);
+        var pendingNewRow = false;
         foreach (var item in imported.Items)
         {
+            pendingNewRow |= item.StartNewRow;
             if (item.Kind == ImportItemKind.Image)
             {
                 if (item.ImageBytes is null)
@@ -7180,7 +7182,7 @@ public partial class MainWindow : Window
                 {
                     var (width, height) = BoardImageCodec.ArrivalSize(
                         BoardImageCodec.Decode(item.ImageBytes));
-                    sizes.Add((width, height, item.StartNewRow));
+                    sizes.Add((width, height, pendingNewRow));
                     decoded.Add((item, item.ImageBytes, width, height));
                 }
                 catch (Exception)
@@ -7200,9 +7202,11 @@ public partial class MainWindow : Window
                     TextContainerVisual.DefaultWidth(dpi),
                     Math.Max(320, _camera.VisibleWorldBounds.Width * 0.7));
                 var height = TextContainerVisual.MeasureDesiredHeight(text, width, 1, dpi);
-                sizes.Add((width, height, item.StartNewRow));
+                sizes.Add((width, height, pendingNewRow));
                 decoded.Add((item, null, width, height));
             }
+
+            pendingNewRow = false;
         }
 
         if (decoded.Count == 0)
@@ -7214,7 +7218,8 @@ public partial class MainWindow : Window
             sizes,
             originTopLeft,
             _settings.Import.HorizontalSpacing,
-            _settings.Import.VerticalSpacing);
+            _settings.Import.VerticalSpacing,
+            autoWrap: !imported.HasExplicitRows);
         var objects = new List<BoardObject>(decoded.Count);
         var assets = new List<BoardAsset>();
         for (var index = 0; index < decoded.Count; index++)

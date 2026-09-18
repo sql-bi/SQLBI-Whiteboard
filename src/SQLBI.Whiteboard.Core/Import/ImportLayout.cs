@@ -14,7 +14,8 @@ public static class ImportLayout
         IReadOnlyList<(double Width, double Height, bool StartNewRow)> items,
         PointD originTopLeft,
         double horizontalSpacing = Gap,
-        double verticalSpacing = Gap)
+        double verticalSpacing = Gap,
+        bool autoWrap = true)
     {
         ArgumentNullException.ThrowIfNull(items);
         var placed = new RectD[items.Count];
@@ -27,8 +28,8 @@ public static class ImportLayout
             var (width, height, startNewRow) = items[index];
             width = Math.Max(1, width);
             height = Math.Max(1, height);
-            var wrap = startNewRow ||
-                       (rowOccupied && x + width > originTopLeft.X + MaxRowWidth);
+            var wrap = rowOccupied && (startNewRow ||
+                       (autoWrap && x + width > originTopLeft.X + MaxRowWidth));
             if (wrap)
             {
                 x = originTopLeft.X;
@@ -56,7 +57,7 @@ public static class ImportLayout
 
     /// <summary>
     /// Sizes a vector image. Icons are authored at 16 or 24 units and would arrive as a
-    /// speck on a board whose rows are 2400 wide, so a vector is grown to a legible edge
+    /// speck beside full-size figures, so a vector is grown to a legible edge
     /// first. Enlarging costs a bitmap its sharpness and a vector nothing.
     /// </summary>
     public static (double Width, double Height) VectorImageSize(double naturalWidth, double naturalHeight)
