@@ -176,6 +176,17 @@ public partial class MainWindow : Window
     private bool _endpointIsStart;
     private PointD _endpointWorld;
 
+    // Dragging the rotation handle of a lone shape or label. The angle follows
+    // the hand, offset by where it took hold so the object does not jump, and
+    // the object is turned from the one it was when the press started rather
+    // than from the one the last move left.
+    private BoardObject? _rotationBefore;
+    private InkStrokeObject[] _rotationStrokes = [];
+    private ConnectorBoardObject[] _rotationConnectors = [];
+    private double _rotationStartAngle;
+    private double _rotationGrabAngle;
+    private double _rotationAngle;
+
     // The connectors bound to something the gesture is moving that are not
     // themselves selected. They are recomputed rather than transformed, and go
     // into the same command, so one undo puts everything back where it was.
@@ -2470,6 +2481,14 @@ public partial class MainWindow : Window
             return;
         }
 
+        // The rotation handle stands clear of the object's own top edge, which
+        // can be anywhere once the object has been turned, so it is asked
+        // before the corner handle and before anything is hit tested.
+        if (!extend && BeginRotationGesture(screenPoint))
+        {
+            return;
+        }
+
         // The handle belongs to the selection's own rectangle and sits outside
         // everything inside it, so it is asked before anything is hit tested.
         if (!extend &&
@@ -2575,6 +2594,12 @@ public partial class MainWindow : Window
         if (_endpointBefore is not null)
         {
             UpdateConnectorEndpointGesture(worldPoint);
+            return;
+        }
+
+        if (_rotationBefore is not null)
+        {
+            UpdateRotationGesture(worldPoint);
             return;
         }
 
@@ -2722,6 +2747,194 @@ public partial class MainWindow : Window
             bounds.Height * scaleY);
     }
 
+    // Screen pixels around the rotation handle that take hold of it, and the
+    // step Shift holds the angle to while it is being dragged.
+    private const double RotationHandleReach = 16;
+    private const double RotationSnapDegrees = 15;
+
+    // Windows offers no rotation cursor, so the hand says what it says
+    // everywhere else: this is something to take hold of.
+    private static readonly Cursor RotationCursor = Cursors.Hand;
+
+    /// <summary>
+    /// The object the rotation handle belongs to, when there is one: a lone
+    /// shape or a lone label. Everything else is either without an angle or
+    /// selected with something else, and offers no handle.
+    /// </summary>
+    private BoardObject? RotationTarget() =>
+        SingleSelected<ShapeBoardObject>() ?? (BoardObject?)SingleSelected<FreeTextBoardObject>();
+
+    private bool IsOverRotationHandle(PointD screen) =>
+        RotationTarget() is { } target &&
+        Distance(
+            ToPoint(_camera.WorldToScreen(target.AnchorFrame.RotationHandle(_camera.Zoom))),
+            ToPoint(screen)) <= RotationHandleReach;
+
+    /// <summary>
+    /// A press on the rotation handle. The angle the hand is at when it takes
+    /// hold is remembered against the angle the object already has, so the
+    /// first move turns the object by how far the hand has travelled rather
+    /// than swinging it round to meet the pointer.
+    /// </summary>
+    private bool BeginRotationGesture(PointD screenPoint)
+    {
+        if (RotationTarget() is not { } target || !IsOverRotationHandle(screenPoint))
+        {
+            return false;
+        }
+
+        // Taken once, at the press: every move turns these from where they
+        // started rather than from where the last move left them, which is what
+        // keeps a turn a turn rather than a turn on a turn.
+        _rotationBefore = target;
+        _rotationStrokes = _document.LinkedStrokes(target.Id).ToArray();
+        _rotationConnectors = _document.ConnectorsAttachedTo(target.Id).ToArray();
+        _rotationStartAngle = AngleOf(target);
+        _rotationAngle = _rotationStartAngle;
+        _rotationGrabAngle =
+            PointerAngle(target.AnchorFrame.Layout.Center, _camera.ScreenToWorld(screenPoint)) -
+            _rotationStartAngle;
+        HideSelectionPropertyBar();
+        return true;
+    }
+
+    private void UpdateRotationGesture(PointD worldPoint)
+    {
+        if (_rotationBefore is not { } before)
+        {
+            return;
+        }
+
+        var angle = PointerAngle(before.AnchorFrame.Layout.Center, worldPoint) - _rotationGrabAngle;
+        if (Keyboard.Modifiers.HasFlag(ModifierKeys.Shift))
+        {
+            angle = Math.Round(angle / RotationSnapDegrees) * RotationSnapDegrees;
+        }
+
+        angle = RotatedRectangle.NormalizeAngle(angle);
+        if (angle == _rotationAngle)
+        {
+            return;
+        }
+
+        _rotationAngle = angle;
+        SceneSurface.HandleLabel = ((int)Math.Round(angle)) + "°";
+        _document.ReplaceObjects(RotatedTo(before, angle).After);
+        SceneSurface.InvalidateVisual();
+    }
+
+    private void CompleteRotationGesture()
+    {
+        if (_rotationBefore is not { } before || _rotationAngle == _rotationStartAngle)
+        {
+            return;
+        }
+
+        (BoardObject[] from, BoardObject[] to) = RotatedTo(before, _rotationAngle);
+        _document.ReplaceObjects(to);
+        _history.RecordExecuted(new ReplaceObjectsCommand(from, to));
+        SceneSurface.InvalidateVisual();
+    }
+
+    /// <summary>
+    /// The object at that angle, and with it everything tied to it. The gesture
+    /// asks for it on every move to show the turn, and once more on release for
+    /// the one command that records it.
+    /// </summary>
+    private (BoardObject[] Before, BoardObject[] After) RotatedTo(BoardObject item, double angleDegrees)
+    {
+        BoardObject turned = item switch
+        {
+            FreeTextBoardObject label => Remeasure(label.WithAngle(angleDegrees)),
+            ShapeBoardObject shape => shape.WithAngle(angleDegrees),
+            _ => item,
+        };
+        var before = new List<BoardObject> { item };
+        var after = new List<BoardObject> { turned };
+        AddRotationFollowers(
+            [(item, angleDegrees - AngleOf(item))],
+            new Dictionary<Guid, BoardObject> { [turned.Id] = turned },
+            _rotationStrokes,
+            _rotationConnectors,
+            before,
+            after);
+        return (before.ToArray(), after.ToArray());
+    }
+
+    /// <summary>
+    /// Everything carried round by a turn: the ink linked to each object that
+    /// turned, about that object's own centre, and the connectors bound to one
+    /// of them, recomputed from their anchors. The handle and the property
+    /// bar's quarter turns share it, so ink and arrows follow a shape whichever
+    /// way it was asked to turn, and everything lands in one command.
+    /// </summary>
+    private static void AddRotationFollowers(
+        IReadOnlyList<(BoardObject Item, double Degrees)> turns,
+        IReadOnlyDictionary<Guid, BoardObject> turnedById,
+        IReadOnlyList<InkStrokeObject> linked,
+        IReadOnlyList<ConnectorBoardObject> attached,
+        List<BoardObject> before,
+        List<BoardObject> after)
+    {
+        Dictionary<Guid, (double Degrees, PointD Center)> turnById = turns.ToDictionary(
+            turn => turn.Item.Id,
+            turn => (turn.Degrees, turn.Item.AnchorFrame.Layout.Center));
+        foreach (InkStrokeObject stroke in linked)
+        {
+            if (stroke.ContainerId is not { } containerId ||
+                turnedById.ContainsKey(stroke.Id) ||
+                !turnById.TryGetValue(containerId, out (double Degrees, PointD Center) turn))
+            {
+                continue;
+            }
+
+            before.Add(stroke);
+            after.Add(stroke.Rotate(turn.Center, turn.Degrees));
+        }
+
+        foreach (ConnectorBoardObject connector in attached)
+        {
+            if (turnedById.ContainsKey(connector.Id))
+            {
+                continue;
+            }
+
+            ConnectorBoardObject followed = connector;
+            if (connector.StartAnchor is { } start && turnedById.TryGetValue(start.ObjectId, out BoardObject? from))
+            {
+                followed = followed.Follow(from);
+            }
+
+            if (connector.EndAnchor is { } end && turnedById.TryGetValue(end.ObjectId, out BoardObject? to))
+            {
+                followed = followed.Follow(to);
+            }
+
+            if (followed != connector)
+            {
+                before.Add(connector);
+                after.Add(followed);
+            }
+        }
+    }
+
+    private static double AngleOf(BoardObject item) => item switch
+    {
+        FreeTextBoardObject label => label.AngleDegrees,
+        ShapeBoardObject shape => shape.AngleDegrees,
+        _ => 0,
+    };
+
+    /// <summary>
+    /// Where the hand is, as an angle about the object's centre, measured the
+    /// way the board turns everything else: clockwise from the right.
+    /// </summary>
+    private static double PointerAngle(PointD center, PointD worldPoint)
+    {
+        PointD offset = worldPoint - center;
+        return Math.Atan2(offset.Y, offset.X) * 180 / Math.PI;
+    }
+
     private void CompleteContainerGesture()
     {
         if (_areaActive)
@@ -2734,6 +2947,14 @@ public partial class MainWindow : Window
         {
             CompleteConnectorEndpointGesture();
             ResetContainerGesture();
+            return;
+        }
+
+        if (_rotationBefore is not null)
+        {
+            CompleteRotationGesture();
+            ResetContainerGesture();
+            UpdateSelectionPropertyBar();
             return;
         }
 
@@ -2764,6 +2985,9 @@ public partial class MainWindow : Window
         _gestureAfter = [];
         _gestureConnectors = [];
         _endpointBefore = null;
+        _rotationBefore = null;
+        _rotationStrokes = [];
+        _rotationConnectors = [];
         if (SceneSurface.BindingDots is not null)
         {
             ClearBindingFeedback();
@@ -3851,35 +4075,45 @@ public partial class MainWindow : Window
 
     /// <summary>
     /// A quarter turn from the property bar, for every selected label and
-    /// shape, as one step - with the connectors bound to what turned brought to
-    /// where their anchors now are, since a turn moves the points an arrow is
-    /// tied to as surely as a move does.
+    /// shape, as one step - with the ink linked to what turned and the
+    /// connectors bound to it brought round too, since a turn moves the points
+    /// an arrow is tied to as surely as a move does. The step lands on the
+    /// nearest multiple of itself, so an object turned freely by the handle
+    /// comes back onto the grid with one press.
     /// </summary>
     private void StepSelectionRotation(double degrees)
     {
         if (_labelEditCurrent is not null)
         {
-            RestyleSelectedLabels(label => label.WithAngle(label.AngleDegrees + degrees));
+            RestyleSelectedLabels(label =>
+                label.WithAngle(RotatedRectangle.StepAngle(label.AngleDegrees, degrees)));
             return;
         }
 
         var before = new List<BoardObject>();
         var after = new List<BoardObject>();
+        var turns = new List<(BoardObject Item, double Degrees)>();
         foreach (BoardObject item in SelectedObjects())
         {
-            BoardObject? turned = item switch
+            if (item is not (FreeTextBoardObject or ShapeBoardObject))
             {
-                FreeTextBoardObject label => Remeasure(label.WithAngle(label.AngleDegrees + degrees)),
-                ShapeBoardObject shape => shape.WithAngle(shape.AngleDegrees + degrees),
-                _ => null,
+                continue;
+            }
+
+            var angle = RotatedRectangle.StepAngle(AngleOf(item), degrees);
+            BoardObject turned = item switch
+            {
+                FreeTextBoardObject label => Remeasure(label.WithAngle(angle)),
+                _ => ((ShapeBoardObject)item).WithAngle(angle),
             };
-            if (turned is null || turned == item)
+            if (turned == item)
             {
                 continue;
             }
 
             before.Add(item);
             after.Add(turned);
+            turns.Add((item, angle - AngleOf(item)));
         }
 
         if (before.Count == 0)
@@ -3887,32 +4121,15 @@ public partial class MainWindow : Window
             return;
         }
 
-        Dictionary<Guid, BoardObject> turnedById = after.ToDictionary(item => item.Id);
-        ConnectorBoardObject[] attached = before
-            .SelectMany(item => _document.ConnectorsAttachedTo(item.Id))
-            .Where(connector => !turnedById.ContainsKey(connector.Id))
-            .DistinctBy(connector => connector.Id)
-            .ToArray();
-        foreach (ConnectorBoardObject connector in attached)
-        {
-            ConnectorBoardObject followed = connector;
-            if (connector.StartAnchor is { } start && turnedById.TryGetValue(start.ObjectId, out BoardObject? from))
-            {
-                followed = followed.Follow(from);
-            }
-
-            if (connector.EndAnchor is { } end && turnedById.TryGetValue(end.ObjectId, out BoardObject? to))
-            {
-                followed = followed.Follow(to);
-            }
-
-            if (followed != connector)
-            {
-                before.Add(connector);
-                after.Add(followed);
-            }
-        }
-
+        AddRotationFollowers(
+            turns,
+            after.ToDictionary(item => item.Id),
+            turns.SelectMany(turn => _document.LinkedStrokes(turn.Item.Id)).DistinctBy(stroke => stroke.Id).ToArray(),
+            turns.SelectMany(turn => _document.ConnectorsAttachedTo(turn.Item.Id))
+                .DistinctBy(connector => connector.Id)
+                .ToArray(),
+            before,
+            after);
         _history.Execute(new ReplaceObjectsCommand(before.ToArray(), after.ToArray()), _document);
         SceneSurface.InvalidateVisual();
         UpdateSelectionPropertyBar();
@@ -5222,6 +5439,11 @@ public partial class MainWindow : Window
 
     private Cursor SelectCursorAt(PointD screen)
     {
+        if (IsOverRotationHandle(screen))
+        {
+            return RotationCursor;
+        }
+
         if (IsOverResizeHandle(screen))
         {
             return Cursors.SizeNWSE;

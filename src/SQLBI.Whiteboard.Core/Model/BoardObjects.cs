@@ -232,6 +232,30 @@ public sealed record InkStrokeObject(
     }
 
     /// <summary>
+    /// The stroke turned about that point. Ink linked to a shape or a label is
+    /// carried round when its container is turned, the way it is carried along
+    /// when the container moves. A turn changes nothing about the pen, so the
+    /// thickness is left as it is and only the box is worked out again.
+    /// </summary>
+    public InkStrokeObject Rotate(PointD center, double degrees)
+    {
+        if (degrees == 0 || !double.IsFinite(degrees))
+        {
+            return this;
+        }
+
+        return Create(
+            Points.Select(point => point with
+            {
+                Position = RotatedRectangle.Rotate(point.Position - center, degrees) + center,
+            }),
+            Style,
+            ZIndex,
+            Id,
+            ContainerId);
+    }
+
+    /// <summary>
     /// Whether the stroke passes within <paramref name="radius"/> of the point.
     /// The eraser's reach and a select tap are the same question at two
     /// different radii.
