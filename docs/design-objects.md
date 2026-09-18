@@ -413,3 +413,196 @@ container — and updates `TODO.md`.
 | Grid row, View toggle | `SettingsCatalog.cs`, `PreferencesWindow.xaml.cs`, `SessionChrome.xaml`, `.cs` |
 | Editable export | `src/SQLBI.Whiteboard/Export/EditableSlide.cs`, `src/SQLBI.Whiteboard.Export/` |
 | Tests | `tests/SQLBI.Whiteboard.Core.SmokeTests/Program.cs`, `tests/SQLBI.Whiteboard.SmokeTests/` |
+
+## Toward a solid 1.6.0: what first use showed, and the order to fix it
+
+Status: approved on 18 September 2026 after the maintainer tried the Dev build; not
+started. 1.6.0 stays a Dev pre-release until everything in priorities 1 to 3 is in, and
+priority 4 as far as it goes; there is no date. The version does not change.
+
+What first use showed, and the cause of each in the code as it stands:
+
+- **Lasso on the Edit row is not where anyone looks for it.** The mode belongs with the
+  Select tool, and the toolbar was not allowed a chevron by default.
+- **A shape tool that stays makes the shape just drawn hard to change.** The tool stays by
+  default (decision 3), so a tap on the new shape starts another shape instead of selecting
+  it; and the Insert row is a sticky tab, so it covers part of the toolbar while drawing.
+- **Connectors are hard to bind.** `BindingAt` binds only when the pointer is within 16
+  screen pixels of one of the eight points. Over the middle of a shape, or near its edge
+  but not near a point, an endpoint is left free, and the dots only appear inside that
+  reach, so there is nothing to aim at until one is already hit.
+- **Shapes cannot rotate,** and a block arrow that cannot be turned points one way only.
+- **A shape cannot carry text,** which is the first thing a diagram needs.
+- **There is no select-all,** and the only way to Delete, Copy, or reorder a selection is
+  the keyboard or the View row.
+
+### Priority 1 — make the tools behave (one pull request)
+
+1. **One shape, then Select.** `AfterInsert` defaults to ReturnToSelect; the preference
+   stays for whoever wants a sticky tool. The new object is selected, so the property bar
+   is right there, and a tap on it moves it rather than starting another.
+2. **The Insert row closes when drawing starts.** The Insert tab leaves `IsStickyTab`, so
+   it closes on the first press on the canvas like File and View do. It reopens with one
+   tap or Alt+I.
+3. **Lasso lives on the Select button.** The Edit-row toggle goes. Holding Select for one
+   second switches between Rectangle and Lasso, and the button's glyph shows which one is
+   active; a tap on Select while it is already the active tool does the same, so a mouse
+   can reach it without waiting. The tooltip says both. The chevron stays behind the
+   toolbar preference. `ClickMode=Press` means the press already selects the tool; the
+   timer only adds the switch.
+4. **A connector binds wherever it is dropped on a shape.** While the pointer is over a
+   target (its bounds inflated by 16 screen pixels), the eight dots show, the one that
+   would be taken is drawn larger, the preview endpoint snaps to it live, and the target's
+   outline is tinted; release binds there. Ctrl still means the nearest point anywhere on
+   the border. A drop over nothing leaves the end free. The same rule applies to the
+   start of a drag and to an endpoint handle being dragged.
+5. **Select all.** With Select active, Ctrl+A selects every object on the board except
+   frames (the same set an area can take), and Ctrl+Shift+A selects the ink strokes only.
+   Both go through `SelectMany`, so the property bar, Delete, Copy, and the group gesture
+   follow. Ctrl+S stays Save: it is Save in every Windows application and in this one
+   since 1.0, and a Save that instead selected ink would lose someone their work.
+   Neither shortcut does anything while a text is being edited (the editor owns them).
+
+### Priority 2 — shapes complete (four pull requests)
+
+6. **Angle on a shape.** `ShapeBoardObject` gains `AngleDegrees` (default 0), kept beside
+   the unrotated box the way a label keeps its layout size: `Bounds` becomes the box of
+   the rotated outline, the outline and hit band rotate about the centre through
+   `RotatedRectangle`, the eight binding points rotate with it (anchors stay U,V in the
+   unrotated frame, so a bound arrow turns with the shape), and the corner handle keeps
+   scaling the unrotated box. The property bar's ↶ ↷ row applies to shapes and labels
+   alike. PowerPoint takes `a:xfrm rot`; the PDF rotates the path. The archive field is
+   optional, so an earlier Dev build reads the file and ignores the angle.
+7. **Text inside a shape.** `ShapeBoardObject` gains `Text`, `FontFamily`, `FontSize`,
+   `TextArgb`, `Bold`, `Italic`, `Underline`, the same set a label has, defaulting to the
+   Label defaults with the text empty. The text is drawn centred in the shape's unrotated
+   box, wrapped to the box's width less a margin, turned with the shape, in z-order with
+   the shape itself; `LabelVisual` measures it. Editing: **F2**, the **Text** button on the
+   property bar, or simply typing a printable character while a lone shape is selected
+   (as PowerPoint does) opens the same `TextBox` editor a label uses, centred over the
+   shape and sized to its box; Ctrl+Enter and click-away commit, Escape cancels, and an
+   empty text is fine, the shape stays. The property bar then shows the Font row (font,
+   size, B / I / U) for a shape too, and a text color swatch row distinct from the outline
+   row: the outline row keeps its place, the text row sits with the font. Export: the
+   PowerPoint shape carries the text in its `p:txBody`, centred and wrapped, so it is
+   editable in place; the PDF draws it centred. The partitioner's `DefaultTitle` for a
+   shape becomes its first line. Ctrl+C on a lone shape with text copies the text.
+8. **The property bar's overflow.** A **…** button at the end of the bar opens a menu for
+   the current selection: **Delete**, **Copy**, **Duplicate**, **Bring to front**,
+   **Bring forward**, **Send backward**, **Send to back**. Duplicate (also Ctrl+D) adds a
+   copy of the selection offset by 24 screen pixels right and down, with new ids, the
+   strokes linked to a duplicated container duplicated with it, and a connector between
+   two duplicated objects bound to the copies; the duplicate becomes the selection. The
+   four z-order commands act on the selection as one block, as the View row's two do
+   today; forward and backward move the block past the one object it meets next. The View
+   row gains Forward and Backward beside the two it has. No Lock, no Alt text, no Comment.
+9. **A rotation handle.** A small circle above the selection's top edge, for a lone shape
+   or label; dragging it turns the object freely, Shift snaps to 15°, and the ↶ ↷ buttons
+   keep the 45° steps. Angles are then any value, and the archive's snapping to 45° is
+   dropped for both.
+
+### Priority 3 — a palette for inserting, that can be moved (one pull request)
+
+The Insert row is a menu, not a palette: it is far from the pen and it covers the
+toolbar. Four designs were considered:
+
+- **A. Pin the Insert row into a floating palette.** A pin at the end of the Insert row
+  turns its content, the eight shapes, the three connectors, and Text in two short rows,
+  into a second floating palette that is dragged by a grip, kept anywhere in the window,
+  remembered in settings, shown or hidden from the pin, the View row, or Preferences. It
+  reuses the shared button list the toolbar flyout is built from, never touches the main
+  toolbar, and stays in F11 and canvas-only. *Recommended.*
+- **B. The existing toolbar Insert button, always on.** Already built, one preference
+  away; it widens the compact toolbar by 42 px, which decision 2 rules out by default,
+  and its flyout closes after one pick.
+- **C. A bubble beside the last inserted object** offering the next shape. Quick for a
+  run of shapes, but it moves with the work and covers it.
+- **D. Tear-off: drag the Insert row out** into a palette. The same result as A with a
+  gesture nobody will find.
+
+### Priority 4 — connectors that start from a shape
+
+10. **Connector handles on a selected shape.** Four small arrows at the side midpoints of
+    a selected or hovered shape; dragging one out draws an Arrow already bound at that
+    point, and dropping it on another shape binds the end by rule 4. This is what draw.io
+    and Visio do, and it removes the trip to the Insert row for the common case. Needs 6,
+    since the handles turn with the shape.
+11. **Automatic anchors.** An anchor mode, Auto, where the bound end moves to the side
+    facing the other end whenever either object moves, so an arrow between two shapes
+    stays sensible as they are rearranged. Fixed stays the default for an end dropped on a
+    specific point.
+12. **Connection sites in the deck.** Write `stCxn`/`endCxn` on the PowerPoint connector
+    so it re-routes when a shape is dragged in PowerPoint.
+
+### Order and parallelism
+
+| PR | Items | Depends on | Parallel with |
+| --- | --- | --- | --- |
+| A | 1, 2, 3, 4, 5 | — | B, D |
+| B | 6 rotation | — | A, D |
+| C | 7 text in shapes | B (the text turns with the shape) | D, E |
+| D | 8 overflow, Duplicate, z-order | — | A, B, C |
+| E | 9 rotation handle | B | C, F |
+| F | Design A palette | A | E, G |
+| G | 10 connector handles | B, 4 | F |
+| H | 11, 12 | G | — |
+
+CHANGELOG.md's 1.6.0 section is rewritten at the end, not per pull request, and stays at
+three or four entries; the guide, shortcuts, and README follow in the same last pull
+request, as PR 7 did.
+
+### Decisions taken
+
+Settled with the maintainer on 18 September 2026. An implementer does not reopen these.
+
+1. **Select all.** Ctrl+A selects everything an area can take; **Ctrl+Shift+A** selects the
+   ink strokes only. Ctrl+S stays Save.
+2. **The long press** on Select is **600 ms**, the Windows touch long-press, and a second
+   tap on the already-active Select button also switches Rectangle and Lasso.
+3. **Typing while a lone shape is selected** starts its text, as PowerPoint does; F2 and
+   the bar's Text button do the same.
+4. **Rotation** has both the ↶ ↷ 45° buttons and the free handle with Shift snapping
+   to 15°, for shapes and labels.
+5. **Z-order** has four commands: Bring to front, Bring forward, Send backward, Send to
+   back, on the bar's overflow and on the View row.
+6. **The palette** is design A: a pin on the Insert row makes a second floating palette.
+7. **1.6.0 includes all of priority 4**, connector handles, automatic anchors, and
+   PowerPoint connection sites. There is no release date; the Dev channel carries every
+   merge until the maintainer promotes the build.
+
+### Estimate
+
+Sizes are agent working time on Opus, from the seven pull requests of 16 and 17
+September (30 to 55 minutes each, 215k to 485k tokens each, about 2.6M tokens in all).
+Coordinator review, a local build and both harnesses, and the CI run add 15 to 25
+minutes per pull request.
+
+| PR | Items | Agent time | Tokens |
+| --- | --- | --- | --- |
+| A | Tools behave: 1 to 5 | 1 h | 350k |
+| B | Rotation on shapes | 1 h | 350k |
+| C | Text inside a shape | 1.5 h | 500k |
+| D | Overflow menu, Duplicate, four z-order commands | 1 h | 350k |
+| E | Rotation handle | 45 min | 250k |
+| F | Floating Insert palette | 1 h | 350k |
+| G | Connector handles on a shape | 1 h | 350k |
+| H | Automatic anchors, connection sites | 1.5 h | 450k |
+| I | Notes, guide, shortcuts, README, decision 32 | 30 min | 200k |
+
+About 9.5 agent hours and 3.2M tokens. Run in the waves the order table allows — A, B,
+D together; then C, E, F; then G; then H; then I — the wall clock is 6 to 8 hours
+unattended, the same shape as the first night. Each wave lands on the Dev channel, so the
+maintainer can try a wave's build while the next one runs; anything that comes back from
+that goes in before I, not after.
+
+### How the work is run
+
+As for the first seven pull requests: one Opus agent per pull request, on its own
+worktree and branch (`feature/tools-behave`, `feature/shape-rotation`,
+`feature/shape-text`, `feature/selection-menu`, `feature/rotation-handle`,
+`feature/insert-palette`, `feature/connector-handles`, `feature/connector-routing`,
+`docs/1-6-0-notes`). The coordinator plans, reviews each diff against this file, builds
+and runs both harnesses from the branch, merges when the checks pass, starts the next
+wave from the merged `main`, and writes no code. A pull request that meets a conflict
+merges `origin/main` in, never rebases. Each pull request lists under **To try by hand**
+what the harnesses cannot see.

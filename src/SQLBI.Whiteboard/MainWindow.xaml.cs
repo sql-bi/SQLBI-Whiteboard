@@ -2,6 +2,7 @@ using System.ComponentModel;
 using System.Diagnostics;
 using System.IO;
 using System.Windows;
+using System.Windows.Automation;
 using System.Windows.Controls;
 using System.Windows.Controls.Primitives;
 using System.Windows.Ink;
@@ -305,6 +306,7 @@ public partial class MainWindow : Window
         ApplyPointerModes();
         ApplyGrid();
         ApplyInsertOnToolbar();
+        UpdateSelectButtonGlyph();
         ApplyDrawingAttributes();
         SetActiveTool(BoardTool.Pen);
         InkSurface.Focus();
@@ -1216,6 +1218,9 @@ public partial class MainWindow : Window
         LaserTrail.Lift();
         if (FindToggleButton(hit) is { } button)
         {
+            // Before the click, which is what makes Select the active tool: the
+            // hold is only offered by a press that was not already on Select.
+            BeginSelectHold(button);
             button.RaiseEvent(new RoutedEventArgs(ButtonBase.ClickEvent));
         }
 
@@ -1687,6 +1692,9 @@ public partial class MainWindow : Window
 
     private void OfferMouseMode()
     {
+        // The dialog takes the press with it, so a hold counted from that press
+        // would switch the area tool behind it.
+        CancelSelectHold();
         var offer = new MouseModeOfferWindow { Owner = this };
         offer.ShowDialog();
         var changed = false;
@@ -2971,7 +2979,7 @@ public partial class MainWindow : Window
         _rotationConnectors = [];
         if (SceneSurface.BindingDots is not null)
         {
-            SceneSurface.BindingDots = null;
+            ClearBindingFeedback();
             SceneSurface.InvalidateVisual();
         }
 
@@ -3078,6 +3086,26 @@ public partial class MainWindow : Window
     }
 
     private bool IsLassoArea => _settings.AreaSelectionTool == AreaSelectionTool.Lasso;
+
+    /// <summary>
+    /// Ctrl+A takes everything an area could take; Ctrl+Shift+A takes the ink
+    /// strokes alone. It goes through the same set the area gestures fill, so
+    /// the property bar, Delete, Copy, the z-order commands, and the group
+    /// gesture all follow without being told about it. Asking for the set with
+    /// another tool in hand is asking for those gestures too, so the tool comes
+    /// back to Select first.
+    /// </summary>
+    private void SelectAll(bool strokesOnly)
+    {
+        if (_activeTool != BoardTool.Select)
+        {
+            ChooseTool(BoardTool.Select);
+        }
+
+        SelectMany(_document.AllSelectable(strokesOnly).Select(item => item.Id), extend: false);
+        SceneSurface.InvalidateVisual();
+        UpdateLiveViewActionOverlay();
+    }
 
     private RectD CurrentAreaRectangle()
     {
@@ -3261,13 +3289,27 @@ public partial class MainWindow : Window
         }
 
         PointD world = _camera.ScreenToWorld(screen);
-        SceneSurface.PendingConnector = _connectorDragged
-            ? NewConnector(_connectorStartWorld, world, null, null)
-            : null;
+        if (_connectorDragged)
+        {
+            // The preview carries the anchors the release would take, so each
+            // end is drawn on its binding point rather than under the pointer
+            // and a curve already leaves the side it will leave.
+            SceneSurface.PendingConnector = NewConnector(
+                _connectorStartWorld,
+                world,
+                BindingAt(_connectorStartWorld),
+                BindingAt(world));
 
-        // The dots belong to the end being dragged, which is the one the hand is
-        // asking about.
-        SceneSurface.BindingDots = _connectorDragged ? BindingDotsAt(world) : null;
+            // The dots belong to the end being dragged, which is the one the
+            // hand is asking about.
+            ShowBindingFeedback(world);
+        }
+        else
+        {
+            SceneSurface.PendingConnector = null;
+            ClearBindingFeedback();
+        }
+
         SceneSurface.InvalidateVisual();
     }
 
@@ -3314,7 +3356,7 @@ public partial class MainWindow : Window
         if (SceneSurface.PendingConnector is not null || SceneSurface.BindingDots is not null)
         {
             SceneSurface.PendingConnector = null;
-            SceneSurface.BindingDots = null;
+            ClearBindingFeedback();
             SceneSurface.InvalidateVisual();
         }
     }
@@ -3340,68 +3382,78 @@ public partial class MainWindow : Window
             : fallback;
 
     /// <summary>
-    /// What an endpoint dropped here would bind to: the topmost thing a tap
-    /// would reach, or - since a shape's inside is not a hit - the topmost one
-    /// whose box the pointer is in. A frame, a stroke, and another connector are
-    /// not things an arrow points at.
+    /// What an endpoint dropped here would bind to: the topmost eligible object
+    /// whose box, out by the binding reach, the pointer is inside. A shape's
+    /// interior counts, even though a tap there is not a hit on the shape, since
+    /// an arrow let go in the middle of a box plainly means that box. A frame, a
+    /// stroke, and another connector are not things an arrow points at.
     /// </summary>
     private BoardObject? BindingTargetAt(PointD worldPoint)
     {
-        if (_document.HitTestTopSelectable(worldPoint, _camera.Zoom) is { } hit &&
-            ConnectorBoardObject.CanBind(hit))
-        {
-            return hit;
-        }
-
+        var reach = ConnectorBoardObject.BindingReach / _camera.Zoom;
         return _document.Objects
-            .Where(item => ConnectorBoardObject.CanBind(item) && item.Bounds.Contains(worldPoint))
+            .Where(item => ConnectorBoardObject.CanBind(item) &&
+                           ConnectorGeometry.IsWithinBindingReach(item.AnchorFrame, worldPoint, reach))
             .OrderByDescending(item => item.ZIndex)
             .FirstOrDefault();
     }
 
     /// <summary>
-    /// The eight points of the target under the pointer, while one of them is
-    /// near enough to be taken. They are shown rather than described because
-    /// where an arrow will land is the whole question while it is being dragged.
+    /// The target under the pointer and the point on it this end would take.
+    /// One answer serves the preview, the dots, the tint, and the release, so
+    /// what is shown while the end is dragged is what is recorded when it is
+    /// let go. Ctrl asks for the nearest point anywhere on the border instead.
     /// </summary>
-    private IReadOnlyList<PointD>? BindingDotsAt(PointD worldPoint)
+    private (BoardObject Target, ConnectorGeometry.BindingCandidate Candidate)? BindingCandidateAt(
+        PointD worldPoint)
     {
         if (BindingTargetAt(worldPoint) is not { } target)
         {
             return null;
         }
 
-        IReadOnlyList<PointD> points = ConnectorGeometry.BindingPoints(target.AnchorFrame);
-        var reach = ConnectorBoardObject.BindingReach / _camera.Zoom;
-        return points.Any(point => Distance(ToPoint(point), ToPoint(worldPoint)) <= reach) ? points : null;
+        return (target, ConnectorGeometry.BindingCandidateFor(
+            target.Id,
+            target.AnchorFrame,
+            (target as ShapeBoardObject)?.Outline(),
+            worldPoint,
+            Keyboard.Modifiers.HasFlag(ModifierKeys.Control)));
     }
 
     /// <summary>
-    /// The anchor an endpoint let go here takes: the nearest of the eight
-    /// points when the pointer is within reach of one, and with Ctrl the nearest
-    /// point anywhere on the target's border instead.
+    /// The anchor an endpoint let go here takes, or nothing at all when there is
+    /// nothing eligible under the pointer and the end stays where the hand put
+    /// it.
     /// </summary>
-    private ConnectorAnchor? BindingAt(PointD worldPoint)
+    private ConnectorAnchor? BindingAt(PointD worldPoint) =>
+        BindingCandidateAt(worldPoint)?.Candidate.Anchor;
+
+    /// <summary>
+    /// What the surface draws while an end is being dragged: the eight points of
+    /// the target under the pointer, which of them would be taken, and the
+    /// target itself. They are shown rather than described because where an
+    /// arrow will land is the whole question while it is in the air.
+    /// </summary>
+    private void ShowBindingFeedback(PointD worldPoint)
     {
-        if (BindingTargetAt(worldPoint) is not { } target)
+        if (BindingCandidateAt(worldPoint) is not { } found)
         {
-            return null;
+            ClearBindingFeedback();
+            return;
         }
 
-        if (Keyboard.Modifiers.HasFlag(ModifierKeys.Control))
-        {
-            return ConnectorGeometry.NearestBorderPoint(
-                target.Id,
-                target.AnchorFrame,
-                (target as ShapeBoardObject)?.Outline(),
-                worldPoint);
-        }
+        SceneSurface.BindingDots = ConnectorGeometry.BindingPoints(found.Target.AnchorFrame);
+        SceneSurface.BindingDotIndex = found.Candidate.DotIndex == ConnectorGeometry.NoDot
+            ? null
+            : found.Candidate.DotIndex;
+        SceneSurface.BindingTargetId = found.Target.Id;
+    }
 
-        ConnectorAnchor nearest = ConnectorGeometry.NearestBindingPoint(target.Id, target.AnchorFrame, worldPoint);
-        var reach = ConnectorBoardObject.BindingReach / _camera.Zoom;
-        return Distance(ToPoint(ConnectorGeometry.PointOn(target.AnchorFrame, nearest)), ToPoint(worldPoint)) <= reach
-            ? nearest
-            : null;
+    private void ClearBindingFeedback()
+    {
+        SceneSurface.BindingDots = null;
+        SceneSurface.BindingDotIndex = null;
+        SceneSurface.BindingTargetId = null;
     }
 
     /// <summary>
@@ -3437,8 +3489,11 @@ public partial class MainWindow : Window
         }
 
         _endpointWorld = worldPoint;
-        _document.ReplaceObject(MovedEndpoint(before, worldPoint, null));
-        SceneSurface.BindingDots = BindingDotsAt(worldPoint);
+
+        // The end snaps to what it is over while it is being dragged, so the
+        // handle sits where the release will leave it.
+        _document.ReplaceObject(MovedEndpoint(before, worldPoint, BindingAt(worldPoint)));
+        ShowBindingFeedback(worldPoint);
         SceneSurface.InvalidateVisual();
     }
 
@@ -3451,7 +3506,7 @@ public partial class MainWindow : Window
 
         ConnectorBoardObject after = MovedEndpoint(before, _endpointWorld, BindingAt(_endpointWorld));
         _endpointBefore = null;
-        SceneSurface.BindingDots = null;
+        ClearBindingFeedback();
         _document.ReplaceObject(after);
         if (after != before)
         {
@@ -3851,9 +3906,9 @@ public partial class MainWindow : Window
     }
 
     /// <summary>
-    /// What the Insert tools do once one object has been made. Keeping the tool
-    /// is the default, so the next gesture makes another; the preference hands
-    /// it back to Select for anyone who adds one object at a time.
+    /// What the Insert tools do once one object has been made. Handing the tool
+    /// back is the default, so the new object is what the next tap picks up;
+    /// the preference keeps the tool for anyone drawing a row of them.
     /// </summary>
     private void ReturnToSelectAfterInsert()
     {
@@ -4614,7 +4669,16 @@ public partial class MainWindow : Window
     private void SelectToolButton_Click(object sender, RoutedEventArgs e)
     {
         LeaveLaserIfActive();
+
+        // The style clicks on press, so this is the press. A press while Select
+        // is already in hand switches the area tool, which is the mouse's way to
+        // it: nobody with a mouse will wait out a long press.
+        var switchArea = _activeTool == BoardTool.Select;
         SetActiveTool(BoardTool.Select);
+        if (switchArea)
+        {
+            ToggleAreaSelectionTool();
+        }
     }
 
     private void PanToolButton_Click(object sender, RoutedEventArgs e)
@@ -5441,17 +5505,119 @@ public partial class MainWindow : Window
     }
 
     /// <summary>
-    /// The shape the next area gesture draws. The toggle remembers it, so the
-    /// choice outlives the gesture and the session.
+    /// The shape the next area gesture draws. The Select button remembers it,
+    /// so the choice outlives the gesture and the session.
     /// </summary>
-    private void ToggleAreaSelectionTool()
+    private void ToggleAreaSelectionTool() => ApplyAreaSelectionTool(
+        IsLassoArea ? AreaSelectionTool.Rectangle : AreaSelectionTool.Lasso);
+
+    /// <summary>
+    /// The area tool, wherever it was chosen: the hold on Select, the second
+    /// tap, or the chevron's flyout. All three end here, so the button's glyph
+    /// and the flyout say the same thing however the choice was made.
+    /// </summary>
+    private void ApplyAreaSelectionTool(AreaSelectionTool tool)
     {
-        _settings.AreaSelectionTool = IsLassoArea
-            ? AreaSelectionTool.Rectangle
-            : AreaSelectionTool.Lasso;
-        SessionBar.SetLassoChecked(IsLassoArea);
+        _settings.AreaSelectionTool = tool;
         PersistSettings();
+        UpdateSelectButtonGlyph();
+        if (_isSelectOptionsOpen)
+        {
+            RebuildSelectOptions();
+        }
     }
+
+    /// <summary>
+    /// Which of the two the Select button is holding. The glyph is the only
+    /// place the mode is written down now that the Edit row's toggle has gone,
+    /// so it is swapped in place, at the same size, rather than badged.
+    /// </summary>
+    private void UpdateSelectButtonGlyph()
+    {
+        var lasso = IsLassoArea;
+        var geometry = (Geometry)FindResource(lasso ? "LassoGeometry" : "ImageSelectGeometry");
+        var tooltip = lasso
+            ? "Lasso. Hold, or tap again, for Rectangle"
+            : "Select. Hold, or tap again, for Lasso";
+        var name = lasso ? "Lasso" : "Select";
+        if (SelectToolIcon is not null)
+        {
+            SelectToolIcon.Data = geometry;
+            SelectToolButton.ToolTip = tooltip;
+            AutomationProperties.SetName(SelectToolButton, name);
+        }
+
+        if (DualSelectIcon is not null)
+        {
+            DualSelectIcon.Data = geometry;
+            DualSelectButton.ToolTip = tooltip;
+            AutomationProperties.SetName(DualSelectButton, name);
+        }
+    }
+
+    // The Windows touch long press. Holding Select this long is how a pen and a
+    // finger reach the other area tool, on a toolbar that is not allowed to grow
+    // a second button for it.
+    private static readonly TimeSpan SelectHoldDelay = TimeSpan.FromMilliseconds(600);
+
+    private DispatcherTimer? _selectHoldTimer;
+
+    /// <summary>
+    /// A press on Select, from any input. The press has already chosen the tool
+    /// - the style clicks on press - so the timer adds only the switch, and only
+    /// when Select was not already in hand: when it was, the press itself has
+    /// switched the area tool and a hold would switch it straight back. A press
+    /// already being counted is left alone, so the mouse event a pen tap is
+    /// promoted to does not restart the count.
+    /// </summary>
+    private void BeginSelectHold(object source)
+    {
+        if (_selectHoldTimer is not null ||
+            _activeTool == BoardTool.Select ||
+            (!ReferenceEquals(source, SelectToolButton) && !ReferenceEquals(source, DualSelectButton)))
+        {
+            return;
+        }
+
+        _selectHoldTimer = new DispatcherTimer { Interval = SelectHoldDelay };
+        _selectHoldTimer.Tick += SelectHoldTimer_Tick;
+        _selectHoldTimer.Start();
+    }
+
+    private void CancelSelectHold()
+    {
+        if (_selectHoldTimer is not { } timer)
+        {
+            return;
+        }
+
+        timer.Stop();
+        timer.Tick -= SelectHoldTimer_Tick;
+        _selectHoldTimer = null;
+    }
+
+    private void SelectHoldTimer_Tick(object? sender, EventArgs e)
+    {
+        CancelSelectHold();
+        ToggleAreaSelectionTool();
+    }
+
+    private void SelectButton_PreviewMouseLeftButtonDown(object sender, MouseButtonEventArgs e) =>
+        BeginSelectHold(sender);
+
+    private void SelectButton_PreviewMouseLeftButtonUp(object sender, MouseButtonEventArgs e) =>
+        CancelSelectHold();
+
+    private void SelectButton_MouseLeave(object sender, MouseEventArgs e) =>
+        CancelSelectHold();
+
+    private void SelectButton_LostMouseCapture(object sender, MouseEventArgs e) =>
+        CancelSelectHold();
+
+    // The palette promotes a pen or finger tap itself, so the button never sees
+    // the stylus press that started the hold and cannot see the lift either.
+    private void Window_PreviewStylusUp(object sender, StylusEventArgs e) =>
+        CancelSelectHold();
 
     /// <summary>
     /// The Insert button beside Select and the chevron on Select, which exist
@@ -5723,14 +5889,12 @@ public partial class MainWindow : Window
     }
 
     /// <summary>
-    /// The chevron's choice is the Edit row's Lasso toggle, so whichever of the
-    /// two is used the other shows what was chosen.
+    /// The chevron's choice is the Select button's own, so whichever of the two
+    /// is used the other shows what was chosen.
     /// </summary>
     private void ChooseAreaSelectionTool(AreaSelectionTool tool)
     {
-        _settings.AreaSelectionTool = tool;
-        SessionBar.SetLassoChecked(IsLassoArea);
-        PersistSettings();
+        ApplyAreaSelectionTool(tool);
         SetActiveTool(BoardTool.Select);
     }
 
@@ -5747,7 +5911,7 @@ public partial class MainWindow : Window
         ApplyCalligraphyAccess();
         ApplyLaserSettings();
         ApplyPointerModes();
-        SessionBar.SetLassoChecked(IsLassoArea);
+        UpdateSelectButtonGlyph();
         ApplyGrid();
         ApplyInsertOnToolbar();
         if (!_settings.CheckForUpdates)
@@ -5938,9 +6102,6 @@ public partial class MainWindow : Window
                 break;
             case SessionCommand.ReconnectLiveView:
                 ReconnectLiveViewMenuItem_Click(this, new RoutedEventArgs());
-                break;
-            case SessionCommand.ToggleLasso:
-                ToggleAreaSelectionTool();
                 break;
             case SessionCommand.InsertText:
                 ChooseTool(BoardTool.Text);
@@ -7854,6 +8015,11 @@ public partial class MainWindow : Window
         else if (shiftDown && e.Key == Key.F12)
         {
             _ = SaveBoardAsync(saveAs: true);
+            e.Handled = true;
+        }
+        else if (controlDown && e.Key == Key.A)
+        {
+            SelectAll(strokesOnly: shiftDown);
             e.Handled = true;
         }
         else if (controlDown && e.Key == Key.C)
