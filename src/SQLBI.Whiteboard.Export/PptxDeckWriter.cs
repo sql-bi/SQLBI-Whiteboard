@@ -294,8 +294,8 @@ public static class PptxDeckWriter
     /// A shape as a shape: the preset whose outline is the one the board draws, a
     /// tinted fill that keeps its translucency, and the outline as a line of the
     /// width the screen gives it, turned about its centre by a:xfrm as a label is.
-    /// The empty text body is what lets PowerPoint type into the shape once the
-    /// deck is open.
+    /// The text body is what lets PowerPoint type into the shape once the deck is
+    /// open, and it carries whatever the shape already says.
     /// </summary>
     private static P.Shape GeometryShape(uint id, SlideShapeElement shape, PageFit fit) => new(
         new P.NonVisualShapeProperties(
@@ -311,10 +311,53 @@ public static class PptxDeckWriter
                 Width = Math.Max(1, (int)fit.Emu(shape.Thickness)),
                 CapType = A.LineCapValues.Round,
             }),
-        new P.TextBody(
-            new A.BodyProperties(),
-            new A.ListStyle(),
-            new A.Paragraph(new A.EndParagraphRunProperties { Language = Language })));
+        ShapeTextBody(shape, fit));
+
+    /// <summary>
+    /// What a shape says, in the shape: centred across the box and down it,
+    /// wrapped, and inset so that the rectangle left for the words is the one
+    /// the board writes them in - which for a triangle or a diamond is a good
+    /// deal smaller than the box. A shape that says nothing writes the one empty
+    /// paragraph a p:sp has to have.
+    /// </summary>
+    private static P.TextBody ShapeTextBody(SlideShapeElement shape, PageFit fit)
+    {
+        RectD box = ShapeGeometry.TextBox(
+            shape.Kind,
+            new RectD(shape.Bounds.X, shape.Bounds.Y, shape.Bounds.Width, shape.Bounds.Height),
+            shape.TextMargin);
+        var size = fit.Points(shape.FontSize);
+        var body = new P.TextBody(
+            new A.BodyProperties(new A.NoAutoFit())
+            {
+                Wrap = A.TextWrappingValues.Square,
+                LeftInset = (int)fit.Emu(Math.Max(0, box.Left - shape.Bounds.X)),
+                TopInset = (int)fit.Emu(Math.Max(0, box.Top - shape.Bounds.Y)),
+                RightInset = (int)fit.Emu(Math.Max(0, shape.Bounds.X + shape.Bounds.Width - box.Right)),
+                BottomInset = (int)fit.Emu(Math.Max(0, shape.Bounds.Y + shape.Bounds.Height - box.Bottom)),
+                Anchor = A.TextAnchoringTypeValues.Center,
+                AnchorCenter = false,
+            },
+            new A.ListStyle());
+
+        foreach (var line in shape.Text.Split('\n'))
+        {
+            var paragraph = new A.Paragraph(
+                new A.ParagraphProperties { Alignment = A.TextAlignmentTypeValues.Center });
+            var text = line.TrimEnd('\r');
+            if (text.Length > 0)
+            {
+                paragraph.Append(new A.Run(
+                    RunProperties(shape.TextArgb, shape.FontFamily, size, shape.Bold, shape.Italic, shape.Underline),
+                    new A.Text(text)));
+            }
+
+            paragraph.Append(new A.EndParagraphRunProperties { Language = Language, FontSize = size });
+            body.Append(paragraph);
+        }
+
+        return body;
+    }
 
     /// <summary>
     /// A label as a text box with no fill and no line, turned about its centre by

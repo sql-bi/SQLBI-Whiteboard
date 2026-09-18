@@ -200,6 +200,11 @@ public partial class MainWindow : Window
     private FreeTextBoardObject? _labelEditCurrent;
     private bool _labelEditIsNew;
     private bool _updatingLabelEditor;
+
+    // A shape carries its own text rather than holding a label, so the same box
+    // is opened over the shape itself. Only one of the three edits is ever open.
+    private ShapeBoardObject? _shapeEditBefore;
+    private ShapeBoardObject? _shapeEditCurrent;
     private TextBoardObject? _textEditBefore;
     private InkStrokeObject[] _textEditLinkedBefore = [];
     private RectD _textEditBounds;
@@ -265,6 +270,8 @@ public partial class MainWindow : Window
         SelectionPropertyBar.FontSizeChosen += ApplySelectionFontSize;
         SelectionPropertyBar.FontStyleChosen += ApplySelectionFontStyle;
         SelectionPropertyBar.RotationStepped += StepSelectionRotation;
+        SelectionPropertyBar.TextColorChosen += ApplySelectionTextColor;
+        SelectionPropertyBar.TextEditRequested += BeginSelectedShapeTextEdit;
         SelectionPropertyBar.CommandChosen += RunSelectionCommand;
         UpdateWindowTitle();
         _initialBoardPath = initialBoardPath;
@@ -3254,6 +3261,11 @@ public partial class MainWindow : Window
             height);
     }
 
+    /// <summary>
+    /// A new shape, saying nothing yet but ready to be typed in: its text takes
+    /// the same defaults the next label would, since a shape's words and a
+    /// label's are written from one set of choices.
+    /// </summary>
     private ShapeBoardObject NewShape(RectD bounds) => ShapeBoardObject.Create(
         Guid.NewGuid(),
         _document.NextZIndex,
@@ -3261,7 +3273,15 @@ public partial class MainWindow : Window
         _shapeKind,
         _settings.Shape.OutlineArgb,
         _settings.Shape.FillArgb,
-        _settings.Shape.Thickness);
+        _settings.Shape.Thickness) with
+    {
+        FontFamily = _settings.Label.FontFamily,
+        FontSize = _settings.Label.FontSize,
+        TextArgb = _settings.Label.Argb,
+        Bold = _settings.Label.Bold,
+        Italic = _settings.Label.Italic,
+        Underline = _settings.Label.Underline,
+    };
 
     /// <summary>
     /// A connector tool picked from the Insert row or the toolbar flyout. The
@@ -3758,7 +3778,10 @@ public partial class MainWindow : Window
     /// </summary>
     private void DuplicateSelection()
     {
-        if (_selectedObjectIds.Count == 0 || _textEditBefore is not null || _labelEditBefore is not null)
+        if (_selectedObjectIds.Count == 0 ||
+            _textEditBefore is not null ||
+            _labelEditBefore is not null ||
+            _shapeEditBefore is not null)
         {
             return;
         }
@@ -3855,12 +3878,35 @@ public partial class MainWindow : Window
         SceneSurface.HoveredObjectId = null;
         SelectOnly(label.Id);
 
-        _updatingLabelEditor = true;
-        LabelEditor.Text = label.Text;
-        _updatingLabelEditor = false;
+        OpenEditorOn(label.Text);
         UpdateLabelEditorOverlay();
         SceneSurface.InvalidateVisual();
         UpdateLiveViewActionOverlay();
+        FocusEditor();
+    }
+
+    /// <summary>
+    /// The editor's box filled with the text it starts on, without that reading
+    /// as something typed.
+    /// </summary>
+    private void OpenEditorOn(string text)
+    {
+        _updatingLabelEditor = true;
+        LabelEditor.Text = text;
+        _updatingLabelEditor = false;
+    }
+
+    /// <summary>
+    /// The keyboard in the editor, now and again once the layout has settled.
+    /// Now, because a key that opened the editor carries a character behind it
+    /// that has to land in the box; again, because the box is placed and sized
+    /// after this and focus taken before that has been known to be given up.
+    /// </summary>
+    private void FocusEditor()
+    {
+        LabelEditor.Focus();
+        Keyboard.Focus(LabelEditor);
+        LabelEditor.CaretIndex = LabelEditor.Text.Length;
         _ = Dispatcher.InvokeAsync(
             () =>
             {
@@ -3869,6 +3915,27 @@ public partial class MainWindow : Window
                 LabelEditor.CaretIndex = LabelEditor.Text.Length;
             },
             DispatcherPriority.Input);
+    }
+
+    /// <summary>
+    /// The editor written in the same hand as what it is editing, at the size
+    /// that hand takes on screen.
+    /// </summary>
+    private void StyleEditor(
+        string fontFamily,
+        double fontSize,
+        bool bold,
+        bool italic,
+        bool underline,
+        uint argb)
+    {
+        LabelEditor.FontFamily = new FontFamily(fontFamily);
+        LabelEditor.FontSize = Math.Max(1, fontSize);
+        LabelEditor.FontWeight = bold ? FontWeights.Bold : FontWeights.Normal;
+        LabelEditor.FontStyle = italic ? FontStyles.Italic : FontStyles.Normal;
+        LabelEditor.TextDecorations = underline ? TextDecorations.Underline : null;
+        LabelEditor.Foreground = LabelVisual.Brush(argb);
+        LabelEditor.CaretBrush = LabelEditor.Foreground;
     }
 
     /// <summary>
@@ -3966,7 +4033,18 @@ public partial class MainWindow : Window
 
     private void LabelEditor_TextChanged(object sender, TextChangedEventArgs e)
     {
-        if (_updatingLabelEditor || _labelEditCurrent is not { } label)
+        if (_updatingLabelEditor)
+        {
+            return;
+        }
+
+        if (_shapeEditCurrent is { } shape)
+        {
+            ApplyShapeDuringEdit(shape with { Text = LabelEditor.Text });
+            return;
+        }
+
+        if (_labelEditCurrent is not { } label)
         {
             return;
         }
@@ -4006,6 +4084,14 @@ public partial class MainWindow : Window
     /// </summary>
     private void UpdateLabelEditorOverlay()
     {
+        // The same box serves a shape's own text, over the shape rather than
+        // over a label of its own.
+        if (_shapeEditCurrent is not null)
+        {
+            UpdateShapeTextEditorOverlay();
+            return;
+        }
+
         if (_labelEditCurrent is not { } label)
         {
             LabelEditor.Visibility = Visibility.Collapsed;
@@ -4013,13 +4099,17 @@ public partial class MainWindow : Window
         }
 
         double zoom = _camera.Zoom;
-        LabelEditor.FontFamily = new FontFamily(label.FontFamily);
-        LabelEditor.FontSize = Math.Max(1, label.FontSize * zoom);
-        LabelEditor.FontWeight = label.Bold ? FontWeights.Bold : FontWeights.Normal;
-        LabelEditor.FontStyle = label.Italic ? FontStyles.Italic : FontStyles.Normal;
-        LabelEditor.TextDecorations = label.Underline ? TextDecorations.Underline : null;
-        LabelEditor.Foreground = LabelVisual.Brush(label.Argb);
-        LabelEditor.CaretBrush = LabelEditor.Foreground;
+        StyleEditor(
+            label.FontFamily,
+            label.FontSize * zoom,
+            label.Bold,
+            label.Italic,
+            label.Underline,
+            label.Argb);
+        LabelEditor.TextWrapping = TextWrapping.NoWrap;
+        LabelEditor.TextAlignment = TextAlignment.Left;
+        LabelEditor.VerticalContentAlignment = VerticalAlignment.Top;
+        LabelEditor.MinHeight = 0;
 
         // Room for the border, the box's own inset, and the caret at the end of
         // the longest line, none of which the measured text accounts for. The
@@ -4040,6 +4130,7 @@ public partial class MainWindow : Window
         _settings.Label.FontFamily = font;
         PersistSettings();
         RestyleSelectedLabels(label => label with { FontFamily = font });
+        RestyleSelectedShapeText(shape => shape with { FontFamily = font });
     }
 
     private void ApplySelectionFontSize(double fontSize)
@@ -4047,6 +4138,7 @@ public partial class MainWindow : Window
         _settings.Label.FontSize = LabelStyles.NormalizeFontSize(fontSize);
         PersistSettings();
         RestyleSelectedLabels(label => label with { FontSize = fontSize });
+        RestyleSelectedShapeText(shape => shape with { FontSize = fontSize });
     }
 
     private void ApplySelectionFontStyle(LabelFontStyle style, bool on)
@@ -4070,6 +4162,12 @@ public partial class MainWindow : Window
             LabelFontStyle.Bold => label with { Bold = on },
             LabelFontStyle.Italic => label with { Italic = on },
             _ => label with { Underline = on },
+        });
+        RestyleSelectedShapeText(shape => style switch
+        {
+            LabelFontStyle.Bold => shape with { Bold = on },
+            LabelFontStyle.Italic => shape with { Italic = on },
+            _ => shape with { Underline = on },
         });
     }
 
@@ -4167,6 +4265,237 @@ public partial class MainWindow : Window
         InkSurface.Focus();
     }
 
+    /// <summary>
+    /// The Text button on the property bar, which is offered for one shape at a
+    /// time because there is one editor and it stands over one shape.
+    /// </summary>
+    private void BeginSelectedShapeTextEdit()
+    {
+        if (SingleSelected<ShapeBoardObject>() is { } shape)
+        {
+            BeginShapeTextEdit(shape, replaceText: false);
+        }
+    }
+
+    /// <summary>
+    /// The label's editor, opened over a shape's own text box instead: the same
+    /// box, the same commit and cancel, and the shape underneath left drawn
+    /// except for the words being typed. With <paramref name="replaceText"/> the
+    /// shape starts the edit saying nothing, which is what typing on a selected
+    /// shape does - the character that opened the editor is then the whole text,
+    /// as it is in PowerPoint.
+    /// </summary>
+    private void BeginShapeTextEdit(ShapeBoardObject shape, bool replaceText)
+    {
+        if (_shapeEditBefore?.Id == shape.Id)
+        {
+            LabelEditor.Focus();
+            return;
+        }
+
+        CommitTextEdit();
+        ResetContainerGesture();
+        ShapeBoardObject current = replaceText ? shape with { Text = string.Empty } : shape;
+        _shapeEditBefore = shape;
+        _shapeEditCurrent = current;
+        SceneSurface.HiddenTextObjectId = shape.Id;
+        SceneSurface.HoveredObjectId = null;
+        SelectOnly(shape.Id);
+        if (current != shape)
+        {
+            _document.ReplaceObject(current);
+        }
+
+        OpenEditorOn(current.Text);
+        UpdateLabelEditorOverlay();
+        SceneSurface.InvalidateVisual();
+        UpdateLiveViewActionOverlay();
+        FocusEditor();
+    }
+
+    /// <summary>
+    /// The shape as it now reads, recorded as one step. An empty text is an
+    /// answer like any other: the shape stays, saying nothing, which is where it
+    /// started from.
+    /// </summary>
+    private void CommitShapeTextEdit()
+    {
+        if (_shapeEditBefore is not { } before || _shapeEditCurrent is not { } current)
+        {
+            return;
+        }
+
+        EndShapeTextEditVisual();
+        _document.ReplaceObject(current);
+        if (current != before)
+        {
+            _history.RecordExecuted(new ReplaceObjectCommand(before, current));
+        }
+
+        SelectOnly(current.Id);
+        SceneSurface.InvalidateVisual();
+    }
+
+    private void CancelShapeTextEdit()
+    {
+        if (_shapeEditBefore is not { } before)
+        {
+            return;
+        }
+
+        EndShapeTextEditVisual();
+        _document.ReplaceObject(before);
+        SelectOnly(before.Id);
+        SceneSurface.InvalidateVisual();
+    }
+
+    private void EndShapeTextEditVisual()
+    {
+        _shapeEditBefore = null;
+        _shapeEditCurrent = null;
+        _updatingLabelEditor = false;
+        LabelEditor.Visibility = Visibility.Collapsed;
+        SceneSurface.HiddenTextObjectId = null;
+        InkSurface.Focus();
+    }
+
+    /// <summary>
+    /// A change to the shape being typed in. As with a label it goes straight
+    /// into the document rather than through the history, because the whole edit
+    /// is one step and that step is recorded when the editor closes.
+    /// </summary>
+    private void ApplyShapeDuringEdit(ShapeBoardObject shape)
+    {
+        _shapeEditCurrent = shape;
+        _document.ReplaceObject(shape);
+        UpdateLabelEditorOverlay();
+        UpdateSelectionPropertyBar();
+    }
+
+    /// <summary>
+    /// The editor over the shape's text box: the same rectangle the board lays
+    /// the text out in, turned by the shape's own angle, with the text centred
+    /// across it and down it. The box grows downward when there is more text
+    /// than room, which is what the board does with it too.
+    /// </summary>
+    private void UpdateShapeTextEditorOverlay()
+    {
+        if (_shapeEditCurrent is not { } shape)
+        {
+            LabelEditor.Visibility = Visibility.Collapsed;
+            return;
+        }
+
+        double zoom = _camera.Zoom;
+        StyleEditor(
+            shape.FontFamily,
+            shape.FontSize * zoom,
+            shape.Bold,
+            shape.Italic,
+            shape.Underline,
+            shape.TextArgb);
+        LabelEditor.TextWrapping = TextWrapping.Wrap;
+        LabelEditor.TextAlignment = TextAlignment.Center;
+        LabelEditor.VerticalContentAlignment = VerticalAlignment.Center;
+
+        // The border is the one pixel the text box has that the text box on the
+        // board has not, so the content inside it is the width the words wrap
+        // at there and the lines break in the same places.
+        const double border = 1;
+        RectD box = shape.TextBounds;
+        LabelEditor.Width = (box.Width * zoom) + (2 * border);
+        LabelEditor.Height = double.NaN;
+        LabelEditor.MinHeight = (box.Height * zoom) + (2 * border);
+        LabelEditorRotation.Angle = shape.AngleDegrees;
+
+        // The box is placed by the corner of its own turned bounds, as the
+        // label's is, because that is what a layout transform leaves on the
+        // canvas.
+        PointD center = shape.AnchorFrame.ToWorld(box.Center);
+        RectD turned = RotatedRectangle.Bounds(center, box.Width, box.Height, shape.AngleDegrees);
+        PointD topLeft = _camera.WorldToScreen(new PointD(turned.Left, turned.Top));
+        Canvas.SetLeft(LabelEditor, topLeft.X - border);
+        Canvas.SetTop(LabelEditor, topLeft.Y - border);
+        LabelEditor.Visibility = Visibility.Visible;
+    }
+
+    /// <summary>
+    /// A change from the font row or the text swatches, applied to every
+    /// selected shape as one step - or, while one is being typed in, to that one
+    /// as part of the edit, so the box under the hand changes with it.
+    /// </summary>
+    private void RestyleSelectedShapeText(Func<ShapeBoardObject, ShapeBoardObject> restyle)
+    {
+        if (_shapeEditCurrent is { } editing)
+        {
+            ApplyShapeDuringEdit(restyle(editing));
+            LabelEditor.Focus();
+            return;
+        }
+
+        ShapeBoardObject[] before = SelectedObjects().OfType<ShapeBoardObject>().ToArray();
+        if (before.Length == 0)
+        {
+            return;
+        }
+
+        BoardObject[] after = before.Select(shape => (BoardObject)restyle(shape)).ToArray();
+        if (after.SequenceEqual<BoardObject>(before))
+        {
+            return;
+        }
+
+        _history.Execute(new ReplaceObjectsCommand(before, after), _document);
+        SceneSurface.InvalidateVisual();
+        InkSurface.Focus();
+    }
+
+    /// <summary>
+    /// A color for the words inside every selected shape, remembered as what the
+    /// next text is written in. The outline keeps the color row above it.
+    /// </summary>
+    private void ApplySelectionTextColor(uint argb)
+    {
+        _settings.Label.Argb = argb;
+        PersistSettings();
+        RestyleSelectedShapeText(shape => shape with { TextArgb = argb });
+    }
+
+    /// <summary>
+    /// Typing on a lone selected shape starts its text, as PowerPoint does. The
+    /// key is left unhandled on purpose: the character it carries arrives as
+    /// text input straight after, and the editor has the keyboard by then, so
+    /// every layout, dead key, and input method puts in what it would anywhere
+    /// else. Space is not one of these keys - it is the temporary pan, and has
+    /// been since long before a shape could be typed in.
+    /// </summary>
+    private void StartShapeTextTyping(KeyEventArgs e)
+    {
+        if (_activeTool != BoardTool.Select ||
+            Keyboard.Modifiers.HasFlag(ModifierKeys.Control) ||
+            Keyboard.Modifiers.HasFlag(ModifierKeys.Alt) ||
+            SessionBar.IsCommandRowOpen ||
+            IsControlFocused() ||
+            !IsTypingKey(e.Key) ||
+            SingleSelected<ShapeBoardObject>() is not { } shape)
+        {
+            return;
+        }
+
+        BeginShapeTextEdit(shape, replaceText: true);
+    }
+
+    /// <summary>
+    /// Whether this key writes a character: the letters, the digits, the number
+    /// pad, and the punctuation keys, whatever they carry on this keyboard. The
+    /// ranges are the enum's own order, so a layout nobody here has is covered
+    /// by the key it sits on rather than by the character it produces.
+    /// </summary>
+    private static bool IsTypingKey(Key key) =>
+        key is >= Key.D0 and <= Key.Z ||
+        key is >= Key.NumPad0 and <= Key.Divide ||
+        key is >= Key.Oem1 and <= Key.OemBackslash;
+
     private void BeginTextEdit(TextBoardObject textObject)
     {
         if (_textEditBefore?.Id == textObject.Id)
@@ -4214,9 +4543,11 @@ public partial class MainWindow : Window
     private void CommitTextEdit()
     {
         // Every click-away, tool change, and save already comes through here,
-        // and a label is the same edit by another editor, so it settles here
-        // too rather than at each of those call sites again.
+        // and a label - or a shape's own text - is the same edit by another
+        // editor, so they settle here too rather than at each of those call
+        // sites again.
         CommitLabelEdit();
+        CommitShapeTextEdit();
         if (_textEditBefore is not { } before)
         {
             return;
@@ -7470,6 +7801,16 @@ public partial class MainWindow : Window
         Func<ShapeBoardObject, ShapeBoardObject>? restyleShape,
         Func<ConnectorBoardObject, ConnectorBoardObject>? restyleConnector)
     {
+        // A shape being typed in is part of that edit, not a step of its own, so
+        // its outline, thickness, and fill change with the words rather than
+        // behind them.
+        if (_shapeEditCurrent is { } editing && restyleShape is not null)
+        {
+            ApplyShapeDuringEdit(restyleShape(editing));
+            LabelEditor.Focus();
+            return;
+        }
+
         var before = new List<BoardObject>();
         var after = new List<BoardObject>();
         foreach (BoardObject item in SelectedObjects())
@@ -7868,6 +8209,18 @@ public partial class MainWindow : Window
                 return;
             }
 
+            // A shape copies what is written in it, and a shape with nothing
+            // written in it copies nothing rather than emptying the clipboard.
+            if (selected is ShapeBoardObject shape)
+            {
+                if (shape.Text.Length > 0)
+                {
+                    Clipboard.SetText(shape.Text, TextDataFormat.UnicodeText);
+                }
+
+                return;
+            }
+
             string? assetId = selected switch
             {
                 ImageBoardObject image => image.AssetId,
@@ -8247,6 +8600,7 @@ public partial class MainWindow : Window
             !controlDown &&
             !altDown &&
             _labelEditBefore is null &&
+            _shapeEditBefore is null &&
             _textEditBefore is null)
         {
             var isMove = mnemonicKey is Key.Left or Key.Right or Key.Home or Key.End;
@@ -8271,6 +8625,28 @@ public partial class MainWindow : Window
             else if (controlDown && e.Key == Key.S)
             {
                 CommitLabelEdit();
+                _ = SaveBoardAsync();
+                e.Handled = true;
+            }
+
+            return;
+        }
+
+        if (_shapeEditBefore is not null)
+        {
+            if (controlDown && e.Key == Key.Enter)
+            {
+                CommitShapeTextEdit();
+                e.Handled = true;
+            }
+            else if (e.Key == Key.Escape)
+            {
+                CancelShapeTextEdit();
+                e.Handled = true;
+            }
+            else if (controlDown && e.Key == Key.S)
+            {
+                CommitShapeTextEdit();
                 _ = SaveBoardAsync();
                 e.Handled = true;
             }
@@ -8343,6 +8719,11 @@ public partial class MainWindow : Window
         else if (e.Key == Key.F2 && SingleSelected<FreeTextBoardObject>() is { } selectedLabel)
         {
             BeginLabelEdit(selectedLabel, isNew: false);
+            e.Handled = true;
+        }
+        else if (e.Key == Key.F2 && SingleSelected<ShapeBoardObject>() is { } selectedShape)
+        {
+            BeginShapeTextEdit(selectedShape, replaceText: false);
             e.Handled = true;
         }
         else if (e.Key == Key.F2 && SingleSelected<FrameBoardObject>() is { } selectedFrame)
@@ -8440,6 +8821,12 @@ public partial class MainWindow : Window
             _spaceTemporaryPan = true;
             SetActiveTool(BoardTool.Pan);
             e.Handled = true;
+        }
+        else
+        {
+            // Last, so that every shortcut above keeps the key it has: what is
+            // left of the keyboard writes into the one selected shape.
+            StartShapeTextTyping(e);
         }
     }
 

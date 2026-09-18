@@ -1849,7 +1849,15 @@ Assert(
             0xFF035ACA,
             kind == ShapeKind.Ellipse ? ShapeSettings.Tint(0xFFE64B3D) : null,
             6,
-            kind == ShapeKind.BlockArrow ? 90 : 0)),
+            kind == ShapeKind.BlockArrow ? 90 : 0,
+
+            // One shape says something, so the deck carries the text in the
+            // shape rather than as a picture of it.
+            kind == ShapeKind.Diamond ? "Fits the\ndiamond" : "",
+            "Segoe UI",
+            24,
+            0xFF1F2937,
+            Bold: true)),
         new SlideLabelElement(
             new SlideRect(200, 500, 420, 120),
             45,
@@ -1932,6 +1940,16 @@ Assert(
             slideXml.Contains("b=\"1\"", StringComparison.Ordinal) &&
             slideXml.Contains("Georgia", StringComparison.Ordinal),
             "The label's style and typeface travel with it.");
+        Assert(
+            slideXml.Contains("Fits the", StringComparison.Ordinal) &&
+            slideXml.Contains("diamond", StringComparison.Ordinal) &&
+            slideXml.Contains("anchor=\"ctr\"", StringComparison.Ordinal) &&
+            slideXml.Contains("algn=\"ctr\"", StringComparison.Ordinal),
+            "A shape's own text goes out in the shape, centred across it and down it.");
+        Assert(
+            slideXml.Contains("lIns=", StringComparison.Ordinal) &&
+            slideXml.Contains("wrap=\"square\"", StringComparison.Ordinal),
+            "It is wrapped, and inset to the rectangle the board writes it in.");
         Assert(
             slideXml.Split("<p:cxnSp>").Length - 1 == 1 &&
             slideXml.Contains("prst=\"straightConnector1\"", StringComparison.Ordinal) &&
@@ -2935,6 +2953,142 @@ Assert(
         (100 * Math.Cos(50 * Math.PI / 180)) + (60 * Math.Sin(50 * Math.PI / 180)),
         askewShape.Bounds.Width,
         "The box is worked out again from the angle and the rectangle rather than trusted.");
+}
+
+// A shape carries its own text: where it is laid out, what a file keeps of it,
+// what it names an export area, and that a copy says the same thing.
+{
+    var textBox = new RectD(0, 0, 200, 100);
+    RectD inRectangle = ShapeGeometry.TextBox(ShapeKind.RoundedRectangle, textBox);
+    AssertNear(184, inRectangle.Width, "A rounded rectangle writes across its whole box, less the margin.");
+    AssertNear(84, inRectangle.Height, "And down the whole of it, less the margin.");
+    AssertNear(100, inRectangle.Center.X, "The text box is centred on the shape.");
+
+    RectD inEllipse = ShapeGeometry.TextBox(ShapeKind.Ellipse, textBox, margin: 0);
+    AssertNear(
+        200 / Math.Sqrt(2),
+        inEllipse.Width,
+        "An ellipse writes inside the largest upright rectangle its curve holds.");
+    RectD inDiamond = ShapeGeometry.TextBox(ShapeKind.Diamond, textBox, margin: 0);
+    Assert(
+        inDiamond is { Width: 100, Height: 50 } && inDiamond.Center.Y == 50,
+        "A diamond holds half of each side, centred.");
+    RectD inTriangle = ShapeGeometry.TextBox(ShapeKind.Triangle, textBox, margin: 0);
+    Assert(
+        inTriangle is { Width: 100, Height: 50 } && inTriangle.Bottom == 100,
+        "A triangle's rectangle stands on its base, since the point has no room in it.");
+    RectD inPentagon = ShapeGeometry.TextBox(ShapeKind.Pentagon, textBox, margin: 0);
+    AssertNear(120, inPentagon.Width, "A pentagon takes a fifth off each side.");
+    RectD inArrow = ShapeGeometry.TextBox(ShapeKind.BlockArrow, textBox, margin: 0);
+    Assert(
+        inArrow is { Width: 160, Height: 50 } && inArrow.Left == 0,
+        "A block arrow writes along its shaft, as far as the head narrows to it.");
+    RectD inParallelogram = ShapeGeometry.TextBox(ShapeKind.Parallelogram, textBox, margin: 0);
+    Assert(
+        inParallelogram is { Width: 100, Height: 100 } && inParallelogram.Left == 50,
+        "A parallelogram writes between its two slants, at its full height.");
+    Assert(
+        ShapeGeometry.TextBox(ShapeKind.Ellipse, new RectD(0, 0, 4, 4)) is { Width: 1, Height: 1 },
+        "A shape too small for the margin keeps a sliver rather than turning inside out.");
+
+    // The text is turned with the shape, because the rectangle it is laid out in
+    // is described in the box before the turn.
+    var written = ShapeBoardObject.Create(
+        Guid.NewGuid(),
+        0,
+        new RectD(0, 0, 200, 100),
+        ShapeKind.RoundedRectangle,
+        0xFF035ACA,
+        null,
+        4) with
+    {
+        Text = "Sales\nby region",
+        FontFamily = "Georgia",
+        FontSize = 32,
+        TextArgb = 0xFFE64B3D,
+        Bold = true,
+        Italic = true,
+        Underline = true,
+    };
+    AssertNear(100, written.TextBounds.Center.X, "The text box follows the shape's own centre.");
+    AssertNear(
+        written.TextBounds.Center.X,
+        written.WithAngle(45).TextBounds.Center.X,
+        "A turned shape describes its text box in the rectangle it was drawn in, as it does its outline.");
+
+    // The rotation handle turns a shape through WithAngle, so what it says has
+    // to come through the turn with it.
+    ShapeBoardObject turnedByHandle = written.WithAngle(37.5);
+    Assert(
+        turnedByHandle is
+        {
+            AngleDegrees: 37.5,
+            Text: "Sales\nby region",
+            FontFamily: "Georgia",
+            Bold: true,
+            Italic: true,
+            Underline: true,
+        } &&
+        turnedByHandle.FontSize == 32 &&
+        turnedByHandle.TextArgb == 0xFFE64B3D,
+        "A shape keeps its text, and the hand it is written in, through a turn to any angle.");
+
+    // The corner handle takes the font with it only when both axes take the same
+    // factor; otherwise the words stay the size they were and reflow.
+    var doubled = (ShapeBoardObject)written.WithBounds(new RectD(0, 0, 400, 200));
+    AssertNear(64, doubled.FontSize, "A shape scaled evenly from the corner takes its text up with it.");
+    var widened = (ShapeBoardObject)written.WithBounds(new RectD(0, 0, 400, 100));
+    AssertNear(32, widened.FontSize, "A shape pulled wider only has more room, so its text stays as it was.");
+    var moved = (ShapeBoardObject)written.WithBounds(new RectD(50, 50, 200, 100));
+    AssertNear(32, moved.FontSize, "Moving a shape is not a resize, and leaves the text alone.");
+
+    var textDocument = new BoardDocument();
+    ShapeBoardObject saidShape = written with { Id = Guid.NewGuid(), ZIndex = textDocument.NextZIndex };
+    textDocument.AddObject(saidShape);
+    await using var textArchive = new MemoryStream();
+    await BoardArchive.SaveAsync(textDocument, textArchive);
+    textArchive.Position = 0;
+    ShapeBoardObject readBack = (await BoardArchive.LoadAsync(textArchive))
+        .Objects.OfType<ShapeBoardObject>().Single();
+    Assert(readBack == saidShape, "A shape's text round-trips with every property it is written in.");
+
+    var mutePath = "{\"version\":7,\"objects\":[{\"type\":\"shape\"," +
+        "\"id\":\"3f2504e0-4f89-11d3-9a0c-0305e82c3304\",\"zIndex\":0," +
+        "\"bounds\":{\"x\":0,\"y\":0,\"width\":200,\"height\":100}," +
+        "\"shapeKind\":\"Ellipse\"}],\"assets\":[]}";
+    await using var muteArchive = new MemoryStream();
+    using (var writer = new ZipArchive(muteArchive, ZipArchiveMode.Create, leaveOpen: true))
+    {
+        var entry = writer.CreateEntry("scene.json");
+        await using var entryStream = entry.Open();
+        await entryStream.WriteAsync(Encoding.UTF8.GetBytes(mutePath));
+    }
+
+    muteArchive.Position = 0;
+    ShapeBoardObject mute = (await BoardArchive.LoadAsync(muteArchive))
+        .Objects.OfType<ShapeBoardObject>().Single();
+    Assert(
+        mute is { Text: "", FontFamily: LabelStyles.DefaultFontFamily, Bold: false } &&
+        mute.FontSize == LabelStyles.DefaultFontSize &&
+        mute.TextArgb == LabelStyles.DefaultArgb,
+        "A shape from a board written before a shape could say anything reads as one that says nothing.");
+
+    Assert(
+        BoardPartitioner.DefaultTitle(textDocument, saidShape) == "Sales",
+        "A shape names its export area with its first line.");
+    Assert(
+        BoardPartitioner.DefaultTitle(textDocument, saidShape with { Text = "   " }) is null,
+        "A shape with nothing written in it names nothing.");
+
+    IReadOnlyList<BoardObject> copies = SelectionDuplicator.Duplicate(
+        [saidShape],
+        [],
+        [],
+        new PointD(24, 24),
+        textDocument.NextZIndex);
+    Assert(
+        copies.OfType<ShapeBoardObject>().Single() is { Text: "Sales\nby region", FontFamily: "Georgia" },
+        "A duplicated shape says the same thing, written the same way.");
 }
 
 // A label is a rectangle of text turned about its own centre. What is stored is

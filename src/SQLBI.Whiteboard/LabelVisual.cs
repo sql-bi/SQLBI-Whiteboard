@@ -90,6 +90,33 @@ internal static class LabelVisual
         return formatted;
     }
 
+    /// <summary>
+    /// The text a shape carries, wrapped to the width of the box it is written
+    /// in and centred across it. Nothing is trimmed and no height is given, so
+    /// text with more lines than the shape has room for runs on below it, which
+    /// is what PowerPoint does with the same words.
+    /// </summary>
+    public static FormattedText FormatWrapped(
+        ShapeBoardObject shape,
+        double fontSize,
+        double maxWidth,
+        double pixelsPerDip)
+    {
+        ArgumentNullException.ThrowIfNull(shape);
+        FormattedText formatted = Format(
+            shape.Text,
+            shape.FontFamily,
+            fontSize,
+            shape.Bold,
+            shape.Italic,
+            shape.Underline,
+            shape.TextArgb,
+            pixelsPerDip);
+        formatted.TextAlignment = TextAlignment.Center;
+        formatted.MaxTextWidth = Math.Max(1, maxWidth);
+        return formatted;
+    }
+
     public static Typeface TypefaceFor(string fontFamily, bool bold, bool italic) => new(
         new FontFamily(fontFamily),
         italic ? FontStyles.Italic : FontStyles.Normal,

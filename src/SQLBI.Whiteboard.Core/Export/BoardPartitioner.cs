@@ -103,6 +103,8 @@ public static class BoardPartitioner
         // A label has no title of its own, so its first line is the nearest
         // thing to one: a label big enough to name an area is usually a heading.
         FreeTextBoardObject label when FirstLine(label.Text) is { Length: > 0 } line => line,
+        // A shape names itself the same way, by what is written in it.
+        ShapeBoardObject shape when FirstLine(shape.Text) is { Length: > 0 } line => line,
         _ => null,
     };
 

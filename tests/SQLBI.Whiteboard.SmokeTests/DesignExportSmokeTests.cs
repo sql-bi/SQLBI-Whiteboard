@@ -54,7 +54,12 @@ internal static class DesignExportSmokeTests
             document.AddObject(Shape(document, kind, (int)kind));
         }
 
-        ShapeBoardObject turned = Shape(document, ShapeKind.BlockArrow, kinds.Length, angleDegrees: 45);
+        ShapeBoardObject turned = Shape(
+            document,
+            ShapeKind.BlockArrow,
+            kinds.Length,
+            angleDegrees: 45,
+            text: "Two lines\nof it");
         document.AddObject(turned);
 
         FreeTextBoardObject label = Label(document, angleDegrees: 45);
@@ -109,6 +114,21 @@ internal static class DesignExportSmokeTests
         Assert(
             shapes.All(shape => shape.Thickness > 0 && shape.Bounds.Width > 1 && shape.Bounds.Height > 1),
             "A shape lands on the slide with a size and an outline width in slide pixels.");
+
+        // A shape's own text goes out with it, so a deck carries words that can be
+        // typed over in place rather than a picture of them.
+        Assert(
+            askew is { Text: "Two lines\nof it", FontFamily: "Georgia", Bold: true, Italic: false } &&
+            askew.TextArgb == LabelArgb,
+            "What a shape says, and the hand it says it in, reach the slide.");
+        Assert(
+            askew.FontSize > 0 &&
+            askew.TextMargin > 0 &&
+            Math.Abs((askew.TextMargin / askew.FontSize) - (ShapeGeometry.TextMargin / 20)) < 0.001,
+            "The size and the margin are in slide pixels, as the outline width is, and by the same zoom.");
+        Assert(
+            shapes.Take(kinds.Length).All(shape => shape.Text.Length == 0),
+            "A shape that says nothing carries no text to say.");
 
         SlideLabelElement text = elements.OfType<SlideLabelElement>().First();
         Assert(
@@ -219,7 +239,8 @@ internal static class DesignExportSmokeTests
         BoardDocument document,
         ShapeKind kind,
         int column,
-        double angleDegrees = 0) => ShapeBoardObject.Create(
+        double angleDegrees = 0,
+        string text = "") => ShapeBoardObject.Create(
         Guid.NewGuid(),
         document.NextZIndex,
         new RectD(column * 200, 0, 160, 120),
@@ -227,7 +248,14 @@ internal static class DesignExportSmokeTests
         Outline,
         kind == ShapeKind.Ellipse ? ShapeSettings.Tint(0xFFE64B3D) : null,
         ShapeBoardObject.DefaultThickness,
-        angleDegrees);
+        angleDegrees) with
+    {
+        Text = text,
+        FontFamily = "Georgia",
+        FontSize = 20,
+        TextArgb = LabelArgb,
+        Bold = true,
+    };
 
     private static FreeTextBoardObject Label(BoardDocument document, double angleDegrees, PointD? center = null)
     {

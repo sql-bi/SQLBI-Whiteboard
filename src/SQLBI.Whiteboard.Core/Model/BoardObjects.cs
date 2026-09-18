@@ -1,4 +1,5 @@
 using SQLBI.Whiteboard.Core.Geometry;
+using SQLBI.Whiteboard.Core.Settings;
 
 namespace SQLBI.Whiteboard.Core.Model;
 
@@ -594,6 +595,12 @@ public enum ShapeKind
 /// label keeps the size its text measured: <see cref="BoardObject.Bounds"/> is
 /// then the axis-aligned box of that rectangle once it is turned about its
 /// centre, which is what the document indexes and what an export reads.
+///
+/// A shape also carries its own text, written in the same properties a label
+/// has and starting empty. The text has no size of its own: it is laid out
+/// inside <see cref="ShapeGeometry.TextBox"/> of the box the shape was drawn in
+/// and turned with the shape, so nothing here has to be measured and a shape
+/// that says nothing costs nothing.
 /// </summary>
 public sealed record ShapeBoardObject(
     Guid Id,
@@ -605,7 +612,14 @@ public sealed record ShapeBoardObject(
     double Thickness,
     double AngleDegrees,
     double LayoutWidth,
-    double LayoutHeight) : BoardObject(Id, ZIndex, Bounds), IBoardContainer
+    double LayoutHeight,
+    string Text = "",
+    string FontFamily = LabelStyles.DefaultFontFamily,
+    double FontSize = LabelStyles.DefaultFontSize,
+    uint TextArgb = LabelStyles.DefaultArgb,
+    bool Bold = false,
+    bool Italic = false,
+    bool Underline = false) : BoardObject(Id, ZIndex, Bounds), IBoardContainer
 {
     /// <summary>
     /// What a shape is drawn with when nothing says otherwise, and what a saved
@@ -660,15 +674,27 @@ public sealed record ShapeBoardObject(
     public override AnchorFrame AnchorFrame => new(LayoutBounds, AngleDegrees);
 
     /// <summary>
+    /// Where the shape's own text is laid out, in the box before the turn. What
+    /// draws it turns it with the shape, as it turns the outline.
+    /// </summary>
+    public RectD TextBounds => ShapeGeometry.TextBox(Kind, LayoutBounds);
+
+    /// <summary>
     /// The corner handle changes the size, and a shape is the one container
     /// allowed to change proportion under it. What the box is asked for is read
     /// along the shape's own axes, so a shape turned by a quarter grows sideways
     /// when the handle is pulled sideways. A shape standing on a corner cannot
     /// tell its two axes apart - either of them widens the box by the same
-    /// amount - so it takes the two factors as one.
+    /// amount - so it takes the two factors as one. The text goes up and down
+    /// with the shape only when both axes take the same factor: a shape pulled
+    /// wider is a shape with more room, and its words reflow at the size they
+    /// were written in.
     /// </summary>
     public override BoardObject WithBounds(RectD bounds)
     {
+        var horizontal = Factor(bounds.Width, Bounds.Width);
+        var vertical = Factor(bounds.Height, Bounds.Height);
+        var fontSize = FontSize * (Math.Abs(horizontal - vertical) <= horizontal * Epsilon ? horizontal : 1);
         if (AngleDegrees == 0)
         {
             return this with
@@ -676,11 +702,10 @@ public sealed record ShapeBoardObject(
                 Bounds = bounds,
                 LayoutWidth = Math.Max(1, bounds.Width),
                 LayoutHeight = Math.Max(1, bounds.Height),
+                FontSize = fontSize,
             };
         }
 
-        var horizontal = Factor(bounds.Width, Bounds.Width);
-        var vertical = Factor(bounds.Height, Bounds.Height);
         var radians = AngleDegrees * Math.PI / 180;
         double width;
         double height;
@@ -708,6 +733,7 @@ public sealed record ShapeBoardObject(
             Bounds = RotatedRectangle.Bounds(bounds.Center, width, height, AngleDegrees),
             LayoutWidth = width,
             LayoutHeight = height,
+            FontSize = fontSize,
         };
     }
 
