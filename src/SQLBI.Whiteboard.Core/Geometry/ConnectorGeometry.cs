@@ -207,6 +207,36 @@ public static class ConnectorGeometry
     }
 
     /// <summary>
+    /// The anchor of a side's middle: one of the eight, named by the side it is
+    /// on rather than by its place in the list, which is how a connector handle
+    /// asks for the point it was pulled out of.
+    /// </summary>
+    public static ConnectorAnchor SideAnchor(Guid objectId, FrameSide side) => side switch
+    {
+        FrameSide.Top => new ConnectorAnchor(objectId, 0.5, 0),
+        FrameSide.Right => new ConnectorAnchor(objectId, 1, 0.5),
+        FrameSide.Bottom => new ConnectorAnchor(objectId, 0.5, 1),
+        _ => new ConnectorAnchor(objectId, 0, 0.5),
+    };
+
+    /// <summary>
+    /// What a drag out of a shape's connector handle records: the start stays
+    /// on the side it came from, whatever the hand does afterwards, and the end
+    /// takes whatever it was let go over, or nothing at all when it was let go
+    /// over nothing and stays where the hand put it.
+    /// </summary>
+    public static (ConnectorAnchor Start, ConnectorAnchor? End) ConnectorHandleAnchors(
+        Guid shapeId,
+        FrameSide side,
+        (Guid Id, AnchorFrame Frame, IReadOnlyList<PointD>? Outline)? target,
+        PointD dropPoint,
+        bool toBorder) => (
+        SideAnchor(shapeId, side),
+        target is { } found
+            ? BindingCandidateFor(found.Id, found.Frame, found.Outline, dropPoint, toBorder).Anchor
+            : null);
+
+    /// <summary>
     /// Which of the eight this anchor is, or <see cref="NoDot"/> when it is not
     /// one of them.
     /// </summary>

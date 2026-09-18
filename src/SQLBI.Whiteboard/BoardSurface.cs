@@ -138,6 +138,19 @@ internal sealed class BoardSurface : FrameworkElement
     /// </summary>
     public Guid? BindingTargetId { get; set; }
 
+    /// <summary>
+    /// Which of a lone shape's four connector handles the pointer is on, so the
+    /// one that would be taken hold of says so before it is pressed.
+    /// </summary>
+    public FrameSide? HoveredConnectorHandle { get; set; }
+
+    /// <summary>
+    /// True while something is being dragged. The connector handles are an
+    /// invitation to start a gesture, so they stand aside while one is under
+    /// way rather than following the object about.
+    /// </summary>
+    public bool GestureInProgress { get; set; }
+
     public void Configure(BoardDocument document, Camera2D camera)
     {
         _document = document;
@@ -346,6 +359,7 @@ internal sealed class BoardSurface : FrameworkElement
         var bounds = new RectD(left, top, right - left, bottom - top);
 
         DrawRotationHandle(drawingContext, selected, camera);
+        DrawConnectorHandles(drawingContext, selected, camera);
 
         // A label or a shape on its own is outlined where it is, turned: the box
         // around a turned object says nothing about which of its corners is
@@ -420,6 +434,63 @@ internal sealed class BoardSurface : FrameworkElement
         drawingContext.DrawLine(SelectionMemberPen, ToScreenPoint(frame.TopCenter(), camera), handle);
         drawingContext.DrawEllipse(SelectionHandleBrush, SelectionPen, handle, 6, 6);
     }
+
+    // The arrow a connector handle is drawn as, in screen pixels: as long as it
+    // is wide, and set back from the point it stands on so that the point is in
+    // the middle of what the hand is aiming at.
+    private const double ConnectorHandleLength = 10;
+    private const double ConnectorHandleBack = 4;
+
+    /// <summary>
+    /// The four arrows a lone selected shape offers, one outside the middle of
+    /// each of its sides, pointing the way that side faces. Dragging one out
+    /// draws an arrow already bound where it started, which is the common case
+    /// the Insert row would otherwise be needed for. Only a shape has them:
+    /// everything else is either not what a diagram joins up or is selected
+    /// with something else, and a gesture under way takes them away, since by
+    /// then they have been answered.
+    /// </summary>
+    private void DrawConnectorHandles(
+        DrawingContext drawingContext,
+        IReadOnlyList<BoardObject> selected,
+        Camera2D camera)
+    {
+        if (GestureInProgress || PendingConnector is not null || selected is not [ShapeBoardObject lone])
+        {
+            return;
+        }
+
+        foreach (ConnectorHandle handle in lone.AnchorFrame.ConnectorHandles(camera.Zoom))
+        {
+            PointD screen = camera.WorldToScreen(handle.Point);
+
+            // The camera pans and zooms but never turns, so the way the side
+            // faces on the board is the way it faces on the screen.
+            PointD across = new(-handle.Normal.Y, handle.Normal.X);
+            PointD tip = screen + (handle.Normal * (ConnectorHandleLength - ConnectorHandleBack));
+            PointD back = screen - (handle.Normal * ConnectorHandleBack);
+            var geometry = new StreamGeometry();
+            using (var context = geometry.Open())
+            {
+                context.BeginFigure(ToPoint(tip), isFilled: true, isClosed: true);
+                context.PolyLineTo(
+                    [
+                        ToPoint(back + (across * (ConnectorHandleLength / 2))),
+                        ToPoint(back - (across * (ConnectorHandleLength / 2))),
+                    ],
+                    isStroked: true,
+                    isSmoothJoin: false);
+            }
+
+            geometry.Freeze();
+            drawingContext.DrawGeometry(
+                HoveredConnectorHandle == handle.Side ? SelectionPen.Brush : SelectionHandleBrush,
+                SelectionPen,
+                geometry);
+        }
+    }
+
+    private static Point ToPoint(PointD point) => new(point.X, point.Y);
 
     /// <summary>
     /// The four corners a selection outline follows instead of the box, for the

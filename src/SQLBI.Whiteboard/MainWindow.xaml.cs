@@ -187,6 +187,16 @@ public partial class MainWindow : Window
     private double _rotationGrabAngle;
     private double _rotationAngle;
 
+    // Pulling an arrow out of a connector handle on a lone selected shape. The
+    // start is the side it came from and never moves; the end follows the hand
+    // and binds exactly as the connector tool's does.
+    private FrameSide? _handleConnectorSide;
+    private Guid _handleConnectorShapeId;
+    private PointD _handleConnectorStartWorld;
+    private PointD _handleConnectorStartScreen;
+    private PointD _handleConnectorWorld;
+    private bool _handleConnectorDragged;
+
     // The connectors bound to something the gesture is moving that are not
     // themselves selected. They are recomputed rather than transformed, and go
     // into the same command, so one undo puts everything back where it was.
@@ -2478,6 +2488,13 @@ public partial class MainWindow : Window
             return;
         }
 
+        // The connector handles stand outside the shape's own sides, for the
+        // same reason and in the same way, so they are asked next.
+        if (!extend && BeginConnectorHandleGesture(screenPoint))
+        {
+            return;
+        }
+
         // The handle belongs to the selection's own rectangle and sits outside
         // everything inside it, so it is asked before anything is hit tested.
         if (!extend &&
@@ -2569,6 +2586,7 @@ public partial class MainWindow : Window
         _gestureBounds = UnionBounds(selected);
         _gestureAfterBounds = _gestureBounds;
         _gestureStartWorld = worldPoint;
+        SceneSurface.GestureInProgress = true;
         HideSelectionPropertyBar();
     }
 
@@ -2589,6 +2607,12 @@ public partial class MainWindow : Window
         if (_rotationBefore is not null)
         {
             UpdateRotationGesture(worldPoint);
+            return;
+        }
+
+        if (_handleConnectorSide is not null)
+        {
+            UpdateConnectorHandleGesture(worldPoint);
             return;
         }
 
@@ -2783,6 +2807,7 @@ public partial class MainWindow : Window
         _rotationGrabAngle =
             PointerAngle(target.AnchorFrame.Layout.Center, _camera.ScreenToWorld(screenPoint)) -
             _rotationStartAngle;
+        SceneSurface.GestureInProgress = true;
         HideSelectionPropertyBar();
         return true;
     }
@@ -2924,6 +2949,123 @@ public partial class MainWindow : Window
         return Math.Atan2(offset.Y, offset.X) * 180 / Math.PI;
     }
 
+    // Screen pixels around a connector handle that take hold of it. A little
+    // less than the rotation handle's reach, because there are four of them and
+    // the corner handle is not far away.
+    private const double ConnectorHandleReach = 12;
+
+    /// <summary>
+    /// The connector handle under the pointer, when a lone shape is selected.
+    /// Only a shape offers them for now: a picture or a label would take the
+    /// same four arrows and the same gesture, which is the frame and the two
+    /// lines that ask for it, but nothing in a diagram is drawn from one yet.
+    /// </summary>
+    private (ShapeBoardObject Shape, ConnectorHandle Handle)? ConnectorHandleAt(PointD screen)
+    {
+        if (SingleSelected<ShapeBoardObject>() is not { } shape)
+        {
+            return null;
+        }
+
+        foreach (ConnectorHandle handle in shape.AnchorFrame.ConnectorHandles(_camera.Zoom))
+        {
+            if (Distance(ToPoint(_camera.WorldToScreen(handle.Point)), ToPoint(screen)) <= ConnectorHandleReach)
+            {
+                return (shape, handle);
+            }
+        }
+
+        return null;
+    }
+
+    /// <summary>
+    /// A press on one of a shape's connector handles. It draws a new arrow out
+    /// of that side rather than moving anything, which is what removes the trip
+    /// to the Insert row for the common case: two shapes and a line between
+    /// them.
+    /// </summary>
+    private bool BeginConnectorHandleGesture(PointD screenPoint)
+    {
+        if (ConnectorHandleAt(screenPoint) is not { } found)
+        {
+            return false;
+        }
+
+        _handleConnectorSide = found.Handle.Side;
+        _handleConnectorShapeId = found.Shape.Id;
+        _handleConnectorStartWorld = ConnectorGeometry.PointOn(
+            found.Shape.AnchorFrame,
+            ConnectorGeometry.SideAnchor(found.Shape.Id, found.Handle.Side));
+        _handleConnectorStartScreen = screenPoint;
+        _handleConnectorWorld = _camera.ScreenToWorld(screenPoint);
+        _handleConnectorDragged = false;
+        SceneSurface.GestureInProgress = true;
+        HideSelectionPropertyBar();
+        return true;
+    }
+
+    private void UpdateConnectorHandleGesture(PointD worldPoint)
+    {
+        if (_handleConnectorSide is not { } side)
+        {
+            return;
+        }
+
+        _handleConnectorWorld = worldPoint;
+        if (!_handleConnectorDragged &&
+            Distance(ToPoint(_camera.WorldToScreen(worldPoint)), ToPoint(_handleConnectorStartScreen)) >
+            AreaDragThreshold)
+        {
+            _handleConnectorDragged = true;
+        }
+
+        if (_handleConnectorDragged)
+        {
+            ShowConnectorDrag(
+                _handleConnectorStartWorld,
+                ConnectorGeometry.SideAnchor(_handleConnectorShapeId, side),
+                worldPoint,
+                ConnectorKind.Arrow);
+        }
+
+        SceneSurface.InvalidateVisual();
+    }
+
+    /// <summary>
+    /// The arrow the drag drew: always an Arrow, in the colour and thickness the
+    /// connector tool would use, bound where it started and bound at the far end
+    /// to whatever it was let go over. A press that never moved makes nothing,
+    /// so a tap on a handle is how somebody finds out what it does. The arrow
+    /// becomes the selection and the tool stays Select, so the next thing the
+    /// hand does is to the arrow rather than to another one.
+    /// </summary>
+    private void CompleteConnectorHandleGesture()
+    {
+        if (_handleConnectorSide is not { } side || !_handleConnectorDragged)
+        {
+            return;
+        }
+
+        BoardObject? target = BindingTargetAt(_handleConnectorWorld);
+        (ConnectorAnchor start, ConnectorAnchor? end) = ConnectorGeometry.ConnectorHandleAnchors(
+            _handleConnectorShapeId,
+            side,
+            target is null
+                ? null
+                : (target.Id, target.AnchorFrame, (target as ShapeBoardObject)?.Outline()),
+            _handleConnectorWorld,
+            Keyboard.Modifiers.HasFlag(ModifierKeys.Control));
+        ConnectorBoardObject connector = NewConnector(
+            _handleConnectorStartWorld,
+            _handleConnectorWorld,
+            start,
+            end,
+            ConnectorKind.Arrow);
+        _history.Execute(new AddObjectCommand(connector), _document);
+        SelectOnly(connector.Id);
+        UpdateLiveViewActionOverlay();
+    }
+
     private void CompleteContainerGesture()
     {
         if (_areaActive)
@@ -2942,6 +3084,14 @@ public partial class MainWindow : Window
         if (_rotationBefore is not null)
         {
             CompleteRotationGesture();
+            ResetContainerGesture();
+            UpdateSelectionPropertyBar();
+            return;
+        }
+
+        if (_handleConnectorSide is not null)
+        {
+            CompleteConnectorHandleGesture();
             ResetContainerGesture();
             UpdateSelectionPropertyBar();
             return;
@@ -2977,8 +3127,12 @@ public partial class MainWindow : Window
         _rotationBefore = null;
         _rotationStrokes = [];
         _rotationConnectors = [];
-        if (SceneSurface.BindingDots is not null)
+        _handleConnectorSide = null;
+        _handleConnectorDragged = false;
+        SceneSurface.GestureInProgress = false;
+        if (SceneSurface.BindingDots is not null || SceneSurface.PendingConnector is not null)
         {
+            SceneSurface.PendingConnector = null;
             ClearBindingFeedback();
             SceneSurface.InvalidateVisual();
         }
@@ -3022,6 +3176,7 @@ public partial class MainWindow : Window
         _areaStartScreen = screenPoint;
         _areaPoints.Clear();
         _areaPoints.Add(worldPoint);
+        SceneSurface.GestureInProgress = true;
         HideSelectionPropertyBar();
     }
 
@@ -3291,18 +3446,7 @@ public partial class MainWindow : Window
         PointD world = _camera.ScreenToWorld(screen);
         if (_connectorDragged)
         {
-            // The preview carries the anchors the release would take, so each
-            // end is drawn on its binding point rather than under the pointer
-            // and a curve already leaves the side it will leave.
-            SceneSurface.PendingConnector = NewConnector(
-                _connectorStartWorld,
-                world,
-                BindingAt(_connectorStartWorld),
-                BindingAt(world));
-
-            // The dots belong to the end being dragged, which is the one the
-            // hand is asking about.
-            ShowBindingFeedback(world);
+            ShowConnectorDrag(_connectorStartWorld, BindingAt(_connectorStartWorld), world, _connectorKind);
         }
         else
         {
@@ -3361,14 +3505,33 @@ public partial class MainWindow : Window
         }
     }
 
+    /// <summary>
+    /// What a connector drag in progress shows, whether the tool started it or
+    /// a shape's handle did: the line as the release would record it, with the
+    /// anchors each end has found, so each end is drawn on its binding point
+    /// rather than under the pointer and a curve already leaves the side it
+    /// will leave. The dots belong to the end being dragged, which is the one
+    /// the hand is asking about.
+    /// </summary>
+    private void ShowConnectorDrag(
+        PointD start,
+        ConnectorAnchor? startAnchor,
+        PointD world,
+        ConnectorKind kind)
+    {
+        SceneSurface.PendingConnector = NewConnector(start, world, startAnchor, BindingAt(world), kind);
+        ShowBindingFeedback(world);
+    }
+
     private ConnectorBoardObject NewConnector(
         PointD start,
         PointD end,
         ConnectorAnchor? startAnchor,
-        ConnectorAnchor? endAnchor) => ConnectorBoardObject.Create(
+        ConnectorAnchor? endAnchor,
+        ConnectorKind? kind = null) => ConnectorBoardObject.Create(
         Guid.NewGuid(),
         _document.NextZIndex,
-        _connectorKind,
+        kind ?? _connectorKind,
         startAnchor is { } bound ? AnchorPoint(bound, start) : start,
         endAnchor is { } endBound ? AnchorPoint(endBound, end) : end,
         _settings.Connector.Argb,
@@ -3477,6 +3640,7 @@ public partial class MainWindow : Window
         _endpointBefore = connector;
         _endpointIsStart = toStart <= toEnd;
         _endpointWorld = _camera.ScreenToWorld(screenPoint);
+        SceneSurface.GestureInProgress = true;
         HideSelectionPropertyBar();
         return true;
     }
@@ -5413,6 +5577,8 @@ public partial class MainWindow : Window
             return;
         }
 
+        UpdateConnectorHandleHover(screen);
+
         BoardObject? hovered =
             _document.HitTestTopSelectable(_camera.ScreenToWorld(screen), _camera.Zoom)
             ?? FindTextContainerAtRightEdge(screen);
@@ -5426,11 +5592,34 @@ public partial class MainWindow : Window
         SceneSurface.InvalidateVisual();
     }
 
+    /// <summary>
+    /// The connector handle the pointer is on, drawn filled so that the one an
+    /// arrow would come out of is the one that answers.
+    /// </summary>
+    private void UpdateConnectorHandleHover(PointD screen)
+    {
+        FrameSide? side = IsOverRotationHandle(screen) ? null : ConnectorHandleAt(screen)?.Handle.Side;
+        if (SceneSurface.HoveredConnectorHandle == side)
+        {
+            return;
+        }
+
+        SceneSurface.HoveredConnectorHandle = side;
+        SceneSurface.InvalidateVisual();
+    }
+
     private Cursor SelectCursorAt(PointD screen)
     {
         if (IsOverRotationHandle(screen))
         {
             return RotationCursor;
+        }
+
+        // Windows has no "start an arrow here" cursor either; the crosshair is
+        // what every drawing tool means by it.
+        if (ConnectorHandleAt(screen) is not null)
+        {
+            return Cursors.Cross;
         }
 
         if (IsOverResizeHandle(screen))
