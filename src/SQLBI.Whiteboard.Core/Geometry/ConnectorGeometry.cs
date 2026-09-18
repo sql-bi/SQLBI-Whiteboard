@@ -45,11 +45,28 @@ public static class ConnectorGeometry
         bounds.Top + (bounds.Height * anchor.V));
 
     /// <summary>
+    /// Where the anchor sits on an object that has been turned: the fractions
+    /// are of the rectangle before the turn, and the point they name is turned
+    /// with it. That is what keeps an arrow on the corner it was dropped on
+    /// while the shape it points at is stepped round.
+    /// </summary>
+    public static PointD PointOn(AnchorFrame frame, ConnectorAnchor anchor) =>
+        frame.ToWorld(PointOn(frame.Layout, anchor));
+
+    /// <summary>
     /// The eight points an endpoint binds to: the four corners and the four
     /// side midpoints, in reading order.
     /// </summary>
     public static IReadOnlyList<PointD> BindingPoints(RectD bounds) =>
         BindingFractions.Select(fraction => PointOn(bounds, new ConnectorAnchor(Guid.Empty, fraction.U, fraction.V)))
+            .ToArray();
+
+    /// <summary>
+    /// The same eight points where a turned object actually has them, which is
+    /// where the dots are drawn.
+    /// </summary>
+    public static IReadOnlyList<PointD> BindingPoints(AnchorFrame frame) =>
+        BindingFractions.Select(fraction => PointOn(frame, new ConnectorAnchor(Guid.Empty, fraction.U, fraction.V)))
             .ToArray();
 
     /// <summary>
@@ -75,6 +92,14 @@ public static class ConnectorGeometry
     }
 
     /// <summary>
+    /// The nearest of the eight on an object that has been turned. The answer
+    /// is still a fraction of the rectangle before the turn, so the endpoint
+    /// stays on that point through every later turn and resize.
+    /// </summary>
+    public static ConnectorAnchor NearestBindingPoint(Guid objectId, AnchorFrame frame, PointD point) =>
+        NearestBindingPoint(objectId, frame.Layout, frame.ToLayout(point));
+
+    /// <summary>
     /// The nearest point anywhere on the border, which is what Ctrl asks for: a
     /// shape's own outline where there is one, the box otherwise. The answer is
     /// still expressed as a fraction of the box, so the endpoint follows a
@@ -86,7 +111,38 @@ public static class ConnectorGeometry
         IReadOnlyList<PointD>? outline,
         PointD point)
     {
-        IReadOnlyList<PointD> border = outline is { Count: > 1 } ? outline : Polygon.Corners(bounds);
+        PointD nearest = NearestOn(outline is { Count: > 1 } ? outline : Polygon.Corners(bounds), point);
+        return new ConnectorAnchor(
+            objectId,
+            Fraction(nearest.X - bounds.Left, bounds.Width),
+            Fraction(nearest.Y - bounds.Top, bounds.Height));
+    }
+
+    /// <summary>
+    /// The same for an object that has been turned. The outline is where it is
+    /// drawn, turn and all, since that is what the pointer is aiming at; the
+    /// point found on it is turned back before it becomes a fraction, so the
+    /// endpoint holds that place on the border through every later turn.
+    /// </summary>
+    public static ConnectorAnchor NearestBorderPoint(
+        Guid objectId,
+        AnchorFrame frame,
+        IReadOnlyList<PointD>? outline,
+        PointD point)
+    {
+        PointD nearest = frame.ToLayout(
+            NearestOn(outline is { Count: > 1 } ? outline : frame.Corners(), point));
+        return new ConnectorAnchor(
+            objectId,
+            Fraction(nearest.X - frame.Layout.Left, frame.Layout.Width),
+            Fraction(nearest.Y - frame.Layout.Top, frame.Layout.Height));
+    }
+
+    /// <summary>
+    /// The point on a closed border nearest this one.
+    /// </summary>
+    private static PointD NearestOn(IReadOnlyList<PointD> border, PointD point)
+    {
         PointD nearest = border[0];
         var bestDistance = double.PositiveInfinity;
         for (var index = 0; index < border.Count; index++)
@@ -100,10 +156,7 @@ public static class ConnectorGeometry
             }
         }
 
-        return new ConnectorAnchor(
-            objectId,
-            Fraction(nearest.X - bounds.Left, bounds.Width),
-            Fraction(nearest.Y - bounds.Top, bounds.Height));
+        return nearest;
     }
 
     /// <summary>

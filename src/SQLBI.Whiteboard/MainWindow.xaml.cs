@@ -2990,7 +2990,7 @@ public partial class MainWindow : Window
             height);
     }
 
-    private ShapeBoardObject NewShape(RectD bounds) => new(
+    private ShapeBoardObject NewShape(RectD bounds) => ShapeBoardObject.Create(
         Guid.NewGuid(),
         _document.NextZIndex,
         bounds,
@@ -3111,7 +3111,7 @@ public partial class MainWindow : Window
 
     private PointD AnchorPoint(ConnectorAnchor anchor, PointD fallback) =>
         _document.Objects.FirstOrDefault(item => item.Id == anchor.ObjectId) is { } target
-            ? ConnectorGeometry.PointOn(target.Bounds, anchor)
+            ? ConnectorGeometry.PointOn(target.AnchorFrame, anchor)
             : fallback;
 
     /// <summary>
@@ -3146,7 +3146,7 @@ public partial class MainWindow : Window
             return null;
         }
 
-        IReadOnlyList<PointD> points = ConnectorGeometry.BindingPoints(target.Bounds);
+        IReadOnlyList<PointD> points = ConnectorGeometry.BindingPoints(target.AnchorFrame);
         var reach = ConnectorBoardObject.BindingReach / _camera.Zoom;
         return points.Any(point => Distance(ToPoint(point), ToPoint(worldPoint)) <= reach) ? points : null;
     }
@@ -3167,14 +3167,14 @@ public partial class MainWindow : Window
         {
             return ConnectorGeometry.NearestBorderPoint(
                 target.Id,
-                target.Bounds,
+                target.AnchorFrame,
                 (target as ShapeBoardObject)?.Outline(),
                 worldPoint);
         }
 
-        ConnectorAnchor nearest = ConnectorGeometry.NearestBindingPoint(target.Id, target.Bounds, worldPoint);
+        ConnectorAnchor nearest = ConnectorGeometry.NearestBindingPoint(target.Id, target.AnchorFrame, worldPoint);
         var reach = ConnectorBoardObject.BindingReach / _camera.Zoom;
-        return Distance(ToPoint(ConnectorGeometry.PointOn(target.Bounds, nearest)), ToPoint(worldPoint)) <= reach
+        return Distance(ToPoint(ConnectorGeometry.PointOn(target.AnchorFrame, nearest)), ToPoint(worldPoint)) <= reach
             ? nearest
             : null;
     }
@@ -3657,8 +3657,75 @@ public partial class MainWindow : Window
         });
     }
 
-    private void StepSelectionRotation(double degrees) =>
-        RestyleSelectedLabels(label => label.WithAngle(label.AngleDegrees + degrees));
+    /// <summary>
+    /// A quarter turn from the property bar, for every selected label and
+    /// shape, as one step - with the connectors bound to what turned brought to
+    /// where their anchors now are, since a turn moves the points an arrow is
+    /// tied to as surely as a move does.
+    /// </summary>
+    private void StepSelectionRotation(double degrees)
+    {
+        if (_labelEditCurrent is not null)
+        {
+            RestyleSelectedLabels(label => label.WithAngle(label.AngleDegrees + degrees));
+            return;
+        }
+
+        var before = new List<BoardObject>();
+        var after = new List<BoardObject>();
+        foreach (BoardObject item in SelectedObjects())
+        {
+            BoardObject? turned = item switch
+            {
+                FreeTextBoardObject label => Remeasure(label.WithAngle(label.AngleDegrees + degrees)),
+                ShapeBoardObject shape => shape.WithAngle(shape.AngleDegrees + degrees),
+                _ => null,
+            };
+            if (turned is null || turned == item)
+            {
+                continue;
+            }
+
+            before.Add(item);
+            after.Add(turned);
+        }
+
+        if (before.Count == 0)
+        {
+            return;
+        }
+
+        Dictionary<Guid, BoardObject> turnedById = after.ToDictionary(item => item.Id);
+        ConnectorBoardObject[] attached = before
+            .SelectMany(item => _document.ConnectorsAttachedTo(item.Id))
+            .Where(connector => !turnedById.ContainsKey(connector.Id))
+            .DistinctBy(connector => connector.Id)
+            .ToArray();
+        foreach (ConnectorBoardObject connector in attached)
+        {
+            ConnectorBoardObject followed = connector;
+            if (connector.StartAnchor is { } start && turnedById.TryGetValue(start.ObjectId, out BoardObject? from))
+            {
+                followed = followed.Follow(from);
+            }
+
+            if (connector.EndAnchor is { } end && turnedById.TryGetValue(end.ObjectId, out BoardObject? to))
+            {
+                followed = followed.Follow(to);
+            }
+
+            if (followed != connector)
+            {
+                before.Add(connector);
+                after.Add(followed);
+            }
+        }
+
+        _history.Execute(new ReplaceObjectsCommand(before.ToArray(), after.ToArray()), _document);
+        SceneSurface.InvalidateVisual();
+        UpdateSelectionPropertyBar();
+        InkSurface.Focus();
+    }
 
     /// <summary>
     /// A change from the font row, applied to every selected label as one step

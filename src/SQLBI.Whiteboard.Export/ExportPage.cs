@@ -65,14 +65,17 @@ public sealed record SlideTextElement(
 /// A drawn shape as an object rather than as pixels: the box it fills, the kind
 /// whose outline <see cref="Core.Geometry.ShapeGeometry"/> describes, and how it
 /// is painted. Thickness is in page pixels, as the rectangle is; a null fill is
-/// None, and a fill keeps the alpha of the tint the board shows.
+/// None, and a fill keeps the alpha of the tint the board shows. Bounds is the
+/// box the shape was drawn in, before the turn, so a writer places the box and
+/// then rotates it about its own centre, which is where the board turns it too.
 /// </summary>
 public sealed record SlideShapeElement(
     SlideRect Bounds,
     ShapeKind Kind,
     uint OutlineArgb,
     uint? FillArgb,
-    double Thickness) : SlideElement(Bounds);
+    double Thickness,
+    double AngleDegrees = 0) : SlideElement(Bounds);
 
 /// <summary>
 /// A label as text rather than as pixels. Bounds is the layout rectangle before

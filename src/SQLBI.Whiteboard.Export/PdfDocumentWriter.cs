@@ -391,7 +391,8 @@ public static class PdfDocumentWriter
     /// <summary>
     /// A shape as one path: the outline Core describes, walked as straight lines and
     /// as cubic Béziers where it curves, filled with its tint and stroked with its
-    /// outline. The screen is drawn from the same description, so the page and the
+    /// outline, and turned about the centre of the box it was drawn in as the board
+    /// turns it. The screen is drawn from the same description, so the page and the
     /// board cannot disagree about where an edge of a shape is.
     /// </summary>
     private static void DrawShape(XGraphics graphics, SlideShapeElement shape, PixelMapping mapping)
@@ -427,6 +428,16 @@ public static class PdfDocumentWriter
             LineJoin = XLineJoin.Round,
             LineCap = XLineCap.Round,
         };
+
+        var state = graphics.Save();
+        if (shape.AngleDegrees != 0)
+        {
+            XRect rect = mapping.Map(shape.Bounds);
+            graphics.RotateAtTransform(
+                shape.AngleDegrees,
+                new XPoint(rect.X + (rect.Width / 2), rect.Y + (rect.Height / 2)));
+        }
+
         if (shape.FillArgb is { } fill)
         {
             graphics.DrawPath(pen, new XSolidBrush(Color(fill)), path);
@@ -435,6 +446,8 @@ public static class PdfDocumentWriter
         {
             graphics.DrawPath(pen, path);
         }
+
+        graphics.Restore(state);
     }
 
     /// <summary>

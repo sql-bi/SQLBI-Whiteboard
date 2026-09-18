@@ -259,6 +259,9 @@ public static class BoardArchive
             null,
             null,
             null,
+            AngleDegrees: shape.AngleDegrees,
+            LayoutWidth: shape.LayoutWidth,
+            LayoutHeight: shape.LayoutHeight,
             ShapeKind: shape.Kind.ToString(),
             OutlineArgb: shape.OutlineArgb,
             FillArgb: shape.FillArgb,
@@ -324,14 +327,7 @@ public static class BoardArchive
                 dto.IsFrozen ?? true),
         "frame" => new FrameBoardObject(dto.Id, dto.ZIndex, dto.Bounds, dto.TextTitle ?? ""),
         "label" => LabelFromDto(dto),
-        "shape" => new ShapeBoardObject(
-            dto.Id,
-            dto.ZIndex,
-            dto.Bounds,
-            NormalizeShapeKind(dto.ShapeKind),
-            dto.OutlineArgb ?? PenStyle.Default.Argb,
-            dto.FillArgb,
-            NormalizeShapeThickness(dto.Thickness)),
+        "shape" => ShapeFromDto(dto),
         "connector" => ConnectorFromDto(dto, savedIds),
         _ => throw new InvalidDataException($"Invalid board object type '{dto.Type}'."),
     };
@@ -405,6 +401,42 @@ public static class BoardArchive
             dto.AngleDegrees ?? 0,
             NormalizeLayoutSize(dto.LayoutWidth, fontSize * 4) * scale,
             NormalizeLayoutSize(dto.LayoutHeight, fontSize * 1.4) * scale);
+    }
+
+    /// <summary>
+    /// A shape as the file has it. The angle and the box before the turn are
+    /// optional, so a board written before a shape could be turned reads as the
+    /// upright shape it was: no angle, and the box it was saved with as its
+    /// layout. The bounds are recomputed from that box rather than trusted,
+    /// because a snapped angle makes the saved box the box of a rectangle that
+    /// is no longer there.
+    /// </summary>
+    private static ShapeBoardObject ShapeFromDto(ObjectDto dto)
+    {
+        var angle = RotatedRectangle.NormalizeAngle(dto.AngleDegrees ?? 0);
+        RectD layout = dto.Bounds;
+        if (angle != 0)
+        {
+            // The box in the file is the turned one, so the rectangle the shape
+            // is drawn in is the size beside it, centred where that box is.
+            var width = NormalizeLayoutSize(dto.LayoutWidth, dto.Bounds.Width);
+            var height = NormalizeLayoutSize(dto.LayoutHeight, dto.Bounds.Height);
+            layout = new RectD(
+                dto.Bounds.Center.X - (width / 2),
+                dto.Bounds.Center.Y - (height / 2),
+                width,
+                height);
+        }
+
+        return ShapeBoardObject.Create(
+            dto.Id,
+            dto.ZIndex,
+            layout,
+            NormalizeShapeKind(dto.ShapeKind),
+            dto.OutlineArgb ?? PenStyle.Default.Argb,
+            dto.FillArgb,
+            NormalizeShapeThickness(dto.Thickness),
+            angle);
     }
 
     private static double NormalizeLayoutSize(double? size, double fallback) =>

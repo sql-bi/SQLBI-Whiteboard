@@ -293,8 +293,9 @@ public static class PptxDeckWriter
     /// <summary>
     /// A shape as a shape: the preset whose outline is the one the board draws, a
     /// tinted fill that keeps its translucency, and the outline as a line of the
-    /// width the screen gives it. The empty text body is what lets PowerPoint type
-    /// into the shape once the deck is open.
+    /// width the screen gives it, turned about its centre by a:xfrm as a label is.
+    /// The empty text body is what lets PowerPoint type into the shape once the
+    /// deck is open.
     /// </summary>
     private static P.Shape GeometryShape(uint id, SlideShapeElement shape, PageFit fit) => new(
         new P.NonVisualShapeProperties(
@@ -302,7 +303,7 @@ public static class PptxDeckWriter
             new P.NonVisualShapeDrawingProperties(),
             new P.ApplicationNonVisualDrawingProperties()),
         new P.ShapeProperties(
-            fit.Frame(shape.Bounds),
+            TurnedFrame(fit, shape.Bounds, shape.AngleDegrees),
             Preset(shape),
             shape.FillArgb is { } fill ? new A.SolidFill(Translucent(fill)) : (OpenXmlElement)new A.NoFill(),
             new A.Outline(new A.SolidFill(Rgb(shape.OutlineArgb)), new A.Round())
@@ -352,8 +353,7 @@ public static class PptxDeckWriter
             body.Append(paragraph);
         }
 
-        var frame = fit.Frame(label.Bounds);
-        frame.Rotation = Rotation(label.AngleDegrees);
+        A.Transform2D frame = TurnedFrame(fit, label.Bounds, label.AngleDegrees);
         return new P.Shape(
             new P.NonVisualShapeProperties(
                 new P.NonVisualDrawingProperties { Id = id, Name = $"Label {id}" },
@@ -507,6 +507,22 @@ public static class PptxDeckWriter
 
     // An adjust is in hundred-thousandths of the shorter side.
     private static int Adjust(double fraction) => Math.Max(0, (int)Math.Round(fraction * 100000));
+
+    /// <summary>
+    /// The rectangle a shape sits in, turned about its own centre - which is
+    /// what a:xfrm rot does, and where the board turns it. An upright object
+    /// says nothing, so a deck written for one is the deck it always was.
+    /// </summary>
+    private static A.Transform2D TurnedFrame(PageFit fit, SlideRect bounds, double angleDegrees)
+    {
+        A.Transform2D frame = fit.Frame(bounds);
+        if (angleDegrees != 0)
+        {
+            frame.Rotation = Rotation(angleDegrees);
+        }
+
+        return frame;
+    }
 
     // Sixtieth-thousandths of a degree, clockwise, which is the way the board
     // turns a label too.

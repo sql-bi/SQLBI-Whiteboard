@@ -43,6 +43,7 @@ public partial class PropertyBar : UserControl
         AddRow(HasFill, BuildFillRow());
         AddRow(IsConnector, BuildLineKindRow());
         AddRow(IsLabel, BuildFontRow());
+        AddRow(CanTurn, BuildRotateRow());
     }
 
     /// <summary>
@@ -62,6 +63,13 @@ public partial class PropertyBar : UserControl
     private static bool IsConnector(BoardObject item) => item is ConnectorBoardObject;
 
     private static bool IsLabel(BoardObject item) => item is FreeTextBoardObject;
+
+    /// <summary>
+    /// What the two quarter turns apply to. A shape and a label are turned the
+    /// same way - about their own centre, in steps - so they share the row,
+    /// while a shape keeps the font row to itself until it can carry text.
+    /// </summary>
+    private static bool CanTurn(BoardObject item) => item is FreeTextBoardObject or ShapeBoardObject;
 
     /// <summary>
     /// A pen color chosen for everything selected.
@@ -94,7 +102,8 @@ public partial class PropertyBar : UserControl
     public event Action<LabelFontStyle, bool>? FontStyleChosen;
 
     /// <summary>
-    /// A step of the rotation, in degrees: -45 or 45.
+    /// A step of the rotation, in degrees: -45 or 45, for every selected label
+    /// and shape.
     /// </summary>
     public event Action<double>? RotationStepped;
 
@@ -259,10 +268,9 @@ public partial class PropertyBar : UserControl
     }
 
     /// <summary>
-    /// Font, size, bold, italic, underline, and the two quarter turns. Every
-    /// change is one step for every selected label, and what is shown is what
-    /// they already share - a mixed selection shows an empty box rather than
-    /// the first one's answer.
+    /// Font, size, bold, italic, and underline. Every change is one step for
+    /// every selected label, and what is shown is what they already share - a
+    /// mixed selection shows an empty box rather than the first one's answer.
     /// </summary>
     private PropertyBarRow BuildFontRow()
     {
@@ -322,9 +330,6 @@ public partial class PropertyBar : UserControl
         host.Children.Add(italic);
         host.Children.Add(underline);
 
-        host.Children.Add(RotateButton("↶", "Turn 45° anticlockwise", -45));
-        host.Children.Add(RotateButton("↷", "Turn 45° clockwise", 45));
-
         return new PropertyBarRow
         {
             Content = host,
@@ -339,6 +344,23 @@ public partial class PropertyBar : UserControl
                 underline.IsChecked = labels.All(label => label.Underline);
                 _updatingFontRow = false;
             },
+        };
+    }
+
+    /// <summary>
+    /// The two quarter turns, for whatever is turned about its own centre: a
+    /// row of their own rather than the tail of the font row, since a shape has
+    /// an angle without having a font.
+    /// </summary>
+    private PropertyBarRow BuildRotateRow()
+    {
+        var host = new StackPanel { Orientation = Orientation.Horizontal };
+        host.Children.Add(RotateButton("↶", "Turn 45° anticlockwise", -45));
+        host.Children.Add(RotateButton("↷", "Turn 45° clockwise", 45));
+        return new PropertyBarRow
+        {
+            Content = host,
+            Refresh = static _ => { },
         };
     }
 
