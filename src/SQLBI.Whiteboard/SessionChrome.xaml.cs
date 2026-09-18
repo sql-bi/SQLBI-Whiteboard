@@ -32,7 +32,6 @@ public enum SessionCommand
     ReconnectLiveView,
     Preferences,
     About,
-    ToggleLasso,
     InsertText,
 }
 
@@ -99,30 +98,6 @@ public partial class SessionChrome : UserControl
 
         UndoButton.IsEnabled = canUndo;
         RedoButton.IsEnabled = canRedo;
-    }
-
-    /// <summary>
-    /// Whether the Edit row's Lasso toggle shows as on. It is a command button
-    /// rather than a ToggleButton because the row's arrow-key navigation and
-    /// its access keys walk the row's buttons, and a toggle would drop out of
-    /// both.
-    /// </summary>
-    public void SetLassoChecked(bool lasso)
-    {
-        if (LassoButton is null)
-        {
-            return;
-        }
-
-        LassoButton.Background = lasso
-            ? (Brush)FindResource("ToolbarSelectedBrush")
-            : Brushes.Transparent;
-        LassoButton.Foreground = lasso
-            ? (Brush)FindResource("ToolbarAccentBrush")
-            : (Brush)FindResource("ToolbarIconBrush");
-        LassoButton.ToolTip = lasso
-            ? "Drag on empty canvas to draw a lasso (L)"
-            : "Drag on empty canvas to draw a rectangle; press for a lasso (L)";
     }
 
     public void SetZOrderEnabled(bool canBringToFront, bool canSendToBack)
@@ -306,11 +281,12 @@ public partial class SessionChrome : UserControl
         ConnectorRequested?.Invoke(kind);
     }
 
-    // Insert stays open like Edit: picking a tool is the start of drawing with
-    // it, and the row is where the next one is picked from.
+    // Insert closes on the first press on the canvas, like File and View: the
+    // row sits over the top of the board, and drawing the shape it was opened
+    // for is the moment it is most in the way. One tap, or Alt+I, brings it
+    // back.
     private bool IsStickyTab(ToggleButton? tab) =>
         ReferenceEquals(tab, EditTab) ||
-        ReferenceEquals(tab, InsertTab) ||
         ReferenceEquals(tab, HelpTab);
 
     private void ClearTabChecks()
@@ -407,7 +383,6 @@ public partial class SessionChrome : UserControl
             'Y' when EditRow.Visibility == Visibility.Visible => SessionCommand.Redo,
             'C' when EditRow.Visibility == Visibility.Visible => SessionCommand.Copy,
             'V' when EditRow.Visibility == Visibility.Visible => SessionCommand.Paste,
-            'L' when EditRow.Visibility == Visibility.Visible => SessionCommand.ToggleLasso,
             'F' when ViewRow.Visibility == Visibility.Visible => SessionCommand.FullScreen,
             'C' when ViewRow.Visibility == Visibility.Visible => SessionCommand.CanvasOnly,
             'G' when ViewRow.Visibility == Visibility.Visible => SessionCommand.ToggleGrid,

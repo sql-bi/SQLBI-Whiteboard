@@ -2,6 +2,7 @@ using System.ComponentModel;
 using System.Diagnostics;
 using System.IO;
 using System.Windows;
+using System.Windows.Automation;
 using System.Windows.Controls;
 using System.Windows.Controls.Primitives;
 using System.Windows.Ink;
@@ -293,6 +294,7 @@ public partial class MainWindow : Window
         ApplyPointerModes();
         ApplyGrid();
         ApplyInsertOnToolbar();
+        UpdateSelectButtonGlyph();
         ApplyDrawingAttributes();
         SetActiveTool(BoardTool.Pen);
         InkSurface.Focus();
@@ -1204,6 +1206,9 @@ public partial class MainWindow : Window
         LaserTrail.Lift();
         if (FindToggleButton(hit) is { } button)
         {
+            // Before the click, which is what makes Select the active tool: the
+            // hold is only offered by a press that was not already on Select.
+            BeginSelectHold(button);
             button.RaiseEvent(new RoutedEventArgs(ButtonBase.ClickEvent));
         }
 
@@ -1675,6 +1680,9 @@ public partial class MainWindow : Window
 
     private void OfferMouseMode()
     {
+        // The dialog takes the press with it, so a hold counted from that press
+        // would switch the area tool behind it.
+        CancelSelectHold();
         var offer = new MouseModeOfferWindow { Owner = this };
         offer.ShowDialog();
         var changed = false;
@@ -4204,7 +4212,16 @@ public partial class MainWindow : Window
     private void SelectToolButton_Click(object sender, RoutedEventArgs e)
     {
         LeaveLaserIfActive();
+
+        // The style clicks on press, so this is the press. A press while Select
+        // is already in hand switches the area tool, which is the mouse's way to
+        // it: nobody with a mouse will wait out a long press.
+        var switchArea = _activeTool == BoardTool.Select;
         SetActiveTool(BoardTool.Select);
+        if (switchArea)
+        {
+            ToggleAreaSelectionTool();
+        }
     }
 
     private void PanToolButton_Click(object sender, RoutedEventArgs e)
@@ -5026,17 +5043,119 @@ public partial class MainWindow : Window
     }
 
     /// <summary>
-    /// The shape the next area gesture draws. The toggle remembers it, so the
-    /// choice outlives the gesture and the session.
+    /// The shape the next area gesture draws. The Select button remembers it,
+    /// so the choice outlives the gesture and the session.
     /// </summary>
-    private void ToggleAreaSelectionTool()
+    private void ToggleAreaSelectionTool() => ApplyAreaSelectionTool(
+        IsLassoArea ? AreaSelectionTool.Rectangle : AreaSelectionTool.Lasso);
+
+    /// <summary>
+    /// The area tool, wherever it was chosen: the hold on Select, the second
+    /// tap, or the chevron's flyout. All three end here, so the button's glyph
+    /// and the flyout say the same thing however the choice was made.
+    /// </summary>
+    private void ApplyAreaSelectionTool(AreaSelectionTool tool)
     {
-        _settings.AreaSelectionTool = IsLassoArea
-            ? AreaSelectionTool.Rectangle
-            : AreaSelectionTool.Lasso;
-        SessionBar.SetLassoChecked(IsLassoArea);
+        _settings.AreaSelectionTool = tool;
         PersistSettings();
+        UpdateSelectButtonGlyph();
+        if (_isSelectOptionsOpen)
+        {
+            RebuildSelectOptions();
+        }
     }
+
+    /// <summary>
+    /// Which of the two the Select button is holding. The glyph is the only
+    /// place the mode is written down now that the Edit row's toggle has gone,
+    /// so it is swapped in place, at the same size, rather than badged.
+    /// </summary>
+    private void UpdateSelectButtonGlyph()
+    {
+        var lasso = IsLassoArea;
+        var geometry = (Geometry)FindResource(lasso ? "LassoGeometry" : "ImageSelectGeometry");
+        var tooltip = lasso
+            ? "Lasso. Hold, or tap again, for Rectangle"
+            : "Select. Hold, or tap again, for Lasso";
+        var name = lasso ? "Lasso" : "Select";
+        if (SelectToolIcon is not null)
+        {
+            SelectToolIcon.Data = geometry;
+            SelectToolButton.ToolTip = tooltip;
+            AutomationProperties.SetName(SelectToolButton, name);
+        }
+
+        if (DualSelectIcon is not null)
+        {
+            DualSelectIcon.Data = geometry;
+            DualSelectButton.ToolTip = tooltip;
+            AutomationProperties.SetName(DualSelectButton, name);
+        }
+    }
+
+    // The Windows touch long press. Holding Select this long is how a pen and a
+    // finger reach the other area tool, on a toolbar that is not allowed to grow
+    // a second button for it.
+    private static readonly TimeSpan SelectHoldDelay = TimeSpan.FromMilliseconds(600);
+
+    private DispatcherTimer? _selectHoldTimer;
+
+    /// <summary>
+    /// A press on Select, from any input. The press has already chosen the tool
+    /// - the style clicks on press - so the timer adds only the switch, and only
+    /// when Select was not already in hand: when it was, the press itself has
+    /// switched the area tool and a hold would switch it straight back. A press
+    /// already being counted is left alone, so the mouse event a pen tap is
+    /// promoted to does not restart the count.
+    /// </summary>
+    private void BeginSelectHold(object source)
+    {
+        if (_selectHoldTimer is not null ||
+            _activeTool == BoardTool.Select ||
+            (!ReferenceEquals(source, SelectToolButton) && !ReferenceEquals(source, DualSelectButton)))
+        {
+            return;
+        }
+
+        _selectHoldTimer = new DispatcherTimer { Interval = SelectHoldDelay };
+        _selectHoldTimer.Tick += SelectHoldTimer_Tick;
+        _selectHoldTimer.Start();
+    }
+
+    private void CancelSelectHold()
+    {
+        if (_selectHoldTimer is not { } timer)
+        {
+            return;
+        }
+
+        timer.Stop();
+        timer.Tick -= SelectHoldTimer_Tick;
+        _selectHoldTimer = null;
+    }
+
+    private void SelectHoldTimer_Tick(object? sender, EventArgs e)
+    {
+        CancelSelectHold();
+        ToggleAreaSelectionTool();
+    }
+
+    private void SelectButton_PreviewMouseLeftButtonDown(object sender, MouseButtonEventArgs e) =>
+        BeginSelectHold(sender);
+
+    private void SelectButton_PreviewMouseLeftButtonUp(object sender, MouseButtonEventArgs e) =>
+        CancelSelectHold();
+
+    private void SelectButton_MouseLeave(object sender, MouseEventArgs e) =>
+        CancelSelectHold();
+
+    private void SelectButton_LostMouseCapture(object sender, MouseEventArgs e) =>
+        CancelSelectHold();
+
+    // The palette promotes a pen or finger tap itself, so the button never sees
+    // the stylus press that started the hold and cannot see the lift either.
+    private void Window_PreviewStylusUp(object sender, StylusEventArgs e) =>
+        CancelSelectHold();
 
     /// <summary>
     /// The Insert button beside Select and the chevron on Select, which exist
@@ -5308,14 +5427,12 @@ public partial class MainWindow : Window
     }
 
     /// <summary>
-    /// The chevron's choice is the Edit row's Lasso toggle, so whichever of the
-    /// two is used the other shows what was chosen.
+    /// The chevron's choice is the Select button's own, so whichever of the two
+    /// is used the other shows what was chosen.
     /// </summary>
     private void ChooseAreaSelectionTool(AreaSelectionTool tool)
     {
-        _settings.AreaSelectionTool = tool;
-        SessionBar.SetLassoChecked(IsLassoArea);
-        PersistSettings();
+        ApplyAreaSelectionTool(tool);
         SetActiveTool(BoardTool.Select);
     }
 
@@ -5332,7 +5449,7 @@ public partial class MainWindow : Window
         ApplyCalligraphyAccess();
         ApplyLaserSettings();
         ApplyPointerModes();
-        SessionBar.SetLassoChecked(IsLassoArea);
+        UpdateSelectButtonGlyph();
         ApplyGrid();
         ApplyInsertOnToolbar();
         if (!_settings.CheckForUpdates)
@@ -5517,9 +5634,6 @@ public partial class MainWindow : Window
                 break;
             case SessionCommand.ReconnectLiveView:
                 ReconnectLiveViewMenuItem_Click(this, new RoutedEventArgs());
-                break;
-            case SessionCommand.ToggleLasso:
-                ToggleAreaSelectionTool();
                 break;
             case SessionCommand.InsertText:
                 ChooseTool(BoardTool.Text);

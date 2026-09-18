@@ -265,7 +265,7 @@ internal static class SettingsCatalog
             Category = Selection,
             Title = "Area selects",
             Summary = "Whether an object has to be wholly inside the area",
-            Description = "Drag with Select on empty canvas for a rectangle, or turn on Lasso in the Edit row for a freehand outline. Objects partly inside is the default: an object joins the selection as soon as the area meets it, which is how a quick sweep picks up a diagram. Only objects fully inside asks for every point of a stroke and every corner of anything else to be inside, which is what you want when the thing you are after sits among others. A frame is never taken by an area, so a band drawn over a slide picks up what is on it.",
+            Description = "Drag with Select on empty canvas for a rectangle, or hold the Select button - or tap it again - for a freehand lasso. Objects partly inside is the default: an object joins the selection as soon as the area meets it, which is how a quick sweep picks up a diagram. Only objects fully inside asks for every point of a stroke and every corner of anything else to be inside, which is what you want when the thing you are after sits among others. A frame is never taken by an area, so a band drawn over a slide picks up what is on it.",
             Keywords = ["select", "selection", "area", "rubber", "band", "lasso", "marquee", "inside", "partly", "fully"],
             Editor = SettingEditorKind.EnumChoice,
             Choices =
@@ -446,7 +446,7 @@ internal static class SettingsCatalog
             Category = Toolbar,
             Title = "Insert and Lasso on the toolbar",
             Summary = "An Insert button and a Lasso chevron on the floating toolbar, which grows wider",
-            Description = "Off, the Insert tab in the tab strip is where shapes, connectors, and text come from, and the Edit row's Lasso toggle switches what a drag on empty canvas draws. On, the floating toolbar gains an Insert button beside Select whose flyout offers the same things, and a chevron on Select offering Rectangle and Lasso. It is off by default because the toolbar sits under a presenter picture-in-picture during recording, and both controls make it wider.",
+            Description = "Off, the Insert tab in the tab strip is where shapes, connectors, and text come from, and holding the Select button switches what a drag on empty canvas draws. On, the floating toolbar gains an Insert button beside Select whose flyout offers the same things, and a chevron on Select offering Rectangle and Lasso. It is off by default because the toolbar sits under a presenter picture-in-picture during recording, and both controls make it wider.",
             Keywords = ["insert", "shape", "toolbar", "lasso", "select", "chevron", "flyout", "button"],
             Editor = SettingEditorKind.BooleanSwitch,
         },

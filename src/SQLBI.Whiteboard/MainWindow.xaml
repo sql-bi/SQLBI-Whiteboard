@@ -19,6 +19,7 @@
         PreviewKeyDown="Window_PreviewKeyDown"
         PreviewKeyUp="Window_PreviewKeyUp"
         PreviewStylusDown="Window_PreviewStylusDown"
+        PreviewStylusUp="Window_PreviewStylusUp"
         PreviewStylusInRange="Window_PreviewStylusInRange"
         PreviewStylusOutOfRange="Window_PreviewStylusOutOfRange"
         PreviewStylusInAirMove="Window_PreviewStylusInAirMove">
@@ -345,9 +346,15 @@
                                         <ToggleButton x:Name="DualSelectButton"
                                                       DockPanel.Dock="Right"
                                                       Style="{StaticResource ToolbarIconButton}"
-                                                      ToolTip="Select image"
-                                                      Click="SelectToolButton_Click">
-                                            <Path Width="20"
+                                                      ToolTip="Select. Hold, or tap again, for Lasso"
+                                                      AutomationProperties.Name="Select"
+                                                      Click="SelectToolButton_Click"
+                                                      PreviewMouseLeftButtonDown="SelectButton_PreviewMouseLeftButtonDown"
+                                                      PreviewMouseLeftButtonUp="SelectButton_PreviewMouseLeftButtonUp"
+                                                      MouseLeave="SelectButton_MouseLeave"
+                                                      LostMouseCapture="SelectButton_LostMouseCapture">
+                                            <Path x:Name="DualSelectIcon"
+                                                  Width="20"
                                                   Height="20"
                                                   Stretch="Uniform"
                                                   Fill="{Binding Foreground, RelativeSource={RelativeSource AncestorType=ToggleButton}}"
@@ -453,10 +460,15 @@
                                     Orientation="Horizontal">
                             <ToggleButton x:Name="SelectToolButton"
                                           Style="{StaticResource ToolbarIconButton}"
-                                          ToolTip="Select image"
-                                          AutomationProperties.Name="Select image"
-                                          Click="SelectToolButton_Click">
-                                <Path Width="20"
+                                          ToolTip="Select. Hold, or tap again, for Lasso"
+                                          AutomationProperties.Name="Select"
+                                          Click="SelectToolButton_Click"
+                                          PreviewMouseLeftButtonDown="SelectButton_PreviewMouseLeftButtonDown"
+                                          PreviewMouseLeftButtonUp="SelectButton_PreviewMouseLeftButtonUp"
+                                          MouseLeave="SelectButton_MouseLeave"
+                                          LostMouseCapture="SelectButton_LostMouseCapture">
+                                <Path x:Name="SelectToolIcon"
+                                      Width="20"
                                       Height="20"
                                       Stretch="Uniform"
                                       Fill="{Binding Foreground, RelativeSource={RelativeSource AncestorType=ToggleButton}}"
