@@ -306,6 +306,7 @@ public partial class MainWindow : Window
         ApplyPointerModes();
         ApplyGrid();
         ApplyInsertOnToolbar();
+        ApplyInsertPalette();
         UpdateSelectButtonGlyph();
         ApplyDrawingAttributes();
         SetActiveTool(BoardTool.Pen);
@@ -531,6 +532,7 @@ public partial class MainWindow : Window
         UpdateLiveViewActionOverlay();
         UpdateTextEditorOverlay();
         UpdateLabelEditorOverlay();
+        PositionInsertPalette();
     }
 
     private void Document_Changed(object? sender, EventArgs e)
@@ -1197,6 +1199,15 @@ public partial class MainWindow : Window
 
     private bool TryActivatePaletteFromStylus(StylusDownEventArgs e)
     {
+        // The Insert palette can be dragged over the toolbar and is drawn on top
+        // of it. This hit test asks the toolbar alone, which would answer for a
+        // press that never reached it.
+        if (InsertPalette.Visibility == Visibility.Visible &&
+            InsertPalette.InputHitTest(e.GetPosition(InsertPalette)) is not null)
+        {
+            return false;
+        }
+
         if (!TryActivatePaletteAt(e.GetPosition(ToolPalette), e.StylusDevice))
         {
             return false;
@@ -5720,6 +5731,11 @@ public partial class MainWindow : Window
         {
             DualInsertButton.IsChecked = on;
         }
+
+        if (_settings.InsertPaletteShown)
+        {
+            RebuildInsertPalette();
+        }
     }
 
     // Four to a row, so the eight shapes are two rows no wider than the ink
@@ -5905,6 +5921,324 @@ public partial class MainWindow : Window
         _ => kind.ToString(),
     };
 
+    // The Insert palette. Everything about it lives here: the Insert row keeps
+    // its own buttons, and the palette borrows them through the list above.
+    private bool _isInsertPaletteHidden;
+
+    private bool _insertPaletteDragging;
+
+    private Point _insertPaletteGrab;
+
+    /// <summary>
+    /// The palette follows one setting, which the pin on the Insert row and the
+    /// Preferences row both write, so neither can disagree with what is on the
+    /// board.
+    /// </summary>
+    private void ApplyInsertPalette()
+    {
+        var shown = _settings.InsertPaletteShown;
+        SessionBar.SetInsertPaletteChecked(shown);
+        InsertPalette.Visibility = shown ? Visibility.Visible : Visibility.Collapsed;
+        if (!shown)
+        {
+            EndInsertPaletteDrag();
+            return;
+        }
+
+        RebuildInsertPalette();
+        ApplyInsertPaletteChrome();
+        PositionInsertPalette();
+
+        // A palette that has never been moved is placed from the toolbar's own
+        // rectangle, and a preference that moved the toolbar has not been laid
+        // out yet when this runs.
+        Dispatcher.BeginInvoke(DispatcherPriority.Loaded, new Action(PositionInsertPalette));
+    }
+
+    private void ToggleInsertPalette()
+    {
+        _settings.InsertPaletteShown = !_settings.InsertPaletteShown;
+
+        // Right-clicking the palette away and then asking for it again should
+        // bring back the palette rather than an invisible panel.
+        _isInsertPaletteHidden = false;
+        ApplyInsertPalette();
+        PersistSettings();
+    }
+
+    /// <summary>
+    /// The eight shapes, then the three connectors and Text: the Insert row in
+    /// two short rows, from the one list the Insert flyout is built from. The
+    /// buttons carry the active tool, so they are made again when it changes.
+    /// </summary>
+    private void RebuildInsertPalette()
+    {
+        if (InsertPaletteHost is null)
+        {
+            return;
+        }
+
+        InsertPaletteHost.Children.Clear();
+        var shapes = new StackPanel { Orientation = Orientation.Horizontal };
+        foreach (ShapeKind kind in InsertShapes)
+        {
+            shapes.Children.Add(CreateInsertButton(kind));
+        }
+
+        InsertPaletteHost.Children.Add(shapes);
+        var rest = new StackPanel
+        {
+            Orientation = Orientation.Horizontal,
+            Margin = new Thickness(0, 2, 0, 0),
+        };
+        foreach ((ConnectorKind kind, string name) in PropertyBar.ConnectorKinds)
+        {
+            rest.Children.Add(CreateConnectorButton(kind, name));
+        }
+
+        rest.Children.Add(CreateTextToolButton());
+        InsertPaletteHost.Children.Add(rest);
+    }
+
+    // Right-click hides and shows this palette as it does the tool palette, and
+    // the border stays where it was so there is something left to right-click.
+    private void ApplyInsertPaletteChrome()
+    {
+        if (_isInsertPaletteHidden)
+        {
+            InsertPaletteContents.Visibility = Visibility.Hidden;
+            InsertPalette.Background = Brushes.Transparent;
+            InsertPalette.BorderBrush = Brushes.Transparent;
+            InsertPalette.Effect = null;
+            return;
+        }
+
+        InsertPaletteContents.Visibility = Visibility.Visible;
+        InsertPalette.Background = (Brush)FindResource("ToolbarBackgroundBrush");
+        InsertPalette.BorderBrush = (Brush)FindResource("ToolbarBorderBrush");
+        InsertPalette.Effect = new DropShadowEffect
+        {
+            BlurRadius = 18,
+            ShadowDepth = 1,
+            Direction = 270,
+            Opacity = 0.16,
+            Color = Colors.Black,
+        };
+    }
+
+    private void PositionInsertPalette()
+    {
+        if (!_settings.InsertPaletteShown ||
+            InsertPalette.ActualWidth <= 0 ||
+            RootGrid.ActualWidth <= 0)
+        {
+            return;
+        }
+
+        var position = _settings.InsertPaletteX is { } x && _settings.InsertPaletteY is { } y
+            ? InsertPalettePlacement.FromFraction(
+                new PointD(x, y),
+                RootGrid.ActualWidth,
+                RootGrid.ActualHeight)
+            : InsertPalettePlacement.Default(
+                _settings.ToolbarPlacement,
+                RootGrid.ActualWidth,
+                RootGrid.ActualHeight,
+                ToolPaletteBounds(),
+                InsertPalette.ActualWidth,
+                InsertPalette.ActualHeight);
+        MoveInsertPaletteTo(position);
+    }
+
+    private void MoveInsertPaletteTo(PointD position)
+    {
+        var clamped = InsertPalettePlacement.Clamp(
+            position,
+            RootGrid.ActualWidth,
+            RootGrid.ActualHeight,
+            InsertPalette.ActualWidth,
+            InsertPalette.ActualHeight);
+        InsertPalette.Margin = new Thickness(clamped.X, clamped.Y, 0, 0);
+    }
+
+    /// <summary>
+    /// Where the tool palette is in the window. It is asked of the layout rather
+    /// than worked out from the placement, so the default keeps clear of the
+    /// toolbar whatever the layout preference has made of it.
+    /// </summary>
+    private RectD ToolPaletteBounds()
+    {
+        if (ToolPalette.ActualWidth <= 0)
+        {
+            return RectD.Empty;
+        }
+
+        var origin = ToolPalette.TransformToAncestor(RootGrid).Transform(new Point(0, 0));
+        return new RectD(origin.X, origin.Y, ToolPalette.ActualWidth, ToolPalette.ActualHeight);
+    }
+
+    private void InsertPalette_SizeChanged(object sender, SizeChangedEventArgs e) =>
+        PositionInsertPalette();
+
+    private void InsertPaletteCloseButton_Click(object sender, RoutedEventArgs e) =>
+        ToggleInsertPalette();
+
+    private void InsertPalette_PreviewMouseRightButtonDown(
+        object sender,
+        MouseButtonEventArgs e)
+    {
+        if (e.StylusDevice is not null)
+        {
+            return;
+        }
+
+        _isInsertPaletteHidden = !_isInsertPaletteHidden;
+        ApplyInsertPaletteChrome();
+        e.Handled = true;
+    }
+
+    /// <summary>
+    /// The pen and the finger reach this palette the way they reach the tool
+    /// palette: the board holds the capture, so the press is turned into the
+    /// press it meant rather than left waiting for a promotion that never comes.
+    /// </summary>
+    private void InsertPalette_PreviewStylusDown(object sender, StylusDownEventArgs e)
+    {
+        SessionBar.CollapseIfTransient();
+        if (InsertPaletteGrip.InputHitTest(e.GetPosition(InsertPaletteGrip)) is not null)
+        {
+            ReleaseBoardPointerCapture(e.StylusDevice);
+            LaserTrail.Lift();
+            CancelFingerTool();
+            BeginInsertPaletteDrag(e.GetPosition(RootGrid));
+            e.StylusDevice.Capture(InsertPaletteGrip);
+            e.Handled = true;
+            return;
+        }
+
+        if (FindPaletteButton(e.OriginalSource as DependencyObject) is not { } button)
+        {
+            return;
+        }
+
+        ReleaseBoardPointerCapture(e.StylusDevice);
+        LaserTrail.Lift();
+        CancelFingerTool();
+        button.RaiseEvent(new RoutedEventArgs(ButtonBase.ClickEvent));
+        e.Handled = true;
+    }
+
+    private static ButtonBase? FindPaletteButton(DependencyObject? node)
+    {
+        while (node is not null)
+        {
+            if (node is ButtonBase button)
+            {
+                return button;
+            }
+
+            node = node is Visual visual ? VisualTreeHelper.GetParent(visual) : null;
+        }
+
+        return null;
+    }
+
+    private void InsertPaletteGrip_PreviewMouseLeftButtonDown(
+        object sender,
+        MouseButtonEventArgs e)
+    {
+        if (e.StylusDevice is not null)
+        {
+            return;
+        }
+
+        BeginInsertPaletteDrag(e.GetPosition(RootGrid));
+        InsertPaletteGrip.CaptureMouse();
+        e.Handled = true;
+    }
+
+    private void InsertPaletteGrip_PreviewMouseMove(object sender, MouseEventArgs e)
+    {
+        if (e.StylusDevice is not null || !_insertPaletteDragging)
+        {
+            return;
+        }
+
+        MoveInsertPaletteUnder(e.GetPosition(RootGrid));
+        e.Handled = true;
+    }
+
+    private void InsertPaletteGrip_PreviewMouseLeftButtonUp(
+        object sender,
+        MouseButtonEventArgs e)
+    {
+        if (e.StylusDevice is not null || !_insertPaletteDragging)
+        {
+            return;
+        }
+
+        InsertPaletteGrip.ReleaseMouseCapture();
+        EndInsertPaletteDrag();
+        e.Handled = true;
+    }
+
+    private void InsertPaletteGrip_PreviewStylusMove(object sender, StylusEventArgs e)
+    {
+        if (!_insertPaletteDragging)
+        {
+            return;
+        }
+
+        MoveInsertPaletteUnder(e.GetPosition(RootGrid));
+        e.Handled = true;
+    }
+
+    private void InsertPaletteGrip_PreviewStylusUp(object sender, StylusEventArgs e)
+    {
+        if (!_insertPaletteDragging)
+        {
+            return;
+        }
+
+        e.StylusDevice.Capture(null);
+        EndInsertPaletteDrag();
+        e.Handled = true;
+    }
+
+    private void BeginInsertPaletteDrag(Point windowPoint)
+    {
+        _insertPaletteDragging = true;
+        _insertPaletteGrab = new Point(
+            windowPoint.X - InsertPalette.Margin.Left,
+            windowPoint.Y - InsertPalette.Margin.Top);
+    }
+
+    private void MoveInsertPaletteUnder(Point windowPoint) =>
+        MoveInsertPaletteTo(new PointD(
+            windowPoint.X - _insertPaletteGrab.X,
+            windowPoint.Y - _insertPaletteGrab.Y));
+
+    /// <summary>
+    /// The place is kept as a fraction of the window, so another window size or
+    /// another monitor puts the palette back roughly where it was left.
+    /// </summary>
+    private void EndInsertPaletteDrag()
+    {
+        if (!_insertPaletteDragging)
+        {
+            return;
+        }
+
+        _insertPaletteDragging = false;
+        var fraction = InsertPalettePlacement.ToFraction(
+            new PointD(InsertPalette.Margin.Left, InsertPalette.Margin.Top),
+            RootGrid.ActualWidth,
+            RootGrid.ActualHeight);
+        _settings.InsertPaletteX = fraction.X;
+        _settings.InsertPaletteY = fraction.Y;
+        PersistSettings();
+    }
+
     private void ApplyPreferences()
     {
         ApplyToolbarPlacement();
@@ -5914,6 +6248,7 @@ public partial class MainWindow : Window
         UpdateSelectButtonGlyph();
         ApplyGrid();
         ApplyInsertOnToolbar();
+        ApplyInsertPalette();
         if (!_settings.CheckForUpdates)
         {
             SessionBar.HideUpdateNotice();
@@ -6105,6 +6440,9 @@ public partial class MainWindow : Window
                 break;
             case SessionCommand.InsertText:
                 ChooseTool(BoardTool.Text);
+                break;
+            case SessionCommand.ToggleInsertPalette:
+                ToggleInsertPalette();
                 break;
             case SessionCommand.Preferences:
                 PreferencesMenuItem_Click(this, new RoutedEventArgs());

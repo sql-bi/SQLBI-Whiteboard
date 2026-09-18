@@ -645,6 +645,27 @@
                                            Text="T" />
                             </StackPanel>
                         </Button>
+                        <Border Style="{StaticResource SessionCommandSeparator}" />
+                        <Button x:Name="InsertPaletteButton"
+                                Style="{StaticResource SessionCommandButton}"
+                                ToolTip="Keep these tools on a palette you can move"
+                                Tag="ToggleInsertPalette"
+                                Click="Command_Click">
+                            <StackPanel HorizontalAlignment="Center"
+                                        VerticalAlignment="Top">
+                                <Path x:Name="InsertPaletteIcon"
+                                      Width="18"
+                                      Height="18"
+                                      Stretch="Uniform"
+                                      Fill="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"
+                                      Data="{StaticResource PinGeometry}" />
+                                <TextBlock Margin="0,4,0,0"
+                                           HorizontalAlignment="Center"
+                                           Text="Palette" />
+                                <TextBlock Style="{StaticResource SessionShortcutHint}"
+                                           Text="P" />
+                            </StackPanel>
+                        </Button>
                     </StackPanel>
                     <StackPanel x:Name="HelpRow"
                                 Orientation="Horizontal"

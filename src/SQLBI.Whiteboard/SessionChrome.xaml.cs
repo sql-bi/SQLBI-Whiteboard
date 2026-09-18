@@ -35,6 +35,7 @@ public enum SessionCommand
     Preferences,
     About,
     InsertText,
+    ToggleInsertPalette,
 }
 
 public partial class SessionChrome : UserControl
@@ -141,6 +142,29 @@ public partial class SessionChrome : UserControl
         GridButton.ToolTip = on
             ? "Hide the grid behind the board"
             : "Show a faint grid behind the board";
+    }
+
+    /// <summary>
+    /// The pin reads as on while the Insert palette is on the board, for the
+    /// same reason the Grid button does: it is the one place in the row that
+    /// says what state something is already in.
+    /// </summary>
+    public void SetInsertPaletteChecked(bool on)
+    {
+        if (InsertPaletteButton is null)
+        {
+            return;
+        }
+
+        InsertPaletteButton.Background = on
+            ? (Brush)FindResource("ToolbarSelectedBrush")
+            : Brushes.Transparent;
+        InsertPaletteButton.Foreground = on
+            ? (Brush)FindResource("ToolbarAccentBrush")
+            : (Brush)FindResource("ToolbarIconBrush");
+        InsertPaletteButton.ToolTip = on
+            ? "Put these tools back on this row"
+            : "Keep these tools on a palette you can move";
     }
 
     public void SetLiveViewCommands(bool selected, bool hasTarget, bool frozen)
@@ -405,6 +429,7 @@ public partial class SessionChrome : UserControl
             'D' when ViewRow.Visibility == Visibility.Visible => SessionCommand.DisconnectLiveView,
             'R' when ViewRow.Visibility == Visibility.Visible => SessionCommand.ReconnectLiveView,
             'T' when InsertRow.Visibility == Visibility.Visible => SessionCommand.InsertText,
+            'P' when InsertRow.Visibility == Visibility.Visible => SessionCommand.ToggleInsertPalette,
             'P' when HelpRow.Visibility == Visibility.Visible => SessionCommand.Preferences,
             'A' when HelpRow.Visibility == Visibility.Visible => SessionCommand.About,
             _ => null,
