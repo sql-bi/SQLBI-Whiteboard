@@ -2777,11 +2777,26 @@ public partial class MainWindow : Window
     private BoardObject? RotationTarget() =>
         SingleSelected<ShapeBoardObject>() ?? (BoardObject?)SingleSelected<FreeTextBoardObject>();
 
-    private bool IsOverRotationHandle(PointD screen) =>
-        RotationTarget() is { } target &&
-        Distance(
+    /// <summary>
+    /// Whether the pointer has hold of the rotation handle. A shape's top
+    /// connector handle stands on the same line out of the same edge, closer
+    /// in, and the two reaches meet: whichever of them the pointer is nearer
+    /// takes it, so neither can bury the other.
+    /// </summary>
+    private bool IsOverRotationHandle(PointD screen)
+    {
+        if (RotationTarget() is not { } target)
+        {
+            return false;
+        }
+
+        var toRotation = Distance(
             ToPoint(_camera.WorldToScreen(target.AnchorFrame.RotationHandle(_camera.Zoom))),
-            ToPoint(screen)) <= RotationHandleReach;
+            ToPoint(screen));
+        return toRotation <= RotationHandleReach &&
+               (ConnectorHandleAt(screen) is not { } near ||
+                Distance(ToPoint(_camera.WorldToScreen(near.Handle.Point)), ToPoint(screen)) > toRotation);
+    }
 
     /// <summary>
     /// A press on the rotation handle. The angle the hand is at when it takes
@@ -2955,10 +2970,11 @@ public partial class MainWindow : Window
     private const double ConnectorHandleReach = 12;
 
     /// <summary>
-    /// The connector handle under the pointer, when a lone shape is selected.
-    /// Only a shape offers them for now: a picture or a label would take the
-    /// same four arrows and the same gesture, which is the frame and the two
-    /// lines that ask for it, but nothing in a diagram is drawn from one yet.
+    /// The connector handle the pointer is nearest, when a lone shape is
+    /// selected and it is on one of them. Only a shape offers them for now: a
+    /// picture or a label would take the same four arrows and the same gesture,
+    /// which is the frame and the two lines that ask for it, but nothing in a
+    /// diagram is drawn out of one yet.
     /// </summary>
     private (ShapeBoardObject Shape, ConnectorHandle Handle)? ConnectorHandleAt(PointD screen)
     {
@@ -2967,15 +2983,19 @@ public partial class MainWindow : Window
             return null;
         }
 
+        (ShapeBoardObject Shape, ConnectorHandle Handle)? nearest = null;
+        var bestDistance = ConnectorHandleReach;
         foreach (ConnectorHandle handle in shape.AnchorFrame.ConnectorHandles(_camera.Zoom))
         {
-            if (Distance(ToPoint(_camera.WorldToScreen(handle.Point)), ToPoint(screen)) <= ConnectorHandleReach)
+            var distance = Distance(ToPoint(_camera.WorldToScreen(handle.Point)), ToPoint(screen));
+            if (distance <= bestDistance)
             {
-                return (shape, handle);
+                bestDistance = distance;
+                nearest = (shape, handle);
             }
         }
 
-        return null;
+        return nearest;
     }
 
     /// <summary>

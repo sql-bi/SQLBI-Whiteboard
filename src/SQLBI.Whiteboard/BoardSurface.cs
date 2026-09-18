@@ -455,7 +455,11 @@ internal sealed class BoardSurface : FrameworkElement
         IReadOnlyList<BoardObject> selected,
         Camera2D camera)
     {
-        if (GestureInProgress || PendingConnector is not null || selected is not [ShapeBoardObject lone])
+        if (GestureInProgress ||
+            PendingStroke is not null ||
+            PendingShape is not null ||
+            PendingConnector is not null ||
+            selected is not [ShapeBoardObject lone])
         {
             return;
         }
