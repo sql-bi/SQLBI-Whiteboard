@@ -180,6 +180,8 @@ public partial class MainWindow : Window
     // the object is turned from the one it was when the press started rather
     // than from the one the last move left.
     private BoardObject? _rotationBefore;
+    private InkStrokeObject[] _rotationStrokes = [];
+    private ConnectorBoardObject[] _rotationConnectors = [];
     private double _rotationStartAngle;
     private double _rotationGrabAngle;
     private double _rotationAngle;
@@ -2762,7 +2764,12 @@ public partial class MainWindow : Window
             return false;
         }
 
+        // Taken once, at the press: every move turns these from where they
+        // started rather than from where the last move left them, which is what
+        // keeps a turn a turn rather than a turn on a turn.
         _rotationBefore = target;
+        _rotationStrokes = _document.LinkedStrokes(target.Id).ToArray();
+        _rotationConnectors = _document.ConnectorsAttachedTo(target.Id).ToArray();
         _rotationStartAngle = AngleOf(target);
         _rotationAngle = _rotationStartAngle;
         _rotationGrabAngle =
@@ -2828,6 +2835,8 @@ public partial class MainWindow : Window
         AddRotationFollowers(
             [(item, angleDegrees - AngleOf(item))],
             new Dictionary<Guid, BoardObject> { [turned.Id] = turned },
+            _rotationStrokes,
+            _rotationConnectors,
             before,
             after);
         return (before.ToArray(), after.ToArray());
@@ -2840,33 +2849,37 @@ public partial class MainWindow : Window
     /// bar's quarter turns share it, so ink and arrows follow a shape whichever
     /// way it was asked to turn, and everything lands in one command.
     /// </summary>
-    private void AddRotationFollowers(
+    private static void AddRotationFollowers(
         IReadOnlyList<(BoardObject Item, double Degrees)> turns,
         IReadOnlyDictionary<Guid, BoardObject> turnedById,
+        IReadOnlyList<InkStrokeObject> linked,
+        IReadOnlyList<ConnectorBoardObject> attached,
         List<BoardObject> before,
         List<BoardObject> after)
     {
-        foreach ((BoardObject item, var degrees) in turns)
+        Dictionary<Guid, (double Degrees, PointD Center)> turnById = turns.ToDictionary(
+            turn => turn.Item.Id,
+            turn => (turn.Degrees, turn.Item.AnchorFrame.Layout.Center));
+        foreach (InkStrokeObject stroke in linked)
         {
-            foreach (InkStrokeObject stroke in _document.LinkedStrokes(item.Id))
+            if (stroke.ContainerId is not { } containerId ||
+                turnedById.ContainsKey(stroke.Id) ||
+                !turnById.TryGetValue(containerId, out (double Degrees, PointD Center) turn))
             {
-                if (turnedById.ContainsKey(stroke.Id))
-                {
-                    continue;
-                }
-
-                before.Add(stroke);
-                after.Add(stroke.Rotate(item.AnchorFrame.Layout.Center, degrees));
+                continue;
             }
+
+            before.Add(stroke);
+            after.Add(stroke.Rotate(turn.Center, turn.Degrees));
         }
 
-        ConnectorBoardObject[] attached = turns
-            .SelectMany(turn => _document.ConnectorsAttachedTo(turn.Item.Id))
-            .Where(connector => !turnedById.ContainsKey(connector.Id))
-            .DistinctBy(connector => connector.Id)
-            .ToArray();
         foreach (ConnectorBoardObject connector in attached)
         {
+            if (turnedById.ContainsKey(connector.Id))
+            {
+                continue;
+            }
+
             ConnectorBoardObject followed = connector;
             if (connector.StartAnchor is { } start && turnedById.TryGetValue(start.ObjectId, out BoardObject? from))
             {
@@ -2954,6 +2967,8 @@ public partial class MainWindow : Window
         _gestureConnectors = [];
         _endpointBefore = null;
         _rotationBefore = null;
+        _rotationStrokes = [];
+        _rotationConnectors = [];
         if (SceneSurface.BindingDots is not null)
         {
             SceneSurface.BindingDots = null;
@@ -4040,7 +4055,15 @@ public partial class MainWindow : Window
             return;
         }
 
-        AddRotationFollowers(turns, after.ToDictionary(item => item.Id), before, after);
+        AddRotationFollowers(
+            turns,
+            after.ToDictionary(item => item.Id),
+            turns.SelectMany(turn => _document.LinkedStrokes(turn.Item.Id)).DistinctBy(stroke => stroke.Id).ToArray(),
+            turns.SelectMany(turn => _document.ConnectorsAttachedTo(turn.Item.Id))
+                .DistinctBy(connector => connector.Id)
+                .ToArray(),
+            before,
+            after);
         _history.Execute(new ReplaceObjectsCommand(before.ToArray(), after.ToArray()), _document);
         SceneSurface.InvalidateVisual();
         UpdateSelectionPropertyBar();
