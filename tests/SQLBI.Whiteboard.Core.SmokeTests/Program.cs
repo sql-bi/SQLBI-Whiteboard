@@ -1841,12 +1841,15 @@ Assert(
     // translucency, and a label turned about its own centre with its style on it.
     SlideElement[] designElements =
     [
+        // The block arrow is turned, as a shape on the board can be: it goes out
+        // as the same preset with a:xfrm rot, exactly as the label below does.
         .. Enum.GetValues<ShapeKind>().Select((kind, index) => new SlideShapeElement(
             new SlideRect(40 + (index * 190), 60, 160, 120),
             kind,
             0xFF035ACA,
             kind == ShapeKind.Ellipse ? ShapeSettings.Tint(0xFFE64B3D) : null,
-            6)),
+            6,
+            kind == ShapeKind.BlockArrow ? 90 : 0)),
         new SlideLabelElement(
             new SlideRect(200, 500, 420, 120),
             45,
@@ -1920,6 +1923,10 @@ Assert(
             slideXml.Contains("Design objects", StringComparison.Ordinal) &&
             slideXml.Contains("as objects", StringComparison.Ordinal),
             "A label is turned about its centre and holds its lines as text.");
+        Assert(
+            slideXml.Contains("rot=\"5400000\"", StringComparison.Ordinal) &&
+            slideXml.Split("rot=\"").Length - 1 == 2,
+            "A turned shape carries its angle too, and an upright one says nothing about one.");
         Assert(
             slideXml.Contains("u=\"sng\"", StringComparison.Ordinal) &&
             slideXml.Contains("b=\"1\"", StringComparison.Ordinal) &&
@@ -2520,7 +2527,7 @@ Assert(
 
     // The band along the outline, and nothing else: what is drawn inside a shape
     // has to stay reachable.
-    var banded = new ShapeBoardObject(
+    var banded = ShapeBoardObject.Create(
         Guid.NewGuid(),
         0,
         shapeBox,
@@ -2555,7 +2562,7 @@ Assert(
 
     // A shape is a container, so ink that touches only it links to it.
     var shapeBoard = new BoardDocument();
-    var linkedShape = new ShapeBoardObject(
+    var linkedShape = ShapeBoardObject.Create(
         Guid.NewGuid(),
         shapeBoard.NextZIndex,
         new RectD(0, 0, 200, 120),
@@ -2585,7 +2592,7 @@ Assert(
     Assert(
         BoardArchive.VersionFor(shapeArchiveBoard) == BoardArchive.VersionWithFrames,
         "A board with only frames stays on the version frames arrived in.");
-    var filledShape = new ShapeBoardObject(
+    var filledShape = ShapeBoardObject.Create(
         Guid.NewGuid(),
         shapeArchiveBoard.NextZIndex,
         new RectD(10, 20, 300, 140),
@@ -2594,7 +2601,7 @@ Assert(
         0x40CC79A7,
         8);
     shapeArchiveBoard.AddObject(filledShape);
-    var hollowShape = new ShapeBoardObject(
+    var hollowShape = ShapeBoardObject.Create(
         Guid.NewGuid(),
         shapeArchiveBoard.NextZIndex,
         new RectD(400, 20, 120, 120),
@@ -2678,6 +2685,182 @@ Assert(
         "A shape default that is not on the palette normalizes back to one that is.");
 }
 
+
+// A shape turned about its own centre. What is stored is the box it was drawn
+// in and the angle; the box the document indexes follows from them, and so do
+// the outline, the hit band, the eight binding points, and what a corner handle
+// does.
+{
+    var turnedBox = new RectD(0, 0, 100, 60);
+    var flat = ShapeBoardObject.Create(
+        Guid.NewGuid(),
+        0,
+        turnedBox,
+        ShapeKind.RoundedRectangle,
+        0xFF1F2937,
+        null,
+        4);
+    Assert(
+        flat is { AngleDegrees: 0, LayoutWidth: 100, LayoutHeight: 60 } && flat.Bounds == turnedBox,
+        "A shape is drawn upright, in the box it was dragged out of.");
+
+    var quarter = flat.WithAngle(90);
+    AssertNear(60, quarter.Bounds.Width, "A quarter turn swaps the width for the height.");
+    AssertNear(100, quarter.Bounds.Height, "A quarter turn swaps the height for the width.");
+    AssertNear(50, quarter.Bounds.Center.X, "A turn is about the centre, which does not move.");
+    AssertNear(30, quarter.Bounds.Center.Y, "A turn is about the centre on both axes.");
+    AssertNear(100, quarter.LayoutWidth, "The box the shape was drawn in is kept through the turn.");
+    AssertNear(
+        0,
+        quarter.WithAngle(quarter.AngleDegrees - 90).AngleDegrees,
+        "Stepping back the other way comes home.");
+
+    var askew = flat.WithAngle(45);
+    AssertNear(
+        160 / Math.Sqrt(2),
+        askew.Bounds.Width,
+        "At 45 degrees the box spans the two sides of the rectangle together.");
+    AssertNear(askew.Bounds.Width, askew.Bounds.Height, "And that box is square.");
+
+    // The outline is turned with the shape, so the band is where the edge is
+    // drawn rather than where it was described.
+    Assert(
+        quarter.HitTest(new PointD(80, 30), 1),
+        "A tap on the outline of a turned shape takes hold of it.");
+    Assert(
+        !flat.HitTest(new PointD(80, 30), 1),
+        "The same point is inside the shape upright, and a shape is never taken by its inside.");
+    Assert(
+        !askew.HitTest(new PointD(askew.Bounds.Left + 2, askew.Bounds.Top + 2), 1),
+        "The empty corner of the box around a turned shape is not the shape.");
+    Assert(
+        askew.Outline().All(point => askew.HitTest(point, 1)),
+        "Every point the outline is drawn through is on the shape.");
+    Assert(
+        !askew.IsTakenBy(
+            SelectionArea.Rectangle(new RectD(askew.Bounds.Left, askew.Bounds.Top, 10, 10)),
+            AreaSelection.PartlyInside),
+        "A band over the corner a turned shape leaves empty does not take it.");
+
+    // The eight binding points are where the corners really are, so an arrow
+    // dropped on one lands where the dot was drawn.
+    IReadOnlyList<PointD> turnedDots = ConnectorGeometry.BindingPoints(quarter.AnchorFrame);
+    Assert(
+        HasShapePoint(turnedDots, 80, -20) && HasShapePoint(turnedDots, 20, 80) &&
+        HasShapePoint(turnedDots, 80, 30) && HasShapePoint(turnedDots, 50, -20),
+        "The binding points of a turned shape are its corners and side midpoints where they now are.");
+
+    // And an arrow bound to one of them turns with the shape.
+    var tied = ConnectorBoardObject.Create(
+        Guid.NewGuid(),
+        1,
+        ConnectorKind.Arrow,
+        new PointD(100, 30),
+        new PointD(400, 300),
+        0xFF1F2937,
+        4,
+        new ConnectorAnchor(flat.Id, 1, 0.5));
+    Assert(tied.Start == new PointD(100, 30), "The arrow starts on the right-hand side of the upright shape.");
+    ConnectorBoardObject followed = tied.Follow(quarter);
+    AssertNear(50, followed.Start.X, "A turn carries the bound endpoint round with the shape.");
+    AssertNear(80, followed.Start.Y, "The right-hand side of a shape turned a quarter is its bottom.");
+    Assert(followed.End == tied.End, "The free end stays where it was.");
+
+    // Ctrl binds anywhere on the border, and what is stored is still a fraction
+    // of the rectangle before the turn, so it holds that place through a turn.
+    ConnectorAnchor onBorder = ConnectorGeometry.NearestBorderPoint(
+        quarter.Id,
+        quarter.AnchorFrame,
+        quarter.Outline(),
+        new PointD(80, 0));
+    AssertNear(
+        0.2,
+        onBorder.U,
+        "A drop on the drawn border becomes the fraction of the box before the turn that it landed on.");
+    AssertNear(0, onBorder.V, "Which side it landed on is read in that box too.");
+
+    // The corner handle reads the box along the shape's own axes: a shape turned
+    // a quarter grows sideways when the handle is pulled sideways.
+    var stretched = (ShapeBoardObject)quarter.WithBounds(
+        new RectD(quarter.Bounds.X, quarter.Bounds.Y, quarter.Bounds.Width * 2, quarter.Bounds.Height));
+    AssertNear(100, stretched.LayoutWidth, "Pulling the box sideways leaves the turned shape's own width alone.");
+    AssertNear(120, stretched.LayoutHeight, "It is the other axis that takes the change.");
+    AssertNear(120, stretched.Bounds.Width, "Which is the box the handle asked for.");
+    var grown = (ShapeBoardObject)flat.WithBounds(new RectD(0, 0, 200, 120));
+    Assert(
+        grown is { LayoutWidth: 200, LayoutHeight: 120 } && grown.Bounds == new RectD(0, 0, 200, 120),
+        "An upright shape still takes the box it is given, width and height alike.");
+}
+
+// A turned shape in a board, saved and read back, and a shape from a board
+// written before a shape could be turned.
+{
+    var turnedDocument = new BoardDocument();
+    var savedShape = ShapeBoardObject.Create(
+        Guid.NewGuid(),
+        turnedDocument.NextZIndex,
+        new RectD(40, 60, 240, 100),
+        ShapeKind.BlockArrow,
+        0xFF035ACA,
+        0x40CC79A7,
+        6,
+        135);
+    turnedDocument.AddObject(savedShape);
+
+    await using var turnedArchive = new MemoryStream();
+    await BoardArchive.SaveAsync(turnedDocument, turnedArchive);
+    turnedArchive.Position = 0;
+    ShapeBoardObject restoredShape = (await BoardArchive.LoadAsync(turnedArchive))
+        .Objects.OfType<ShapeBoardObject>().Single();
+    Assert(
+        restoredShape is { AngleDegrees: 135, LayoutWidth: 240, LayoutHeight: 100, Kind: ShapeKind.BlockArrow },
+        "A turned shape round-trips with its angle and the box it was drawn in.");
+    AssertNear(savedShape.Bounds.Left, restoredShape.Bounds.Left, "The box comes back where it was.");
+    AssertNear(savedShape.Bounds.Width, restoredShape.Bounds.Width, "The box comes back the size it was.");
+
+    var uprightScene = "{\"version\":7,\"objects\":[{\"type\":\"shape\"," +
+        "\"id\":\"3f2504e0-4f89-11d3-9a0c-0305e82c3302\",\"zIndex\":0," +
+        "\"bounds\":{\"x\":10,\"y\":20,\"width\":300,\"height\":140}," +
+        "\"shapeKind\":\"Stadium\",\"thickness\":8}],\"assets\":[]}";
+    await using var uprightArchive = new MemoryStream();
+    using (var writer = new ZipArchive(uprightArchive, ZipArchiveMode.Create, leaveOpen: true))
+    {
+        var entry = writer.CreateEntry("scene.json");
+        await using var entryStream = entry.Open();
+        await entryStream.WriteAsync(Encoding.UTF8.GetBytes(uprightScene));
+    }
+
+    uprightArchive.Position = 0;
+    ShapeBoardObject fromOldBoard = (await BoardArchive.LoadAsync(uprightArchive))
+        .Objects.OfType<ShapeBoardObject>().Single();
+    Assert(
+        fromOldBoard is { AngleDegrees: 0, LayoutWidth: 300, LayoutHeight: 140 } &&
+        fromOldBoard.Bounds == new RectD(10, 20, 300, 140),
+        "A board written before a shape could be turned reads as the upright shape it was.");
+
+    var askewScene = "{\"version\":7,\"objects\":[{\"type\":\"shape\"," +
+        "\"id\":\"3f2504e0-4f89-11d3-9a0c-0305e82c3303\",\"zIndex\":0," +
+        "\"bounds\":{\"x\":0,\"y\":0,\"width\":120,\"height\":120}," +
+        "\"shapeKind\":\"Diamond\",\"angleDegrees\":50," +
+        "\"layoutWidth\":100,\"layoutHeight\":60}],\"assets\":[]}";
+    await using var askewArchive = new MemoryStream();
+    using (var writer = new ZipArchive(askewArchive, ZipArchiveMode.Create, leaveOpen: true))
+    {
+        var entry = writer.CreateEntry("scene.json");
+        await using var entryStream = entry.Open();
+        await entryStream.WriteAsync(Encoding.UTF8.GetBytes(askewScene));
+    }
+
+    askewArchive.Position = 0;
+    ShapeBoardObject snapped = (await BoardArchive.LoadAsync(askewArchive))
+        .Objects.OfType<ShapeBoardObject>().Single();
+    AssertNear(45, snapped.AngleDegrees, "A saved angle of 50 degrees is snapped to 45.");
+    AssertNear(60, snapped.Bounds.Center.X, "The shape stays centred where the file put it.");
+    AssertNear(
+        160 / Math.Sqrt(2),
+        snapped.Bounds.Width,
+        "The box is worked out again from the snapped angle rather than trusted.");
+}
 
 // A label is a rectangle of text turned about its own centre. What is stored is
 // the layout size and the angle; the box the document indexes follows from them,
@@ -3009,7 +3192,7 @@ Assert(
 
     // Following: what is bound moves and the endpoint goes with it, whether it
     // sits on a corner or on the middle of a side.
-    var followed = new ShapeBoardObject(
+    var followed = ShapeBoardObject.Create(
         Guid.NewGuid(), 0, box, ShapeKind.RoundedRectangle, 0xFF1F2937, null, 4);
     var bound = ConnectorBoardObject.Create(
         Guid.NewGuid(),
@@ -3038,7 +3221,7 @@ Assert(
         corner.Follow(resizedShape).Start == new PointD(500, 300),
         "A corner anchor stays on that corner through a resize.");
     Assert(
-        corner.Follow(new ShapeBoardObject(
+        corner.Follow(ShapeBoardObject.Create(
             Guid.NewGuid(), 0, box, ShapeKind.Ellipse, 0xFF1F2937, null, 4)) == corner,
         "An object the connector is not bound to moves without touching it.");
 
@@ -3069,7 +3252,7 @@ Assert(
 
     // Deleting what a connector points at detaches it, in the same step.
     var connectorBoard = new BoardDocument();
-    var deleted = new ShapeBoardObject(
+    var deleted = ShapeBoardObject.Create(
         Guid.NewGuid(),
         connectorBoard.NextZIndex,
         new RectD(0, 0, 100, 100),
@@ -3113,11 +3296,11 @@ Assert(
 
     // An export area is never cut between a shape and its arrow.
     var partitionBoard = new BoardDocument();
-    var leftShape = new ShapeBoardObject(
+    var leftShape = ShapeBoardObject.Create(
         Guid.NewGuid(), partitionBoard.NextZIndex, new RectD(0, 0, 200, 100),
         ShapeKind.RoundedRectangle, 0xFF1F2937, null, 4);
     partitionBoard.AddObject(leftShape);
-    var rightShape = new ShapeBoardObject(
+    var rightShape = ShapeBoardObject.Create(
         Guid.NewGuid(), partitionBoard.NextZIndex, new RectD(1600, 0, 200, 100),
         ShapeKind.RoundedRectangle, 0xFF1F2937, null, 4);
     partitionBoard.AddObject(rightShape);
@@ -3148,11 +3331,11 @@ Assert(
 
     // A board that carries a connector, written and read back.
     var savedBoard = new BoardDocument();
-    var firstShape = new ShapeBoardObject(
+    var firstShape = ShapeBoardObject.Create(
         Guid.NewGuid(), savedBoard.NextZIndex, new RectD(0, 0, 120, 80),
         ShapeKind.Diamond, 0xFF1F2937, null, 4);
     savedBoard.AddObject(firstShape);
-    var secondShape = new ShapeBoardObject(
+    var secondShape = ShapeBoardObject.Create(
         Guid.NewGuid(), savedBoard.NextZIndex, new RectD(300, 200, 120, 80),
         ShapeKind.Ellipse, 0xFF1F2937, null, 4);
     savedBoard.AddObject(secondShape);
@@ -3248,7 +3431,7 @@ Assert(
 {
     var shapeId = Guid.NewGuid();
     var outsideId = Guid.NewGuid();
-    var shape = new ShapeBoardObject(
+    var shape = ShapeBoardObject.Create(
         shapeId,
         0,
         new RectD(0, 0, 100, 100),
@@ -3256,7 +3439,7 @@ Assert(
         0xFF1F2937,
         null,
         4);
-    var outside = new ShapeBoardObject(
+    var outside = ShapeBoardObject.Create(
         outsideId,
         3,
         new RectD(300, 0, 100, 100),
@@ -3347,6 +3530,27 @@ Assert(
             [ShapeBoardObject { ZIndex: 9 } only] &&
         only.Bounds == new RectD(324, 24, 100, 100),
         "One object duplicates as one object.");
+
+    // A turned shape is copied as it stands: the angle and the box it was drawn
+    // in come with it, so the copy is the same shape rather than an upright one
+    // in the box the turn happens to take up.
+    var turned = ShapeBoardObject.Create(
+        Guid.NewGuid(),
+        3,
+        new RectD(300, 0, 100, 40),
+        ShapeKind.BlockArrow,
+        0xFF1F2937,
+        null,
+        4,
+        45);
+    Assert(
+        SelectionDuplicator.Duplicate([turned], [], [], new PointD(24, 24), 9) is
+            [ShapeBoardObject copiedTurn] &&
+        copiedTurn.AngleDegrees == turned.AngleDegrees &&
+        copiedTurn.LayoutWidth == turned.LayoutWidth &&
+        copiedTurn.LayoutHeight == turned.LayoutHeight &&
+        copiedTurn.Bounds == turned.Bounds.Translate(new PointD(24, 24)),
+        "A turned shape keeps its angle and the box it was drawn in.");
 }
 
 // Bring forward and Send backward move the block past exactly one object, and
@@ -3354,7 +3558,7 @@ Assert(
 {
     var zDocument = new BoardDocument();
     ShapeBoardObject[] stack = Enumerable.Range(0, 4)
-        .Select(index => new ShapeBoardObject(
+        .Select(index => ShapeBoardObject.Create(
             Guid.NewGuid(),
             index,
             new RectD(index * 10, 0, 40, 40),
