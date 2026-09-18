@@ -408,8 +408,8 @@ public static class BoardArchive
     /// optional, so a board written before a shape could be turned reads as the
     /// upright shape it was: no angle, and the box it was saved with as its
     /// layout. The bounds are recomputed from that box rather than trusted,
-    /// because a snapped angle makes the saved box the box of a rectangle that
-    /// is no longer there.
+    /// because a file can say anything and the box has to be the box of the
+    /// rectangle that is actually there.
     /// </summary>
     private static ShapeBoardObject ShapeFromDto(ObjectDto dto)
     {
