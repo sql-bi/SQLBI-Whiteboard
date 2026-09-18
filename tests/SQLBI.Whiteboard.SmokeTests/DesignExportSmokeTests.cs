@@ -54,6 +54,9 @@ internal static class DesignExportSmokeTests
             document.AddObject(Shape(document, kind, (int)kind));
         }
 
+        ShapeBoardObject turned = Shape(document, ShapeKind.BlockArrow, kinds.Length, angleDegrees: 45);
+        document.AddObject(turned);
+
         FreeTextBoardObject label = Label(document, angleDegrees: 45);
         document.AddObject(label);
         document.AddObject(Label(document, angleDegrees: 0, new PointD(900, 700)));
@@ -81,10 +84,23 @@ internal static class DesignExportSmokeTests
 
         IReadOnlyList<SlideElement> elements = Build(document);
         SlideShapeElement[] shapes = elements.OfType<SlideShapeElement>().ToArray();
-        Assert(shapes.Length == kinds.Length, "Every shape leaves as a shape element.");
+        Assert(shapes.Length == kinds.Length + 1, "Every shape leaves as a shape element.");
         Assert(
-            shapes.Select(shape => shape.Kind).SequenceEqual(kinds),
+            shapes.Take(kinds.Length).Select(shape => shape.Kind).SequenceEqual(kinds),
             "The shapes keep their kinds, in the order they were drawn.");
+
+        // A turned shape hands over the angle and the box it was drawn in, not
+        // the box the document indexes, which at 45 degrees is a different size.
+        SlideShapeElement askew = shapes[^1];
+        Assert(askew.AngleDegrees == 45, "The angle of a shape reaches the slide.");
+        Assert(
+            shapes.Take(kinds.Length).All(shape => shape.AngleDegrees == 0),
+            "A shape nobody turned has no angle on it.");
+        Assert(
+            Math.Abs(askew.Bounds.Width - shapes[0].Bounds.Width) < 0.01 &&
+            Math.Abs(askew.Bounds.Height - shapes[0].Bounds.Height) < 0.01 &&
+            askew.Bounds.Width > askew.Bounds.Height,
+            "A turned shape's rectangle is the box it was drawn in, not its turned box.");
         Assert(
             shapes.All(shape => shape.OutlineArgb == Outline) &&
             shapes.Count(shape => shape.FillArgb is not null) == 1 &&
