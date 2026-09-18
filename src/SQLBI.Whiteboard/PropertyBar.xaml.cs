@@ -587,9 +587,8 @@ public partial class PropertyBar : UserControl
 
         var edit = new Button
         {
-            Style = (Style)FindResource("SizeChipButton"),
+            Style = (Style)FindResource("PropertyBarButton"),
             Width = 52,
-            Height = 30,
             Margin = new Thickness(6, 0, 0, 0),
             ToolTip = "Type in the shape (F2)",
             Content = new TextBlock
