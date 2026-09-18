@@ -220,6 +220,45 @@ public static class ConnectorGeometry
     };
 
     /// <summary>
+    /// The side of this object that faces <paramref name="towards"/>: the one
+    /// whose outward normal leans furthest that way. It is what an automatic
+    /// anchor picks, so an arrow between two shapes leaves the side that points
+    /// at the other one however they are rearranged. A direction that splits
+    /// two sides evenly - a corner - takes the horizontal one, because a
+    /// diagram reads left to right and an arrow that leaves sideways is the one
+    /// somebody drew.
+    /// </summary>
+    public static FrameSide AutoAnchor(AnchorFrame frame, PointD towards)
+    {
+        PointD direction = new(
+            towards.X - frame.Layout.Center.X,
+            towards.Y - frame.Layout.Center.Y);
+        FrameSide best = FrameSide.Right;
+        var bestDot = double.NegativeInfinity;
+
+        // The two horizontal sides are asked first, so an exact tie keeps the
+        // one that was already ahead.
+        foreach (FrameSide side in AutoAnchorOrder)
+        {
+            PointD normal = frame.OutwardNormal(side);
+            var dot = (normal.X * direction.X) + (normal.Y * direction.Y);
+            if (dot > bestDot)
+            {
+                bestDot = dot;
+                best = side;
+            }
+        }
+
+        return best;
+    }
+
+    /// <summary>
+    /// The same answer as the anchor that records it.
+    /// </summary>
+    public static ConnectorAnchor AutoAnchor(Guid objectId, AnchorFrame frame, PointD towards) =>
+        SideAnchor(objectId, AutoAnchor(frame, towards));
+
+    /// <summary>
     /// What a drag out of a shape's connector handle records: the start stays
     /// on the side it came from, whatever the hand does afterwards, and the end
     /// takes whatever it was let go over, or nothing at all when it was let go
@@ -263,8 +302,10 @@ public static class ConnectorGeometry
         PointD start,
         PointD end,
         ConnectorAnchor? startAnchor = null,
-        ConnectorAnchor? endAnchor = null) =>
-        Controls(kind, start, end, startAnchor, endAnchor) is { } controls
+        ConnectorAnchor? endAnchor = null,
+        AnchorFrame? startFrame = null,
+        AnchorFrame? endFrame = null) =>
+        Controls(kind, start, end, startAnchor, endAnchor, startFrame, endFrame) is { } controls
             ? Flatten(start, controls.First, controls.Second, end)
             : [start, end];
 
@@ -272,14 +313,18 @@ public static class ConnectorGeometry
     /// The two control points of a curved connector's cubic, or nothing for a
     /// straight one. A writer that draws curves asks for these rather than for
     /// the flattened polyline, so the curve leaves the board and arrives in a
-    /// deck as the same cubic.
+    /// deck as the same cubic. The frames are the ones the ends are bound to:
+    /// with them the curve leaves the side as that side now faces, so a curve
+    /// bound to a shape that has been turned bends the way the shape points.
     /// </summary>
     public static (PointD First, PointD Second)? Controls(
         ConnectorKind kind,
         PointD start,
         PointD end,
         ConnectorAnchor? startAnchor = null,
-        ConnectorAnchor? endAnchor = null)
+        ConnectorAnchor? endAnchor = null,
+        AnchorFrame? startFrame = null,
+        AnchorFrame? endFrame = null)
     {
         if (kind != ConnectorKind.CurvedArrow)
         {
@@ -287,8 +332,8 @@ public static class ConnectorGeometry
         }
 
         var reach = Math.Max(1, Distance(start, end)) * CurveControlFraction;
-        PointD startDirection = LeaveDirection(startAnchor, start, end);
-        PointD endDirection = LeaveDirection(endAnchor, end, start);
+        PointD startDirection = LeaveDirection(startAnchor, startFrame, start, end);
+        PointD endDirection = LeaveDirection(endAnchor, endFrame, end, start);
         return (
             new PointD(start.X + (startDirection.X * reach), start.Y + (startDirection.Y * reach)),
             new PointD(end.X + (endDirection.X * reach), end.Y + (endDirection.Y * reach)));
@@ -391,9 +436,11 @@ public static class ConnectorGeometry
         PointD end,
         double thickness,
         ConnectorAnchor? startAnchor = null,
-        ConnectorAnchor? endAnchor = null)
+        ConnectorAnchor? endAnchor = null,
+        AnchorFrame? startFrame = null,
+        AnchorFrame? endFrame = null)
     {
-        IReadOnlyList<PointD> polyline = Polyline(kind, start, end, startAnchor, endAnchor);
+        IReadOnlyList<PointD> polyline = Polyline(kind, start, end, startAnchor, endAnchor, startFrame, endFrame);
         IReadOnlyList<PointD>? head = Arrowhead(kind, polyline, thickness);
         IEnumerable<PointD> points = head is null ? polyline : polyline.Concat(head);
         return RectD.FromPoints(points, Math.Max(0.5, thickness / 2));
@@ -428,7 +475,11 @@ public static class ConnectorGeometry
     /// other end when the endpoint is free. An anchor that is not on the border
     /// at all - the middle of a shape's outline, say - counts as free.
     /// </summary>
-    private static PointD LeaveDirection(ConnectorAnchor? anchor, PointD from, PointD towards)
+    private static PointD LeaveDirection(
+        ConnectorAnchor? anchor,
+        AnchorFrame? frame,
+        PointD from,
+        PointD towards)
     {
         if (anchor is { } bound)
         {
@@ -436,7 +487,10 @@ public static class ConnectorGeometry
             var y = bound.V <= Epsilon ? -1 : bound.V >= 1 - Epsilon ? 1 : 0;
             if (x != 0 || y != 0)
             {
-                return Normalize(new PointD(x, y));
+                PointD outward = Normalize(new PointD(x, y));
+                return frame is { AngleDegrees: not 0 } turned
+                    ? RotatedRectangle.Rotate(outward, turned.AngleDegrees)
+                    : outward;
             }
         }
 
@@ -512,5 +566,15 @@ public static class ConnectorGeometry
     private static readonly (double U, double V)[] BindingFractions =
     [
         (0, 0), (0.5, 0), (1, 0), (1, 0.5), (1, 1), (0.5, 1), (0, 1), (0, 0.5),
+    ];
+
+    /// <summary>
+    /// The order the four sides are asked in when one has to face the other
+    /// end: the horizontal pair first, so a direction that splits two sides
+    /// evenly keeps the one that was already ahead.
+    /// </summary>
+    private static readonly FrameSide[] AutoAnchorOrder =
+    [
+        FrameSide.Right, FrameSide.Left, FrameSide.Top, FrameSide.Bottom,
     ];
 }

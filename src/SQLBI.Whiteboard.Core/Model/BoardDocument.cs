@@ -147,7 +147,7 @@ public sealed class BoardDocument
     /// the bands so they stay the same size under the pen at any zoom.
     /// </summary>
     public BoardObject? HitTestTopSelectable(PointD worldPoint, double zoom = 1) =>
-        _objects.Where(item => item.HitTest(worldPoint, zoom))
+        _objects.Where(item => Hits(item, worldPoint, zoom))
             .OrderByDescending(item => item.ZIndex)
             .FirstOrDefault();
 
@@ -158,7 +158,7 @@ public sealed class BoardDocument
     /// </summary>
     public BoardObject? HitTestTopContainer(PointD worldPoint, double zoom = 1) =>
         _objects.Where(item => item is IBoardContainer or FrameBoardObject)
-            .Where(item => item.HitTest(worldPoint, zoom))
+            .Where(item => Hits(item, worldPoint, zoom))
             .OrderByDescending(item => item.ZIndex)
             .FirstOrDefault();
 
@@ -169,7 +169,7 @@ public sealed class BoardDocument
     {
         ArgumentNullException.ThrowIfNull(area);
         return _objects
-            .Where(item => item.IsAreaSelectable && item.IsTakenBy(area, rule))
+            .Where(item => item.IsAreaSelectable && Taken(item, area, rule))
             .ToArray();
     }
 
@@ -201,7 +201,7 @@ public sealed class BoardDocument
         return _objects
             .Where(item => item.Id != id &&
                            item.IsAreaSelectable &&
-                           item.IsTakenBy(area, AreaSelection.PartlyInside))
+                           Taken(item, area, AreaSelection.PartlyInside))
             .Select(item => item.Id)
             .ToArray();
     }
@@ -294,6 +294,49 @@ public sealed class BoardDocument
             .Where(connector => connector.StartAnchor?.ObjectId == objectId ||
                                 connector.EndAnchor?.ObjectId == objectId)
             .ToArray();
+
+    /// <summary>
+    /// A tap and an area asked of the line as it is drawn. Only a connector
+    /// answers differently for it: a curve bound to a shape that has been turned
+    /// leaves along the side as that side now faces, and the board is the only
+    /// place that knows which shape that is.
+    /// </summary>
+    private bool Hits(BoardObject item, PointD worldPoint, double zoom) =>
+        item is ConnectorBoardObject connector
+            ? connector.HitTest(worldPoint, zoom, FrameOf(connector.StartAnchor), FrameOf(connector.EndAnchor))
+            : item.HitTest(worldPoint, zoom);
+
+    private bool Taken(BoardObject item, SelectionArea area, AreaSelection rule) =>
+        item is ConnectorBoardObject connector
+            ? connector.IsTakenBy(area, rule, FrameOf(connector.StartAnchor), FrameOf(connector.EndAnchor))
+            : item.IsTakenBy(area, rule);
+
+    /// <summary>
+    /// The rectangles the two ends are anchored in, as the board has them now,
+    /// and nothing for an end that is bound to nothing. It is what a curve is
+    /// drawn from and what an automatic anchor is chosen against.
+    /// </summary>
+    public (AnchorFrame? Start, AnchorFrame? End) AnchorFrames(ConnectorBoardObject connector)
+    {
+        ArgumentNullException.ThrowIfNull(connector);
+        return (FrameOf(connector.StartAnchor), FrameOf(connector.EndAnchor));
+    }
+
+    /// <summary>
+    /// The connector with its automatic anchors brought to the sides that now
+    /// face each other. A Fixed connector comes back unchanged, so this is safe
+    /// to run wherever a connector is rebuilt.
+    /// </summary>
+    public ConnectorBoardObject Reroute(ConnectorBoardObject connector)
+    {
+        (AnchorFrame? start, AnchorFrame? end) = AnchorFrames(connector);
+        return connector.Reroute(start, end);
+    }
+
+    private AnchorFrame? FrameOf(ConnectorAnchor? anchor) =>
+        anchor is { } bound && _objects.FirstOrDefault(item => item.Id == bound.ObjectId) is { } target
+            ? target.AnchorFrame
+            : null;
 
     public IEnumerable<InkStrokeObject> LinkedStrokes(Guid containerId) =>
         _objects.OfType<InkStrokeObject>()

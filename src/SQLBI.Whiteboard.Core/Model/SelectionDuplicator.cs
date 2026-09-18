@@ -72,7 +72,8 @@ public static class SelectionDuplicator
                 connector.Argb,
                 connector.Thickness,
                 Rebind(connector.StartAnchor, copiedIds),
-                Rebind(connector.EndAnchor, copiedIds));
+                Rebind(connector.EndAnchor, copiedIds),
+                connector.AutoRoute);
         }
 
         BoardObject moved = item.WithBounds(item.Bounds.Translate(offsetWorld)).WithZIndex(zIndex);
