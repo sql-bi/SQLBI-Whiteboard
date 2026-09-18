@@ -345,6 +345,8 @@ internal sealed class BoardSurface : FrameworkElement
         var bottom = selected.Max(item => item.Bounds.Bottom);
         var bounds = new RectD(left, top, right - left, bottom - top);
 
+        DrawRotationHandle(drawingContext, selected, camera);
+
         // A label or a shape on its own is outlined where it is, turned: the box
         // around a turned object says nothing about which of its corners is
         // which. The handle stays on the box, which is where the gesture looks
@@ -393,6 +395,30 @@ internal sealed class BoardSurface : FrameworkElement
         drawingContext.PushTransform(rotation);
         drawingContext.DrawText(text, origin);
         drawingContext.Pop();
+    }
+
+    /// <summary>
+    /// The rotation handle of a lone shape or label: a circle clear of the
+    /// middle of the object's own top edge, tied to it by a line. It is placed
+    /// in the object's own frame rather than on the box, so it stands over
+    /// whichever edge is up for the object and travels round as the object
+    /// turns. A set of several, a connector, a picture, a text container, a
+    /// LiveView, and a frame have no angle to offer and so have no handle.
+    /// </summary>
+    private static void DrawRotationHandle(
+        DrawingContext drawingContext,
+        IReadOnlyList<BoardObject> selected,
+        Camera2D camera)
+    {
+        if (selected is not [(ShapeBoardObject or FreeTextBoardObject) and { } lone])
+        {
+            return;
+        }
+
+        AnchorFrame frame = lone.AnchorFrame;
+        Point handle = ToScreenPoint(frame.RotationHandle(camera.Zoom), camera);
+        drawingContext.DrawLine(SelectionMemberPen, ToScreenPoint(frame.TopCenter(), camera), handle);
+        drawingContext.DrawEllipse(SelectionHandleBrush, SelectionPen, handle, 6, 6);
     }
 
     /// <summary>

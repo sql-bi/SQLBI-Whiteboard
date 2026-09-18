@@ -28,4 +28,27 @@ public readonly record struct AnchorFrame(RectD Layout, double AngleDegrees)
 
     public IReadOnlyList<PointD> Corners() =>
         RotatedRectangle.Corners(Layout.Center, Layout.Width, Layout.Height, AngleDegrees);
+
+    /// <summary>
+    /// Screen pixels between the top edge and the rotation handle, so the
+    /// handle stands the same distance clear of the object at any zoom.
+    /// </summary>
+    public const double RotationHandleOffset = 24;
+
+    /// <summary>
+    /// The middle of the top side, where it is drawn: what the rotation handle
+    /// is tied to.
+    /// </summary>
+    public PointD TopCenter() => ToWorld(new PointD(Layout.Center.X, Layout.Top));
+
+    /// <summary>
+    /// Where the rotation handle stands: clear of the middle of the top side,
+    /// along the direction that is up for this object rather than up on the
+    /// screen, so the handle turns with what it turns.
+    /// </summary>
+    public PointD RotationHandle(double zoom) =>
+        TopCenter() +
+        RotatedRectangle.Rotate(
+            new PointD(0, -RotationHandleOffset / Math.Max(zoom, 0.000001)),
+            AngleDegrees);
 }
