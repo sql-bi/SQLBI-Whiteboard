@@ -26,6 +26,14 @@ public abstract record BoardObject(Guid Id, int ZIndex, RectD Bounds)
     public abstract bool HitTest(PointD worldPoint, double zoom);
 
     /// <summary>
+    /// The rectangle a connector's anchors are fractions of. For everything
+    /// upright it is the box the document indexes; an object that has been
+    /// turned hands over the rectangle before the turn and its angle, so an
+    /// endpoint bound to one of its corners stays on that corner.
+    /// </summary>
+    public virtual AnchorFrame AnchorFrame => new(Bounds, 0);
+
+    /// <summary>
     /// Whether an area gesture can take this object at all. A frame is a guide
     /// the author draws around other things, so a band drawn over one would
     /// otherwise pick up the slide along with its contents.
@@ -557,7 +565,11 @@ public enum ShapeKind
 /// <summary>
 /// A drawn shape. It is a container, so ink that touches only this one links to
 /// it and moves with it - and it is taken hold of by its outline alone, never by
-/// its interior, so whatever is drawn inside it stays reachable.
+/// its interior, so whatever is drawn inside it stays reachable. A shape that
+/// has been turned keeps the box it was drawn in as its layout size, the way a
+/// label keeps the size its text measured: <see cref="BoardObject.Bounds"/> is
+/// then the axis-aligned box of that rectangle once it is turned about its
+/// centre, which is what the document indexes and what an export reads.
 /// </summary>
 public sealed record ShapeBoardObject(
     Guid Id,
@@ -566,7 +578,10 @@ public sealed record ShapeBoardObject(
     ShapeKind Kind,
     uint OutlineArgb,
     uint? FillArgb,
-    double Thickness) : BoardObject(Id, ZIndex, Bounds), IBoardContainer
+    double Thickness,
+    double AngleDegrees,
+    double LayoutWidth,
+    double LayoutHeight) : BoardObject(Id, ZIndex, Bounds), IBoardContainer
 {
     /// <summary>
     /// What a shape is drawn with when nothing says otherwise, and what a saved
@@ -574,21 +589,159 @@ public sealed record ShapeBoardObject(
     /// </summary>
     public const double DefaultThickness = 4;
 
+    private const double Epsilon = 0.000001;
+
     /// <summary>
-    /// The box is the whole of it: a shape is the one container allowed to
-    /// change proportion under the corner handle.
+    /// A shape in the box it was dragged out of, upright unless a file says
+    /// otherwise.
     /// </summary>
-    public override BoardObject WithBounds(RectD bounds) => this with { Bounds = bounds };
+    public static ShapeBoardObject Create(
+        Guid id,
+        int zIndex,
+        RectD bounds,
+        ShapeKind kind,
+        uint outlineArgb,
+        uint? fillArgb,
+        double thickness,
+        double angleDegrees = 0)
+    {
+        var angle = RotatedRectangle.NormalizeAngle(angleDegrees);
+        var width = Math.Max(1, bounds.Width);
+        var height = Math.Max(1, bounds.Height);
+        return new ShapeBoardObject(
+            id,
+            zIndex,
+            angle == 0 ? bounds : RotatedRectangle.Bounds(bounds.Center, width, height, angle),
+            kind,
+            outlineArgb,
+            fillArgb,
+            thickness,
+            angle,
+            width,
+            height);
+    }
+
+    /// <summary>
+    /// The box the outline is described in: the one the shape was drawn in,
+    /// centred where the shape now is, before the turn.
+    /// </summary>
+    public RectD LayoutBounds => AngleDegrees == 0
+        ? Bounds
+        : new RectD(
+            Bounds.Center.X - (LayoutWidth / 2),
+            Bounds.Center.Y - (LayoutHeight / 2),
+            LayoutWidth,
+            LayoutHeight);
+
+    public override AnchorFrame AnchorFrame => new(LayoutBounds, AngleDegrees);
+
+    /// <summary>
+    /// The corner handle changes the size, and a shape is the one container
+    /// allowed to change proportion under it. What the box is asked for is read
+    /// along the shape's own axes, so a shape turned by a quarter grows sideways
+    /// when the handle is pulled sideways. A shape standing on a corner cannot
+    /// tell its two axes apart - either of them widens the box by the same
+    /// amount - so it takes the two factors as one.
+    /// </summary>
+    public override BoardObject WithBounds(RectD bounds)
+    {
+        if (AngleDegrees == 0)
+        {
+            return this with
+            {
+                Bounds = bounds,
+                LayoutWidth = Math.Max(1, bounds.Width),
+                LayoutHeight = Math.Max(1, bounds.Height),
+            };
+        }
+
+        var horizontal = Factor(bounds.Width, Bounds.Width);
+        var vertical = Factor(bounds.Height, Bounds.Height);
+        var radians = AngleDegrees * Math.PI / 180;
+        double width;
+        double height;
+        if (Math.Abs(Math.Cos(radians)) > 1 - Epsilon)
+        {
+            width = LayoutWidth * horizontal;
+            height = LayoutHeight * vertical;
+        }
+        else if (Math.Abs(Math.Sin(radians)) > 1 - Epsilon)
+        {
+            width = LayoutWidth * vertical;
+            height = LayoutHeight * horizontal;
+        }
+        else
+        {
+            var together = Math.Sqrt(horizontal * vertical);
+            width = LayoutWidth * together;
+            height = LayoutHeight * together;
+        }
+
+        width = Math.Max(1, width);
+        height = Math.Max(1, height);
+        return this with
+        {
+            Bounds = RotatedRectangle.Bounds(bounds.Center, width, height, AngleDegrees),
+            LayoutWidth = width,
+            LayoutHeight = height,
+        };
+    }
+
+    /// <summary>
+    /// Turned about its centre, which is what keeps a shape where it is while
+    /// the property bar steps it round.
+    /// </summary>
+    public ShapeBoardObject WithAngle(double angleDegrees)
+    {
+        var angle = RotatedRectangle.NormalizeAngle(angleDegrees);
+        return this with
+        {
+            Bounds = RotatedRectangle.Bounds(Bounds.Center, LayoutWidth, LayoutHeight, angle),
+            AngleDegrees = angle,
+        };
+    }
 
     public override BoardObject WithZIndex(int zIndex) => this with { ZIndex = zIndex };
 
-    public IReadOnlyList<PointD> Outline() => ShapeGeometry.Outline(Kind, Bounds);
+    /// <summary>
+    /// The outline where it is drawn: described in the box before the turn, and
+    /// turned about the centre point by point.
+    /// </summary>
+    public IReadOnlyList<PointD> Outline()
+    {
+        IReadOnlyList<PointD> outline = ShapeGeometry.Outline(Kind, LayoutBounds);
+        if (AngleDegrees == 0)
+        {
+            return outline;
+        }
 
+        AnchorFrame frame = AnchorFrame;
+        return outline.Select(frame.ToWorld).ToArray();
+    }
+
+    /// <summary>
+    /// The four corners of the box the shape was drawn in, where they are now,
+    /// which is what the selection outline follows.
+    /// </summary>
+    public IReadOnlyList<PointD> Corners() =>
+        RotatedRectangle.Corners(Bounds.Center, LayoutWidth, LayoutHeight, AngleDegrees);
+
+    /// <summary>
+    /// The band along the outline. The point is turned back rather than the
+    /// outline turned forward, since the outline is described in the box before
+    /// the turn either way.
+    /// </summary>
     public override bool HitTest(PointD worldPoint, double zoom)
     {
         var band = HitBand / Math.Max(zoom, 0.000001);
         return Bounds.Inflate(band).Contains(worldPoint) &&
-               ShapeGeometry.IsOnOutline(Kind, Bounds, worldPoint, band);
+               ShapeGeometry.IsOnOutline(Kind, LayoutBounds, AnchorFrame.ToLayout(worldPoint), band);
+    }
+
+    private static double Factor(double after, double before)
+    {
+        var factor = after / Math.Max(Epsilon, before);
+        return double.IsFinite(factor) && factor > 0 ? factor : 1;
     }
 
     /// <summary>
@@ -725,6 +878,21 @@ public sealed record FreeTextBoardObject(
 
     public IReadOnlyList<PointD> Corners() =>
         RotatedRectangle.Corners(Bounds.Center, LayoutWidth, LayoutHeight, AngleDegrees);
+
+    /// <summary>
+    /// A label answers for its anchors the way a shape does: on the rectangle
+    /// it is drawn in rather than on the box around it, so an arrow dropped on
+    /// the corner of a turned label lands on the corner a reader sees.
+    /// </summary>
+    public override AnchorFrame AnchorFrame => new(
+        AngleDegrees == 0
+            ? Bounds
+            : new RectD(
+                Bounds.Center.X - (LayoutWidth / 2),
+                Bounds.Center.Y - (LayoutHeight / 2),
+                LayoutWidth,
+                LayoutHeight),
+        AngleDegrees);
 
     /// <summary>
     /// The corner handle scales the text rather than the box: the font and the
@@ -913,18 +1081,19 @@ public sealed record ConnectorBoardObject(
         (this with { Thickness = thickness }).WithEndpoints(Start, End, StartAnchor, EndAnchor);
 
     /// <summary>
-    /// The endpoints bound to this object, brought to where its box now is. It
-    /// is how a connector follows what it points at through a move, a resize,
+    /// The endpoints bound to this object, brought to where it now is. It is how
+    /// a connector follows what it points at through a move, a resize, a turn,
     /// an undo, and a group gesture.
     /// </summary>
     public ConnectorBoardObject Follow(BoardObject attached)
     {
         ArgumentNullException.ThrowIfNull(attached);
+        AnchorFrame frame = attached.AnchorFrame;
         PointD start = StartAnchor is { } startAnchor && startAnchor.ObjectId == attached.Id
-            ? ConnectorGeometry.PointOn(attached.Bounds, startAnchor)
+            ? ConnectorGeometry.PointOn(frame, startAnchor)
             : Start;
         PointD end = EndAnchor is { } endAnchor && endAnchor.ObjectId == attached.Id
-            ? ConnectorGeometry.PointOn(attached.Bounds, endAnchor)
+            ? ConnectorGeometry.PointOn(frame, endAnchor)
             : End;
         return start == Start && end == End
             ? this

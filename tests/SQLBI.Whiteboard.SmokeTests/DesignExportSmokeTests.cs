@@ -199,14 +199,19 @@ internal static class DesignExportSmokeTests
         return EditableSlide.Build(document, areas[0], PixelWidth, PixelHeight, null, inkAsStrokes);
     }
 
-    private static ShapeBoardObject Shape(BoardDocument document, ShapeKind kind, int column) => new(
+    private static ShapeBoardObject Shape(
+        BoardDocument document,
+        ShapeKind kind,
+        int column,
+        double angleDegrees = 0) => ShapeBoardObject.Create(
         Guid.NewGuid(),
         document.NextZIndex,
         new RectD(column * 200, 0, 160, 120),
         kind,
         Outline,
         kind == ShapeKind.Ellipse ? ShapeSettings.Tint(0xFFE64B3D) : null,
-        ShapeBoardObject.DefaultThickness);
+        ShapeBoardObject.DefaultThickness,
+        angleDegrees);
 
     private static FreeTextBoardObject Label(BoardDocument document, double angleDegrees, PointD? center = null)
     {

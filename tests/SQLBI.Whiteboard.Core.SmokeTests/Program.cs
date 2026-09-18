@@ -2520,7 +2520,7 @@ Assert(
 
     // The band along the outline, and nothing else: what is drawn inside a shape
     // has to stay reachable.
-    var banded = new ShapeBoardObject(
+    var banded = ShapeBoardObject.Create(
         Guid.NewGuid(),
         0,
         shapeBox,
@@ -2555,7 +2555,7 @@ Assert(
 
     // A shape is a container, so ink that touches only it links to it.
     var shapeBoard = new BoardDocument();
-    var linkedShape = new ShapeBoardObject(
+    var linkedShape = ShapeBoardObject.Create(
         Guid.NewGuid(),
         shapeBoard.NextZIndex,
         new RectD(0, 0, 200, 120),
@@ -2585,7 +2585,7 @@ Assert(
     Assert(
         BoardArchive.VersionFor(shapeArchiveBoard) == BoardArchive.VersionWithFrames,
         "A board with only frames stays on the version frames arrived in.");
-    var filledShape = new ShapeBoardObject(
+    var filledShape = ShapeBoardObject.Create(
         Guid.NewGuid(),
         shapeArchiveBoard.NextZIndex,
         new RectD(10, 20, 300, 140),
@@ -2594,7 +2594,7 @@ Assert(
         0x40CC79A7,
         8);
     shapeArchiveBoard.AddObject(filledShape);
-    var hollowShape = new ShapeBoardObject(
+    var hollowShape = ShapeBoardObject.Create(
         Guid.NewGuid(),
         shapeArchiveBoard.NextZIndex,
         new RectD(400, 20, 120, 120),
@@ -3009,7 +3009,7 @@ Assert(
 
     // Following: what is bound moves and the endpoint goes with it, whether it
     // sits on a corner or on the middle of a side.
-    var followed = new ShapeBoardObject(
+    var followed = ShapeBoardObject.Create(
         Guid.NewGuid(), 0, box, ShapeKind.RoundedRectangle, 0xFF1F2937, null, 4);
     var bound = ConnectorBoardObject.Create(
         Guid.NewGuid(),
@@ -3038,7 +3038,7 @@ Assert(
         corner.Follow(resizedShape).Start == new PointD(500, 300),
         "A corner anchor stays on that corner through a resize.");
     Assert(
-        corner.Follow(new ShapeBoardObject(
+        corner.Follow(ShapeBoardObject.Create(
             Guid.NewGuid(), 0, box, ShapeKind.Ellipse, 0xFF1F2937, null, 4)) == corner,
         "An object the connector is not bound to moves without touching it.");
 
@@ -3069,7 +3069,7 @@ Assert(
 
     // Deleting what a connector points at detaches it, in the same step.
     var connectorBoard = new BoardDocument();
-    var deleted = new ShapeBoardObject(
+    var deleted = ShapeBoardObject.Create(
         Guid.NewGuid(),
         connectorBoard.NextZIndex,
         new RectD(0, 0, 100, 100),
@@ -3113,11 +3113,11 @@ Assert(
 
     // An export area is never cut between a shape and its arrow.
     var partitionBoard = new BoardDocument();
-    var leftShape = new ShapeBoardObject(
+    var leftShape = ShapeBoardObject.Create(
         Guid.NewGuid(), partitionBoard.NextZIndex, new RectD(0, 0, 200, 100),
         ShapeKind.RoundedRectangle, 0xFF1F2937, null, 4);
     partitionBoard.AddObject(leftShape);
-    var rightShape = new ShapeBoardObject(
+    var rightShape = ShapeBoardObject.Create(
         Guid.NewGuid(), partitionBoard.NextZIndex, new RectD(1600, 0, 200, 100),
         ShapeKind.RoundedRectangle, 0xFF1F2937, null, 4);
     partitionBoard.AddObject(rightShape);
@@ -3148,11 +3148,11 @@ Assert(
 
     // A board that carries a connector, written and read back.
     var savedBoard = new BoardDocument();
-    var firstShape = new ShapeBoardObject(
+    var firstShape = ShapeBoardObject.Create(
         Guid.NewGuid(), savedBoard.NextZIndex, new RectD(0, 0, 120, 80),
         ShapeKind.Diamond, 0xFF1F2937, null, 4);
     savedBoard.AddObject(firstShape);
-    var secondShape = new ShapeBoardObject(
+    var secondShape = ShapeBoardObject.Create(
         Guid.NewGuid(), savedBoard.NextZIndex, new RectD(300, 200, 120, 80),
         ShapeKind.Ellipse, 0xFF1F2937, null, 4);
     savedBoard.AddObject(secondShape);
