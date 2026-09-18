@@ -17,7 +17,13 @@
                               Color="Black" />
         </Border.Effect>
         <!-- Rows are built in code, one per property the selection has in
-             common, so a later kind of object adds a row rather than a layout. -->
-        <StackPanel x:Name="RowHost" />
+             common, so a later kind of object adds a row rather than a layout.
+             The overflow sits beside them rather than among them: it is about
+             the selection itself, and it is there even when no row is. -->
+        <StackPanel Orientation="Horizontal">
+            <StackPanel x:Name="RowHost" />
+            <StackPanel x:Name="OverflowHost"
+                        VerticalAlignment="Center" />
+        </StackPanel>
     </Border>
 </UserControl>

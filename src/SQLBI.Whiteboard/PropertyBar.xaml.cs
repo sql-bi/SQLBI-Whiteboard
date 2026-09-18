@@ -20,6 +20,22 @@ public enum LabelFontStyle
 }
 
 /// <summary>
+/// What the overflow menu offers for the selection as a whole, whatever it is
+/// made of. These are the commands the keyboard and the View row already carry,
+/// gathered where the selection is.
+/// </summary>
+public enum SelectionCommand
+{
+    Delete,
+    Copy,
+    Duplicate,
+    BringToFront,
+    BringForward,
+    SendBackward,
+    SendToBack,
+}
+
+/// <summary>
 /// What the selected objects have in common, offered above the selection and
 /// applied to all of them at once. A row is shown only when every selected
 /// object satisfies its test, so the bar never offers a change that would mean
@@ -28,6 +44,16 @@ public enum LabelFontStyle
 public partial class PropertyBar : UserControl
 {
     private readonly List<PropertyBarRow> _rows = [];
+
+    /// <summary>
+    /// The overflow's button and the menu it opens, built once and kept: what
+    /// changes with the selection is only which of its items can be used.
+    /// </summary>
+    private readonly Button _overflowButton = new();
+
+    private readonly Popup _overflowPopup = new();
+
+    private readonly Dictionary<SelectionCommand, Button> _overflowItems = [];
 
     /// <summary>
     /// Set while the font row is brought up to the selection, so that putting a
@@ -44,6 +70,17 @@ public partial class PropertyBar : UserControl
         AddRow(IsConnector, BuildLineKindRow());
         AddRow(IsLabel, BuildFontRow());
         AddRow(CanTurn, BuildRotateRow());
+        BuildOverflow();
+
+        // The bar is hidden outright while a gesture is under way, which the
+        // menu has no way of noticing on its own.
+        IsVisibleChanged += (_, _) =>
+        {
+            if (!IsVisible)
+            {
+                _overflowPopup.IsOpen = false;
+            }
+        };
     }
 
     /// <summary>
@@ -108,12 +145,37 @@ public partial class PropertyBar : UserControl
     public event Action<double>? RotationStepped;
 
     /// <summary>
-    /// Fills the bar for this selection and says whether anything is left to
-    /// show. Nothing in common means no bar at all, rather than an empty one.
+    /// Something the overflow menu asks of the selection as a whole.
+    /// </summary>
+    public event Action<SelectionCommand>? CommandChosen;
+
+    /// <summary>
+    /// Which way the selection can still be moved through the board's depth.
+    /// The four commands are two answers: what can go to the front can go one
+    /// step forward, and what can go to the back can go one step back.
+    /// </summary>
+    public void SetZOrderEnabled(bool canMoveForward, bool canMoveBackward)
+    {
+        _overflowItems[SelectionCommand.BringToFront].IsEnabled = canMoveForward;
+        _overflowItems[SelectionCommand.BringForward].IsEnabled = canMoveForward;
+        _overflowItems[SelectionCommand.SendBackward].IsEnabled = canMoveBackward;
+        _overflowItems[SelectionCommand.SendToBack].IsEnabled = canMoveBackward;
+    }
+
+    /// <summary>
+    /// Fills the bar for this selection and says whether there is a bar to show.
+    /// A selection with nothing in common still has itself: Delete, Copy,
+    /// Duplicate, and the four depths apply to a picture, a frame, or a mixture
+    /// as much as to a stroke, so the overflow alone is reason enough for the
+    /// bar to appear.
     /// </summary>
     public bool Update(IReadOnlyList<BoardObject> selection)
     {
         ArgumentNullException.ThrowIfNull(selection);
+
+        // Whatever the selection has just become, the menu was opened for what
+        // it was.
+        _overflowPopup.IsOpen = false;
         var shown = false;
         foreach (var row in _rows)
         {
@@ -129,7 +191,9 @@ public partial class PropertyBar : UserControl
             shown = true;
         }
 
-        return shown;
+        _overflowButton.Margin = new Thickness(shown ? 4 : 0, 0, 0, 0);
+        OverflowHost.Visibility = selection.Count > 0 ? Visibility.Visible : Visibility.Collapsed;
+        return selection.Count > 0;
     }
 
     /// <summary>
@@ -138,9 +202,17 @@ public partial class PropertyBar : UserControl
     /// a real mouse gets - the tool palette answers the same problem the same
     /// way.
     /// </summary>
-    private void PropertyBar_PreviewStylusDown(object sender, StylusDownEventArgs e)
+    private void PropertyBar_PreviewStylusDown(object sender, StylusDownEventArgs e) =>
+        PromoteStylusTap(this, e);
+
+    /// <summary>
+    /// The same promotion for anything the bar owns. The menu is a popup, and a
+    /// popup is a window of its own, so the handler on the bar never sees a tap
+    /// in it.
+    /// </summary>
+    private static void PromoteStylusTap(FrameworkElement root, StylusDownEventArgs e)
     {
-        if (InputHitTest(e.GetPosition(this)) is not { } hit)
+        if (root.InputHitTest(e.GetPosition(root)) is not { } hit)
         {
             return;
         }
@@ -163,7 +235,7 @@ public partial class PropertyBar : UserControl
              node is not null;
              node = node is Visual visual ? VisualTreeHelper.GetParent(visual) : null)
         {
-            if (node is ButtonBase button)
+            if (node is ButtonBase { IsEnabled: true } button)
             {
                 // A promoted click is the whole gesture, since handling it here
                 // is what stops the stylus reaching the mouse path at all: a
@@ -187,6 +259,118 @@ public partial class PropertyBar : UserControl
         _rows.Add(row);
         RowHost.Children.Add(row.Content);
     }
+
+    /// <summary>
+    /// The … at the end of the bar and its menu. A popup rather than a
+    /// <see cref="ContextMenu"/>: the bar floats over the ink surface, which
+    /// owns the stylus, so what opens here has to be something whose taps can be
+    /// promoted the way the bar's own buttons are, and a menu item is not a
+    /// button.
+    /// </summary>
+    private void BuildOverflow()
+    {
+        _overflowButton.Style = (Style)FindResource("PropertyBarButton");
+        _overflowButton.ToolTip = "More";
+        _overflowButton.Content = new System.Windows.Shapes.Path
+        {
+            Width = 18,
+            Height = 18,
+            Stretch = Stretch.Uniform,
+            Fill = (Brush)FindResource("ToolbarIconBrush"),
+            Data = (Geometry)FindResource("MoreHorizontalGeometry"),
+        };
+        _overflowButton.Click += (_, _) => _overflowPopup.IsOpen = !_overflowPopup.IsOpen;
+        OverflowHost.Children.Add(_overflowButton);
+
+        var items = new StackPanel();
+        foreach ((SelectionCommand command, string name, string shortcut) in OverflowItems)
+        {
+            Button item = OverflowItem(command, name, shortcut);
+            _overflowItems.Add(command, item);
+            items.Children.Add(item);
+        }
+
+        var frame = new Border
+        {
+            Padding = new Thickness(4),
+            CornerRadius = new CornerRadius(10),
+            BorderBrush = (Brush)FindResource("ToolbarBorderBrush"),
+            BorderThickness = new Thickness(1),
+            Background = (Brush)FindResource("ToolbarBackgroundBrush"),
+            Effect = new System.Windows.Media.Effects.DropShadowEffect
+            {
+                BlurRadius = 14,
+                ShadowDepth = 1,
+                Direction = 270,
+                Opacity = 0.16,
+                Color = Colors.Black,
+            },
+
+            // Room for the shadow, which a transparent popup would otherwise cut.
+            Margin = new Thickness(6),
+            Child = items,
+        };
+        Stylus.SetIsPressAndHoldEnabled(frame, false);
+        frame.PreviewStylusDown += (_, e) => PromoteStylusTap(frame, e);
+
+        _overflowPopup.Child = frame;
+        _overflowPopup.PlacementTarget = _overflowButton;
+        _overflowPopup.Placement = PlacementMode.Bottom;
+        _overflowPopup.AllowsTransparency = true;
+        _overflowPopup.StaysOpen = false;
+        _overflowPopup.PopupAnimation = PopupAnimation.Fade;
+        OverflowHost.Children.Add(_overflowPopup);
+    }
+
+    private Button OverflowItem(SelectionCommand command, string name, string shortcut)
+    {
+        var content = new DockPanel { LastChildFill = false };
+        var hint = new TextBlock
+        {
+            Text = shortcut,
+            FontFamily = new FontFamily("Segoe UI"),
+            FontSize = 12,
+            Margin = new Thickness(24, 0, 0, 0),
+            VerticalAlignment = VerticalAlignment.Center,
+            Foreground = (Brush)FindResource("ToolbarHintBrush"),
+        };
+        DockPanel.SetDock(hint, Dock.Right);
+        content.Children.Add(hint);
+        content.Children.Add(new TextBlock
+        {
+            Text = name,
+            FontFamily = new FontFamily("Segoe UI"),
+            FontSize = 13,
+            VerticalAlignment = VerticalAlignment.Center,
+        });
+
+        var item = new Button
+        {
+            Style = (Style)FindResource("PropertyBarMenuItem"),
+            Content = content,
+        };
+        item.Click += (_, _) =>
+        {
+            _overflowPopup.IsOpen = false;
+            CommandChosen?.Invoke(command);
+        };
+        return item;
+    }
+
+    /// <summary>
+    /// The menu, in its order: what the selection is, then where it sits. Each
+    /// item says the key that does the same thing, where there is one.
+    /// </summary>
+    private static IReadOnlyList<(SelectionCommand Command, string Name, string Shortcut)> OverflowItems { get; } =
+    [
+        (SelectionCommand.Delete, "Delete", "Delete"),
+        (SelectionCommand.Copy, "Copy", "Ctrl+C"),
+        (SelectionCommand.Duplicate, "Duplicate", "Ctrl+D"),
+        (SelectionCommand.BringToFront, "Bring to front", string.Empty),
+        (SelectionCommand.BringForward, "Bring forward", string.Empty),
+        (SelectionCommand.SendBackward, "Send backward", string.Empty),
+        (SelectionCommand.SendToBack, "Send to back", string.Empty),
+    ];
 
     private PropertyBarRow BuildColorRow()
     {

@@ -3425,6 +3425,200 @@ Assert(
         "A connector default that is not one of the choices normalizes back to one that is.");
 }
 
+// A duplicate has to hold together on its own: the copies of the strokes follow
+// the copy of the shape, the copy of the arrow points at the copy rather than at
+// the original, and the end that pointed at something left behind lets go.
+{
+    var shapeId = Guid.NewGuid();
+    var outsideId = Guid.NewGuid();
+    var shape = ShapeBoardObject.Create(
+        shapeId,
+        0,
+        new RectD(0, 0, 100, 100),
+        ShapeKind.RoundedRectangle,
+        0xFF1F2937,
+        null,
+        4);
+    var outside = ShapeBoardObject.Create(
+        outsideId,
+        3,
+        new RectD(300, 0, 100, 100),
+        ShapeKind.Ellipse,
+        0xFF1F2937,
+        null,
+        4);
+    var firstStroke = InkStrokeObject.Create(
+        [new InkPoint(new PointD(10, 10), 0.5f, 0), new InkPoint(new PointD(40, 40), 0.5f, 1)],
+        PenStyle.Default,
+        1,
+        containerId: shapeId);
+    var secondStroke = InkStrokeObject.Create(
+        [new InkPoint(new PointD(50, 50), 0.5f, 0), new InkPoint(new PointD(80, 80), 0.5f, 1)],
+        PenStyle.Default,
+        2,
+        containerId: shapeId);
+    var connector = ConnectorBoardObject.Create(
+        Guid.NewGuid(),
+        4,
+        ConnectorKind.Arrow,
+        new PointD(100, 50),
+        new PointD(300, 50),
+        0xFFE64B3D,
+        4,
+        new ConnectorAnchor(shapeId, 1, 0.5),
+        new ConnectorAnchor(outsideId, 0, 0.5));
+
+    IReadOnlyList<BoardObject> copies = SelectionDuplicator.Duplicate(
+        [shape, connector],
+        [firstStroke, secondStroke],
+        [connector],
+        new PointD(24, 24),
+        5);
+    Assert(copies.Count == 4, "A connector given twice is copied once.");
+
+    var copiedShape = (ShapeBoardObject)copies[0];
+    var copiedConnector = (ConnectorBoardObject)copies[1];
+    InkStrokeObject[] copiedStrokes = copies.OfType<InkStrokeObject>().ToArray();
+    Assert(
+        copies.Select(item => item.Id).Distinct().Count() == 4,
+        "Every copy has an id of its own.");
+    Assert(
+        copies.All(item => item.Id != shapeId && item.Id != connector.Id &&
+                           item.Id != firstStroke.Id && item.Id != secondStroke.Id),
+        "No copy keeps the id of what it was copied from.");
+    Assert(
+        copiedStrokes.Length == 2 && copiedStrokes.All(stroke => stroke.ContainerId == copiedShape.Id),
+        "A stroke linked to a duplicated container follows the copy.");
+    Assert(
+        copiedConnector.StartAnchor?.ObjectId == copiedShape.Id,
+        "An end bound to a duplicated object is bound to the copy.");
+    Assert(
+        copiedConnector.EndAnchor is null,
+        "An end bound to something left behind lets go rather than tying the copy to it.");
+    Assert(
+        copiedConnector.Start == new PointD(124, 74) && copiedConnector.End == new PointD(324, 74),
+        "Both ends of the copy move by the offset, including the one that let go.");
+    Assert(
+        copiedShape.Bounds == new RectD(24, 24, 100, 100),
+        "The copy is offset from the original by what was asked for.");
+    Assert(
+        copiedStrokes
+            .OrderBy(stroke => stroke.ZIndex)
+            .Zip([firstStroke, secondStroke])
+            .All(pair => pair.First.Points
+                .Zip(pair.Second.Points)
+                .All(point =>
+                    Math.Abs(point.First.Position.X - point.Second.Position.X - 24) < 0.000001 &&
+                    Math.Abs(point.First.Position.Y - point.Second.Position.Y - 24) < 0.000001)),
+        "A duplicated stroke is the same stroke, moved.");
+
+    // The copies sit above the board, keeping the order they had on it: the
+    // shape under its ink, and the arrow over both.
+    Assert(
+        copiedShape.ZIndex == 5 &&
+        copiedStrokes.Select(stroke => stroke.ZIndex).OrderBy(depth => depth).SequenceEqual([6, 7]) &&
+        copiedConnector.ZIndex == 8,
+        "The copies take consecutive depths from the one given, in the order the originals were in.");
+
+    // One object on its own, and a stroke on its own, take the same path.
+    Assert(
+        SelectionDuplicator.Duplicate([firstStroke], [], [], new PointD(24, 24), 9) is
+            [InkStrokeObject { ContainerId: null, ZIndex: 9 }],
+        "A stroke duplicated without its container is a stroke of its own rather than one tied to what was not copied.");
+    Assert(
+        SelectionDuplicator.Duplicate([outside], [], [], new PointD(24, 24), 9) is
+            [ShapeBoardObject { ZIndex: 9 } only] &&
+        only.Bounds == new RectD(324, 24, 100, 100),
+        "One object duplicates as one object.");
+
+    // A turned shape is copied as it stands: the angle and the box it was drawn
+    // in come with it, so the copy is the same shape rather than an upright one
+    // in the box the turn happens to take up.
+    var turned = ShapeBoardObject.Create(
+        Guid.NewGuid(),
+        3,
+        new RectD(300, 0, 100, 40),
+        ShapeKind.BlockArrow,
+        0xFF1F2937,
+        null,
+        4,
+        45);
+    Assert(
+        SelectionDuplicator.Duplicate([turned], [], [], new PointD(24, 24), 9) is
+            [ShapeBoardObject copiedTurn] &&
+        copiedTurn.AngleDegrees == turned.AngleDegrees &&
+        copiedTurn.LayoutWidth == turned.LayoutWidth &&
+        copiedTurn.LayoutHeight == turned.LayoutHeight &&
+        copiedTurn.Bounds == turned.Bounds.Translate(new PointD(24, 24)),
+        "A turned shape keeps its angle and the box it was drawn in.");
+}
+
+// Bring forward and Send backward move the block past exactly one object, and
+// offer themselves only while there is one to pass.
+{
+    var zDocument = new BoardDocument();
+    ShapeBoardObject[] stack = Enumerable.Range(0, 4)
+        .Select(index => ShapeBoardObject.Create(
+            Guid.NewGuid(),
+            index,
+            new RectD(index * 10, 0, 40, 40),
+            ShapeKind.RoundedRectangle,
+            0xFF1F2937,
+            null,
+            4))
+        .ToArray();
+    foreach (ShapeBoardObject item in stack)
+    {
+        zDocument.AddObject(item);
+    }
+
+    Guid[] block = [stack[1].Id, stack[2].Id];
+    Assert(
+        !ZOrder.IsAtFront(zDocument.Objects, block) && !ZOrder.IsAtBack(zDocument.Objects, block),
+        "A block with something above and below it can move either way.");
+    Assert(
+        ZOrder.IsAtFront(zDocument.Objects, [stack[2].Id, stack[3].Id]),
+        "A block holding the topmost object is at the front.");
+    Assert(
+        ZOrder.IsAtBack(zDocument.Objects, [stack[0].Id, stack[1].Id]),
+        "A block holding the bottom object is at the back.");
+    Assert(
+        ZOrder.Step(zDocument.Objects, [stack[2].Id, stack[3].Id], forward: true).Before.Count == 0,
+        "A block at the front has nothing left to pass.");
+    Assert(
+        ZOrder.Step(zDocument.Objects, [stack[0].Id, stack[1].Id], forward: false).Before.Count == 0,
+        "A block at the back has nothing left to pass.");
+    Assert(
+        ZOrder.IsAtFront(zDocument.Objects, []) && ZOrder.IsAtBack(zDocument.Objects, []),
+        "Nothing selected is at both ends at once, which is what disables all four commands.");
+
+    (IReadOnlyList<BoardObject> zBefore, IReadOnlyList<BoardObject> zAfter) =
+        ZOrder.Step(zDocument.Objects, block, forward: true);
+    var stepForward = new ReplaceObjectsCommand(zBefore, zAfter);
+    stepForward.Execute(zDocument);
+    Assert(
+        zDocument.Objects.Select(item => item.Id).SequenceEqual(
+            [stack[0].Id, stack[3].Id, stack[1].Id, stack[2].Id]),
+        "Bring forward takes the block past the one object above it, keeping its own order.");
+    Assert(
+        zDocument.Objects.Select(item => item.ZIndex).SequenceEqual([0, 1, 2, 3]),
+        "The depths of the span are dealt out again rather than new ones invented.");
+
+    stepForward.Undo(zDocument);
+    Assert(
+        zDocument.Objects.Select(item => item.Id).SequenceEqual(stack.Select(item => item.Id)) &&
+        zDocument.Objects.Select(item => item.ZIndex).SequenceEqual([0, 1, 2, 3]),
+        "Undoing the step puts every depth back where it was.");
+
+    (IReadOnlyList<BoardObject> backBefore, IReadOnlyList<BoardObject> backAfter) =
+        ZOrder.Step(zDocument.Objects, block, forward: false);
+    new ReplaceObjectsCommand(backBefore, backAfter).Execute(zDocument);
+    Assert(
+        zDocument.Objects.Select(item => item.Id).SequenceEqual(
+            [stack[1].Id, stack[2].Id, stack[0].Id, stack[3].Id]),
+        "Send backward takes the block past the one object below it.");
+}
+
 Console.WriteLine("SQLBI.Whiteboard.Core smoke tests passed.");
 
 static InkStrokeObject ExportStroke(double x, double y, double width, double height, int zIndex, Guid? containerId = null) =>
