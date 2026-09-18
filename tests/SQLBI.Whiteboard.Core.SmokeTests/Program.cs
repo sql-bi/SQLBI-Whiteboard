@@ -3762,6 +3762,131 @@ Assert(
     AssertNear(50, onTurned.Point.Y, "The dot is drawn where the turn put it, on the Y.");
 }
 
+// The Insert palette: what is remembered about it, and where it starts when
+// nobody has moved it yet.
+{
+    var paletteSettings = AppSettingsSerializer.Parse(AppSettingsSerializer.Format(new AppSettings
+    {
+        InsertPaletteShown = true,
+        InsertPaletteX = 0.25,
+        InsertPaletteY = 0.75,
+    }));
+    Assert(
+        paletteSettings is { InsertPaletteShown: true, InsertPaletteX: 0.25, InsertPaletteY: 0.75 },
+        "The Insert palette's state and place survive a round trip.");
+    Assert(
+        AppSettingsSerializer.Parse("{ }") is
+        {
+            InsertPaletteShown: false,
+            InsertPaletteX: null,
+            InsertPaletteY: null,
+        },
+        "A file that says nothing about the Insert palette leaves it off and unplaced.");
+    Assert(
+        AppSettingsSerializer.Parse("{ \"insertPaletteShown\": true }") is
+        {
+            InsertPaletteShown: true,
+            InsertPaletteX: null,
+            InsertPaletteY: null,
+        },
+        "A palette that is shown but never moved keeps no position, so the default still applies.");
+    Assert(
+        AppSettingsSerializer.Parse("{ \"insertPaletteX\": -0.5, \"insertPaletteY\": 4 }") is
+        {
+            InsertPaletteX: 0,
+            InsertPaletteY: 1,
+        },
+        "A position outside the window is pulled back to the edge rather than dropped.");
+    Assert(
+        AppSettingsSerializer.Parse(AppSettingsSerializer.Format(new AppSettings
+        {
+            InsertPaletteX = double.NaN,
+            InsertPaletteY = double.PositiveInfinity,
+        })) is { InsertPaletteX: null, InsertPaletteY: null },
+        "A position that is not a number is no position at all.");
+
+    // A 1000 x 800 window with a 120 x 200 toolbar 16 px in from the corner each
+    // placement names, and a 340 x 92 palette: the two rows of Insert buttons.
+    const double windowWidth = 1000;
+    const double windowHeight = 800;
+    const double paletteWidth = 340;
+    const double paletteHeight = 92;
+
+    var paletteAt = InsertPalettePlacement.Default(
+        ToolbarPlacement.TopRight,
+        windowWidth,
+        windowHeight,
+        new RectD(864, 48, 120, 200),
+        paletteWidth,
+        paletteHeight);
+    AssertNear(644, paletteAt.X, "Top right lines the palette up with the toolbar's right edge.");
+    AssertNear(260, paletteAt.Y, "Top right puts the palette under the toolbar.");
+
+    paletteAt = InsertPalettePlacement.Default(
+        ToolbarPlacement.TopLeft,
+        windowWidth,
+        windowHeight,
+        new RectD(16, 48, 120, 200),
+        paletteWidth,
+        paletteHeight);
+    AssertNear(16, paletteAt.X, "Top left lines the palette up with the toolbar's left edge.");
+    AssertNear(260, paletteAt.Y, "Top left puts the palette under the toolbar.");
+
+    paletteAt = InsertPalettePlacement.Default(
+        ToolbarPlacement.BottomRight,
+        windowWidth,
+        windowHeight,
+        new RectD(864, 584, 120, 200),
+        paletteWidth,
+        paletteHeight);
+    AssertNear(644, paletteAt.X, "Bottom right keeps the palette on the toolbar's side.");
+    AssertNear(480, paletteAt.Y, "Below a toolbar at the bottom is off the board, so the palette goes above it.");
+
+    paletteAt = InsertPalettePlacement.Default(
+        ToolbarPlacement.BottomLeft,
+        windowWidth,
+        windowHeight,
+        new RectD(16, 584, 120, 200),
+        paletteWidth,
+        paletteHeight);
+    AssertNear(16, paletteAt.X, "Bottom left keeps the palette on the toolbar's side.");
+    AssertNear(480, paletteAt.Y, "Bottom left puts the palette above the toolbar.");
+
+    paletteAt = InsertPalettePlacement.Default(
+        ToolbarPlacement.BottomCenter,
+        windowWidth,
+        windowHeight,
+        new RectD(440, 584, 120, 200),
+        paletteWidth,
+        paletteHeight);
+    AssertNear(330, paletteAt.X, "Bottom center centres the palette on the toolbar.");
+    AssertNear(480, paletteAt.Y, "Bottom center puts the palette above the toolbar.");
+
+    Assert(
+        InsertPalettePlacement.Clamp(
+            new PointD(2000, -40),
+            windowWidth,
+            windowHeight,
+            paletteWidth,
+            paletteHeight) == new PointD(660, 0),
+        "A drag past the edge stops with the whole palette still in the window.");
+    Assert(
+        InsertPalettePlacement.Clamp(new PointD(30, 20), windowWidth, windowHeight, 1200, 900) ==
+        new PointD(0, 0),
+        "A palette larger than the window comes to rest at the top left, where its grip is.");
+    Assert(
+        InsertPalettePlacement.ToFraction(new PointD(250, 400), windowWidth, windowHeight) ==
+        new PointD(0.25, 0.5),
+        "A place in the window is kept as the fraction of it that it is.");
+    Assert(
+        InsertPalettePlacement.ToFraction(new PointD(250, 400), 0, 0) == new PointD(0, 0),
+        "A window with no size yet gives the top left rather than a division by nothing.");
+    Assert(
+        InsertPalettePlacement.FromFraction(new PointD(0.25, 0.5), windowWidth, windowHeight) ==
+        new PointD(250, 400),
+        "The fraction reads back as the same place in a window of the same size.");
+}
+
 Console.WriteLine("SQLBI.Whiteboard.Core smoke tests passed.");
 
 static InkStrokeObject ExportStroke(double x, double y, double width, double height, int zIndex, Guid? containerId = null) =>
