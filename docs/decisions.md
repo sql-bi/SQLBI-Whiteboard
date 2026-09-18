@@ -860,8 +860,73 @@ paths written twice.
   the screen. So `BoardRasterizer` and `BoardPreviewRenderer` turn it off as they already
   turn frames off.
 
-Left out of 1.6.0 on purpose: text inside a shape, rotating a shape, elbow connectors,
-arrowheads at both ends, per-board grid settings, and grouping as a saved object.
+Left out of the first cut on purpose: text inside a shape, rotating a shape, elbow
+connectors, arrowheads at both ends, per-board grid settings, and grouping as a saved
+object. Decision 32 says which of those first use brought back.
+
+---
+
+## 32. A mode belongs with its tool, and a shape carries its own text
+
+**Implemented** in 1.6.0, after the maintainer used the first Dev build of it. The full
+list, the four palette designs, and the order the work ran in are in
+[design-objects.md](design-objects.md), under "Toward a solid 1.6.0".
+
+The first cut was right about what to build and wrong about where to put it. Everything
+below came from drawing one diagram with it, not from a review of the code.
+
+- **One shape, then Select.** **After inserting an object** now defaults to Return to
+  Select, and the new object arrives selected. Decision 3 had the tool stay, which is right
+  for a row of shapes and wrong for the common case: the tap that would have moved the shape
+  just drawn started another one instead. The preference is still there for whoever wants
+  the old behaviour. The Insert row also stopped being a sticky tab, so it closes on the
+  first press on the canvas rather than lying over the board while the shape is drawn.
+
+- **Lasso moved from the Edit row onto the Select button.** A mode that changes what a tool
+  does belongs on that tool, not in a command strip two rows away, where nobody looked for
+  it. Holding Select for 600 ms — the Windows long press — switches Rectangle and Lasso, and
+  a tap on Select while Select is already in hand does the same, so a mouse reaches it
+  without waiting. The button's glyph says which is armed. The alternative was a chevron on
+  Select, which is what **Insert and Lasso on the toolbar** already offers; it stays a
+  preference, because decision 2 says the compact toolbar does not grow by default.
+
+- **A connector binds anywhere on a shape.** Aiming at one of eight points within 16 pixels
+  was a game. The whole of a target now takes the end, the eight dots appear while the
+  pointer is over it, the one that would be taken grows, and the preview snaps to it. Ctrl
+  at release still means the nearest point anywhere on the border, as decision 31 says.
+  **Anchors → Auto** then lets a bound end move to the side facing the other end, so an
+  arrow between two shapes stays sensible as they are rearranged; Fixed stays the default
+  for an end dropped on a point on purpose. The deck carries the same tie, so a shape
+  dragged in PowerPoint keeps its straight arrows.
+
+- **A shape carries its own text, and turns freely.** Both were out of scope, and both are
+  the first thing a diagram asks for: a box with a word in it, pointing the way the arrow
+  goes. A shape takes the seven text properties a label already had, laid out inside its
+  outline, opened with F2, the bar's Text button, or simply by typing, as PowerPoint does.
+  An angle is any angle, set by a handle above the object with Shift snapping to 15°; the
+  45° buttons stay and now land on the nearest multiple, so an object set by hand comes back
+  onto the grid rather than drifting off it for good.
+
+- **The selection carries its own commands.** A **…** at the end of the property bar holds
+  Delete, Copy, Duplicate (Ctrl+D), and four depth commands rather than two, and the bar now
+  appears for a picture, a LiveView, or a frame, which had no property row and so had no bar
+  at all. Bring forward and Send backward join the View row as W and K. No Lock, no Alt
+  text, no Comment: they are PowerPoint's answers to a slide, not a board's.
+
+- **The Insert row pins into a palette.** Design A of four. B was the toolbar Insert button,
+  already built and already ruled out as a default by decision 2; C was a bubble beside the
+  last object, which follows the work and covers it; D was a tear-off gesture nobody would
+  find. A pin at the end of the row is visible, reversible, and leaves the toolbar alone,
+  and the palette reuses the same button list, so a shape button exists in one place.
+  Where it is left is kept as a fraction of the window, so another size puts it back.
+
+- **Ctrl+A selects everything an area could take; Ctrl+Shift+A the ink alone.** The second
+  shortcut was nearly Ctrl+S, which reads as "strokes" and is Save in every Windows
+  application, and in this one since 1.0. A Save that instead selected ink would cost
+  somebody their work, so the ink went behind Shift and Ctrl+S was left where it is.
+
+Still left out: text inside a connector, elbow connectors, arrowheads at both ends, Lock,
+handles on a label or a picture, per-board grid settings, and grouping as a saved object.
 
 ---
 

@@ -17,22 +17,28 @@ broke. The heading is parsed by `scripts/release-notes.ps1`, so keep its shape; 
 under it is ordinary Markdown, and the renderer handles paragraphs, lists, links, `code`
 and **bold**.
 
-## 1.6.0 - 17 September 2026
+## 1.6.0 - 18 September 2026
 
-### Shapes, connectors, and text on the board
+### Shapes and text on the board
 The new **Insert** tab draws eight shapes by dragging, with an outline, a fill, and a
-thickness; three connectors that bind to a shape's corner or side and follow it when it moves;
-and text typed on the board, in nine fonts and any pen color, with bold, italic, underline,
-and a turn in 45° steps. All of it is saved, undone, and exported to a deck or a PDF as
-objects rather than as a picture. **Preferences → Toolbar** can add **Insert** to the floating
-toolbar, and says whether a tool stays for the next one. A board holding any of these objects
-does not open in 1.5.x.
+thickness, and text labels by clicking. A shape carries its own words — type into it, or
+press **F2** — in nine fonts and any text color, and a handle turns a shape or a label to any
+angle. The tool hands back to **Select** after one object, and the pin at the end of the row
+turns it into a palette you can move.
+
+### Arrows that follow the shape
+Three connectors bind wherever an end is dropped on a shape and follow it as it moves, and
+**Anchors → Auto** keeps a bound end on the side facing the other end. Drag one of the four
+arrows on a selected shape to draw one without leaving Select. All of it is saved, undone, and
+exported as objects: a deck keeps the straight arrows attached to their shapes in PowerPoint,
+and a PDF page stays vector. A board holding any of these objects does not open in 1.5.x.
 
 ### Select several things at once
-Drag with **Select** on empty canvas for a rectangle, or turn on **Lasso** on the Edit row for
-a freehand outline. Everything the area takes, ink included, moves, resizes, recolors, and
-deletes as one. **Preferences → Selection** says whether an object has to be wholly inside the
-area, and whether the selection grows to what it touches.
+Drag with **Select** on empty canvas for a rectangle, or hold **Select** for a freehand lasso;
+**Ctrl+A** takes everything and **Ctrl+Shift+A** the ink alone. The **…** on the selection
+offers Delete, Copy, Duplicate (**Ctrl+D**), and the four depth commands.
+**Preferences → Selection** says whether an object has to be wholly inside the area, and
+whether the selection grows to what it touches.
 
 ### A background grid that shows the zoom
 **Preferences → Board → Background grid** draws faint **Lines** or **Dots** behind the board,

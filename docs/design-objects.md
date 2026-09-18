@@ -416,9 +416,9 @@ container — and updates `TODO.md`.
 
 ## Toward a solid 1.6.0: what first use showed, and the order to fix it
 
-Status: approved on 18 September 2026 after the maintainer tried the Dev build; not
-started. 1.6.0 stays a Dev pre-release until everything in priorities 1 to 3 is in, and
-priority 4 as far as it goes; there is no date. The version does not change.
+Status: shipped in 1.6.0, on 18 September 2026. Approved earlier the same day after the
+maintainer tried the Dev build, and everything in priorities 1 to 4 is in. The version did
+not change.
 
 What first use showed, and the cause of each in the code as it stands:
 
