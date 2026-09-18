@@ -1044,7 +1044,10 @@ public readonly record struct ConnectorAnchor(Guid ObjectId, double U, double V)
 /// It is not a container: nothing links to a connector, and a connector inside a
 /// shape is not part of it. What is stored is where the two ends are, so a board
 /// opens with its connectors where they were drawn without anything having to
-/// be worked out from the objects around them.
+/// be worked out from the objects around them. With AutoRoute a bound end is
+/// moved to the side facing the other end whenever either object moves, which is
+/// what keeps an arrow between two shapes sensible as they are rearranged; Fixed
+/// - the default - leaves it on the point it was dropped on.
 /// </summary>
 public sealed record ConnectorBoardObject(
     Guid Id,
@@ -1056,7 +1059,8 @@ public sealed record ConnectorBoardObject(
     uint Argb,
     double Thickness,
     ConnectorAnchor? StartAnchor = null,
-    ConnectorAnchor? EndAnchor = null) : BoardObject(Id, ZIndex, Bounds)
+    ConnectorAnchor? EndAnchor = null,
+    bool AutoRoute = false) : BoardObject(Id, ZIndex, Bounds)
 {
     /// <summary>
     /// What a connector is drawn with when nothing says otherwise, and what a
@@ -1089,7 +1093,8 @@ public sealed record ConnectorBoardObject(
         uint argb,
         double thickness,
         ConnectorAnchor? startAnchor = null,
-        ConnectorAnchor? endAnchor = null) => new(
+        ConnectorAnchor? endAnchor = null,
+        bool autoRoute = false) => new(
         id,
         zIndex,
         ConnectorGeometry.Bounds(kind, start, end, thickness, startAnchor, endAnchor),
@@ -1099,13 +1104,21 @@ public sealed record ConnectorBoardObject(
         argb,
         thickness,
         startAnchor,
-        endAnchor);
+        endAnchor,
+        autoRoute);
 
-    public IReadOnlyList<PointD> Polyline() =>
-        ConnectorGeometry.Polyline(Kind, Start, End, StartAnchor, EndAnchor);
+    /// <summary>
+    /// The path the connector runs along. The frames are the ones the ends are
+    /// bound to, where the caller has them: a curve bound to a turned shape
+    /// leaves the side as that side now faces, and without them it leaves along
+    /// the unturned box, which is what a turn puts right again on the next
+    /// <see cref="Follow"/>.
+    /// </summary>
+    public IReadOnlyList<PointD> Polyline(AnchorFrame? startFrame = null, AnchorFrame? endFrame = null) =>
+        ConnectorGeometry.Polyline(Kind, Start, End, StartAnchor, EndAnchor, startFrame, endFrame);
 
-    public IReadOnlyList<PointD>? Arrowhead() =>
-        ConnectorGeometry.Arrowhead(Kind, Polyline(), Thickness);
+    public IReadOnlyList<PointD>? Arrowhead(AnchorFrame? startFrame = null, AnchorFrame? endFrame = null) =>
+        ConnectorGeometry.Arrowhead(Kind, Polyline(startFrame, endFrame), Thickness);
 
     /// <summary>
     /// The same connector between two other points, with its box worked out
@@ -1115,9 +1128,19 @@ public sealed record ConnectorBoardObject(
         PointD start,
         PointD end,
         ConnectorAnchor? startAnchor,
-        ConnectorAnchor? endAnchor) => this with
+        ConnectorAnchor? endAnchor,
+        AnchorFrame? startFrame = null,
+        AnchorFrame? endFrame = null) => this with
         {
-            Bounds = ConnectorGeometry.Bounds(Kind, start, end, Thickness, startAnchor, endAnchor),
+            Bounds = ConnectorGeometry.Bounds(
+                Kind,
+                start,
+                end,
+                Thickness,
+                startAnchor,
+                endAnchor,
+                startFrame,
+                endFrame),
             Start = start,
             End = end,
             StartAnchor = startAnchor,
@@ -1147,7 +1170,47 @@ public sealed record ConnectorBoardObject(
             : End;
         return start == Start && end == End
             ? this
-            : WithEndpoints(start, end, StartAnchor, EndAnchor);
+            : WithEndpoints(
+                start,
+                end,
+                StartAnchor,
+                EndAnchor,
+                StartAnchor?.ObjectId == attached.Id ? frame : null,
+                EndAnchor?.ObjectId == attached.Id ? frame : null);
+    }
+
+    /// <summary>
+    /// The anchors chosen again for the sides that now face each other, and the
+    /// bound ends moved onto them. A Fixed connector - the default - is handed
+    /// back as it is; only one that routes itself is asked where its ends
+    /// belong. Each end is aimed at the other object's centre rather than at the
+    /// other endpoint when both are bound, so the pair settles on one answer
+    /// whichever end is worked out first.
+    /// </summary>
+    public ConnectorBoardObject Reroute(AnchorFrame? startFrame, AnchorFrame? endFrame)
+    {
+        if (!AutoRoute)
+        {
+            return this;
+        }
+
+        PointD startTowards = endFrame is { } towardsEnd ? towardsEnd.Layout.Center : End;
+        PointD endTowards = startFrame is { } towardsStart ? towardsStart.Layout.Center : Start;
+        ConnectorAnchor? start = StartAnchor is { } bothStart && startFrame is { } atStart
+            ? ConnectorGeometry.AutoAnchor(bothStart.ObjectId, atStart, startTowards)
+            : StartAnchor;
+        ConnectorAnchor? end = EndAnchor is { } bothEnd && endFrame is { } atEnd
+            ? ConnectorGeometry.AutoAnchor(bothEnd.ObjectId, atEnd, endTowards)
+            : EndAnchor;
+        PointD startPoint = start is { } movedStart && startFrame is { } startBox
+            ? ConnectorGeometry.PointOn(startBox, movedStart)
+            : Start;
+        PointD endPoint = end is { } movedEnd && endFrame is { } endBox
+            ? ConnectorGeometry.PointOn(endBox, movedEnd)
+            : End;
+        return start == StartAnchor && end == EndAnchor && startPoint == Start && endPoint == End
+            ? this
+            : WithEndpoints(startPoint, endPoint, start, end, startFrame, endFrame);
     }
 
     /// <summary>
@@ -1183,17 +1246,38 @@ public sealed record ConnectorBoardObject(
 
     public override BoardObject WithZIndex(int zIndex) => this with { ZIndex = zIndex };
 
-    public override bool HitTest(PointD worldPoint, double zoom) =>
-        ConnectorGeometry.IsOnPath(Polyline(), worldPoint, HitBand / Math.Max(zoom, 0.000001));
+    public override bool HitTest(PointD worldPoint, double zoom) => HitTest(worldPoint, zoom, null, null);
+
+    /// <summary>
+    /// The same tap against the curve as it is drawn. The board asks with the
+    /// frames its ends are bound to, so what the eye sees and what the hand
+    /// takes are one line rather than two.
+    /// </summary>
+    public bool HitTest(PointD worldPoint, double zoom, AnchorFrame? startFrame, AnchorFrame? endFrame) =>
+        ConnectorGeometry.IsOnPath(
+            Polyline(startFrame, endFrame),
+            worldPoint,
+            HitBand / Math.Max(zoom, 0.000001));
 
     /// <summary>
     /// The path answers the area, as a stroke's points do: the box of a curve
     /// or a diagonal is mostly empty.
     /// </summary>
-    public override bool IsTakenBy(SelectionArea area, AreaSelection rule)
+    public override bool IsTakenBy(SelectionArea area, AreaSelection rule) =>
+        IsTakenBy(area, rule, null, null);
+
+    /// <summary>
+    /// The same question against the curve as it is drawn, for the same reason
+    /// the tap is.
+    /// </summary>
+    public bool IsTakenBy(
+        SelectionArea area,
+        AreaSelection rule,
+        AnchorFrame? startFrame,
+        AnchorFrame? endFrame)
     {
         ArgumentNullException.ThrowIfNull(area);
-        IReadOnlyList<PointD> path = Polyline();
+        IReadOnlyList<PointD> path = Polyline(startFrame, endFrame);
         if (rule == AreaSelection.FullyInside)
         {
             return path.All(area.Contains);

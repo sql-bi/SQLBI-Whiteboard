@@ -1,3 +1,5 @@
+using System.IO;
+using System.IO.Compression;
 using SQLBI.Whiteboard.Core.Export;
 using SQLBI.Whiteboard.Core.Geometry;
 using SQLBI.Whiteboard.Core.Model;
@@ -30,6 +32,7 @@ internal static class DesignExportSmokeTests
             {
                 CheckTheElements();
                 CheckWhatIsLeftForThePicture();
+                CheckTheConnectionSites();
             }
             catch (Exception exception)
             {
@@ -181,6 +184,112 @@ internal static class DesignExportSmokeTests
             Math.Abs(upright.Bounds.Height - text.Bounds.Height) < 0.01,
             "The same label upright is the same rectangle, without the angle.");
     }
+
+    /// <summary>
+    /// What a deck's arrows hold on to. A straight connector between two shapes
+    /// names the shape and the numbered site on it at each end, so PowerPoint
+    /// re-routes the arrow when either shape is dragged; a curve is a freeform
+    /// with no sites, and a point the Ctrl rule found between two of them is no
+    /// site either, so both are left exactly where the board drew them.
+    /// </summary>
+    private static void CheckTheConnectionSites()
+    {
+        var document = new BoardDocument();
+        ShapeBoardObject from = Box(document, new RectD(0, 0, 160, 120));
+        document.AddObject(from);
+        ShapeBoardObject to = Box(document, new RectD(400, 300, 160, 120));
+        document.AddObject(to);
+
+        // Bound top to left: the sites the rectangle family numbers 0 and 1.
+        document.AddObject(ConnectorBoardObject.Create(
+            Guid.NewGuid(),
+            document.NextZIndex,
+            ConnectorKind.Arrow,
+            new PointD(80, 0),
+            new PointD(400, 360),
+            Outline,
+            ConnectorBoardObject.DefaultThickness,
+            new ConnectorAnchor(from.Id, 0.5, 0),
+            new ConnectorAnchor(to.Id, 0, 0.5)));
+
+        // A curve bound just as firmly, and a straight arrow whose end took a
+        // point anywhere along the border, as Ctrl gives it.
+        document.AddObject(ConnectorBoardObject.Create(
+            Guid.NewGuid(),
+            document.NextZIndex,
+            ConnectorKind.CurvedArrow,
+            new PointD(160, 60),
+            new PointD(400, 360),
+            Outline,
+            ConnectorBoardObject.DefaultThickness,
+            new ConnectorAnchor(from.Id, 1, 0.5),
+            new ConnectorAnchor(to.Id, 0, 0.5)));
+        document.AddObject(ConnectorBoardObject.Create(
+            Guid.NewGuid(),
+            document.NextZIndex,
+            ConnectorKind.Arrow,
+            new PointD(112, 0),
+            new PointD(700, 100),
+            Outline,
+            ConnectorBoardObject.DefaultThickness,
+            new ConnectorAnchor(from.Id, 0.7, 0)));
+
+        IReadOnlyList<SlideElement> elements = Build(document);
+        var slideXml = SlideXml(elements);
+        Assert(
+            slideXml.Contains($"<a:stCxn id=\"{SlideId(elements, from.Id)}\" idx=\"0\" />", StringComparison.Ordinal),
+            "The arrow's start names the shape it leaves and the site at the middle of its top side.");
+        Assert(
+            slideXml.Contains($"<a:endCxn id=\"{SlideId(elements, to.Id)}\" idx=\"1\" />", StringComparison.Ordinal),
+            "And its end names the shape it arrives at and the site at the middle of that shape's left side.");
+        Assert(
+            slideXml.Split("<a:stCxn").Length - 1 == 1 &&
+            slideXml.Split("<a:endCxn").Length - 1 == 1,
+            "The curve and the border point say nothing: neither has a site to name, so neither is re-routed.");
+    }
+
+    /// <summary>
+    /// The one slide these elements make, as the XML a deck carries. Nobody here
+    /// can open PowerPoint, so the package is read back as a ZIP.
+    /// </summary>
+    private static string SlideXml(IReadOnlyList<SlideElement> elements)
+    {
+        using var deck = new MemoryStream();
+        PptxDeckWriter.Write(
+            deck,
+            [new ExportPage("Connections", null, [], PixelWidth, PixelHeight, elements)]);
+        deck.Position = 0;
+        using var package = new ZipArchive(deck, ZipArchiveMode.Read);
+        using var reader = new StreamReader(package.GetEntry("ppt/slides/slide1.xml")!.Open());
+        return reader.ReadToEnd();
+    }
+
+    /// <summary>
+    /// The id a writer gives the element that came from this board object: the
+    /// ids run from the first element on the slide, in the order they are listed.
+    /// </summary>
+    private static uint SlideId(IReadOnlyList<SlideElement> elements, Guid objectId)
+    {
+        const uint FirstElementId = 3;
+        for (var index = 0; index < elements.Count; index++)
+        {
+            if (elements[index] is SlideShapeElement shape && shape.ObjectId == objectId)
+            {
+                return FirstElementId + (uint)index;
+            }
+        }
+
+        throw new InvalidOperationException($"No shape element came from {objectId}.");
+    }
+
+    private static ShapeBoardObject Box(BoardDocument document, RectD bounds) => ShapeBoardObject.Create(
+        Guid.NewGuid(),
+        document.NextZIndex,
+        bounds,
+        ShapeKind.RoundedRectangle,
+        Outline,
+        null,
+        ShapeBoardObject.DefaultThickness);
 
     /// <summary>
     /// The picture over the page is for what no element carries. A deck takes the

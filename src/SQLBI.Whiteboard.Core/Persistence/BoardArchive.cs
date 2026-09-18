@@ -295,7 +295,8 @@ public static class BoardArchive
             EndX: connector.End.X,
             EndY: connector.End.Y,
             StartAnchor: ToAnchorDto(connector.StartAnchor),
-            EndAnchor: ToAnchorDto(connector.EndAnchor)),
+            EndAnchor: ToAnchorDto(connector.EndAnchor),
+            AutoRoute: connector.AutoRoute),
         _ => throw new NotSupportedException($"Unsupported board object type {item.GetType().Name}."),
     };
 
@@ -345,7 +346,9 @@ public static class BoardArchive
     /// <summary>
     /// A connector as the file has it, with the box worked out again from the
     /// two ends rather than trusted: a normalized kind curves where the saved
-    /// box says it ran straight.
+    /// box says it ran straight. A file that says nothing about routing has a
+    /// connector that stays where it was drawn, which is what every file
+    /// written before Auto existed means.
     /// </summary>
     private static ConnectorBoardObject ConnectorFromDto(ObjectDto dto, IReadOnlySet<Guid> savedIds) =>
         ConnectorBoardObject.Create(
@@ -357,7 +360,8 @@ public static class BoardArchive
             dto.Argb ?? PenStyle.Default.Argb,
             NormalizeConnectorThickness(dto.Thickness),
             NormalizeAnchor(dto.StartAnchor, savedIds),
-            NormalizeAnchor(dto.EndAnchor, savedIds));
+            NormalizeAnchor(dto.EndAnchor, savedIds),
+            dto.AutoRoute ?? false);
 
     /// <summary>
     /// An arrow is what a connector whose kind this release does not know
@@ -523,7 +527,8 @@ public static class BoardArchive
         double? EndX = null,
         double? EndY = null,
         ConnectorAnchorDto? StartAnchor = null,
-        ConnectorAnchorDto? EndAnchor = null);
+        ConnectorAnchorDto? EndAnchor = null,
+        bool? AutoRoute = null);
 
     private sealed record ConnectorAnchorDto(Guid ObjectId, double U, double V);
 

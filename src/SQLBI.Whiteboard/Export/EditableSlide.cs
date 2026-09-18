@@ -67,7 +67,7 @@ internal static class EditableSlide
                 TextBoardObject text => TextElement(text, camera),
                 ShapeBoardObject shape => ShapeElement(shape, camera),
                 FreeTextBoardObject label => LabelElement(label, camera),
-                ConnectorBoardObject connector => ConnectorElement(connector, camera),
+                ConnectorBoardObject connector => ConnectorElement(document, connector, camera),
                 _ => null,
             };
             if (element is not null)
@@ -210,7 +210,8 @@ internal static class EditableSlide
         shape.Bold,
         shape.Italic,
         shape.Underline,
-        ShapeGeometry.TextMargin * camera.Zoom);
+        ShapeGeometry.TextMargin * camera.Zoom,
+        shape.Id);
 
     /// <summary>
     /// A label goes out as its layout rectangle before the turn, centred where
@@ -231,24 +232,33 @@ internal static class EditableSlide
             label.Argb,
             label.Bold,
             label.Italic,
-            label.Underline);
+            label.Underline,
+            label.Id);
     }
 
     /// <summary>
     /// A connector as where it runs and what draws it. A curve hands over the
     /// control points of its cubic as well, so the writers draw the curve the
-    /// board drew rather than a curve of their own.
+    /// board drew rather than a curve of their own, and it leaves each end along
+    /// the side as that side now faces. What each end is bound to travels too,
+    /// so a writer whose connectors re-route can tie the arrow to the shape.
     /// </summary>
-    private static SlideElement ConnectorElement(ConnectorBoardObject connector, Camera2D camera)
+    private static SlideElement ConnectorElement(
+        BoardDocument document,
+        ConnectorBoardObject connector,
+        Camera2D camera)
     {
         SlidePosition start = ToPage(connector.Start, camera);
         SlidePosition end = ToPage(connector.End, camera);
+        (AnchorFrame? startFrame, AnchorFrame? endFrame) = document.AnchorFrames(connector);
         (PointD First, PointD Second)? controls = ConnectorGeometry.Controls(
             connector.Kind,
             connector.Start,
             connector.End,
             connector.StartAnchor,
-            connector.EndAnchor);
+            connector.EndAnchor,
+            startFrame,
+            endFrame);
         SlidePosition? first = controls is { } curve ? ToPage(curve.First, camera) : null;
         SlidePosition? second = controls is { } bend ? ToPage(bend.Second, camera) : null;
 
@@ -273,8 +283,13 @@ internal static class EditableSlide
             first,
             second,
             connector.Argb,
-            connector.Thickness * camera.Zoom);
+            connector.Thickness * camera.Zoom,
+            Connection(connector.StartAnchor),
+            Connection(connector.EndAnchor));
     }
+
+    private static SlideConnection? Connection(ConnectorAnchor? anchor) =>
+        anchor is { } bound ? new SlideConnection(bound.ObjectId, bound.U, bound.V) : null;
 
     private static SlideRect Box(IReadOnlyList<SlidePosition> points)
     {

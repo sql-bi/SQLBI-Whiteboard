@@ -124,10 +124,20 @@ public static class PptxDeckWriter
         }
         else
         {
+            // Every element's id is known before any of them is written, because a
+            // connector names the shape it is tied to and that shape may be listed
+            // after it.
+            Dictionary<Guid, (uint Id, string Preset)> shapeIds = ShapeIds(page.Elements);
+
             // Elements are listed back to front, which is also the shape tree's z-order.
             for (var index = 0; index < page.Elements.Count; index++)
             {
-                shapes.Add(ElementShape(slidePart, page.Elements[index], PictureShapeId + (uint)index, fit));
+                shapes.Add(ElementShape(
+                    slidePart,
+                    page.Elements[index],
+                    PictureShapeId + (uint)index,
+                    fit,
+                    shapeIds));
             }
         }
 
@@ -146,7 +156,12 @@ public static class PptxDeckWriter
         return slidePart;
     }
 
-    private static OpenXmlElement ElementShape(SlidePart slidePart, SlideElement element, uint id, PageFit fit) => element switch
+    private static OpenXmlElement ElementShape(
+        SlidePart slidePart,
+        SlideElement element,
+        uint id,
+        PageFit fit,
+        IReadOnlyDictionary<Guid, (uint Id, string Preset)> shapeIds) => element switch
     {
         SlideImageElement image => PictureShape(
             id,
@@ -156,9 +171,62 @@ public static class PptxDeckWriter
         SlideTextElement text => TextBoxShape(id, text, fit),
         SlideShapeElement shape => GeometryShape(id, shape, fit),
         SlideLabelElement label => LabelShape(id, label, fit),
-        SlideConnectorElement connector => ConnectorShape(id, connector, fit),
+        SlideConnectorElement connector => ConnectorShape(id, connector, fit, shapeIds),
         _ => throw new ArgumentException($"Unsupported slide element {element.GetType().Name}.", nameof(element)),
     };
+
+    /// <summary>
+    /// The slide id and the preset of every element a connector could be tied
+    /// to, by the board object it came from. Only a shape and a label qualify:
+    /// both go out as p:sp with a preset geometry that carries connection sites,
+    /// while a picture or a text box has nothing an arrow can hold on to.
+    /// </summary>
+    private static Dictionary<Guid, (uint Id, string Preset)> ShapeIds(IReadOnlyList<SlideElement> elements)
+    {
+        var ids = new Dictionary<Guid, (uint Id, string Preset)>();
+        for (var index = 0; index < elements.Count; index++)
+        {
+            (Guid objectId, string preset) = elements[index] switch
+            {
+                SlideShapeElement shape => (shape.ObjectId, PresetName(Preset(shape))),
+                SlideLabelElement label => (label.ObjectId, PresetName(Rectangle())),
+                _ => (Guid.Empty, string.Empty),
+            };
+            if (objectId != Guid.Empty)
+            {
+                ids[objectId] = (PictureShapeId + (uint)index, preset);
+            }
+        }
+
+        return ids;
+    }
+
+    /// <summary>
+    /// The preset's own name, read back from the geometry that was built for
+    /// the shape rather than worked out a second time, so the sites a connector
+    /// names always belong to the geometry the shape actually went out with.
+    /// </summary>
+    private static string PresetName(A.PresetGeometry geometry) => geometry.Preset?.InnerText ?? string.Empty;
+
+    /// <summary>
+    /// What a connector's end holds on to, as PowerPoint wants it: the shape's
+    /// id and the number of the site on it. An end bound to nothing, to
+    /// something that did not go out as a shape, or to a point the preset has no
+    /// site for has no answer, and the arrow then stays where it was drawn.
+    /// </summary>
+    private static (uint Id, int Site)? ConnectionOn(
+        SlideConnection? connection,
+        IReadOnlyDictionary<Guid, (uint Id, string Preset)> shapeIds)
+    {
+        if (connection is not { } bound || !shapeIds.TryGetValue(bound.ObjectId, out (uint Id, string Preset) target))
+        {
+            return null;
+        }
+
+        return PresetConnectionSites.IndexFor(target.Preset, bound.U, bound.V) is { } site
+            ? (target.Id, site)
+            : null;
+    }
 
     private static string AddImage(SlidePart slidePart, byte[] data, PartTypeInfo type)
     {
@@ -415,7 +483,11 @@ public static class PptxDeckWriter
     /// tail end rather than a filled shape of ours, so it stays an arrow when the
     /// line is recoloured or reshaped.
     /// </summary>
-    private static OpenXmlElement ConnectorShape(uint id, SlideConnectorElement connector, PageFit fit)
+    private static OpenXmlElement ConnectorShape(
+        uint id,
+        SlideConnectorElement connector,
+        PageFit fit,
+        IReadOnlyDictionary<Guid, (uint Id, string Preset)> shapeIds)
     {
         var line = new A.Outline(new A.SolidFill(Rgb(connector.Argb)), new A.Round())
         {
@@ -457,10 +529,24 @@ public static class PptxDeckWriter
             frame.VerticalFlip = true;
         }
 
+        // The two ends hold on to the shapes they were drawn on, so dragging one
+        // of those in PowerPoint drags the arrow with it. An end with no site to
+        // name says nothing and stays where it is.
+        var connections = new P.NonVisualConnectorShapeDrawingProperties();
+        if (ConnectionOn(connector.StartConnection, shapeIds) is { } start)
+        {
+            connections.Append(new A.StartConnection { Id = start.Id, Index = (uint)start.Site });
+        }
+
+        if (ConnectionOn(connector.EndConnection, shapeIds) is { } finish)
+        {
+            connections.Append(new A.EndConnection { Id = finish.Id, Index = (uint)finish.Site });
+        }
+
         return new P.ConnectionShape(
             new P.NonVisualConnectionShapeProperties(
                 new P.NonVisualDrawingProperties { Id = id, Name = $"Connector {id}" },
-                new P.NonVisualConnectorShapeDrawingProperties(),
+                connections,
                 new P.ApplicationNonVisualDrawingProperties()),
             new P.ShapeProperties(
                 frame,

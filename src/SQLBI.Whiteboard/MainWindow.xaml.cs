@@ -276,6 +276,7 @@ public partial class MainWindow : Window
         SessionBar.ShapeRequested += ChooseShapeTool;
         SessionBar.ConnectorRequested += ChooseConnectorTool;
         SelectionPropertyBar.ConnectorKindChosen += ApplySelectionConnectorKind;
+        SelectionPropertyBar.AnchorModeChosen += ApplySelectionAnchorMode;
         SelectionPropertyBar.FontChosen += ApplySelectionFont;
         SelectionPropertyBar.FontSizeChosen += ApplySelectionFontSize;
         SelectionPropertyBar.FontStyleChosen += ApplySelectionFontStyle;
@@ -2699,25 +2700,45 @@ public partial class MainWindow : Window
         return
         [
             .. transformed,
-            .. _gestureConnectors.Select(connector =>
-            {
-                ConnectorBoardObject followed = connector;
-                if (connector.StartAnchor is { } start &&
-                    movedById.TryGetValue(start.ObjectId, out BoardObject? startObject))
-                {
-                    followed = followed.Follow(startObject);
-                }
-
-                if (connector.EndAnchor is { } end &&
-                    movedById.TryGetValue(end.ObjectId, out BoardObject? endObject))
-                {
-                    followed = followed.Follow(endObject);
-                }
-
-                return (BoardObject)followed;
-            }),
+            .. _gestureConnectors.Select(connector => (BoardObject)FollowAndReroute(connector, movedById)),
         ];
     }
+
+    /// <summary>
+    /// One connector brought to where what it points at now is: each bound end
+    /// recomputed from its anchor, and then, for one that routes itself, the
+    /// anchors chosen again for the sides that now face each other. The
+    /// gesture's own objects answer for themselves, since the board is a move
+    /// behind them while the hand is still down; anything else is where the
+    /// board has it.
+    /// </summary>
+    private ConnectorBoardObject FollowAndReroute(
+        ConnectorBoardObject connector,
+        IReadOnlyDictionary<Guid, BoardObject> moved)
+    {
+        BoardObject? startObject = InGestureOrBoard(connector.StartAnchor, moved);
+        BoardObject? endObject = InGestureOrBoard(connector.EndAnchor, moved);
+        ConnectorBoardObject followed = connector;
+        if (startObject is not null)
+        {
+            followed = followed.Follow(startObject);
+        }
+
+        if (endObject is not null)
+        {
+            followed = followed.Follow(endObject);
+        }
+
+        return followed.Reroute(startObject?.AnchorFrame, endObject?.AnchorFrame);
+    }
+
+    private BoardObject? InGestureOrBoard(
+        ConnectorAnchor? anchor,
+        IReadOnlyDictionary<Guid, BoardObject> moved) => anchor is { } bound
+        ? moved.TryGetValue(bound.ObjectId, out BoardObject? inGesture)
+            ? inGesture
+            : _document.Objects.FirstOrDefault(item => item.Id == bound.ObjectId)
+        : null;
 
     /// <summary>
     /// The selection under the corner handle. A lone shape takes the width and
@@ -2915,7 +2936,7 @@ public partial class MainWindow : Window
     /// bar's quarter turns share it, so ink and arrows follow a shape whichever
     /// way it was asked to turn, and everything lands in one command.
     /// </summary>
-    private static void AddRotationFollowers(
+    private void AddRotationFollowers(
         IReadOnlyList<(BoardObject Item, double Degrees)> turns,
         IReadOnlyDictionary<Guid, BoardObject> turnedById,
         IReadOnlyList<InkStrokeObject> linked,
@@ -2946,17 +2967,7 @@ public partial class MainWindow : Window
                 continue;
             }
 
-            ConnectorBoardObject followed = connector;
-            if (connector.StartAnchor is { } start && turnedById.TryGetValue(start.ObjectId, out BoardObject? from))
-            {
-                followed = followed.Follow(from);
-            }
-
-            if (connector.EndAnchor is { } end && turnedById.TryGetValue(end.ObjectId, out BoardObject? to))
-            {
-                followed = followed.Follow(to);
-            }
-
+            ConnectorBoardObject followed = FollowAndReroute(connector, turnedById);
             if (followed != connector)
             {
                 before.Add(connector);
@@ -3582,7 +3593,7 @@ public partial class MainWindow : Window
         PointD end,
         ConnectorAnchor? startAnchor,
         ConnectorAnchor? endAnchor,
-        ConnectorKind? kind = null) => ConnectorBoardObject.Create(
+        ConnectorKind? kind = null) => _document.Reroute(ConnectorBoardObject.Create(
         Guid.NewGuid(),
         _document.NextZIndex,
         kind ?? _connectorKind,
@@ -3591,7 +3602,8 @@ public partial class MainWindow : Window
         _settings.Connector.Argb,
         _settings.Connector.Thickness,
         startAnchor,
-        endAnchor);
+        endAnchor,
+        _settings.Connector.AutoRoute));
 
     private PointD AnchorPoint(ConnectorAnchor anchor, PointD fallback) =>
         _document.Objects.FirstOrDefault(item => item.Id == anchor.ObjectId) is { } target
@@ -3722,7 +3734,8 @@ public partial class MainWindow : Window
             return;
         }
 
-        ConnectorBoardObject after = MovedEndpoint(before, _endpointWorld, BindingAt(_endpointWorld));
+        ConnectorBoardObject after = _document.Reroute(
+            MovedEndpoint(before, _endpointWorld, BindingAt(_endpointWorld)));
         _endpointBefore = null;
         ClearBindingFeedback();
         _document.ReplaceObject(after);
@@ -3761,6 +3774,18 @@ public partial class MainWindow : Window
         _settings.Connector.Kind = kind;
         PersistSettings();
         RestyleSelection(null, null, connector => connector.WithKind(kind));
+    }
+
+    /// <summary>
+    /// Fixed or Auto for every selected connector, as one step, and what the
+    /// next one is drawn with. Auto takes hold at once rather than waiting for
+    /// the next time a shape moves, so the bar's answer is the one on the board.
+    /// </summary>
+    private void ApplySelectionAnchorMode(bool auto)
+    {
+        _settings.Connector.AutoRoute = auto;
+        PersistSettings();
+        RestyleSelection(null, null, connector => _document.Reroute(connector with { AutoRoute = auto }));
     }
 
     /// <summary>

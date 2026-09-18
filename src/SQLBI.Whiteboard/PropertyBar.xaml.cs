@@ -68,6 +68,7 @@ public partial class PropertyBar : UserControl
         AddRow(HasThickness, BuildThicknessRow());
         AddRow(HasFill, BuildFillRow());
         AddRow(IsConnector, BuildLineKindRow());
+        AddRow(IsConnector, BuildAnchorRow());
         AddRow(HasText, BuildFontRow());
         AddRow(IsShape, BuildShapeTextRow());
         AddRow(CanTurn, BuildRotateRow());
@@ -134,6 +135,12 @@ public partial class PropertyBar : UserControl
     /// A kind chosen for every selected connector.
     /// </summary>
     public event Action<ConnectorKind>? ConnectorKindChosen;
+
+    /// <summary>
+    /// Whether every selected connector chooses its own sides: true for Auto,
+    /// false for Fixed.
+    /// </summary>
+    public event Action<bool>? AnchorModeChosen;
 
     /// <summary>
     /// A font, a size, a style, or a quarter turn chosen for every selected
@@ -821,6 +828,56 @@ public partial class PropertyBar : UserControl
             },
         };
     }
+
+    /// <summary>
+    /// Fixed or Auto: whether a bound end stays on the point it was dropped on,
+    /// or moves to the side facing the other end as the shapes are rearranged.
+    /// Its own row under the kinds, because it says something about the ends
+    /// rather than about the line.
+    /// </summary>
+    private PropertyBarRow BuildAnchorRow()
+    {
+        var host = new StackPanel { Orientation = Orientation.Horizontal };
+        foreach ((bool auto, string name, string tip) in AnchorModes)
+        {
+            var button = new ToggleButton
+            {
+                Style = (Style)FindResource("SizeChipButton"),
+                Width = 54,
+                Height = 30,
+                ToolTip = tip,
+                Tag = auto,
+                Content = new TextBlock
+                {
+                    Text = name,
+                    HorizontalAlignment = HorizontalAlignment.Center,
+                    VerticalAlignment = VerticalAlignment.Center,
+                },
+            };
+            button.Click += (_, _) => AnchorModeChosen?.Invoke(auto);
+            host.Children.Add(button);
+        }
+
+        return new PropertyBarRow
+        {
+            Content = host,
+            Refresh = selection =>
+            {
+                foreach (var button in host.Children.OfType<ToggleButton>())
+                {
+                    button.IsChecked = button.Tag is bool auto &&
+                                       selection.All(item =>
+                                           item is ConnectorBoardObject connector && connector.AutoRoute == auto);
+                }
+            },
+        };
+    }
+
+    private static IReadOnlyList<(bool Auto, string Name, string Tip)> AnchorModes { get; } =
+    [
+        (false, "Fixed", "Keep each end where it was dropped"),
+        (true, "Auto", "Move each end to the side facing the other"),
+    ];
 
     /// <summary>
     /// The three connectors, in the order the Insert row offers them, with the

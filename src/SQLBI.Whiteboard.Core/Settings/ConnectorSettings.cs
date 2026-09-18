@@ -19,6 +19,13 @@ public sealed class ConnectorSettings
     /// </summary>
     public ConnectorKind Kind { get; set; } = ConnectorKind.Arrow;
 
+    /// <summary>
+    /// Whether the next connector chooses its own sides. Fixed, because an end
+    /// dropped on a particular point was dropped there on purpose; whoever
+    /// wants Auto says so once on the property bar and gets it from then on.
+    /// </summary>
+    public bool AutoRoute { get; set; }
+
     public static ConnectorSettings Normalize(ConnectorSettings? settings)
     {
         if (settings is null)
@@ -36,6 +43,7 @@ public sealed class ConnectorSettings
                 ? settings.Thickness
                 : fallback.Thickness,
             Kind = Enum.IsDefined(settings.Kind) ? settings.Kind : fallback.Kind,
+            AutoRoute = settings.AutoRoute,
         };
     }
 }

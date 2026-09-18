@@ -224,7 +224,7 @@ internal sealed class BoardSurface : FrameworkElement
                     DrawShapeText(drawingContext, shape, _camera);
                     break;
                 case ConnectorBoardObject connector:
-                    DrawConnector(drawingContext, connector, _camera);
+                    DrawConnector(drawingContext, connector, _document, _camera);
                     break;
             }
         }
@@ -255,7 +255,7 @@ internal sealed class BoardSurface : FrameworkElement
 
         if (PendingConnector is { } pendingConnector)
         {
-            DrawConnector(drawingContext, pendingConnector, _camera);
+            DrawConnector(drawingContext, pendingConnector, _document, _camera);
         }
 
         if (HoveredObjectId is Guid hoveredId &&
@@ -992,9 +992,13 @@ internal sealed class BoardSurface : FrameworkElement
     private static void DrawConnector(
         DrawingContext drawingContext,
         ConnectorBoardObject connector,
+        BoardDocument document,
         Camera2D camera)
     {
-        IReadOnlyList<PointD> polyline = connector.Polyline();
+        // The frames say which way the sides an end is bound to are facing now,
+        // so a curve bound to a shape that has been turned bends with it.
+        (AnchorFrame? startFrame, AnchorFrame? endFrame) = document.AnchorFrames(connector);
+        IReadOnlyList<PointD> polyline = connector.Polyline(startFrame, endFrame);
         SolidColorBrush brush = CreateFrozenBrush(connector.Argb);
         var pen = new Pen(brush, Math.Max(0.1, connector.Thickness * camera.Zoom))
         {

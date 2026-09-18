@@ -1966,6 +1966,68 @@ Assert(
             "A flat curve still has a path to scale against.");
     }
 
+    // Which numbered connection site of a preset each of the eight binding points
+    // is. The numbers are the ones the ECMA-376 preset shape definitions give, and
+    // a point that is not a site of that preset has no number: an arrow written
+    // without one stays where the board drew it rather than being sent to a corner.
+    {
+        Assert(
+            PresetConnectionSites.IndexFor("rect", 0.5, 0) == 0 &&
+            PresetConnectionSites.IndexFor("rect", 0, 0.5) == 1 &&
+            PresetConnectionSites.IndexFor("rect", 0.5, 1) == 2 &&
+            PresetConnectionSites.IndexFor("rect", 1, 0.5) == 3,
+            "A rectangle numbers its sides top, left, bottom, right - which is what a label's box takes too.");
+        Assert(
+            PresetConnectionSites.IndexFor("roundRect", 0.5, 0) == 0 &&
+            PresetConnectionSites.IndexFor("roundRect", 1, 0.5) == 3,
+            "A rounded rectangle numbers them the same way, so a stadium does as well.");
+        Assert(
+            PresetConnectionSites.IndexFor("diamond", 0.5, 0) == 0 &&
+            PresetConnectionSites.IndexFor("diamond", 0, 0.5) == 1 &&
+            PresetConnectionSites.IndexFor("diamond", 0.5, 1) == 2 &&
+            PresetConnectionSites.IndexFor("diamond", 1, 0.5) == 3,
+            "A diamond's four points are its box's side midpoints, numbered as a rectangle's are.");
+        Assert(
+            PresetConnectionSites.IndexFor("ellipse", 0.5, 0) == 0 &&
+            PresetConnectionSites.IndexFor("ellipse", 0, 0.5) == 2 &&
+            PresetConnectionSites.IndexFor("ellipse", 0.5, 1) == 4 &&
+            PresetConnectionSites.IndexFor("ellipse", 1, 0.5) == 6,
+            "An ellipse has eight sites and the board meets every other one of them.");
+        Assert(
+            PresetConnectionSites.IndexFor("triangle", 0.5, 0) == 0 &&
+            PresetConnectionSites.IndexFor("triangle", 0, 1) == 2 &&
+            PresetConnectionSites.IndexFor("triangle", 0.5, 1) == 3 &&
+            PresetConnectionSites.IndexFor("triangle", 1, 1) == 4,
+            "A triangle's apex, its two base corners, and the middle of its base.");
+        Assert(
+            PresetConnectionSites.IndexFor("pentagon", 0.5, 0) == 0 &&
+            PresetConnectionSites.IndexFor("pentagon", 0.5, 1) == 3,
+            "A pentagon's apex and the middle of its base; its other corners are inside the box.");
+        Assert(
+            PresetConnectionSites.IndexFor("rightArrow", 0, 0.5) == 1 &&
+            PresetConnectionSites.IndexFor("rightArrow", 1, 0.5) == 3,
+            "A block arrow's shaft and its point.");
+        Assert(
+            PresetConnectionSites.IndexFor("parallelogram", 0.5, 0) is null &&
+            PresetConnectionSites.IndexFor("parallelogram", 0, 0.5) is null,
+            "A parallelogram carries its sites on its slanted sides, so no binding point is one.");
+
+        foreach ((var u, var v) in new[] { (0d, 0d), (1d, 0d), (0d, 1d), (1d, 1d) })
+        {
+            Assert(
+                PresetConnectionSites.IndexFor("roundRect", u, v) is null &&
+                PresetConnectionSites.IndexFor("ellipse", u, v) is null,
+                "A corner of the box is no site of a rectangle or an ellipse.");
+        }
+
+        Assert(
+            PresetConnectionSites.IndexFor("roundRect", 0.7, 0) is null,
+            "Nor is a point the Ctrl rule found anywhere along the border.");
+        Assert(
+            PresetConnectionSites.IndexFor("flowChartTerminator", 0.5, 0) is null,
+            "A preset whose sites nobody has read off has none to offer.");
+    }
+
     // The same elements as a vector page, and a label in each font a board offers:
     // the faces are read from Windows and embedded, so the words stay words. Only
     // Cascadia Mono is written in another face, because Windows ships it as a
@@ -3502,6 +3564,114 @@ Assert(
             Guid.NewGuid(), 0, box, ShapeKind.Ellipse, 0xFF1F2937, null, 4)) == corner,
         "An object the connector is not bound to moves without touching it.");
 
+    // Automatic anchors: the side an end takes is the one facing the other end,
+    // and a tie between two sides goes to the horizontal one.
+    var facing = new AnchorFrame(new RectD(0, 0, 100, 100), 0);
+    Assert(
+        ConnectorGeometry.AutoAnchor(facing, new PointD(500, 50)) == FrameSide.Right,
+        "An object with the other end to its right hands over its right side.");
+    Assert(
+        ConnectorGeometry.AutoAnchor(facing, new PointD(-500, 50)) == FrameSide.Left,
+        "And its left side when the other end is to the left.");
+    Assert(
+        ConnectorGeometry.AutoAnchor(facing, new PointD(50, -500)) == FrameSide.Top,
+        "The top when the other end is above.");
+    Assert(
+        ConnectorGeometry.AutoAnchor(facing, new PointD(50, 500)) == FrameSide.Bottom,
+        "The bottom when it is below.");
+    Assert(
+        ConnectorGeometry.AutoAnchor(facing, new PointD(550, -450)) == FrameSide.Right,
+        "A direction that splits two sides evenly takes the horizontal one.");
+    Assert(
+        ConnectorGeometry.AutoAnchor(
+            new AnchorFrame(new RectD(0, 0, 100, 100), 90),
+            new PointD(50, 500)) == FrameSide.Right,
+        "The sides are the object's own, so a quarter turn puts its right side at the bottom.");
+    Assert(
+        ConnectorGeometry.AutoAnchor(Guid.Empty, facing, new PointD(500, 50)) ==
+        new ConnectorAnchor(Guid.Empty, 1, 0.5),
+        "The side comes back as the anchor that records it.");
+
+    // Two shapes joined by an automatic arrow: moving one round the other flips
+    // the sides the arrow leaves and arrives on, and a Fixed one does not move.
+    var routingBoard = new BoardDocument();
+    var anchorLeft = ShapeBoardObject.Create(
+        Guid.NewGuid(), routingBoard.NextZIndex, new RectD(0, 0, 100, 100),
+        ShapeKind.RoundedRectangle, 0xFF1F2937, null, 4);
+    routingBoard.AddObject(anchorLeft);
+    var anchorRight = ShapeBoardObject.Create(
+        Guid.NewGuid(), routingBoard.NextZIndex, new RectD(400, 0, 100, 100),
+        ShapeKind.RoundedRectangle, 0xFF1F2937, null, 4);
+    routingBoard.AddObject(anchorRight);
+    var routedArrow = ConnectorBoardObject.Create(
+        Guid.NewGuid(),
+        routingBoard.NextZIndex,
+        ConnectorKind.Arrow,
+        new PointD(100, 50),
+        new PointD(400, 50),
+        0xFF1F2937,
+        4,
+        new ConnectorAnchor(anchorLeft.Id, 1, 0.5),
+        new ConnectorAnchor(anchorRight.Id, 0, 0.5),
+        autoRoute: true);
+    routingBoard.AddObject(routedArrow);
+    Assert(
+        routingBoard.Reroute(routedArrow) == routedArrow,
+        "Two shapes already facing each other leave the arrow where it is.");
+
+    // The right-hand shape is carried round to the far left.
+    var carriedRound = (ShapeBoardObject)anchorRight.WithBounds(new RectD(-400, 0, 100, 100));
+    routingBoard.ReplaceObject(carriedRound);
+    ConnectorBoardObject rerouted = routingBoard.Reroute(routedArrow.Follow(carriedRound));
+    Assert(
+        rerouted.StartAnchor == new ConnectorAnchor(anchorLeft.Id, 0, 0.5) &&
+        rerouted.EndAnchor == new ConnectorAnchor(anchorRight.Id, 1, 0.5),
+        "A shape carried round to the other side flips both anchors to the sides that now face.");
+    Assert(
+        rerouted.Start == new PointD(0, 50) && rerouted.End == new PointD(-300, 50),
+        "And the ends move onto them.");
+    Assert(
+        routingBoard.Reroute((routedArrow with { AutoRoute = false }).Follow(carriedRound)) is
+        { StartAnchor.U: 1, EndAnchor.U: 0 },
+        "A Fixed connector keeps the points it was dropped on however the shapes are moved.");
+
+    // Both ends are aimed at the other object's centre, so the pair settles on
+    // one answer whichever end is worked out first.
+    var anchorAbove = ShapeBoardObject.Create(
+        Guid.NewGuid(), 9, new RectD(0, -400, 100, 100), ShapeKind.RoundedRectangle, 0xFF1F2937, null, 4);
+    Assert(
+        routedArrow.Reroute(anchorLeft.AnchorFrame, anchorAbove.AnchorFrame) is
+        { StartAnchor.V: 0, EndAnchor.V: 1 },
+        "One shape above the other joins their top and bottom sides.");
+
+    // A curve bound to a turned shape leaves along the side as that side now
+    // faces, rather than along the box it was drawn in.
+    var uprightFrame = new AnchorFrame(new RectD(0, 0, 100, 100), 0);
+    var turnedFrame = new AnchorFrame(new RectD(0, 0, 100, 100), 90);
+    var topAnchor = new ConnectorAnchor(Guid.Empty, 0.5, 0);
+    (PointD First, PointD Second)? uprightCurve = ConnectorGeometry.Controls(
+        ConnectorKind.CurvedArrow,
+        new PointD(50, 0),
+        new PointD(400, 400),
+        topAnchor,
+        null,
+        uprightFrame,
+        null);
+    (PointD First, PointD Second)? turnedCurve = ConnectorGeometry.Controls(
+        ConnectorKind.CurvedArrow,
+        new PointD(100, 50),
+        new PointD(400, 400),
+        topAnchor,
+        null,
+        turnedFrame,
+        null);
+    Assert(
+        uprightCurve!.Value.First.Y < 0 && Math.Abs(uprightCurve.Value.First.X - 50) < 0.000001,
+        "A curve bound to the top of an upright shape leaves upwards.");
+    Assert(
+        turnedCurve!.Value.First.X > 100 && Math.Abs(turnedCurve.Value.First.Y - 50) < 0.000001,
+        "Turned a quarter, the same top side faces right, and the curve leaves to the right rather than up.");
+
     // A group gesture carries the connector by its box, anchors and all.
     ConnectorBoardObject dragged = (ConnectorBoardObject)bound.WithBounds(
         bound.Bounds.Translate(new PointD(10, 10)));
@@ -3639,6 +3809,21 @@ Assert(
     Assert(
         restoredConnector == savedConnector,
         "A connector round-trips with its kind, colour, thickness, ends, and both anchors.");
+    Assert(!restoredConnector.AutoRoute, "A connector nobody set to Auto comes back Fixed.");
+
+    var autoRoutedBoard = new BoardDocument();
+    autoRoutedBoard.AddObject(firstShape);
+    autoRoutedBoard.AddObject(savedConnector with { AutoRoute = true, EndAnchor = null });
+    await using var autoRoutedArchive = new MemoryStream();
+    await BoardArchive.SaveAsync(autoRoutedBoard, autoRoutedArchive);
+    autoRoutedArchive.Position = 0;
+    Assert(
+        (await BoardArchive.LoadAsync(autoRoutedArchive))
+            .Objects.OfType<ConnectorBoardObject>().Single().AutoRoute,
+        "A connector that chooses its own sides comes back choosing them.");
+    Assert(
+        BoardArchive.VersionFor(autoRoutedBoard) == BoardArchive.CurrentVersion,
+        "Saying so costs no version: the field is optional, and a reader that has never heard of it ignores it.");
 
     // What a file could have got wrong: a kind from a later release, an anchor
     // naming an object that is not there, and fractions outside the box.
@@ -3659,6 +3844,7 @@ Assert(
     danglingArchive.Position = 0;
     ConnectorBoardObject dangling = (await BoardArchive.LoadAsync(danglingArchive))
         .Objects.OfType<ConnectorBoardObject>().Single();
+    Assert(!dangling.AutoRoute, "A file that says nothing about routing leaves the connector Fixed.");
     Assert(
         dangling is { Kind: ConnectorKind.Arrow, Thickness: 4, StartAnchor: null },
         "An unknown kind reads as an arrow, a thickness of nothing takes the default, and an anchor naming " +
@@ -3678,6 +3864,7 @@ Assert(
             Argb = 0xFF009E73,
             Thickness = 8,
             Kind = ConnectorKind.CurvedArrow,
+            AutoRoute = true,
         },
     }));
     Assert(
@@ -3686,6 +3873,7 @@ Assert(
             Argb: 0xFF009E73,
             Thickness: 8,
             Kind: ConnectorKind.CurvedArrow,
+            AutoRoute: true,
         },
         "The connector defaults survive a round trip.");
     Assert(
@@ -3694,8 +3882,9 @@ Assert(
             Argb: 0xFFE64B3D,
             Thickness: 4,
             Kind: ConnectorKind.Arrow,
+            AutoRoute: false,
         },
-        "A file that says nothing about connectors draws the next one as an arrow in the pen's colour.");
+        "A file that says nothing about connectors draws the next one as a Fixed arrow in the pen's colour.");
     Assert(
         AppSettingsSerializer.Parse("{ \"connector\": { \"argb\": 123, \"thickness\": 99, \"kind\": 42 } }")
             .Connector is { Argb: 0xFFE64B3D, Thickness: 4, Kind: ConnectorKind.Arrow },

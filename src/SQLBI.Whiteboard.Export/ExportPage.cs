@@ -71,7 +71,9 @@ public sealed record SlideTextElement(
 /// A shape carries its own text as well, centred in the rectangle
 /// <see cref="Core.Geometry.ShapeGeometry.TextBox"/> names inside that box and
 /// wrapped to its width; TextMargin is the room left round it, in page pixels,
-/// which is what a deck writes as the text insets of the shape.
+/// which is what a deck writes as the text insets of the shape. ObjectId is the
+/// board object this came from: a connector bound to it names it by that, and it
+/// is empty when nothing refers to it.
 /// </summary>
 public sealed record SlideShapeElement(
     SlideRect Bounds,
@@ -87,13 +89,15 @@ public sealed record SlideShapeElement(
     bool Bold = false,
     bool Italic = false,
     bool Underline = false,
-    double TextMargin = 8) : SlideElement(Bounds);
+    double TextMargin = 8,
+    Guid ObjectId = default) : SlideElement(Bounds);
 
 /// <summary>
 /// A label as text rather than as pixels. Bounds is the layout rectangle before
 /// the turn, so a writer places the rectangle and then rotates it about its own
 /// centre, which is where the board turns it too. FontSize is in page pixels, and
-/// the text keeps its line breaks: one line is one paragraph.
+/// the text keeps its line breaks: one line is one paragraph. ObjectId is the
+/// board object this came from, as a shape's is.
 /// </summary>
 public sealed record SlideLabelElement(
     SlideRect Bounds,
@@ -104,17 +108,28 @@ public sealed record SlideLabelElement(
     uint Argb,
     bool Bold,
     bool Italic,
-    bool Underline) : SlideElement(Bounds);
+    bool Underline,
+    Guid ObjectId = default) : SlideElement(Bounds);
 
 /// <summary>A point in the page's pixel space.</summary>
 public readonly record struct SlidePosition(double X, double Y);
+
+/// <summary>
+/// What one end of a connector is tied to: the board object, and where on its
+/// box, as the fractions the board records. A writer turns that into whatever
+/// its own format calls a connection site; one that cannot leaves the end where
+/// it is drawn.
+/// </summary>
+public readonly record struct SlideConnection(Guid ObjectId, double U, double V);
 
 /// <summary>
 /// A connector as a line rather than as pixels: where it runs, what it is drawn
 /// with, and, for a curved one, the two control points of the cubic the board
 /// draws, so a writer never works the curve out a second time. Bounds is the box
 /// of every point named here, which is the box the curve stays inside. An Arrow
-/// and a CurvedArrow carry a filled head at the end; a Line does not.
+/// and a CurvedArrow carry a filled head at the end; a Line does not. Each end
+/// that is bound to something says so, so a writer whose connectors re-route can
+/// tie them to the shape rather than to the page.
 /// </summary>
 public sealed record SlideConnectorElement(
     SlideRect Bounds,
@@ -124,7 +139,9 @@ public sealed record SlideConnectorElement(
     SlidePosition? FirstControl,
     SlidePosition? SecondControl,
     uint Argb,
-    double Thickness) : SlideElement(Bounds);
+    double Thickness,
+    SlideConnection? StartConnection = null,
+    SlideConnection? EndConnection = null) : SlideElement(Bounds);
 
 public enum SlideStrokeKind
 {
