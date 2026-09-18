@@ -47,11 +47,13 @@ public sealed class ImportDocument
     public ImportDocument(
         string? title,
         IReadOnlyList<ImportItem> items,
-        IReadOnlyList<string> missingFiles)
+        IReadOnlyList<string> missingFiles,
+        bool hasExplicitRows = false)
     {
         Title = title;
         Items = items;
         MissingFiles = missingFiles;
+        HasExplicitRows = hasExplicitRows;
     }
 
     public string? Title { get; }
@@ -60,23 +62,30 @@ public sealed class ImportDocument
 
     public IReadOnlyList<string> MissingFiles { get; }
 
+    // Keep this even if every item following a separator is skipped during import.
+    public bool HasExplicitRows { get; }
+
     public static ImportDocument Parse(string markdown, ImportCatalog? catalog = null)
     {
         catalog ??= ImportCatalog.Default;
-        var sections = SplitSections(markdown ?? string.Empty);
+        var sections = SplitSections(markdown ?? string.Empty, out var hasExplicitRows);
         var items = new List<ImportItem>();
+        var pendingNewRow = false;
         foreach (var section in sections)
         {
+            pendingNewRow |= section.StartNewRow;
             if (Recognize(section, catalog) is { } item)
             {
-                items.Add(item);
+                items.Add(item with { StartNewRow = pendingNewRow });
+                pendingNewRow = false;
             }
         }
 
         return new ImportDocument(
             ReadBoardTitle(markdown ?? string.Empty),
             items,
-            []);
+            [],
+            hasExplicitRows);
     }
 
     public ImportDocument Resolve(string baseDirectory, ImportCatalog? catalog = null)
@@ -85,11 +94,15 @@ public sealed class ImportDocument
         catalog ??= ImportCatalog.Default;
         var items = new List<ImportItem>();
         var missing = new List<string>();
-        foreach (var item in Items)
+        var pendingNewRow = false;
+        foreach (var sourceItem in Items)
         {
+            pendingNewRow |= sourceItem.StartNewRow;
+            var item = sourceItem with { StartNewRow = pendingNewRow };
             if (item.SourcePath is null)
             {
                 items.Add(item);
+                pendingNewRow = false;
                 continue;
             }
 
@@ -114,6 +127,7 @@ public sealed class ImportDocument
                     ImageFileName = Path.GetFileName(fullPath),
                     SourcePath = fullPath,
                 });
+                pendingNewRow = false;
                 continue;
             }
 
@@ -129,9 +143,10 @@ public sealed class ImportDocument
                 Text = File.ReadAllText(fullPath),
                 SourcePath = fullPath,
             });
+            pendingNewRow = false;
         }
 
-        return new ImportDocument(Title, items, missing);
+        return new ImportDocument(Title, items, missing, HasExplicitRows);
     }
 
     private static string? ReadBoardTitle(string markdown)
@@ -154,8 +169,9 @@ public sealed class ImportDocument
         return null;
     }
 
-    private static List<Section> SplitSections(string markdown)
+    private static List<Section> SplitSections(string markdown, out bool hasExplicitRows)
     {
+        hasExplicitRows = false;
         var sections = new List<Section>();
         string? title = null;
         var body = new List<string>();
@@ -180,6 +196,7 @@ public sealed class ImportDocument
         {
             if (IsThematicBreak(line))
             {
+                hasExplicitRows = true;
                 Flush();
                 started = false;
                 title = null;

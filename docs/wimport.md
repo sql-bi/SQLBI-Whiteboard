@@ -82,9 +82,12 @@ Linked text files larger than 1 000 000 bytes are skipped and reported as mi
 
 ## Layout
 
-Whiteboard measures each container, then packs them **left to right**. A thematic break
-starts a new row even if the current row is not full. Without a break, a row wraps when the
-next item would exceed about 2400 world units.
+Whiteboard measures each container, then packs them **left to right**. If the file contains
+any thematic breaks (`---`, `***`, or `___`), those breaks alone control the rows: all
+containers between breaks stay on one row, regardless of width. This also applies before
+the first break and after the last. Only files without thematic breaks wrap automatically
+when the next item would exceed about 2400 world units. Empty or skipped items do not lose
+a pending row break, and leading or repeated breaks do not add empty rows.
 
 In Preferences → Import, **Horizontal spacing** sets the gap between side-by-side
 containers, and **Vertical spacing** sets the gap below the tallest container when a new
