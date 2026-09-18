@@ -64,6 +64,13 @@ internal sealed class BoardSurface : FrameworkElement
 
     public Guid? HiddenObjectId { get; set; }
 
+    /// <summary>
+    /// The shape whose own text is being typed. The shape stays on the board -
+    /// what is being edited is inside it - and only its words are left out, so
+    /// they are not drawn twice under the editor's box.
+    /// </summary>
+    public Guid? HiddenTextObjectId { get; set; }
+
     public Func<Guid, ImageSource?>? LiveViewImageSourceProvider { get; set; }
 
     /// <summary>
@@ -214,6 +221,7 @@ internal sealed class BoardSurface : FrameworkElement
                     break;
                 case ShapeBoardObject shape:
                     DrawShape(drawingContext, shape, _camera);
+                    DrawShapeText(drawingContext, shape, _camera);
                     break;
                 case ConnectorBoardObject connector:
                     DrawConnector(drawingContext, connector, _camera);
@@ -412,6 +420,44 @@ internal sealed class BoardSurface : FrameworkElement
     }
 
     /// <summary>
+    /// What a shape says, inside it: wrapped to its text box, centred both ways,
+    /// and turned with the shape. Text with more lines than the box has room for
+    /// runs on below it rather than being cut, as it does in PowerPoint, so a
+    /// shape never silently swallows a word.
+    /// </summary>
+    private void DrawShapeText(DrawingContext drawingContext, ShapeBoardObject shape, Camera2D camera)
+    {
+        if (shape.Text.Length == 0 || shape.Id == HiddenTextObjectId)
+        {
+            return;
+        }
+
+        RectD box = shape.TextBounds;
+        FormattedText text = LabelVisual.FormatWrapped(
+            shape,
+            shape.FontSize * camera.Zoom,
+            box.Width * camera.Zoom,
+            VisualTreeHelper.GetDpi(this).PixelsPerDip);
+        PointD topLeft = camera.WorldToScreen(new PointD(box.Left, box.Top));
+        var origin = new Point(
+            topLeft.X,
+            topLeft.Y + (((box.Height * camera.Zoom) - text.Height) / 2));
+
+        if (shape.AngleDegrees == 0)
+        {
+            drawingContext.DrawText(text, origin);
+            return;
+        }
+
+        PointD shapeCenter = camera.WorldToScreen(shape.Bounds.Center);
+        var turn = new RotateTransform(shape.AngleDegrees, shapeCenter.X, shapeCenter.Y);
+        turn.Freeze();
+        drawingContext.PushTransform(turn);
+        drawingContext.DrawText(text, origin);
+        drawingContext.Pop();
+    }
+
+    /// <summary>
     /// The rotation handle of a lone shape or label: a circle clear of the
     /// middle of the object's own top edge, tied to it by a line. It is placed
     /// in the object's own frame rather than on the box, so it stands over
@@ -448,7 +494,9 @@ internal sealed class BoardSurface : FrameworkElement
     /// the Insert row would otherwise be needed for. Only a shape has them:
     /// everything else is either not what a diagram joins up or is selected
     /// with something else, and a gesture under way takes them away, since by
-    /// then they have been answered.
+    /// then they have been answered. So does a shape whose own text is being
+    /// typed: the editor's box stands over the shape, and what the hand is
+    /// doing there is writing rather than joining.
     /// </summary>
     private void DrawConnectorHandles(
         DrawingContext drawingContext,
@@ -459,7 +507,8 @@ internal sealed class BoardSurface : FrameworkElement
             PendingStroke is not null ||
             PendingShape is not null ||
             PendingConnector is not null ||
-            selected is not [ShapeBoardObject lone])
+            selected is not [ShapeBoardObject lone] ||
+            lone.Id == HiddenTextObjectId)
         {
             return;
         }

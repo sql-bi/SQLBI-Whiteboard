@@ -265,7 +265,17 @@ public static class BoardArchive
             ShapeKind: shape.Kind.ToString(),
             OutlineArgb: shape.OutlineArgb,
             FillArgb: shape.FillArgb,
-            Thickness: shape.Thickness),
+            Thickness: shape.Thickness,
+            // A shape's text travels in the fields a label writes its own text
+            // in, since they mean the same thing here; the shape's outline has
+            // a field of its own, so the color one is free for the words.
+            TextContent: shape.Text.Length == 0 ? null : shape.Text,
+            FontFamily: shape.FontFamily,
+            FontSize: shape.FontSize,
+            Argb: shape.TextArgb,
+            Bold: shape.Bold,
+            Italic: shape.Italic,
+            Underline: shape.Underline),
         // The line's color and width travel in the fields the label and the
         // shape already have, since they mean the same thing here.
         ConnectorBoardObject connector => new ObjectDto(
@@ -409,7 +419,10 @@ public static class BoardArchive
     /// upright shape it was: no angle, and the box it was saved with as its
     /// layout. The bounds are recomputed from that box rather than trusted,
     /// because a file can say anything and the box has to be the box of the
-    /// rectangle that is actually there.
+    /// rectangle that is actually there. The text and the seven properties it is
+    /// written in are optional too and are put right the way a label's are, so a
+    /// shape from a board that had none reads as the shape it was, saying
+    /// nothing.
     /// </summary>
     private static ShapeBoardObject ShapeFromDto(ObjectDto dto)
     {
@@ -436,7 +449,16 @@ public static class BoardArchive
             dto.OutlineArgb ?? PenStyle.Default.Argb,
             dto.FillArgb,
             NormalizeShapeThickness(dto.Thickness),
-            angle);
+            angle) with
+        {
+            Text = dto.TextContent ?? "",
+            FontFamily = LabelStyles.NormalizeFont(dto.FontFamily),
+            FontSize = LabelStyles.ClampFontSize(dto.FontSize ?? LabelStyles.DefaultFontSize),
+            TextArgb = dto.Argb ?? LabelStyles.DefaultArgb,
+            Bold = dto.Bold ?? false,
+            Italic = dto.Italic ?? false,
+            Underline = dto.Underline ?? false,
+        };
     }
 
     private static double NormalizeLayoutSize(double? size, double fallback) =>

@@ -1849,7 +1849,15 @@ Assert(
             0xFF035ACA,
             kind == ShapeKind.Ellipse ? ShapeSettings.Tint(0xFFE64B3D) : null,
             6,
-            kind == ShapeKind.BlockArrow ? 90 : 0)),
+            kind == ShapeKind.BlockArrow ? 90 : 0,
+
+            // One shape says something, so the deck carries the text in the
+            // shape rather than as a picture of it.
+            kind == ShapeKind.Diamond ? "Fits the\ndiamond" : "",
+            "Segoe UI",
+            24,
+            0xFF1F2937,
+            Bold: true)),
         new SlideLabelElement(
             new SlideRect(200, 500, 420, 120),
             45,
@@ -1932,6 +1940,16 @@ Assert(
             slideXml.Contains("b=\"1\"", StringComparison.Ordinal) &&
             slideXml.Contains("Georgia", StringComparison.Ordinal),
             "The label's style and typeface travel with it.");
+        Assert(
+            slideXml.Contains("Fits the", StringComparison.Ordinal) &&
+            slideXml.Contains("diamond", StringComparison.Ordinal) &&
+            slideXml.Contains("anchor=\"ctr\"", StringComparison.Ordinal) &&
+            slideXml.Contains("algn=\"ctr\"", StringComparison.Ordinal),
+            "A shape's own text goes out in the shape, centred across it and down it.");
+        Assert(
+            slideXml.Contains("lIns=", StringComparison.Ordinal) &&
+            slideXml.Contains("wrap=\"square\"", StringComparison.Ordinal),
+            "It is wrapped, and inset to the rectangle the board writes it in.");
         Assert(
             slideXml.Split("<p:cxnSp>").Length - 1 == 1 &&
             slideXml.Contains("prst=\"straightConnector1\"", StringComparison.Ordinal) &&
@@ -2937,6 +2955,142 @@ Assert(
         "The box is worked out again from the angle and the rectangle rather than trusted.");
 }
 
+// A shape carries its own text: where it is laid out, what a file keeps of it,
+// what it names an export area, and that a copy says the same thing.
+{
+    var textBox = new RectD(0, 0, 200, 100);
+    RectD inRectangle = ShapeGeometry.TextBox(ShapeKind.RoundedRectangle, textBox);
+    AssertNear(184, inRectangle.Width, "A rounded rectangle writes across its whole box, less the margin.");
+    AssertNear(84, inRectangle.Height, "And down the whole of it, less the margin.");
+    AssertNear(100, inRectangle.Center.X, "The text box is centred on the shape.");
+
+    RectD inEllipse = ShapeGeometry.TextBox(ShapeKind.Ellipse, textBox, margin: 0);
+    AssertNear(
+        200 / Math.Sqrt(2),
+        inEllipse.Width,
+        "An ellipse writes inside the largest upright rectangle its curve holds.");
+    RectD inDiamond = ShapeGeometry.TextBox(ShapeKind.Diamond, textBox, margin: 0);
+    Assert(
+        inDiamond is { Width: 100, Height: 50 } && inDiamond.Center.Y == 50,
+        "A diamond holds half of each side, centred.");
+    RectD inTriangle = ShapeGeometry.TextBox(ShapeKind.Triangle, textBox, margin: 0);
+    Assert(
+        inTriangle is { Width: 100, Height: 50 } && inTriangle.Bottom == 100,
+        "A triangle's rectangle stands on its base, since the point has no room in it.");
+    RectD inPentagon = ShapeGeometry.TextBox(ShapeKind.Pentagon, textBox, margin: 0);
+    AssertNear(120, inPentagon.Width, "A pentagon takes a fifth off each side.");
+    RectD inArrow = ShapeGeometry.TextBox(ShapeKind.BlockArrow, textBox, margin: 0);
+    Assert(
+        inArrow is { Width: 160, Height: 50 } && inArrow.Left == 0,
+        "A block arrow writes along its shaft, as far as the head narrows to it.");
+    RectD inParallelogram = ShapeGeometry.TextBox(ShapeKind.Parallelogram, textBox, margin: 0);
+    Assert(
+        inParallelogram is { Width: 100, Height: 100 } && inParallelogram.Left == 50,
+        "A parallelogram writes between its two slants, at its full height.");
+    Assert(
+        ShapeGeometry.TextBox(ShapeKind.Ellipse, new RectD(0, 0, 4, 4)) is { Width: 1, Height: 1 },
+        "A shape too small for the margin keeps a sliver rather than turning inside out.");
+
+    // The text is turned with the shape, because the rectangle it is laid out in
+    // is described in the box before the turn.
+    var written = ShapeBoardObject.Create(
+        Guid.NewGuid(),
+        0,
+        new RectD(0, 0, 200, 100),
+        ShapeKind.RoundedRectangle,
+        0xFF035ACA,
+        null,
+        4) with
+    {
+        Text = "Sales\nby region",
+        FontFamily = "Georgia",
+        FontSize = 32,
+        TextArgb = 0xFFE64B3D,
+        Bold = true,
+        Italic = true,
+        Underline = true,
+    };
+    AssertNear(100, written.TextBounds.Center.X, "The text box follows the shape's own centre.");
+    AssertNear(
+        written.TextBounds.Center.X,
+        written.WithAngle(45).TextBounds.Center.X,
+        "A turned shape describes its text box in the rectangle it was drawn in, as it does its outline.");
+
+    // The rotation handle turns a shape through WithAngle, so what it says has
+    // to come through the turn with it.
+    ShapeBoardObject turnedByHandle = written.WithAngle(37.5);
+    Assert(
+        turnedByHandle is
+        {
+            AngleDegrees: 37.5,
+            Text: "Sales\nby region",
+            FontFamily: "Georgia",
+            Bold: true,
+            Italic: true,
+            Underline: true,
+        } &&
+        turnedByHandle.FontSize == 32 &&
+        turnedByHandle.TextArgb == 0xFFE64B3D,
+        "A shape keeps its text, and the hand it is written in, through a turn to any angle.");
+
+    // The corner handle takes the font with it only when both axes take the same
+    // factor; otherwise the words stay the size they were and reflow.
+    var doubled = (ShapeBoardObject)written.WithBounds(new RectD(0, 0, 400, 200));
+    AssertNear(64, doubled.FontSize, "A shape scaled evenly from the corner takes its text up with it.");
+    var widened = (ShapeBoardObject)written.WithBounds(new RectD(0, 0, 400, 100));
+    AssertNear(32, widened.FontSize, "A shape pulled wider only has more room, so its text stays as it was.");
+    var moved = (ShapeBoardObject)written.WithBounds(new RectD(50, 50, 200, 100));
+    AssertNear(32, moved.FontSize, "Moving a shape is not a resize, and leaves the text alone.");
+
+    var textDocument = new BoardDocument();
+    ShapeBoardObject saidShape = written with { Id = Guid.NewGuid(), ZIndex = textDocument.NextZIndex };
+    textDocument.AddObject(saidShape);
+    await using var textArchive = new MemoryStream();
+    await BoardArchive.SaveAsync(textDocument, textArchive);
+    textArchive.Position = 0;
+    ShapeBoardObject readBack = (await BoardArchive.LoadAsync(textArchive))
+        .Objects.OfType<ShapeBoardObject>().Single();
+    Assert(readBack == saidShape, "A shape's text round-trips with every property it is written in.");
+
+    var mutePath = "{\"version\":7,\"objects\":[{\"type\":\"shape\"," +
+        "\"id\":\"3f2504e0-4f89-11d3-9a0c-0305e82c3304\",\"zIndex\":0," +
+        "\"bounds\":{\"x\":0,\"y\":0,\"width\":200,\"height\":100}," +
+        "\"shapeKind\":\"Ellipse\"}],\"assets\":[]}";
+    await using var muteArchive = new MemoryStream();
+    using (var writer = new ZipArchive(muteArchive, ZipArchiveMode.Create, leaveOpen: true))
+    {
+        var entry = writer.CreateEntry("scene.json");
+        await using var entryStream = entry.Open();
+        await entryStream.WriteAsync(Encoding.UTF8.GetBytes(mutePath));
+    }
+
+    muteArchive.Position = 0;
+    ShapeBoardObject mute = (await BoardArchive.LoadAsync(muteArchive))
+        .Objects.OfType<ShapeBoardObject>().Single();
+    Assert(
+        mute is { Text: "", FontFamily: LabelStyles.DefaultFontFamily, Bold: false } &&
+        mute.FontSize == LabelStyles.DefaultFontSize &&
+        mute.TextArgb == LabelStyles.DefaultArgb,
+        "A shape from a board written before a shape could say anything reads as one that says nothing.");
+
+    Assert(
+        BoardPartitioner.DefaultTitle(textDocument, saidShape) == "Sales",
+        "A shape names its export area with its first line.");
+    Assert(
+        BoardPartitioner.DefaultTitle(textDocument, saidShape with { Text = "   " }) is null,
+        "A shape with nothing written in it names nothing.");
+
+    IReadOnlyList<BoardObject> copies = SelectionDuplicator.Duplicate(
+        [saidShape],
+        [],
+        [],
+        new PointD(24, 24),
+        textDocument.NextZIndex);
+    Assert(
+        copies.OfType<ShapeBoardObject>().Single() is { Text: "Sales\nby region", FontFamily: "Georgia" },
+        "A duplicated shape says the same thing, written the same way.");
+}
+
 // A label is a rectangle of text turned about its own centre. What is stored is
 // the layout size and the angle; the box the document indexes follows from them,
 // and so do the hit test, the area test, and what the corner handle does.
@@ -3885,6 +4039,131 @@ Assert(
     AssertNear(50, onTurned.Point.Y, "The dot is drawn where the turn put it, on the Y.");
 }
 
+// The Insert palette: what is remembered about it, and where it starts when
+// nobody has moved it yet.
+{
+    var paletteSettings = AppSettingsSerializer.Parse(AppSettingsSerializer.Format(new AppSettings
+    {
+        InsertPaletteShown = true,
+        InsertPaletteX = 0.25,
+        InsertPaletteY = 0.75,
+    }));
+    Assert(
+        paletteSettings is { InsertPaletteShown: true, InsertPaletteX: 0.25, InsertPaletteY: 0.75 },
+        "The Insert palette's state and place survive a round trip.");
+    Assert(
+        AppSettingsSerializer.Parse("{ }") is
+        {
+            InsertPaletteShown: false,
+            InsertPaletteX: null,
+            InsertPaletteY: null,
+        },
+        "A file that says nothing about the Insert palette leaves it off and unplaced.");
+    Assert(
+        AppSettingsSerializer.Parse("{ \"insertPaletteShown\": true }") is
+        {
+            InsertPaletteShown: true,
+            InsertPaletteX: null,
+            InsertPaletteY: null,
+        },
+        "A palette that is shown but never moved keeps no position, so the default still applies.");
+    Assert(
+        AppSettingsSerializer.Parse("{ \"insertPaletteX\": -0.5, \"insertPaletteY\": 4 }") is
+        {
+            InsertPaletteX: 0,
+            InsertPaletteY: 1,
+        },
+        "A position outside the window is pulled back to the edge rather than dropped.");
+    Assert(
+        AppSettingsSerializer.Parse(AppSettingsSerializer.Format(new AppSettings
+        {
+            InsertPaletteX = double.NaN,
+            InsertPaletteY = double.PositiveInfinity,
+        })) is { InsertPaletteX: null, InsertPaletteY: null },
+        "A position that is not a number is no position at all.");
+
+    // A 1000 x 800 window with a 120 x 200 toolbar 16 px in from the corner each
+    // placement names, and a 340 x 92 palette: the two rows of Insert buttons.
+    const double windowWidth = 1000;
+    const double windowHeight = 800;
+    const double paletteWidth = 340;
+    const double paletteHeight = 92;
+
+    var paletteAt = InsertPalettePlacement.Default(
+        ToolbarPlacement.TopRight,
+        windowWidth,
+        windowHeight,
+        new RectD(864, 48, 120, 200),
+        paletteWidth,
+        paletteHeight);
+    AssertNear(644, paletteAt.X, "Top right lines the palette up with the toolbar's right edge.");
+    AssertNear(260, paletteAt.Y, "Top right puts the palette under the toolbar.");
+
+    paletteAt = InsertPalettePlacement.Default(
+        ToolbarPlacement.TopLeft,
+        windowWidth,
+        windowHeight,
+        new RectD(16, 48, 120, 200),
+        paletteWidth,
+        paletteHeight);
+    AssertNear(16, paletteAt.X, "Top left lines the palette up with the toolbar's left edge.");
+    AssertNear(260, paletteAt.Y, "Top left puts the palette under the toolbar.");
+
+    paletteAt = InsertPalettePlacement.Default(
+        ToolbarPlacement.BottomRight,
+        windowWidth,
+        windowHeight,
+        new RectD(864, 584, 120, 200),
+        paletteWidth,
+        paletteHeight);
+    AssertNear(644, paletteAt.X, "Bottom right keeps the palette on the toolbar's side.");
+    AssertNear(480, paletteAt.Y, "Below a toolbar at the bottom is off the board, so the palette goes above it.");
+
+    paletteAt = InsertPalettePlacement.Default(
+        ToolbarPlacement.BottomLeft,
+        windowWidth,
+        windowHeight,
+        new RectD(16, 584, 120, 200),
+        paletteWidth,
+        paletteHeight);
+    AssertNear(16, paletteAt.X, "Bottom left keeps the palette on the toolbar's side.");
+    AssertNear(480, paletteAt.Y, "Bottom left puts the palette above the toolbar.");
+
+    paletteAt = InsertPalettePlacement.Default(
+        ToolbarPlacement.BottomCenter,
+        windowWidth,
+        windowHeight,
+        new RectD(440, 584, 120, 200),
+        paletteWidth,
+        paletteHeight);
+    AssertNear(330, paletteAt.X, "Bottom center centres the palette on the toolbar.");
+    AssertNear(480, paletteAt.Y, "Bottom center puts the palette above the toolbar.");
+
+    Assert(
+        InsertPalettePlacement.Clamp(
+            new PointD(2000, -40),
+            windowWidth,
+            windowHeight,
+            paletteWidth,
+            paletteHeight) == new PointD(660, 0),
+        "A drag past the edge stops with the whole palette still in the window.");
+    Assert(
+        InsertPalettePlacement.Clamp(new PointD(30, 20), windowWidth, windowHeight, 1200, 900) ==
+        new PointD(0, 0),
+        "A palette larger than the window comes to rest at the top left, where its grip is.");
+    Assert(
+        InsertPalettePlacement.ToFraction(new PointD(250, 400), windowWidth, windowHeight) ==
+        new PointD(0.25, 0.5),
+        "A place in the window is kept as the fraction of it that it is.");
+    Assert(
+        InsertPalettePlacement.ToFraction(new PointD(250, 400), 0, 0) == new PointD(0, 0),
+        "A window with no size yet gives the top left rather than a division by nothing.");
+    Assert(
+        InsertPalettePlacement.FromFraction(new PointD(0.25, 0.5), windowWidth, windowHeight) ==
+        new PointD(250, 400),
+        "The fraction reads back as the same place in a window of the same size.");
+}
+
 // The four arrows a selected shape offers: outside the middle of each side,
 // along the way that side faces, so they turn with the shape; and what a drag
 // out of one records at each end.
@@ -3920,6 +4199,14 @@ Assert(
         193,
         handleShape.AnchorFrame.ConnectorHandles(2)[0].Point.Y,
         "Zoomed in, the handle stands the same 14 screen pixels out, which is half as far on the board.");
+
+    // A shape's text is laid out inside it and says nothing about where its
+    // sides are, so it moves no handle.
+    Assert(
+        (handleShape with { Text = "Sales" }).AnchorFrame.ConnectorHandles(1)
+            .Select(handle => handle.Point)
+            .SequenceEqual(upright.Select(handle => handle.Point)),
+        "A shape that carries text offers its handles in the same four places as one that does not.");
 
     // Turned a quarter about its centre, the shape stands 100 wide and 200
     // tall. What was its top side is now on its right, and its handle with it.

@@ -898,6 +898,7 @@ public partial class PreferencesWindow : Window
                 SettingsCatalog.Ids.RestoreLastSession => _settings.RestoreLastSession,
                 SettingsCatalog.Ids.SuggestMouseMode => _settings.SuggestMouseMode,
                 SettingsCatalog.Ids.InsertOnToolbar => _settings.InsertOnToolbar,
+                SettingsCatalog.Ids.InsertPalette => _settings.InsertPaletteShown,
                 SettingsCatalog.Ids.CheckForUpdates => _settings.CheckForUpdates,
                 _ => false,
             },
@@ -1104,6 +1105,10 @@ public partial class PreferencesWindow : Window
         else if (setting.Id == SettingsCatalog.Ids.InsertOnToolbar)
         {
             _settings.InsertOnToolbar = value;
+        }
+        else if (setting.Id == SettingsCatalog.Ids.InsertPalette)
+        {
+            _settings.InsertPaletteShown = value;
         }
         else if (setting.Id == SettingsCatalog.Ids.CheckForUpdates)
         {

@@ -26,6 +26,7 @@ internal static class LabelSmokeTests
             {
                 CheckMeasuring();
                 CheckTheLabelDraws();
+                CheckShapeTextWraps();
             }
             catch (Exception exception)
             {
@@ -94,6 +95,53 @@ internal static class LabelSmokeTests
         Assert(
             !Pixels(document).SequenceEqual(Pixels(turned)),
             "A turned label is drawn turned rather than upright.");
+    }
+
+    /// <summary>
+    /// A shape's text is laid out inside the shape rather than in a box of its
+    /// own: it wraps to the rectangle the shape leaves for it, it is never cut
+    /// off when there is more of it than room, and it reaches the surface.
+    /// </summary>
+    private static void CheckShapeTextWraps()
+    {
+        const string Long = "A shape carries its own text, wrapped to the box it is written in";
+        var shape = ShapeBoardObject.Create(
+            Guid.NewGuid(),
+            0,
+            new RectD(0, 0, 200, 100),
+            ShapeKind.RoundedRectangle,
+            0xFF035ACA,
+            null,
+            ShapeBoardObject.DefaultThickness) with
+        {
+            Text = Long,
+            FontSize = 20,
+        };
+
+        var width = shape.TextBounds.Width;
+        FormattedText wrapped = LabelVisual.FormatWrapped(shape, shape.FontSize, width, 1);
+        Assert(wrapped.Width <= width + 0.5, "The text is wrapped to the width of the shape's text box.");
+        Size unwrapped = LabelVisual.Measure(Long, shape.FontFamily, shape.FontSize, false, false, 1);
+        Assert(unwrapped.Width > width, "The same words on one line would be wider than the shape.");
+        Assert(
+            wrapped.Height > unwrapped.Height * 1.5,
+            "So they take more than one line, and the height says how many.");
+        Assert(
+            wrapped.Height > shape.TextBounds.Height,
+            "More text than room runs on below the box rather than being cut.");
+
+        var document = new BoardDocument();
+        var silent = shape with { Id = Guid.NewGuid(), Text = string.Empty };
+        document.AddObject(silent);
+        var said = new BoardDocument();
+        said.AddObject(silent with { Text = "Sales" });
+        Assert(!Pixels(document).SequenceEqual(Pixels(said)), "What a shape says reaches the surface.");
+
+        var turned = new BoardDocument();
+        turned.AddObject((silent with { Text = "Sales" }).WithAngle(45));
+        Assert(
+            !Pixels(said).SequenceEqual(Pixels(turned)),
+            "And it is turned with the shape rather than left upright.");
     }
 
     private static byte[] Pixels(BoardDocument document)

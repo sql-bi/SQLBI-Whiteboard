@@ -68,6 +68,10 @@ public sealed record SlideTextElement(
 /// None, and a fill keeps the alpha of the tint the board shows. Bounds is the
 /// box the shape was drawn in, before the turn, so a writer places the box and
 /// then rotates it about its own centre, which is where the board turns it too.
+/// A shape carries its own text as well, centred in the rectangle
+/// <see cref="Core.Geometry.ShapeGeometry.TextBox"/> names inside that box and
+/// wrapped to its width; TextMargin is the room left round it, in page pixels,
+/// which is what a deck writes as the text insets of the shape.
 /// </summary>
 public sealed record SlideShapeElement(
     SlideRect Bounds,
@@ -75,7 +79,15 @@ public sealed record SlideShapeElement(
     uint OutlineArgb,
     uint? FillArgb,
     double Thickness,
-    double AngleDegrees = 0) : SlideElement(Bounds);
+    double AngleDegrees = 0,
+    string Text = "",
+    string FontFamily = "Segoe UI",
+    double FontSize = 24,
+    uint TextArgb = 0xFF1F2937,
+    bool Bold = false,
+    bool Italic = false,
+    bool Underline = false,
+    double TextMargin = 8) : SlideElement(Bounds);
 
 /// <summary>
 /// A label as text rather than as pixels. Bounds is the layout rectangle before

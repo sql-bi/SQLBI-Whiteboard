@@ -590,6 +590,73 @@
             </StackPanel>
         </Border>
 
+        <!--
+            The Insert palette: the Insert row's own content in the tool
+            palette's chrome, put where the hands are rather than at the top of
+            the window. Its two rows are filled in code from the same list the
+            Insert flyout reads, and the grip on its left edge moves it. Same
+            layer as the tool palette, so a press on it never reaches the ink.
+        -->
+        <Border x:Name="InsertPalette"
+                Grid.Row="0"
+                Grid.RowSpan="2"
+                HorizontalAlignment="Left"
+                VerticalAlignment="Top"
+                Padding="6"
+                CornerRadius="12"
+                BorderBrush="{StaticResource ToolbarBorderBrush}"
+                BorderThickness="1"
+                Background="{StaticResource ToolbarBackgroundBrush}"
+                Visibility="Collapsed"
+                SizeChanged="InsertPalette_SizeChanged"
+                PreviewMouseRightButtonDown="InsertPalette_PreviewMouseRightButtonDown"
+                PreviewStylusDown="InsertPalette_PreviewStylusDown"
+                Panel.ZIndex="10">
+            <Border.Effect>
+                <DropShadowEffect BlurRadius="18"
+                                  ShadowDepth="1"
+                                  Direction="270"
+                                  Opacity="0.16"
+                                  Color="Black" />
+            </Border.Effect>
+            <DockPanel x:Name="InsertPaletteContents">
+                <Grid DockPanel.Dock="Left"
+                      Width="12"
+                      Margin="0,0,4,0">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="*" />
+                    </Grid.RowDefinitions>
+                    <Button x:Name="InsertPaletteCloseButton"
+                            Style="{StaticResource PaletteCloseButton}"
+                            ToolTip="Put these tools back on the Insert row"
+                            Click="InsertPaletteCloseButton_Click">
+                        <Path Width="8"
+                              Height="8"
+                              Stretch="Uniform"
+                              Fill="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"
+                              Data="{StaticResource DismissGeometry}" />
+                    </Button>
+                    <Border x:Name="InsertPaletteGrip"
+                            Grid.Row="1"
+                            Background="Transparent"
+                            Cursor="SizeAll"
+                            ToolTip="Drag to move the palette"
+                            PreviewMouseLeftButtonDown="InsertPaletteGrip_PreviewMouseLeftButtonDown"
+                            PreviewMouseMove="InsertPaletteGrip_PreviewMouseMove"
+                            PreviewMouseLeftButtonUp="InsertPaletteGrip_PreviewMouseLeftButtonUp"
+                            PreviewStylusMove="InsertPaletteGrip_PreviewStylusMove"
+                            PreviewStylusUp="InsertPaletteGrip_PreviewStylusUp">
+                        <Rectangle Width="4"
+                                   Margin="0,4"
+                                   HorizontalAlignment="Center"
+                                   Fill="{StaticResource PaletteGripBrush}" />
+                    </Border>
+                </Grid>
+                <StackPanel x:Name="InsertPaletteHost" />
+            </DockPanel>
+        </Border>
+
         <!-- Sized in code from the eraser's own reach, so it cannot outline an
              area the eraser does not actually clear. -->
         <Rectangle x:Name="EraserHint"

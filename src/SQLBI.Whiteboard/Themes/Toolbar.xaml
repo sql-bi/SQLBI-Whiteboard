@@ -52,6 +52,7 @@
     <Geometry x:Key="SendToBackGeometry">M17.75 8A3.25 3.25 0 0 1 21 11.25v6.5C21 19.55 19.54 21 17.75 21h-6.5A3.25 3.25 0 0 1 8 17.75V16H6.25A3.25 3.25 0 0 1 3 12.75v-6.5C3 4.45 4.46 3 6.25 3h6.5C14.55 3 16 4.46 16 6.25V8h1.75ZM8 11.25c0-.97.78-1.75 1.75-1.75h6.5c.97 0 1.75.78 1.75 1.75v6.5c0 .97-.78 1.75-1.75 1.75h-6.5c-.97 0-1.75-.78-1.75-1.75v-6.5ZM14.5 6.25c0-.97-.78-1.75-1.75-1.75h-6.5c-.97 0-1.75.78-1.75 1.75v6.5c0 .97.78 1.75 1.75 1.75H8v-2.5A3.25 3.25 0 0 1 11.25 8H14.5V6.25Z</Geometry>
     <!-- Drawn by hand on the Fluent 24-unit grid: the set has no lasso. -->
     <Geometry x:Key="LassoGeometry">F1 M12,4 C7.58,4 4,6.46 4,9.5 C4,12.54 7.58,15 12,15 C16.42,15 20,12.54 20,9.5 C20,6.46 16.42,4 12,4 Z M12,5.5 C15.72,5.5 18.5,7.48 18.5,9.5 C18.5,11.52 15.72,13.5 12,13.5 C8.28,13.5 5.5,11.52 5.5,9.5 C5.5,7.48 8.28,5.5 12,5.5 Z M10.7,15.2 C10.7,17 9.84,18.4 8.4,19.45 L9.3,20.65 C11.1,19.35 12.2,17.45 12.2,15.2 Z M8.75,22 C8.06,22 7.5,21.44 7.5,20.75 C7.5,20.06 8.06,19.5 8.75,19.5 C9.44,19.5 10,20.06 10,20.75 C10,21.44 9.44,22 8.75,22 Z</Geometry>
+    <Geometry x:Key="PinGeometry">M16.2425 2.93189L21.0682 7.75765C22.3955 9.08491 22.0324 11.3224 20.3535 12.1619L15.4826 14.5973C15.3073 14.685 15.1732 14.8379 15.1092 15.0232L13.6699 19.1895C13.3684 20.0622 12.2574 20.3181 11.6045 19.6653L8.50002 16.5607L4.06074 21.0001H3L3.00008 19.9394L7.43936 15.5001L4.33487 12.3956C3.682 11.7427 3.93791 10.6317 4.81061 10.3302L8.97688 8.89096C9.16223 8.82694 9.31512 8.69287 9.40281 8.51748L11.8382 3.6466C12.6777 1.96772 14.9152 1.60462 16.2425 2.93189ZM20.0076 8.81831L15.1818 3.99255C14.5785 3.38924 13.5614 3.55429 13.1799 4.31742L10.7445 9.18829C10.4814 9.71446 10.0227 10.1167 9.46666 10.3087L5.67812 11.6175L12.3826 18.322L13.6914 14.5335C13.8835 13.9774 14.2857 13.5188 14.8118 13.2557L19.6827 10.8202C20.4458 10.4387 20.6109 9.42161 20.0076 8.81831Z</Geometry>
     <!--
         The shape glyphs, and the Insert button's, drawn by hand on the same
         24-unit grid as the Fluent set, which has no outline shape icons. Each is
@@ -198,6 +199,69 @@
             </Setter.Value>
         </Setter>
     </Style>
+
+    <!--
+        The Insert palette's own chrome: a close in the 12-pixel column the grip
+        takes. It is deliberately small - the pin on the Insert row and the
+        Preferences row are the ways to put the palette away that a person looks
+        for, and this one is for the palette that is already under the hand.
+    -->
+    <Style x:Key="PaletteCloseButton"
+           TargetType="{x:Type Button}">
+        <Setter Property="Width"
+                Value="12" />
+        <Setter Property="Height"
+                Value="20" />
+        <Setter Property="Background"
+                Value="Transparent" />
+        <Setter Property="BorderThickness"
+                Value="0" />
+        <Setter Property="Focusable"
+                Value="False" />
+        <Setter Property="ClickMode"
+                Value="Press" />
+        <Setter Property="Foreground"
+                Value="{StaticResource ToolbarIconBrush}" />
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="{x:Type Button}">
+                    <Border x:Name="Root"
+                            Background="{TemplateBinding Background}"
+                            CornerRadius="6">
+                        <ContentPresenter HorizontalAlignment="Center"
+                                          VerticalAlignment="Center" />
+                    </Border>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsMouseOver"
+                                 Value="True">
+                            <Setter TargetName="Root"
+                                    Property="Background"
+                                    Value="{StaticResource ToolbarHoverBrush}" />
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+    <!-- The dots of the palette's grip, tiled so the handle is as long as the
+         palette is tall whatever goes in it. -->
+    <DrawingBrush x:Key="PaletteGripBrush"
+                  TileMode="Tile"
+                  Viewport="0,0,4,8"
+                  ViewportUnits="Absolute"
+                  Stretch="None"
+                  Opacity="0.55">
+        <DrawingBrush.Drawing>
+            <GeometryDrawing Brush="{StaticResource ToolbarIconBrush}">
+                <GeometryDrawing.Geometry>
+                    <EllipseGeometry Center="2,4"
+                                     RadiusX="1.25"
+                                     RadiusY="1.25" />
+                </GeometryDrawing.Geometry>
+            </GeometryDrawing>
+        </DrawingBrush.Drawing>
+    </DrawingBrush>
 
     <Style x:Key="ToolbarChevronButton"
            TargetType="{x:Type ToggleButton}"
