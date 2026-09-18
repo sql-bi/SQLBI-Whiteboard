@@ -1188,6 +1188,15 @@ public partial class MainWindow : Window
 
     private bool TryActivatePaletteFromStylus(StylusDownEventArgs e)
     {
+        // The Insert palette can be dragged over the toolbar and is drawn on top
+        // of it. This hit test asks the toolbar alone, which would answer for a
+        // press that never reached it.
+        if (InsertPalette.Visibility == Visibility.Visible &&
+            InsertPalette.InputHitTest(e.GetPosition(InsertPalette)) is not null)
+        {
+            return false;
+        }
+
         if (!TryActivatePaletteAt(e.GetPosition(ToolPalette), e.StylusDevice))
         {
             return false;
