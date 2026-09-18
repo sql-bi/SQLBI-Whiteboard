@@ -2672,14 +2672,14 @@ Assert(
         AppSettingsSerializer.Parse("{ }") is
         {
             InsertOnToolbar: false,
-            AfterInsert: AfterInsert.KeepTool,
+            AfterInsert: AfterInsert.ReturnToSelect,
         },
         "A file that says nothing about the Insert toolbar takes the defaults.");
     Assert(
         AppSettingsSerializer.Parse(
             "{ \"afterInsert\": 99, \"shape\": { \"outlineArgb\": 123, \"fillArgb\": 456, \"thickness\": 99 } }") is
         {
-            AfterInsert: AfterInsert.KeepTool,
+            AfterInsert: AfterInsert.ReturnToSelect,
             Shape: { FillArgb: null, Thickness: 4 },
         },
         "A shape default that is not on the palette normalizes back to one that is.");
@@ -3617,6 +3617,149 @@ Assert(
         zDocument.Objects.Select(item => item.Id).SequenceEqual(
             [stack[1].Id, stack[2].Id, stack[0].Id, stack[3].Id]),
         "Send backward takes the block past the one object below it.");
+}
+
+// One shape, then Select. The preference stays for whoever wants a sticky
+// tool, but a shape is something most people add now and then.
+{
+    Assert(
+        new AppSettings().AfterInsert == AfterInsert.ReturnToSelect,
+        "A fresh setup hands the Insert tool back to Select once one object is drawn.");
+    Assert(
+        AppSettingsSerializer.Parse("{ }").AfterInsert == AfterInsert.ReturnToSelect,
+        "A settings file that says nothing about the Insert tool returns to Select.");
+    Assert(
+        AppSettingsSerializer.Parse("{ \"afterInsert\": 0 }").AfterInsert == AfterInsert.KeepTool,
+        "Keeping the tool is still honoured where somebody asked for it.");
+    Assert(
+        AppSettingsSerializer.Parse("{ \"afterInsert\": 42 }").AfterInsert == AfterInsert.ReturnToSelect,
+        "A stored value that is not one of the choices normalizes to the default.");
+}
+
+// Select all: the same set an area could take, and the ink alone.
+{
+    var allBoard = new BoardDocument();
+    var allPicture = new ImageBoardObject(
+        Guid.NewGuid(),
+        allBoard.NextZIndex,
+        new RectD(0, 0, 100, 100),
+        "select-all-picture");
+    allBoard.AddObject(allPicture);
+    ShapeBoardObject allShape = ShapeBoardObject.Create(
+        Guid.NewGuid(),
+        allBoard.NextZIndex,
+        new RectD(200, 0, 120, 80),
+        ShapeKind.RoundedRectangle,
+        0xFF1F2937,
+        null,
+        4);
+    allBoard.AddObject(allShape);
+    var allStroke = InkStrokeObject.Create(
+        [
+            new InkPoint(new PointD(10, 10), 0.5f, 0),
+            new InkPoint(new PointD(60, 60), 0.5f, 1),
+        ],
+        PenStyle.Default,
+        allBoard.NextZIndex);
+    allBoard.AddObject(allStroke);
+    var allFrame = new FrameBoardObject(
+        Guid.NewGuid(),
+        allBoard.NextZIndex,
+        new RectD(-50, -50, 800, 800),
+        "Slide 1");
+    allBoard.AddObject(allFrame);
+
+    Assert(
+        allBoard.AllSelectable(strokesOnly: false)
+            .Select(item => item.Id)
+            .ToHashSet()
+            .SetEquals(new[] { allPicture.Id, allShape.Id, allStroke.Id }),
+        "Ctrl+A takes everything an area could take.");
+    Assert(
+        allBoard.AllSelectable(strokesOnly: false).All(item => item is not FrameBoardObject),
+        "A frame is no more taken by select-all than by a band drawn over it.");
+    Assert(
+        allBoard.AllSelectable(strokesOnly: true)
+            .Select(item => item.Id)
+            .SequenceEqual([allStroke.Id]),
+        "Ctrl+Shift+A takes the ink and nothing else.");
+    Assert(
+        new BoardDocument().AllSelectable(strokesOnly: false).Count == 0,
+        "Select-all on an empty board takes nothing rather than failing.");
+}
+
+// A connector binds wherever it is dropped on a shape: over the middle, near
+// an edge, and with Ctrl asking for the border instead. A turned shape answers
+// for where it is drawn, not for the box around it.
+{
+    var bindingId = Guid.NewGuid();
+    ShapeBoardObject bindingShape = ShapeBoardObject.Create(
+        bindingId,
+        0,
+        new RectD(0, 0, 200, 100),
+        ShapeKind.Diamond,
+        0xFF1F2937,
+        null,
+        4);
+    AnchorFrame bindingFrame = bindingShape.AnchorFrame;
+    IReadOnlyList<PointD> bindingOutline = bindingShape.Outline();
+
+    Assert(
+        ConnectorGeometry.IsWithinBindingReach(bindingFrame, new PointD(100, 50), 16),
+        "The middle of a shape counts as over it, though a tap there is not a hit on it.");
+    Assert(
+        ConnectorGeometry.IsWithinBindingReach(bindingFrame, new PointD(-10, 50), 16),
+        "Just outside the box is still over it: the reach is what gives an arrow something to aim at.");
+    Assert(
+        !ConnectorGeometry.IsWithinBindingReach(bindingFrame, new PointD(-40, 50), 16),
+        "Well clear of the box is over nothing, and the end stays free.");
+
+    ConnectorGeometry.BindingCandidate middle = ConnectorGeometry.BindingCandidateFor(
+        bindingId, bindingFrame, bindingOutline, new PointD(104, 44), toBorder: false);
+    Assert(
+        middle.Anchor == new ConnectorAnchor(bindingId, 0.5, 0),
+        "From the middle the nearest of the eight is taken, rather than nothing at all.");
+    AssertNear(100, middle.Point.X, "The preview snaps to the binding point's X.");
+    AssertNear(0, middle.Point.Y, "The preview snaps to the binding point's Y.");
+    Assert(middle.DotIndex == 1, "The dot that would be taken is the top side midpoint, the second of the eight.");
+
+    ConnectorGeometry.BindingCandidate corner = ConnectorGeometry.BindingCandidateFor(
+        bindingId, bindingFrame, bindingOutline, new PointD(190, 96), toBorder: false);
+    Assert(
+        corner.Anchor == new ConnectorAnchor(bindingId, 1, 1),
+        "Near an edge the nearest of the eight is the corner it is near.");
+    Assert(corner.DotIndex == 4, "The bottom-right corner is the fifth of the eight, clockwise from the top left.");
+
+    ConnectorGeometry.BindingCandidate border = ConnectorGeometry.BindingCandidateFor(
+        bindingId, bindingFrame, bindingOutline, new PointD(60, 20), toBorder: true);
+    Assert(
+        border.DotIndex == ConnectorGeometry.NoDot,
+        "Ctrl takes a point on the border, which is none of the eight, so no dot is filled.");
+    Assert(
+        border.Anchor.U is > 0 and < 0.5,
+        "The border point on a diamond's upper-left edge lies between the corner and the top midpoint.");
+    Assert(
+        ConnectorGeometry.DotIndexOf(new ConnectorAnchor(bindingId, 0, 0.5)) == 7,
+        "The left side midpoint is the last of the eight.");
+
+    // Turned a quarter about its centre, the shape stands 100 wide and 200 tall.
+    // What was its top side midpoint is now on its right, and that is where the
+    // dot is drawn and where the preview snaps.
+    ShapeBoardObject turned = bindingShape.WithAngle(90);
+    AnchorFrame turnedFrame = turned.AnchorFrame;
+    Assert(
+        ConnectorGeometry.IsWithinBindingReach(turnedFrame, new PointD(100, 140), 16),
+        "A turned shape is over the ground it is drawn on.");
+    Assert(
+        !ConnectorGeometry.IsWithinBindingReach(turnedFrame, new PointD(10, 10), 16),
+        "The empty corner of the box around a turned shape is not over it.");
+    ConnectorGeometry.BindingCandidate onTurned = ConnectorGeometry.BindingCandidateFor(
+        bindingId, turnedFrame, turned.Outline(), new PointD(140, 46), toBorder: false);
+    Assert(
+        onTurned.Anchor == new ConnectorAnchor(bindingId, 0.5, 0),
+        "The anchor is still the fraction it always was, read before the turn.");
+    AssertNear(150, onTurned.Point.X, "The dot is drawn where the turn put it, on the X.");
+    AssertNear(50, onTurned.Point.Y, "The dot is drawn where the turn put it, on the Y.");
 }
 
 Console.WriteLine("SQLBI.Whiteboard.Core smoke tests passed.");

@@ -174,6 +174,17 @@ public sealed class BoardDocument
     }
 
     /// <summary>
+    /// What select-all takes, in z-order: everything an area could take, or the
+    /// ink strokes alone. It is the area's own rule with no area, so frames are
+    /// left out here for the reason they are left out there - a band drawn over
+    /// a slide means the things on it.
+    /// </summary>
+    public IReadOnlyList<BoardObject> AllSelectable(bool strokesOnly) =>
+        _objects
+            .Where(item => item.IsAreaSelectable && (!strokesOnly || item is InkStrokeObject))
+            .ToArray();
+
+    /// <summary>
     /// The objects whose geometry meets this one's box. It is the partly-inside
     /// test of the area selection, asked of one object's bounds, so what counts
     /// as touching is the same thing a rubber band counts as taking.

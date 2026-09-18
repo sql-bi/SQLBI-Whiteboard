@@ -123,9 +123,10 @@ public enum GridStyle
 }
 
 /// <summary>
-/// What happens to the Insert tool once it has drawn something. Keeping it is
-/// the default, so the next drag draws another; Escape and any tool button
-/// leave it either way.
+/// What happens to the Insert tool once it has drawn something. Handing it back
+/// to Select is the default, so the shape just drawn is the thing the next tap
+/// picks up rather than the start of another; Escape and any tool button leave
+/// the tool either way.
 /// </summary>
 public enum AfterInsert
 {
@@ -190,7 +191,7 @@ public sealed class AppSettings
     /// </summary>
     public bool InsertOnToolbar { get; set; }
 
-    public AfterInsert AfterInsert { get; set; } = AfterInsert.KeepTool;
+    public AfterInsert AfterInsert { get; set; } = AfterInsert.ReturnToSelect;
 
     public ShapeSettings Shape { get; set; } = new();
 
@@ -373,7 +374,7 @@ public static class AppSettingsSerializer
 
         if (!Enum.IsDefined(settings.AfterInsert))
         {
-            settings.AfterInsert = AfterInsert.KeepTool;
+            settings.AfterInsert = AfterInsert.ReturnToSelect;
         }
 
         settings.Shape = ShapeSettings.Normalize(settings.Shape);
