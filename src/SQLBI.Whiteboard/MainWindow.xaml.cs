@@ -3556,9 +3556,9 @@ public partial class MainWindow : Window
     }
 
     /// <summary>
-    /// What the Insert tools do once one object has been made. Keeping the tool
-    /// is the default, so the next gesture makes another; the preference hands
-    /// it back to Select for anyone who adds one object at a time.
+    /// What the Insert tools do once one object has been made. Handing the tool
+    /// back is the default, so the new object is what the next tap picks up;
+    /// the preference keeps the tool for anyone drawing a row of them.
     /// </summary>
     private void ReturnToSelectAfterInsert()
     {
