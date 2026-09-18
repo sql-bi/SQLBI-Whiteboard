@@ -56,6 +56,13 @@ internal sealed class BoardSurface : FrameworkElement
 
     public Guid? HiddenObjectId { get; set; }
 
+    /// <summary>
+    /// The shape whose own text is being typed. The shape stays on the board -
+    /// what is being edited is inside it - and only its words are left out, so
+    /// they are not drawn twice under the editor's box.
+    /// </summary>
+    public Guid? HiddenTextObjectId { get; set; }
+
     public Func<Guid, ImageSource?>? LiveViewImageSourceProvider { get; set; }
 
     /// <summary>
@@ -179,6 +186,7 @@ internal sealed class BoardSurface : FrameworkElement
                     break;
                 case ShapeBoardObject shape:
                     DrawShape(drawingContext, shape, _camera);
+                    DrawShapeText(drawingContext, shape, _camera);
                     break;
                 case ConnectorBoardObject connector:
                     DrawConnector(drawingContext, connector, _camera);
@@ -321,6 +329,44 @@ internal sealed class BoardSurface : FrameworkElement
         }
 
         var rotation = new RotateTransform(label.AngleDegrees, center.X, center.Y);
+        rotation.Freeze();
+        drawingContext.PushTransform(rotation);
+        drawingContext.DrawText(text, origin);
+        drawingContext.Pop();
+    }
+
+    /// <summary>
+    /// What a shape says, inside it: wrapped to its text box, centred both ways,
+    /// and turned with the shape. Text with more lines than the box has room for
+    /// runs on below it rather than being cut, as it does in PowerPoint, so a
+    /// shape never silently swallows a word.
+    /// </summary>
+    private void DrawShapeText(DrawingContext drawingContext, ShapeBoardObject shape, Camera2D camera)
+    {
+        if (shape.Text.Length == 0 || shape.Id == HiddenTextObjectId)
+        {
+            return;
+        }
+
+        RectD box = shape.TextBounds;
+        FormattedText text = LabelVisual.FormatWrapped(
+            shape,
+            shape.FontSize * camera.Zoom,
+            box.Width * camera.Zoom,
+            VisualTreeHelper.GetDpi(this).PixelsPerDip);
+        PointD topLeft = camera.WorldToScreen(new PointD(box.Left, box.Top));
+        var origin = new Point(
+            topLeft.X,
+            topLeft.Y + (((box.Height * camera.Zoom) - text.Height) / 2));
+
+        if (shape.AngleDegrees == 0)
+        {
+            drawingContext.DrawText(text, origin);
+            return;
+        }
+
+        PointD center = camera.WorldToScreen(shape.Bounds.Center);
+        var rotation = new RotateTransform(shape.AngleDegrees, center.X, center.Y);
         rotation.Freeze();
         drawingContext.PushTransform(rotation);
         drawingContext.DrawText(text, origin);

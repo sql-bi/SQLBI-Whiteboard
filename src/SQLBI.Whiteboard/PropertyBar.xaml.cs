@@ -68,7 +68,8 @@ public partial class PropertyBar : UserControl
         AddRow(HasThickness, BuildThicknessRow());
         AddRow(HasFill, BuildFillRow());
         AddRow(IsConnector, BuildLineKindRow());
-        AddRow(IsLabel, BuildFontRow());
+        AddRow(HasText, BuildFontRow());
+        AddRow(IsShape, BuildShapeTextRow());
         AddRow(CanTurn, BuildRotateRow());
         BuildOverflow();
 
@@ -99,12 +100,18 @@ public partial class PropertyBar : UserControl
 
     private static bool IsConnector(BoardObject item) => item is ConnectorBoardObject;
 
-    private static bool IsLabel(BoardObject item) => item is FreeTextBoardObject;
+    private static bool IsShape(BoardObject item) => item is ShapeBoardObject;
+
+    /// <summary>
+    /// What is written in a font: a label, and a shape, which carries its own
+    /// text inside it. A shape's words are colored from a row of its own,
+    /// because the color swatches above already mean its outline.
+    /// </summary>
+    private static bool HasText(BoardObject item) => item is FreeTextBoardObject or ShapeBoardObject;
 
     /// <summary>
     /// What the two quarter turns apply to. A shape and a label are turned the
-    /// same way - about their own centre, in steps - so they share the row,
-    /// while a shape keeps the font row to itself until it can carry text.
+    /// same way - about their own centre, in steps - so they share the row.
     /// </summary>
     private static bool CanTurn(BoardObject item) => item is FreeTextBoardObject or ShapeBoardObject;
 
@@ -137,6 +144,18 @@ public partial class PropertyBar : UserControl
     public event Action<double>? FontSizeChosen;
 
     public event Action<LabelFontStyle, bool>? FontStyleChosen;
+
+    /// <summary>
+    /// A color for the text of every selected shape. A shape's outline is what
+    /// the color row above means, so its words are colored here instead.
+    /// </summary>
+    public event Action<uint>? TextColorChosen;
+
+    /// <summary>
+    /// The Text button: type inside the one selected shape, which F2 and simply
+    /// typing also do.
+    /// </summary>
+    public event Action? TextEditRequested;
 
     /// <summary>
     /// A step of the rotation, in degrees: -45 or 45, for every selected label
@@ -453,8 +472,9 @@ public partial class PropertyBar : UserControl
 
     /// <summary>
     /// Font, size, bold, italic, and underline. Every change is one step for
-    /// every selected label, and what is shown is what they already share - a
-    /// mixed selection shows an empty box rather than the first one's answer.
+    /// everything selected that is written in a font, and what is shown is what
+    /// they already share - a mixed selection shows an empty box rather than the
+    /// first one's answer.
     /// </summary>
     private PropertyBarRow BuildFontRow()
     {
@@ -519,17 +539,107 @@ public partial class PropertyBar : UserControl
             Content = host,
             Refresh = selection =>
             {
-                FreeTextBoardObject[] labels = selection.OfType<FreeTextBoardObject>().ToArray();
+                TextStyle[] styles = selection.Select(TextStyleOf).OfType<TextStyle>().ToArray();
                 _updatingFontRow = true;
-                fonts.SelectedItem = Common(labels, label => label.FontFamily);
-                sizes.SelectedItem = Common(labels, label => label.FontSize);
-                bold.IsChecked = labels.All(label => label.Bold);
-                italic.IsChecked = labels.All(label => label.Italic);
-                underline.IsChecked = labels.All(label => label.Underline);
+                fonts.SelectedItem = Common(styles, style => style.FontFamily);
+                sizes.SelectedItem = Common(styles, style => style.FontSize);
+                bold.IsChecked = styles.All(style => style.Bold);
+                italic.IsChecked = styles.All(style => style.Italic);
+                underline.IsChecked = styles.All(style => style.Underline);
                 _updatingFontRow = false;
             },
         };
     }
+
+    /// <summary>
+    /// The six pen colors for a shape's own words, and the button that opens
+    /// the editor on them. The swatches stand beside the font row rather than
+    /// replacing the color row above, which is the shape's outline and has to
+    /// keep saying so. The button is for one shape: there is one editor, and it
+    /// stands over one shape's text box.
+    /// </summary>
+    private PropertyBarRow BuildShapeTextRow()
+    {
+        var host = new StackPanel { Orientation = Orientation.Horizontal };
+        host.Children.Add(new TextBlock
+        {
+            Text = "A",
+            FontFamily = new FontFamily("Georgia"),
+            FontSize = 15,
+            FontWeight = FontWeights.Bold,
+            Margin = new Thickness(4, 0, 6, 0),
+            VerticalAlignment = VerticalAlignment.Center,
+            Foreground = (Brush)FindResource("ToolbarIconBrush"),
+        });
+
+        foreach (var swatch in InkPalettes.Pen)
+        {
+            var button = new ToggleButton
+            {
+                Style = (Style)FindResource("ColorSwatchButton"),
+                Background = ToFrozenBrush(swatch.Argb),
+                ToolTip = swatch.Name + " text",
+                Tag = swatch.Argb,
+            };
+            button.Click += (_, _) => TextColorChosen?.Invoke(swatch.Argb);
+            host.Children.Add(button);
+        }
+
+        var edit = new Button
+        {
+            Style = (Style)FindResource("SizeChipButton"),
+            Width = 52,
+            Height = 30,
+            Margin = new Thickness(6, 0, 0, 0),
+            ToolTip = "Type in the shape (F2)",
+            Content = new TextBlock
+            {
+                Text = "Text",
+                FontFamily = new FontFamily("Segoe UI"),
+                FontSize = 13,
+                HorizontalAlignment = HorizontalAlignment.Center,
+                VerticalAlignment = VerticalAlignment.Center,
+            },
+        };
+        edit.Click += (_, _) => TextEditRequested?.Invoke();
+        host.Children.Add(edit);
+
+        return new PropertyBarRow
+        {
+            Content = host,
+            Refresh = selection =>
+            {
+                edit.Visibility = selection.Count == 1 ? Visibility.Visible : Visibility.Collapsed;
+                foreach (var button in host.Children.OfType<ToggleButton>())
+                {
+                    button.IsChecked = button.Tag is uint argb &&
+                                       selection.All(item =>
+                                           item is ShapeBoardObject shape && shape.TextArgb == argb);
+                }
+            },
+        };
+    }
+
+    /// <summary>
+    /// How an object's text is written, for the row that shows what the
+    /// selection has in common. A shape and a label answer the same five
+    /// questions.
+    /// </summary>
+    private readonly record struct TextStyle(
+        string FontFamily,
+        double FontSize,
+        bool Bold,
+        bool Italic,
+        bool Underline);
+
+    private static TextStyle? TextStyleOf(BoardObject item) => item switch
+    {
+        FreeTextBoardObject label =>
+            new TextStyle(label.FontFamily, label.FontSize, label.Bold, label.Italic, label.Underline),
+        ShapeBoardObject shape =>
+            new TextStyle(shape.FontFamily, shape.FontSize, shape.Bold, shape.Italic, shape.Underline),
+        _ => null,
+    };
 
     /// <summary>
     /// The two quarter turns, for whatever is turned about its own centre: a
@@ -617,20 +727,18 @@ public partial class PropertyBar : UserControl
     }
 
     /// <summary>
-    /// What every selected label says, or nothing when they disagree.
+    /// What everything selected says, or nothing when they disagree.
     /// </summary>
-    private static object? Common<T>(
-        IReadOnlyList<FreeTextBoardObject> labels,
-        Func<FreeTextBoardObject, T> property)
+    private static object? Common<TItem, T>(IReadOnlyList<TItem> items, Func<TItem, T> property)
         where T : notnull
     {
-        if (labels.Count == 0)
+        if (items.Count == 0)
         {
             return null;
         }
 
-        T first = property(labels[0]);
-        return labels.All(label => property(label).Equals(first)) ? first : null;
+        T first = property(items[0]);
+        return items.All(item => property(item).Equals(first)) ? first : null;
     }
 
     /// <summary>

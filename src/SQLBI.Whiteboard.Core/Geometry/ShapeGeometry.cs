@@ -57,6 +57,22 @@ public static class ShapeGeometry
     public const double ArrowShaftFraction = 0.5;
 
     /// <summary>
+    /// The room left between a shape's text and the edge it is written inside,
+    /// in board pixels on each side. The same number becomes the text inset of
+    /// the shape a deck carries, so the text sits where the board puts it there
+    /// too.
+    /// </summary>
+    public const double TextMargin = 8;
+
+    /// <summary>
+    /// A pentagon's text is inset by this fraction of each side. The pentagon
+    /// is the one kind whose largest fitting rectangle is not worth solving
+    /// for: its widest point is neither its top nor its bottom, and a fifth of
+    /// the box keeps the text off the two slanted sides at any proportion.
+    /// </summary>
+    public const double PentagonTextFraction = 0.2;
+
+    /// <summary>
     /// Radians per point when an arc is walked as a polygon: 64 points to the
     /// full circle, which keeps the flattened outline within about a thousandth
     /// of a radius of the curve - far finer than the eight-pixel band a tap has
@@ -75,6 +91,76 @@ public static class ShapeGeometry
     /// </summary>
     public static double StadiumRadius(RectD bounds) =>
         Math.Min(Math.Abs(bounds.Width), Math.Abs(bounds.Height)) / 2;
+
+    /// <summary>
+    /// Where a shape's own text is laid out, in the box the shape was drawn in
+    /// and before it is turned: the largest upright rectangle that fits inside
+    /// the outline, less <paramref name="margin"/> on each side. A rounded
+    /// rectangle and a stadium take the whole box, as PowerPoint's rounded
+    /// rectangle does; a pentagon takes a fifth off each side
+    /// (<see cref="PentagonTextFraction"/>); the rest are solved exactly, which
+    /// is half of each side for a diamond, half the box standing on the base of
+    /// a triangle, the shaft of a block arrow, and the upright rectangle inside
+    /// an ellipse or a parallelogram. A box too small for the margin keeps a
+    /// sliver rather than turning inside out.
+    /// </summary>
+    public static RectD TextBox(ShapeKind kind, RectD layout, double margin = TextMargin)
+    {
+        RectD fitted = Fitted(kind, layout);
+        var inset = Math.Max(0, margin);
+        var width = Math.Max(1, fitted.Width - (2 * inset));
+        var height = Math.Max(1, fitted.Height - (2 * inset));
+        return new RectD(
+            fitted.Center.X - (width / 2),
+            fitted.Center.Y - (height / 2),
+            width,
+            height);
+    }
+
+    private static RectD Fitted(ShapeKind kind, RectD layout)
+    {
+        var width = Math.Abs(layout.Width);
+        var height = Math.Abs(layout.Height);
+        switch (kind)
+        {
+            case ShapeKind.Ellipse:
+                return Centred(layout, width / Math.Sqrt(2), height / Math.Sqrt(2));
+            case ShapeKind.Triangle:
+                // The largest rectangle in a triangle stands on its base and is
+                // half of it each way, so the text sits low rather than in the
+                // point.
+                return new RectD(
+                    layout.Center.X - (width / 4),
+                    layout.Bottom - (height / 2),
+                    width / 2,
+                    height / 2);
+            case ShapeKind.Pentagon:
+                return Centred(
+                    layout,
+                    width * (1 - (2 * PentagonTextFraction)),
+                    height * (1 - (2 * PentagonTextFraction)));
+            case ShapeKind.BlockArrow:
+                // The shaft, carried on past the neck to where the head has
+                // narrowed to the shaft's own thickness.
+                return new RectD(
+                    layout.Left,
+                    layout.Center.Y - (height * ArrowShaftFraction / 2),
+                    width * (1 - (ArrowShaftFraction * (1 - ArrowHeadFraction))),
+                    height * ArrowShaftFraction);
+            case ShapeKind.Parallelogram:
+                return Centred(layout, width * (1 - (2 * SlantFraction)), height);
+            case ShapeKind.Diamond:
+                return Centred(layout, width / 2, height / 2);
+            default:
+                return layout;
+        }
+    }
+
+    private static RectD Centred(RectD layout, double width, double height) => new(
+        layout.Center.X - (width / 2),
+        layout.Center.Y - (height / 2),
+        width,
+        height);
 
     public static ShapeOutline Describe(ShapeKind kind, RectD bounds) => kind switch
     {

@@ -447,7 +447,85 @@ public static class PdfDocumentWriter
             graphics.DrawPath(pen, path);
         }
 
+        DrawShapeText(graphics, shape, mapping);
         graphics.Restore(state);
+    }
+
+    /// <summary>
+    /// What a shape says, inside it: wrapped to the rectangle the board writes
+    /// it in, centred across that rectangle and down it, and already turned with
+    /// the shape, since this is drawn inside the shape's own rotation. Lines the
+    /// rectangle cannot hold run on below it rather than being cut, as they do
+    /// on the board and in a deck.
+    /// </summary>
+    private static void DrawShapeText(XGraphics graphics, SlideShapeElement shape, PixelMapping mapping)
+    {
+        if (shape.Text.Length == 0)
+        {
+            return;
+        }
+
+        RectD box = ShapeGeometry.TextBox(
+            shape.Kind,
+            new RectD(shape.Bounds.X, shape.Bounds.Y, shape.Bounds.Width, shape.Bounds.Height),
+            shape.TextMargin);
+        XRect area = mapping.Map(new SlideRect(box.Left, box.Top, box.Width, box.Height));
+        var size = Math.Max(1, mapping.Map(shape.FontSize));
+        var font = new XFont(
+            shape.FontFamily,
+            size,
+            (shape.Bold ? XFontStyleEx.Bold : XFontStyleEx.Regular) |
+            (shape.Italic ? XFontStyleEx.Italic : XFontStyleEx.Regular) |
+            (shape.Underline ? XFontStyleEx.Underline : XFontStyleEx.Regular));
+        var brush = new XSolidBrush(Color(shape.TextArgb, opaque: true));
+        IReadOnlyList<string> lines = WrapLines(graphics, shape.Text, font, area.Width);
+        var lineHeight = font.GetHeight();
+        var top = area.Y + ((area.Height - (lines.Count * lineHeight)) / 2);
+        for (var index = 0; index < lines.Count; index++)
+        {
+            if (lines[index].Length == 0)
+            {
+                continue;
+            }
+
+            graphics.DrawString(
+                lines[index],
+                font,
+                brush,
+                new XRect(area.X, top + (index * lineHeight), area.Width, lineHeight),
+                XStringFormats.TopCenter);
+        }
+    }
+
+    /// <summary>
+    /// The text broken into the lines it takes at this width: a line break is
+    /// kept, and a line too long for the width is broken between words. A single
+    /// word wider than the rectangle stays whole and runs past it, which is what
+    /// every other writer does with it.
+    /// </summary>
+    private static IReadOnlyList<string> WrapLines(XGraphics graphics, string text, XFont font, double width)
+    {
+        var lines = new List<string>();
+        foreach (var paragraph in text.Split('\n'))
+        {
+            var line = string.Empty;
+            foreach (var word in paragraph.TrimEnd('\r').Split(' '))
+            {
+                var candidate = line.Length == 0 ? word : line + " " + word;
+                if (line.Length > 0 && graphics.MeasureString(candidate, font).Width > width)
+                {
+                    lines.Add(line);
+                    line = word;
+                    continue;
+                }
+
+                line = candidate;
+            }
+
+            lines.Add(line);
+        }
+
+        return lines;
     }
 
     /// <summary>
