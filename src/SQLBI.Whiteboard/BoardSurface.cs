@@ -27,6 +27,14 @@ internal sealed class BoardSurface : FrameworkElement
     // so little of a pixel that antialiasing thins it away to nothing.
     private const double GridDotRadius = 1.5;
 
+    // The object a connector endpoint is over: the selection blue at an alpha
+    // low enough to read as a highlight over whatever the shape is filled with,
+    // rather than as a second outline drawn on it.
+    private static readonly Pen BindingTargetPen = CreateFrozenPen(0x552563EB, 3);
+
+    private const double BindingDotRadius = 4;
+    private const double BindingDotTakenRadius = 6;
+
     private static readonly Brush FrameBrush = CreateFrozenBrush(0xFF64748B);
     private static readonly Brush FrameTitleBrush = CreateFrozenBrush(0xFFFFFFFF);
     private static readonly Typeface FrameTypeface = new(
@@ -112,9 +120,23 @@ internal sealed class BoardSurface : FrameworkElement
 
     /// <summary>
     /// The eight binding points of the object under the pointer, while a
-    /// connector endpoint is near enough to one of them to take it.
+    /// connector endpoint is over it.
     /// </summary>
     public IReadOnlyList<PointD>? BindingDots { get; set; }
+
+    /// <summary>
+    /// Which of <see cref="BindingDots"/> would be taken if the endpoint were
+    /// let go now. It is drawn larger and filled: the eight say where an arrow
+    /// can land, and this one says where it will.
+    /// </summary>
+    public int? BindingDotIndex { get; set; }
+
+    /// <summary>
+    /// The object those dots belong to, outlined faintly in the selection blue
+    /// while the endpoint is over it. Over the middle of a shape there is no
+    /// other sign of which object answered.
+    /// </summary>
+    public Guid? BindingTargetId { get; set; }
 
     public void Configure(BoardDocument document, Camera2D camera)
     {
@@ -229,14 +251,59 @@ internal sealed class BoardSurface : FrameworkElement
         }
 
         // Over the selection, because they are what the hand is aiming at: the
-        // eight places this endpoint would bind to if it were let go here.
+        // object this endpoint would bind to, and the eight places on it.
+        if (BindingTargetId is Guid bindingTargetId &&
+            _document.Objects.FirstOrDefault(item => item.Id == bindingTargetId) is { } bindingTarget)
+        {
+            DrawBindingTarget(drawingContext, bindingTarget, _camera);
+        }
+
         if (BindingDots is { Count: > 0 } dots)
         {
-            foreach (PointD dot in dots)
+            for (var index = 0; index < dots.Count; index++)
             {
-                drawingContext.DrawEllipse(SelectionHandleBrush, SelectionPen, ToScreenPoint(dot, _camera), 4, 4);
+                var taken = index == BindingDotIndex;
+                drawingContext.DrawEllipse(
+                    taken ? SelectionPen.Brush : SelectionHandleBrush,
+                    SelectionPen,
+                    ToScreenPoint(dots[index], _camera),
+                    taken ? BindingDotTakenRadius : BindingDotRadius,
+                    taken ? BindingDotTakenRadius : BindingDotRadius);
             }
         }
+    }
+
+    /// <summary>
+    /// The object a connector endpoint is over, traced along its own outline so
+    /// that an end let go in the middle of a shape says which shape took it.
+    /// </summary>
+    private static void DrawBindingTarget(
+        DrawingContext drawingContext,
+        BoardObject target,
+        Camera2D camera)
+    {
+        if (target is not ShapeBoardObject shape)
+        {
+            drawingContext.DrawRectangle(
+                null,
+                BindingTargetPen,
+                ToScreenRectangle(target.Bounds, camera));
+            return;
+        }
+
+        IReadOnlyList<PointD> outline = shape.Outline();
+        var geometry = new StreamGeometry();
+        using (var context = geometry.Open())
+        {
+            context.BeginFigure(ToScreenPoint(outline[0], camera), isFilled: false, isClosed: true);
+            for (var index = 1; index < outline.Count; index++)
+            {
+                context.LineTo(ToScreenPoint(outline[index], camera), isStroked: true, isSmoothJoin: false);
+            }
+        }
+
+        geometry.Freeze();
+        drawingContext.DrawGeometry(null, BindingTargetPen, geometry);
     }
 
     private void DrawSelectionSet(DrawingContext drawingContext, Camera2D camera)

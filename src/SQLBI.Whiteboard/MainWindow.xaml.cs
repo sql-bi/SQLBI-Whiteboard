@@ -2754,7 +2754,7 @@ public partial class MainWindow : Window
         _endpointBefore = null;
         if (SceneSurface.BindingDots is not null)
         {
-            SceneSurface.BindingDots = null;
+            ClearBindingFeedback();
             SceneSurface.InvalidateVisual();
         }
 
@@ -3044,13 +3044,27 @@ public partial class MainWindow : Window
         }
 
         PointD world = _camera.ScreenToWorld(screen);
-        SceneSurface.PendingConnector = _connectorDragged
-            ? NewConnector(_connectorStartWorld, world, null, null)
-            : null;
+        if (_connectorDragged)
+        {
+            // The preview carries the anchors the release would take, so each
+            // end is drawn on its binding point rather than under the pointer
+            // and a curve already leaves the side it will leave.
+            SceneSurface.PendingConnector = NewConnector(
+                _connectorStartWorld,
+                world,
+                BindingAt(_connectorStartWorld),
+                BindingAt(world));
 
-        // The dots belong to the end being dragged, which is the one the hand is
-        // asking about.
-        SceneSurface.BindingDots = _connectorDragged ? BindingDotsAt(world) : null;
+            // The dots belong to the end being dragged, which is the one the
+            // hand is asking about.
+            ShowBindingFeedback(world);
+        }
+        else
+        {
+            SceneSurface.PendingConnector = null;
+            ClearBindingFeedback();
+        }
+
         SceneSurface.InvalidateVisual();
     }
 
@@ -3097,7 +3111,7 @@ public partial class MainWindow : Window
         if (SceneSurface.PendingConnector is not null || SceneSurface.BindingDots is not null)
         {
             SceneSurface.PendingConnector = null;
-            SceneSurface.BindingDots = null;
+            ClearBindingFeedback();
             SceneSurface.InvalidateVisual();
         }
     }
@@ -3123,68 +3137,78 @@ public partial class MainWindow : Window
             : fallback;
 
     /// <summary>
-    /// What an endpoint dropped here would bind to: the topmost thing a tap
-    /// would reach, or - since a shape's inside is not a hit - the topmost one
-    /// whose box the pointer is in. A frame, a stroke, and another connector are
-    /// not things an arrow points at.
+    /// What an endpoint dropped here would bind to: the topmost eligible object
+    /// whose box, out by the binding reach, the pointer is inside. A shape's
+    /// interior counts, even though a tap there is not a hit on the shape, since
+    /// an arrow let go in the middle of a box plainly means that box. A frame, a
+    /// stroke, and another connector are not things an arrow points at.
     /// </summary>
     private BoardObject? BindingTargetAt(PointD worldPoint)
     {
-        if (_document.HitTestTopSelectable(worldPoint, _camera.Zoom) is { } hit &&
-            ConnectorBoardObject.CanBind(hit))
-        {
-            return hit;
-        }
-
+        var reach = ConnectorBoardObject.BindingReach / _camera.Zoom;
         return _document.Objects
-            .Where(item => ConnectorBoardObject.CanBind(item) && item.Bounds.Contains(worldPoint))
+            .Where(item => ConnectorBoardObject.CanBind(item) &&
+                           ConnectorGeometry.IsWithinBindingReach(item.Bounds, worldPoint, reach))
             .OrderByDescending(item => item.ZIndex)
             .FirstOrDefault();
     }
 
     /// <summary>
-    /// The eight points of the target under the pointer, while one of them is
-    /// near enough to be taken. They are shown rather than described because
-    /// where an arrow will land is the whole question while it is being dragged.
+    /// The target under the pointer and the point on it this end would take.
+    /// One answer serves the preview, the dots, the tint, and the release, so
+    /// what is shown while the end is dragged is what is recorded when it is
+    /// let go. Ctrl asks for the nearest point anywhere on the border instead.
     /// </summary>
-    private IReadOnlyList<PointD>? BindingDotsAt(PointD worldPoint)
+    private (BoardObject Target, ConnectorGeometry.BindingCandidate Candidate)? BindingCandidateAt(
+        PointD worldPoint)
     {
         if (BindingTargetAt(worldPoint) is not { } target)
         {
             return null;
         }
 
-        IReadOnlyList<PointD> points = ConnectorGeometry.BindingPoints(target.Bounds);
-        var reach = ConnectorBoardObject.BindingReach / _camera.Zoom;
-        return points.Any(point => Distance(ToPoint(point), ToPoint(worldPoint)) <= reach) ? points : null;
+        return (target, ConnectorGeometry.BindingCandidateFor(
+            target.Id,
+            target.Bounds,
+            (target as ShapeBoardObject)?.Outline(),
+            worldPoint,
+            Keyboard.Modifiers.HasFlag(ModifierKeys.Control)));
     }
 
     /// <summary>
-    /// The anchor an endpoint let go here takes: the nearest of the eight
-    /// points when the pointer is within reach of one, and with Ctrl the nearest
-    /// point anywhere on the target's border instead.
+    /// The anchor an endpoint let go here takes, or nothing at all when there is
+    /// nothing eligible under the pointer and the end stays where the hand put
+    /// it.
     /// </summary>
-    private ConnectorAnchor? BindingAt(PointD worldPoint)
+    private ConnectorAnchor? BindingAt(PointD worldPoint) =>
+        BindingCandidateAt(worldPoint)?.Candidate.Anchor;
+
+    /// <summary>
+    /// What the surface draws while an end is being dragged: the eight points of
+    /// the target under the pointer, which of them would be taken, and the
+    /// target itself. They are shown rather than described because where an
+    /// arrow will land is the whole question while it is in the air.
+    /// </summary>
+    private void ShowBindingFeedback(PointD worldPoint)
     {
-        if (BindingTargetAt(worldPoint) is not { } target)
+        if (BindingCandidateAt(worldPoint) is not { } found)
         {
-            return null;
+            ClearBindingFeedback();
+            return;
         }
 
-        if (Keyboard.Modifiers.HasFlag(ModifierKeys.Control))
-        {
-            return ConnectorGeometry.NearestBorderPoint(
-                target.Id,
-                target.Bounds,
-                (target as ShapeBoardObject)?.Outline(),
-                worldPoint);
-        }
+        SceneSurface.BindingDots = ConnectorGeometry.BindingPoints(found.Target.Bounds);
+        SceneSurface.BindingDotIndex = found.Candidate.DotIndex == ConnectorGeometry.NoDot
+            ? null
+            : found.Candidate.DotIndex;
+        SceneSurface.BindingTargetId = found.Target.Id;
+    }
 
-        ConnectorAnchor nearest = ConnectorGeometry.NearestBindingPoint(target.Id, target.Bounds, worldPoint);
-        var reach = ConnectorBoardObject.BindingReach / _camera.Zoom;
-        return Distance(ToPoint(ConnectorGeometry.PointOn(target.Bounds, nearest)), ToPoint(worldPoint)) <= reach
-            ? nearest
-            : null;
+    private void ClearBindingFeedback()
+    {
+        SceneSurface.BindingDots = null;
+        SceneSurface.BindingDotIndex = null;
+        SceneSurface.BindingTargetId = null;
     }
 
     /// <summary>
@@ -3220,8 +3244,11 @@ public partial class MainWindow : Window
         }
 
         _endpointWorld = worldPoint;
-        _document.ReplaceObject(MovedEndpoint(before, worldPoint, null));
-        SceneSurface.BindingDots = BindingDotsAt(worldPoint);
+
+        // The end snaps to what it is over while it is being dragged, so the
+        // handle sits where the release will leave it.
+        _document.ReplaceObject(MovedEndpoint(before, worldPoint, BindingAt(worldPoint)));
+        ShowBindingFeedback(worldPoint);
         SceneSurface.InvalidateVisual();
     }
 
@@ -3234,7 +3261,7 @@ public partial class MainWindow : Window
 
         ConnectorBoardObject after = MovedEndpoint(before, _endpointWorld, BindingAt(_endpointWorld));
         _endpointBefore = null;
-        SceneSurface.BindingDots = null;
+        ClearBindingFeedback();
         _document.ReplaceObject(after);
         if (after != before)
         {
