@@ -205,6 +205,26 @@ takes the triangle tail end. It is a shape rather than a connector because a con
 carrying a geometry of its own is legal but not something PowerPoint writes itself, and
 a curve with no connection sites has nothing to re-route to anyway.
 
+A straight connector whose end is bound to a shape or a label names that shape and the
+numbered connection site on it, through `a:stCxn` and `a:endCxn`, so PowerPoint carries
+the arrow with the shape when the shape is dragged on the slide. The numbers are the
+preset's own, read from the ECMA-376 preset shape definitions; a site the board never
+binds to is left out of the table, and an end whose anchor is not one of them — a corner
+of the box on a preset with no corner sites, a point the Ctrl rule found anywhere along
+the border, a preset whose sites nobody has read off — is written with no site at all,
+which leaves the arrow exactly where the board drew it. The curved arrow is a freeform
+shape and carries none.
+
+| Preset | Where the board binds, and the site it is |
+| --- | --- |
+| `rect`, `roundRect` — rounded rectangle, stadium, and a label's box | top 0, left 1, bottom 2, right 3 |
+| `diamond` | top 0, left 1, bottom 2, right 3 |
+| `ellipse` | top 0, left 2, bottom 4, right 6 |
+| `triangle` | apex 0, bottom-left corner 2, bottom midpoint 3, bottom-right corner 4 |
+| `pentagon` | apex 0, bottom midpoint 3 |
+| `rightArrow` | left 1, right 3 |
+| `parallelogram` | none: all six of its sites are on the slanted sides |
+
 Ink as freeform shapes — an outline polygon per stroke, filled — would make the ink
 itself editable and vector. It is a third phase, only if someone asks: variable width
 becomes a polygon per stroke, the highlighter loses its blend for a flat 50% alpha, and
