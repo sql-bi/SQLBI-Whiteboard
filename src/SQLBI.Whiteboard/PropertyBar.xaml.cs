@@ -68,10 +68,10 @@ public partial class PropertyBar : UserControl
         AddRow(HasThickness, BuildThicknessRow());
         AddRow(HasFill, BuildFillRow());
         AddRow(IsConnector, BuildLineKindRow());
-        AddRow(IsConnector, BuildAnchorRow());
+        AddRow(IsConnector, BuildAnchorRow(), needsDesignTools: true);
         AddRow(HasText, BuildFontRow());
         AddRow(IsShape, BuildShapeTextRow());
-        AddRow(CanTurn, BuildRotateRow());
+        AddRow(CanTurn, BuildRotateRow(), needsDesignTools: true);
         BuildOverflow();
 
         // The bar is hidden outright while a gesture is under way, which the
@@ -84,6 +84,14 @@ public partial class PropertyBar : UserControl
             }
         };
     }
+
+    /// <summary>
+    /// Which of the design-era controls the mode offers. The bar is not shown
+    /// at all when its own group is off; what this decides is the rows that
+    /// belong to another group - the quarter turns, the Anchors, the button
+    /// that opens a shape's text - and the menu items that do.
+    /// </summary>
+    public FeatureSet Features { get; set; } = Modes.All;
 
     /// <summary>
     /// What the six pen colors mean for each kind of object: a stroke's ink, a
@@ -205,7 +213,9 @@ public partial class PropertyBar : UserControl
         var shown = false;
         foreach (var row in _rows)
         {
-            var applies = selection.Count > 0 && selection.All(row.AppliesTo);
+            var applies = selection.Count > 0 &&
+                          (!row.NeedsDesignTools || Features.DesignTools) &&
+                          selection.All(row.AppliesTo);
             row.Content.Visibility = applies ? Visibility.Visible : Visibility.Collapsed;
             if (!applies)
             {
@@ -217,6 +227,12 @@ public partial class PropertyBar : UserControl
             shown = true;
         }
 
+        Visibility depth = Features.DepthAndDuplicate
+            ? Visibility.Visible
+            : Visibility.Collapsed;
+        _overflowItems[SelectionCommand.Duplicate].Visibility = depth;
+        _overflowItems[SelectionCommand.BringForward].Visibility = depth;
+        _overflowItems[SelectionCommand.SendBackward].Visibility = depth;
         _overflowButton.Margin = new Thickness(shown ? 4 : 0, 0, 0, 0);
         OverflowHost.Visibility = selection.Count > 0 ? Visibility.Visible : Visibility.Collapsed;
         return selection.Count > 0;
@@ -279,9 +295,13 @@ public partial class PropertyBar : UserControl
         }
     }
 
-    private void AddRow(Func<BoardObject, bool> appliesTo, PropertyBarRow row)
+    private void AddRow(
+        Func<BoardObject, bool> appliesTo,
+        PropertyBarRow row,
+        bool needsDesignTools = false)
     {
         row.AppliesTo = appliesTo;
+        row.NeedsDesignTools = needsDesignTools;
         _rows.Add(row);
         RowHost.Children.Add(row.Content);
     }
@@ -615,7 +635,9 @@ public partial class PropertyBar : UserControl
             Content = host,
             Refresh = selection =>
             {
-                edit.Visibility = selection.Count == 1 ? Visibility.Visible : Visibility.Collapsed;
+                edit.Visibility = selection.Count == 1 && Features.DesignTools
+                    ? Visibility.Visible
+                    : Visibility.Collapsed;
                 foreach (var button in host.Children.OfType<ToggleButton>())
                 {
                     button.IsChecked = button.Tag is uint argb &&
@@ -931,6 +953,13 @@ public partial class PropertyBar : UserControl
     private sealed class PropertyBarRow
     {
         public Func<BoardObject, bool> AppliesTo { get; set; } = static _ => false;
+
+        /// <summary>
+        /// Whether the row is one of the design tools rather than one of the
+        /// bar's own: the quarter turns and the Anchors go with the handles
+        /// they belong beside.
+        /// </summary>
+        public bool NeedsDesignTools { get; set; }
 
         public required Panel Content { get; init; }
 

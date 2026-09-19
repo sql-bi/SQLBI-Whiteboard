@@ -152,6 +152,17 @@ internal sealed class BoardSurface : FrameworkElement
     public FrameSide? HoveredConnectorHandle { get; set; }
 
     /// <summary>
+    /// Whether a lone shape or label offers the circle that turns it, and
+    /// whether a lone shape offers the four arrows an arrow is drawn out of.
+    /// Both belong to the design tools, so a mode without them draws neither -
+    /// and the gestures ask the same question, so nothing answers where nothing
+    /// is drawn.
+    /// </summary>
+    public bool ShowRotationHandle { get; set; } = true;
+
+    public bool ShowConnectorHandles { get; set; } = true;
+
+    /// <summary>
     /// True while something is being dragged. The connector handles are an
     /// invitation to start a gesture, so they stand aside while one is under
     /// way rather than following the object about.
@@ -465,12 +476,13 @@ internal sealed class BoardSurface : FrameworkElement
     /// turns. A set of several, a connector, a picture, a text container, a
     /// LiveView, and a frame have no angle to offer and so have no handle.
     /// </summary>
-    private static void DrawRotationHandle(
+    private void DrawRotationHandle(
         DrawingContext drawingContext,
         IReadOnlyList<BoardObject> selected,
         Camera2D camera)
     {
-        if (selected is not [(ShapeBoardObject or FreeTextBoardObject) and { } lone])
+        if (!ShowRotationHandle ||
+            selected is not [(ShapeBoardObject or FreeTextBoardObject) and { } lone])
         {
             return;
         }
@@ -503,7 +515,8 @@ internal sealed class BoardSurface : FrameworkElement
         IReadOnlyList<BoardObject> selected,
         Camera2D camera)
     {
-        if (GestureInProgress ||
+        if (!ShowConnectorHandles ||
+            GestureInProgress ||
             PendingStroke is not null ||
             PendingShape is not null ||
             PendingConnector is not null ||
