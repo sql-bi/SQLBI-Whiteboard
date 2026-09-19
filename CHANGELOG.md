@@ -20,11 +20,10 @@ and **bold**.
 ## 1.6.0 - 18 September 2026
 
 ### Shapes and text on the board
-The new **Insert** tab draws eight shapes by dragging, with an outline, a fill, and a
-thickness, and text labels by clicking. A shape carries its own words — type into it, or
-press **F2** — in nine fonts and any text color, and a handle turns a shape or a label to any
-angle. The tool hands back to **Select** after one object, and the pin at the end of the row
-turns it into a palette you can move.
+The new **Insert** tab — or the palette its pin makes — draws eight shapes by dragging and
+text labels by clicking, with an outline, a fill, and a font. A shape carries its own words,
+typed straight in or on **F2**, and a handle turns it to any angle. **Preferences → Mode**, or
+**Design** on the View row, puts all of it away again for a board you only annotate.
 
 ### Arrows that follow the shape
 Three connectors bind wherever an end is dropped on a shape and follow it as it moves, and
