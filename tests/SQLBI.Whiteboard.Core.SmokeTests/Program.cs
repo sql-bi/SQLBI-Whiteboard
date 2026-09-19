@@ -1032,6 +1032,108 @@ Assert(
     defaultSettings.FingerMode == FingerMode.WhenNoPen &&
     defaultSettings.CheckForUpdates,
     "Missing settings should default to Wacom-if-present, a windowed start, finger drawing when no pen is detected, and update checks on.");
+// A mode says which of the design-era controls exist, and nothing about what a
+// board contains. Design is the default, and the toggle on the View row has to
+// have somewhere to come back to.
+Assert(
+    defaultSettings is
+    {
+        Mode: BoardMode.Design,
+        LastNonDesignMode: BoardMode.Teaching,
+        DesignTools: true,
+        PropertyBar: true,
+        ExtendedSelection: true,
+        DepthAndDuplicate: true,
+    },
+    "Missing settings should default to Design with all four groups on.");
+Assert(
+    AppSettingsSerializer.Parse("{ \"mode\": \"Sideways\" }").Mode == BoardMode.Design,
+    "An unknown mode should fall back to Design.");
+Assert(
+    AppSettingsSerializer.Parse("{ \"lastNonDesignMode\": \"Design\" }").LastNonDesignMode ==
+    BoardMode.Teaching,
+    "Design cannot be what the View row's toggle returns to, so it normalizes to Teaching.");
+Assert(
+    AppSettingsSerializer.Parse("{ \"lastNonDesignMode\": \"Sideways\" }").LastNonDesignMode ==
+    BoardMode.Teaching,
+    "An unknown last mode should fall back to Teaching.");
+var modeRoundTrip = AppSettingsSerializer.Parse(
+    AppSettingsSerializer.Format(new AppSettings
+    {
+        Mode = BoardMode.Custom,
+        LastNonDesignMode = BoardMode.Custom,
+        DesignTools = false,
+        PropertyBar = true,
+        ExtendedSelection = false,
+        DepthAndDuplicate = true,
+    }));
+Assert(
+    modeRoundTrip is
+    {
+        Mode: BoardMode.Custom,
+        LastNonDesignMode: BoardMode.Custom,
+        DesignTools: false,
+        PropertyBar: true,
+        ExtendedSelection: false,
+        DepthAndDuplicate: true,
+    },
+    "Settings JSON should round-trip the mode, what it returns to, and the four group switches.");
+// Settings written before the modes existed carry none of this, and have to
+// arrive as Design: an upgrade takes nothing away from the board somebody had.
+Assert(
+    AppSettingsSerializer.Parse("{ \"version\": 19, \"grid\": \"Lines\" }") is
+    { Mode: BoardMode.Design, Grid: GridStyle.Lines, DesignTools: true },
+    "A settings file from before the modes should open in Design.");
+Assert(
+    Modes.Resolve(new AppSettings { Mode = BoardMode.Teaching }) is
+    {
+        DesignTools: false,
+        PropertyBar: false,
+        ExtendedSelection: false,
+        DepthAndDuplicate: false,
+    },
+    "Teaching turns all four groups off, whatever the switches say.");
+Assert(
+    Modes.Resolve(new AppSettings { Mode = BoardMode.Teaching, DesignTools = true })
+        is { DesignTools: false },
+    "Teaching leaves the Custom switches alone rather than reading them.");
+Assert(
+    Modes.Resolve(new AppSettings { Mode = BoardMode.Design, DesignTools = false }) is
+    {
+        DesignTools: true,
+        PropertyBar: true,
+        ExtendedSelection: true,
+        DepthAndDuplicate: true,
+    },
+    "Design turns all four groups on, whatever the switches say.");
+Assert(
+    Modes.Resolve(new AppSettings
+    {
+        Mode = BoardMode.Custom,
+        DesignTools = true,
+        PropertyBar = false,
+        ExtendedSelection = false,
+        DepthAndDuplicate = true,
+    }) is
+    {
+        DesignTools: true,
+        PropertyBar: false,
+        ExtendedSelection: false,
+        DepthAndDuplicate: true,
+    },
+    "Custom is the four switches as they were left.");
+Assert(
+    Modes.Toggle(BoardMode.Teaching, BoardMode.Teaching) ==
+        (BoardMode.Design, BoardMode.Teaching) &&
+    Modes.Toggle(BoardMode.Custom, BoardMode.Teaching) == (BoardMode.Design, BoardMode.Custom),
+    "The toggle goes to Design from anywhere else, remembering where it came from.");
+Assert(
+    Modes.Toggle(BoardMode.Design, BoardMode.Custom) == (BoardMode.Custom, BoardMode.Custom) &&
+    Modes.Toggle(BoardMode.Design, BoardMode.Teaching) == (BoardMode.Teaching, BoardMode.Teaching),
+    "The toggle in Design comes back to the last mode that was not Design.");
+Assert(
+    Modes.Toggle(BoardMode.Design, BoardMode.Design) == (BoardMode.Teaching, BoardMode.Teaching),
+    "A stored return of Design is read as Teaching rather than as a button that does nothing.");
 Assert(
     UpdateVersion.ReadManifestVersion("{ \"version\": \"v0.9.3\" }") == "0.9.3",
     "stable.json should accept a leading v and keep three parts.");
