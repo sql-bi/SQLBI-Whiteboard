@@ -365,7 +365,8 @@
         <Setter Property="Template">
             <Setter.Value>
                 <ControlTemplate TargetType="ToggleButton">
-                    <Grid Width="40"
+                    <Grid x:Name="Switch"
+                          Width="40"
                           Height="22">
                         <Border x:Name="Track"
                                 Background="{DynamicResource SettingsSwitchOffBrush}"
@@ -396,6 +397,16 @@
                             <Setter TargetName="Thumb"
                                     Property="Margin"
                                     Value="0,0,3,0" />
+                        </Trigger>
+
+                        <!-- A switch that cannot be used still shows what it is
+                             set to: the four Mode groups are what Custom is
+                             made of, and greying is what says "not from here". -->
+                        <Trigger Property="IsEnabled"
+                                 Value="False">
+                            <Setter TargetName="Switch"
+                                    Property="Opacity"
+                                    Value="0.4" />
                         </Trigger>
                     </ControlTemplate.Triggers>
                 </ControlTemplate>
