@@ -6,6 +6,7 @@ internal enum SettingEditorKind
 {
     EnumChoice,
     BooleanSwitch,
+    BooleanCheckbox,
     DoubleRange,
     MonitorChoice,
     OrderedList,
@@ -124,6 +125,7 @@ internal static class SettingsCatalog
         public const string StartFullScreen = "startup.fullscreen";
         public const string ImportHorizontalSpacing = "import.horizontalSpacing";
         public const string ImportVerticalSpacing = "import.verticalSpacing";
+        public const string PauseLiveViewsWhenUnfocused = "liveView.pauseWhenUnfocused";
         public const string LaserHoldSeconds = "laser.holdSeconds";
         public const string LaserFadeSeconds = "laser.fadeSeconds";
         public const string LaserHoldMode = "laser.holdMode";
@@ -165,12 +167,13 @@ internal static class SettingsCatalog
     public const string Selection = "Selection";
     public const string Board = "Board";
     public const string Import = "Import";
+    public const string LiveView = "Live View";
     public const string Laser = "Laser pointer";
     public const string Toolbar = "Toolbar";
     public const string Updates = "Updates";
 
     public static IReadOnlyList<string> Categories { get; } =
-        [Mode, Startup, Input, Selection, Board, Import, Laser, Toolbar, Updates];
+        [Mode, Startup, Input, Selection, Board, Import, LiveView, Laser, Toolbar, Updates];
 
     /// <summary>
     /// Whether a group switch can be used: only while the mode is Custom, which
@@ -429,6 +432,16 @@ internal static class SettingsCatalog
             Minimum = ImportSettings.MinimumSpacing,
             Maximum = ImportSettings.MaximumSpacing,
             Unit = "px",
+        },
+        new()
+        {
+            Id = Ids.PauseLiveViewsWhenUnfocused,
+            Category = LiveView,
+            Title = "Pause when Whiteboard loses focus",
+            Summary = "Resume previously active LiveViews when you return",
+            Description = "Stops capture while another application is in the foreground and keeps the last frame visible. LiveViews you paused manually stay paused. Whiteboard dialogs do not count as switching applications. Off by default; changes apply immediately.",
+            Keywords = ["liveview", "live view", "capture", "pause", "resume", "focus", "background", "GPU"],
+            Editor = SettingEditorKind.BooleanCheckbox,
         },
         new()
         {

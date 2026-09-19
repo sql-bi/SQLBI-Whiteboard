@@ -68,6 +68,7 @@ public partial class MainWindow : Window
         [PenKind.Calligraphy] = InkPalettes.DefaultCalligraphy,
     };
     private readonly Dictionary<Guid, LiveViewPresenter> _liveViewPresenters = [];
+    private bool _applicationIsActive;
 
     private BoardDocument _document = new();
     private string? _currentBoardPath;
@@ -323,6 +324,9 @@ public partial class MainWindow : Window
         SceneSurface.LiveViewImageSourceProvider = GetLiveViewImageSource;
         InkSurface.Cursor = Cursors.Arrow;
         _settings = AppSettingsStore.Load();
+        _applicationIsActive = Application.Current.Windows.Cast<Window>().Any(window => window.IsActive);
+        Application.Current.Activated += Application_Activated;
+        Application.Current.Deactivated += Application_Deactivated;
         _connectorKind = _settings.Connector.Kind;
         LoadInkFromSettings();
         ApplyLaserSettings();
@@ -6897,6 +6901,7 @@ public partial class MainWindow : Window
 
     private void ApplyPreferences()
     {
+        UpdateLiveViewSuspension();
         ApplyToolbarPlacement();
         ApplyCalligraphyAccess();
         ApplyLaserSettings();
@@ -7856,6 +7861,7 @@ public partial class MainWindow : Window
         {
             existing.DesiredFrameRate = liveView.DesiredFrameRate;
             existing.CaptureCursor = liveView.CaptureCursor;
+            existing.SetSuspended(ShouldSuspendLiveViews);
             AttachLiveViewSurface(existing);
             existing.SetTarget(item);
             return;
@@ -7870,8 +7876,44 @@ public partial class MainWindow : Window
         presenter.TargetClosed += LiveViewPresenter_TargetClosed;
         presenter.CaptureFailed += LiveViewPresenter_CaptureFailed;
         _liveViewPresenters.Add(liveView.Id, presenter);
+        presenter.SetSuspended(ShouldSuspendLiveViews);
         AttachLiveViewSurface(presenter);
         presenter.SetTarget(item);
+    }
+
+    private bool ShouldSuspendLiveViews => _settings.PauseLiveViewsWhenUnfocused && !_applicationIsActive;
+
+    private void Application_Activated(object? sender, EventArgs e)
+    {
+        _applicationIsActive = true;
+        UpdateLiveViewSuspension();
+    }
+
+    private void Application_Deactivated(object? sender, EventArgs e)
+    {
+        _applicationIsActive = false;
+        UpdateLiveViewSuspension();
+    }
+
+    private void UpdateLiveViewSuspension()
+    {
+        if (_closeConfirmed)
+        {
+            return;
+        }
+
+        foreach (var presenter in _liveViewPresenters.Values.ToArray())
+        {
+            try
+            {
+                presenter.SetSuspended(ShouldSuspendLiveViews);
+            }
+            catch (Exception exception)
+            {
+                // A focus notification must not open a modal dialog and steal focus back.
+                Debug.WriteLine($"[LiveView] Could not update focus suspension for {presenter.ObjectId}: {exception}");
+            }
+        }
     }
 
     private void LiveViewPresenter_FramePresented(Guid objectId)
@@ -9387,6 +9429,8 @@ public partial class MainWindow : Window
         }
 
         _autosaveTimer.Stop();
+        Application.Current.Activated -= Application_Activated;
+        Application.Current.Deactivated -= Application_Deactivated;
         // Unregister Vortice's retained Window.Closed callbacks and unload the
         // D3D surfaces before the Closed event begins. This guarantees one
         // native teardown path for both live and already-paused presenters.

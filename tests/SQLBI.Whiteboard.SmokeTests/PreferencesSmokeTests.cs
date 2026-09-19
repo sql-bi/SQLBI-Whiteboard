@@ -107,6 +107,34 @@ internal static class PreferencesSmokeTests
             {
                 reopened.Close();
             }
+
+            var liveViewCategory = Descendants(window).OfType<ToggleButton>()
+                .Single(button => button.Content is "Live View");
+            liveViewCategory.RaiseEvent(new RoutedEventArgs(ButtonBase.ClickEvent));
+            var pause = Descendants(window).OfType<CheckBox>().Single();
+            Assert(pause.IsChecked == false &&
+                AutomationProperties.GetName(pause) == "Pause when Whiteboard loses focus",
+                "Live View should expose an accessible, initially unchecked checkbox.");
+            pause.IsChecked = true;
+            Assert(changes == 5 && settings.PauseLiveViewsWhenUnfocused &&
+                AppSettingsSerializer.Parse(saved).PauseLiveViewsWhenUnfocused,
+                "Checking the LiveView option should apply and persist immediately.");
+            var liveViewReopened = new PreferencesWindow(AppSettingsSerializer.Parse(saved), () =>
+                throw new InvalidOperationException("Reopening must not apply a setting."));
+            try
+            {
+                Assert(Descendants(liveViewReopened).OfType<CheckBox>().Single().IsChecked == true,
+                    "The LiveView checkbox should restore its saved value.");
+            }
+            finally
+            {
+                liveViewReopened.Close();
+            }
+
+            pause.IsChecked = false;
+            Assert(changes == 6 && !settings.PauseLiveViewsWhenUnfocused &&
+                !AppSettingsSerializer.Parse(saved).PauseLiveViewsWhenUnfocused,
+                "Unchecking the option should also apply immediately.");
         }
         finally
         {

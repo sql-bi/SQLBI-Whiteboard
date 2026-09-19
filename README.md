@@ -163,6 +163,8 @@ Choose **View → LiveView** and select an application window or display in the 
 
 Use **View > Freeze** to stop capture while retaining the last frame. The same command resumes a target that is still available. **View > Disconnect** releases the target, keeps the last frame, and hides the on-frame freeze/play controls; **View > Reconnect** is then the only way back to a live feed.
 
+**Preferences → Live View → Pause when Whiteboard loses focus** stops capture while another application is in the foreground, keeping the last frame visible. Returning to Whiteboard resumes only the LiveViews that were playing; manually paused or disconnected views stay that way. Whiteboard's own dialogs do not interrupt capture. The checkbox is off by default and takes effect immediately.
+
 Saving a board captures the latest LiveView bitmap and stores it with the source label, frame-rate setting, cursor setting, frozen state, and container geometry. Loading a board displays that bitmap immediately. Windows capture permission objects cannot be serialized, so use **Reconnect** to restore the live feed after loading.
 
 ## Calligraphy Lab
