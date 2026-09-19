@@ -1073,14 +1073,21 @@ public partial class PreferencesWindow : Window
     /// What a boolean setting holds, or null for a setting that is not one. The
     /// same answer serves a switch, a checkbox, and the two drawn choices a
     /// boolean is offered as when a picture says more than a name.
+    ///
+    /// The four group rows answer with the feature set the mode resolves to
+    /// rather than with the switches themselves, so that a row greyed under
+    /// Teaching or Design says what that mode does instead of showing an
+    /// arrangement that is not in force. Under Custom the two are the same
+    /// thing, and nothing is written here, so Custom still comes back to the
+    /// arrangement it was left in.
     /// </summary>
     private bool? CurrentBoolean(SettingDescriptor setting) =>
         setting.Id switch
         {
-            SettingsCatalog.Ids.DesignTools => _settings.DesignTools,
-            SettingsCatalog.Ids.PropertyBar => _settings.PropertyBar,
-            SettingsCatalog.Ids.ExtendedSelection => _settings.ExtendedSelection,
-            SettingsCatalog.Ids.DepthAndDuplicate => _settings.DepthAndDuplicate,
+            SettingsCatalog.Ids.DesignTools => Modes.Resolve(_settings).DesignTools,
+            SettingsCatalog.Ids.PropertyBar => Modes.Resolve(_settings).PropertyBar,
+            SettingsCatalog.Ids.ExtendedSelection => Modes.Resolve(_settings).ExtendedSelection,
+            SettingsCatalog.Ids.DepthAndDuplicate => Modes.Resolve(_settings).DepthAndDuplicate,
             SettingsCatalog.Ids.StartFullScreen => _settings.StartFullScreen,
             SettingsCatalog.Ids.WarnWhenNoDigitizer => _settings.WarnWhenNoDigitizer,
             SettingsCatalog.Ids.RestoreLastSession => _settings.RestoreLastSession,

@@ -210,7 +210,9 @@ internal static class PreferencesSmokeTests
                 "Pressing the first picture again should write it back.");
 
             // The four group rows are what Custom is made of, so they are shown
-            // greyed rather than hidden anywhere else.
+            // greyed rather than hidden anywhere else - and what they show is
+            // the mode's own feature set, not the arrangement Custom was left
+            // holding.
             var design = new PreferencesWindow(new AppSettings { Mode = BoardMode.Design }, () =>
                 throw new InvalidOperationException("Opening Preferences must not apply a change."));
             try
@@ -220,10 +222,51 @@ internal static class PreferencesSmokeTests
                         (button.Tag as string) == SettingsCatalog.BooleanChoice.On &&
                         AncestorTitle(button) == "Design tools");
                 Assert(!groupRow.IsEnabled, "A group row outside Custom should be drawn but unusable.");
+                Assert(
+                    Chosen(design, "Property bar") == SettingsCatalog.BooleanChoice.On &&
+                    Chosen(design, "Depth and duplicate") == SettingsCatalog.BooleanChoice.On,
+                    "Design should show all four groups on.");
             }
             finally
             {
                 design.Close();
+            }
+
+            var teaching = new AppSettings
+            {
+                Mode = BoardMode.Teaching,
+                DesignTools = true,
+                PropertyBar = true,
+                ExtendedSelection = false,
+                DepthAndDuplicate = true,
+            };
+            var taught = new PreferencesWindow(teaching, () =>
+                throw new InvalidOperationException("Opening Preferences must not apply a change."));
+            try
+            {
+                Assert(
+                    Chosen(taught, "Design tools") == SettingsCatalog.BooleanChoice.Off &&
+                    Chosen(taught, "Property bar") == SettingsCatalog.BooleanChoice.Off &&
+                    Chosen(taught, "Extended selection") == SettingsCatalog.BooleanChoice.On &&
+                    Chosen(taught, "Depth and duplicate") == SettingsCatalog.BooleanChoice.Off,
+                    "Teaching should show what it resolves to, the extended selection included.");
+                Assert(
+                    teaching is
+                    {
+                        DesignTools: true,
+                        PropertyBar: true,
+                        ExtendedSelection: false,
+                        DepthAndDuplicate: true,
+                    },
+                    "Showing the mode's feature set must not touch the Custom switches.");
+                Assert(
+                    Descendants(taught).OfType<ToggleButton>().Any(button =>
+                        button.Tag is string && AncestorTitle(button) == "Area selects"),
+                    "Teaching keeps the Selection rows, because the group they configure is on.");
+            }
+            finally
+            {
+                taught.Close();
             }
         }
         finally
@@ -241,6 +284,13 @@ internal static class PreferencesSmokeTests
         return segments.Single(button =>
             (button.Tag as string) == choiceId && AncestorTitle(button) == title);
     }
+
+    // The choice a drawn row is showing, which is the picture that is checked.
+    private static string? Chosen(DependencyObject root, string title) =>
+        Descendants(root).OfType<ToggleButton>()
+            .Where(button => button.Tag is string && AncestorTitle(button) == title)
+            .Single(button => button.IsChecked == true)
+            .Tag as string;
 
     // The title the row carries, which is the first line of its own words.
     private static string? AncestorTitle(DependencyObject element)
