@@ -280,7 +280,7 @@ public partial class PreferencesWindow : Window
             body.Children.Add(value);
             body.Children.Add(slider);
         }
-        else if (setting.Editor is
+        else if (!BesideTheCopy(setting) && setting.Editor is
                  SettingEditorKind.OrderedList or
                  SettingEditorKind.LaserWeightChoice or
                  SettingEditorKind.PenButtonChoice or
@@ -309,6 +309,18 @@ public partial class PreferencesWindow : Window
         };
     }
 
+    /// <summary>
+    /// Whether a drawn row puts its pictures where a combo goes, beside the
+    /// words, rather than on a line of their own below them. The Mode category
+    /// is the one place this is asked: its five rows have to be on the screen
+    /// together at the dialog's default size, and a line of its own costs a row
+    /// the height of the words above it again. The other drawn rows keep the
+    /// full width, where three or four pictures need it.
+    /// </summary>
+    private static bool BesideTheCopy(SettingDescriptor setting) =>
+        setting.Editor == SettingEditorKind.DrawnChoice &&
+        setting.Category == SettingsCatalog.Mode;
+
     private FrameworkElement CreateEditor(SettingDescriptor setting) =>
         setting.Editor switch
         {
@@ -329,12 +341,17 @@ public partial class PreferencesWindow : Window
         };
 
     // Options that are drawn rather than named: each is a sample under its own
-    // label, and the row of them behaves as one choice.
+    // label, and the row of them behaves as one choice. A compact row is the
+    // same thing at the smaller size the rows added in 1.6.0 are drawn at, so
+    // that the Mode category fits the dialog without scrolling.
     private FrameworkElement CreateSampleChoice(
         SettingDescriptor setting,
-        Func<string, FrameworkElement?> sampleFor)
+        Func<string, FrameworkElement?> sampleFor,
+        bool compact = false)
     {
-        var host = new ReflowingSegments();
+        var host = new ReflowingSegments(compact
+            ? CompactSegmentWidth
+            : StandardSegmentWidth);
         var segments = new List<ToggleButton>();
         foreach (var choice in setting.Choices)
         {
@@ -365,7 +382,7 @@ public partial class PreferencesWindow : Window
             {
                 Style = (Style)FindResource("SettingsValueLabel"),
                 Text = choice.Title,
-                Margin = new Thickness(0, 8, 0, 0),
+                Margin = new Thickness(0, compact ? 4 : 8, 0, 0),
                 TextWrapping = TextWrapping.Wrap,
                 TextTrimming = TextTrimming.CharacterEllipsis,
                 TextAlignment = TextAlignment.Center,
@@ -374,7 +391,9 @@ public partial class PreferencesWindow : Window
 
             var segment = new ToggleButton
             {
-                Style = (Style)FindResource("SettingsSampleSegment"),
+                Style = (Style)FindResource(compact
+                    ? "SettingsCompactSampleSegment"
+                    : "SettingsSampleSegment"),
                 Content = content,
                 IsChecked = choice.Id == CurrentEnumId(setting),
                 Tag = choice.Id,
@@ -403,16 +422,28 @@ public partial class PreferencesWindow : Window
     }
 
     /// <summary>
-    /// A row of drawn choices that takes a second row rather than squeezing its
-    /// labels. Below <see cref="MinimumSegmentWidth"/> a segment cannot hold the
-    /// longest word in a label - "Bottom" is 44px at the 12px label size, and
-    /// the padding and border take the rest - and a word too long for its line
-    /// overflows and is clipped rather than wrapped or trimmed, so it reads as a
-    /// different word.
+    /// The width below which a segment cannot hold the longest word in a label
+    /// - "Bottom" is 44px at the 12px label size, and the padding and border
+    /// take the rest - and a word too long for its line overflows and is
+    /// clipped rather than wrapped or trimmed, so it reads as a different word.
     /// </summary>
-    private sealed class ReflowingSegments : Panel
+    private const double StandardSegmentWidth = 82;
+
+    /// <summary>
+    /// The same for a compact segment, whose padding is smaller by half and
+    /// whose picture is 40 wide: below this the picture is shrunk to fit
+    /// instead, and a checked segment would then draw it smaller than the
+    /// others by the two pixels its thicker border takes.
+    /// </summary>
+    private const double CompactSegmentWidth = 64;
+
+    /// <summary>
+    /// A row of drawn choices that takes a second row rather than squeezing its
+    /// labels, below the width one of them needs.
+    /// </summary>
+    private sealed class ReflowingSegments(double minimumSegmentWidth) : Panel
     {
-        private const double MinimumSegmentWidth = 82;
+        private readonly double _minimumSegmentWidth = minimumSegmentWidth;
 
         // The width a row is measured against and the width it is finally given
         // are not the same here: measurement arrives far narrower than the
@@ -462,8 +493,8 @@ public partial class PreferencesWindow : Window
             return finalSize;
         }
 
-        private static int ColumnsFor(double width, int count) => Math.Clamp(
-            double.IsInfinity(width) ? count : (int)(width / MinimumSegmentWidth),
+        private int ColumnsFor(double width, int count) => Math.Clamp(
+            double.IsInfinity(width) ? count : (int)(width / _minimumSegmentWidth),
             1,
             count);
 
@@ -473,7 +504,7 @@ public partial class PreferencesWindow : Window
         private Size MeasureCells(int columns, double width, int count)
         {
             var cellWidth = double.IsInfinity(width)
-                ? MinimumSegmentWidth
+                ? _minimumSegmentWidth
                 : width / columns;
             var tallest = 0d;
             for (var index = 0; index < count; index++)
@@ -680,11 +711,11 @@ public partial class PreferencesWindow : Window
         Visibility = shown ? Visibility.Visible : Visibility.Hidden,
     };
 
-    // Wider than the board samples where a toolbar miniature has more on it
-    // than the bar itself, so the picture is not squeezed to fit the default.
-    private static Border SampleBoard(UIElement content, double width = 76) => new()
+    // The board a toolbar miniature sits on, at the size the rows drawn before
+    // 1.6.0 use.
+    private static Border SampleBoard(UIElement content) => new()
     {
-        Width = width,
+        Width = 76,
         Height = 46,
         CornerRadius = new CornerRadius(6),
         Background = SampleBoardBrush,
@@ -758,14 +789,15 @@ public partial class PreferencesWindow : Window
     /// </summary>
     private FrameworkElement CreateFollowingChoice(
         SettingDescriptor setting,
-        Func<string, FrameworkElement?> sampleFor)
+        Func<string, FrameworkElement?> sampleFor,
+        bool compact = false)
     {
         var holder = new ContentControl
         {
             Focusable = false,
-            Content = CreateSampleChoice(setting, sampleFor),
+            Content = CreateSampleChoice(setting, sampleFor, compact),
         };
-        _layoutFollowers.Add(() => holder.Content = CreateSampleChoice(setting, sampleFor));
+        _layoutFollowers.Add(() => holder.Content = CreateSampleChoice(setting, sampleFor, compact));
         return holder;
     }
 
@@ -1073,14 +1105,21 @@ public partial class PreferencesWindow : Window
     /// What a boolean setting holds, or null for a setting that is not one. The
     /// same answer serves a switch, a checkbox, and the two drawn choices a
     /// boolean is offered as when a picture says more than a name.
+    ///
+    /// The four group rows answer with the feature set the mode resolves to
+    /// rather than with the switches themselves, so that a row greyed under
+    /// Teaching or Design says what that mode does instead of showing an
+    /// arrangement that is not in force. Under Custom the two are the same
+    /// thing, and nothing is written here, so Custom still comes back to the
+    /// arrangement it was left in.
     /// </summary>
     private bool? CurrentBoolean(SettingDescriptor setting) =>
         setting.Id switch
         {
-            SettingsCatalog.Ids.DesignTools => _settings.DesignTools,
-            SettingsCatalog.Ids.PropertyBar => _settings.PropertyBar,
-            SettingsCatalog.Ids.ExtendedSelection => _settings.ExtendedSelection,
-            SettingsCatalog.Ids.DepthAndDuplicate => _settings.DepthAndDuplicate,
+            SettingsCatalog.Ids.DesignTools => Modes.Resolve(_settings).DesignTools,
+            SettingsCatalog.Ids.PropertyBar => Modes.Resolve(_settings).PropertyBar,
+            SettingsCatalog.Ids.ExtendedSelection => Modes.Resolve(_settings).ExtendedSelection,
+            SettingsCatalog.Ids.DepthAndDuplicate => Modes.Resolve(_settings).DepthAndDuplicate,
             SettingsCatalog.Ids.StartFullScreen => _settings.StartFullScreen,
             SettingsCatalog.Ids.WarnWhenNoDigitizer => _settings.WarnWhenNoDigitizer,
             SettingsCatalog.Ids.RestoreLastSession => _settings.RestoreLastSession,

@@ -143,8 +143,8 @@ public enum BoardMode
     Design = 1,
 
     /// <summary>
-    /// Teaching plus whichever feature groups are switched on, so a change
-    /// meant for Teaching can be tried one group at a time.
+    /// Whichever feature groups are switched on, and nothing else, so a
+    /// change meant for Teaching can be tried one group at a time.
     /// </summary>
     Custom = 2,
 }

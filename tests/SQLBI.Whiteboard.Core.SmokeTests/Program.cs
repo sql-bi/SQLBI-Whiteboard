@@ -1100,13 +1100,17 @@ Assert(
     {
         DesignTools: false,
         PropertyBar: false,
-        ExtendedSelection: false,
+        ExtendedSelection: true,
         DepthAndDuplicate: false,
     },
-    "Teaching turns all four groups off, whatever the switches say.");
+    "Teaching keeps the extended selection and turns the other three off, whatever the switches say.");
 Assert(
-    Modes.Resolve(new AppSettings { Mode = BoardMode.Teaching, DesignTools = true })
-        is { DesignTools: false },
+    Modes.Resolve(new AppSettings
+    {
+        Mode = BoardMode.Teaching,
+        DesignTools = true,
+        ExtendedSelection = false,
+    }) is { DesignTools: false, ExtendedSelection: true },
     "Teaching leaves the Custom switches alone rather than reading them.");
 Assert(
     Modes.Resolve(new AppSettings { Mode = BoardMode.Design, DesignTools = false }) is
