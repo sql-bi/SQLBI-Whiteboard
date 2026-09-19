@@ -13,13 +13,23 @@ internal static class PreferencesSmokeTests
         Exception? failure = null;
         var thread = new Thread(() =>
         {
+            // Load the real styles without starting the application or touching
+            // the user's settings. One Application to a process, so every check
+            // in here shares it.
+            var app = new App();
+            app.InitializeComponent();
             try
             {
                 CheckImportSliders();
+                CheckDrawnChoices();
             }
             catch (Exception exception)
             {
                 failure = exception;
+            }
+            finally
+            {
+                app.Shutdown();
             }
         });
         thread.SetApartmentState(ApartmentState.STA);
@@ -33,9 +43,6 @@ internal static class PreferencesSmokeTests
 
     private static void CheckImportSliders()
     {
-        // Load the real styles without starting the application or touching the user's settings.
-        var app = new App();
-        app.InitializeComponent();
         var settings = new AppSettings();
         var saved = string.Empty;
         var changes = 0;
@@ -139,8 +146,117 @@ internal static class PreferencesSmokeTests
         finally
         {
             window.Close();
-            app.Shutdown();
         }
+    }
+
+    /// <summary>
+    /// Every drawn row has a picture for every choice it offers, and a drawn
+    /// boolean reads and writes the setting the switches used to. A missing
+    /// picture is a choice the dialog silently drops, which the eye would only
+    /// catch on the one row nobody opened.
+    /// </summary>
+    private static void CheckDrawnChoices()
+    {
+        var settings = new AppSettings
+        {
+            Mode = BoardMode.Custom,
+            DesignTools = true,
+            PropertyBar = true,
+            ExtendedSelection = true,
+            DepthAndDuplicate = true,
+        };
+        var changes = 0;
+        var window = new PreferencesWindow(settings, () => changes++);
+        try
+        {
+            var drawn = SettingsCatalog.All
+                .Where(setting => setting.Editor == SettingEditorKind.DrawnChoice)
+                .ToArray();
+            Assert(drawn.Length == 11, "Every row meant to be drawn should say so in the catalog.");
+            foreach (var setting in drawn)
+            {
+                Assert(setting.Choices.Count >= 2, $"{setting.Id} should offer choices to draw.");
+                foreach (var choice in setting.Choices)
+                {
+                    Assert(
+                        window.DrawnSample(setting.Id, choice.Id) is not null,
+                        $"{setting.Id} should draw a sample for {choice.Id}.");
+                }
+            }
+
+            Assert(
+                window.DrawnSample(SettingsCatalog.Ids.Grid, "Sideways") is null &&
+                window.DrawnSample(SettingsCatalog.Ids.DesignTools, "Maybe") is null &&
+                window.DrawnSample(SettingsCatalog.Ids.CheckForUpdates, "On") is null,
+                "A row and a choice that do not go together should draw nothing.");
+
+            // A drawn boolean is still a boolean: the picture that is in force
+            // is the one the setting holds, and pressing the other writes it.
+            var segments = Descendants(window).OfType<ToggleButton>()
+                .Where(button => button.Tag is string)
+                .ToArray();
+            var off = Segment(segments, SettingsCatalog.Ids.InsertPalette, SettingsCatalog.BooleanChoice.Off);
+            var on = Segment(segments, SettingsCatalog.Ids.InsertPalette, SettingsCatalog.BooleanChoice.On);
+            Assert(
+                off.IsChecked == true && on.IsChecked == false && changes == 0,
+                "A drawn boolean should open showing the value it holds, and apply nothing.");
+            on.RaiseEvent(new RoutedEventArgs(ButtonBase.ClickEvent));
+            Assert(
+                settings.InsertPaletteShown && changes == 1 && on.IsChecked == true && off.IsChecked == false,
+                "Pressing the other picture should write the boolean once.");
+            off.RaiseEvent(new RoutedEventArgs(ButtonBase.ClickEvent));
+            Assert(
+                !settings.InsertPaletteShown && changes == 2,
+                "Pressing the first picture again should write it back.");
+
+            // The four group rows are what Custom is made of, so they are shown
+            // greyed rather than hidden anywhere else.
+            var design = new PreferencesWindow(new AppSettings { Mode = BoardMode.Design }, () =>
+                throw new InvalidOperationException("Opening Preferences must not apply a change."));
+            try
+            {
+                var groupRow = Descendants(design).OfType<ToggleButton>()
+                    .Single(button =>
+                        (button.Tag as string) == SettingsCatalog.BooleanChoice.On &&
+                        AncestorTitle(button) == "Design tools");
+                Assert(!groupRow.IsEnabled, "A group row outside Custom should be drawn but unusable.");
+            }
+            finally
+            {
+                design.Close();
+            }
+        }
+        finally
+        {
+            window.Close();
+        }
+    }
+
+    private static ToggleButton Segment(
+        IEnumerable<ToggleButton> segments,
+        string settingId,
+        string choiceId)
+    {
+        var title = SettingsCatalog.All.Single(setting => setting.Id == settingId).Title;
+        return segments.Single(button =>
+            (button.Tag as string) == choiceId && AncestorTitle(button) == title);
+    }
+
+    // The title the row carries, which is the first line of its own words.
+    private static string? AncestorTitle(DependencyObject element)
+    {
+        for (var parent = LogicalTreeHelper.GetParent(element); parent is not null;
+             parent = LogicalTreeHelper.GetParent(parent))
+        {
+            if (parent is Border { Child: Grid body } &&
+                body.Children.OfType<StackPanel>().FirstOrDefault() is { } copy &&
+                copy.Children.OfType<TextBlock>().FirstOrDefault() is { } title)
+            {
+                return title.Text;
+            }
+        }
+
+        return null;
     }
 
     private static Slider FindSlider(DependencyObject root, string name) =>
