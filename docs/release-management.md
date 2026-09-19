@@ -357,8 +357,25 @@ It runs beside the release rather than inside it, for the reason the Store submi
 by people, and it can sit for days. Nothing about the download being available depends on
 it.
 
-The first submission was made by hand on 20 August 2026, which reserved the
-`SQLBI.Whiteboard` identifier. Everything after it is the workflow's job.
+The first submission has to be made by hand, and nothing else works until it has merged:
+`wingetcreate update` reads the previous version's manifests out of winget-pkgs, so while the
+identifier is absent every run of this workflow fails with
+`manifests/s/SQLBI/Whiteboard was not found`. That error means the seed has not landed, not
+that `WINGET_TOKEN` is wrong.
+
+Ours went in on 20 August 2026 as
+[microsoft/winget-pkgs#421386](https://github.com/microsoft/winget-pkgs/pull/421386) and was
+still open a month later, so every release from 0.9.3 onwards has a failed run of this
+workflow behind it. Two things held it up: a `Needs-CLA` label that stayed on the pull
+request while the `license/cla` check itself was green, and an in-place update of the
+manifests from 0.9.2 to 1.2.2 on 2 September, which disarmed the auto-merge the bot had armed
+when validation passed and did not arm it again. Leave a submission under review alone, even
+when it is behind; once the identifier is in, a stale version is corrected by an ordinary
+update.
+
+When it merges, the releases published in the meantime are caught up with one **Run workflow**
+on **Publish to winget**, which submits the newest released version. After that each release
+submits itself.
 
 `WINGET_TOKEN` is a repository secret holding a GitHub personal access token, and the
 workflow cannot succeed without it. Two constraints on that token are easy to get wrong:
