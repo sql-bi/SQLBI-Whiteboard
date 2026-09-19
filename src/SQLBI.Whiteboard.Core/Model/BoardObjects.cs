@@ -328,6 +328,7 @@ public static class TextLanguageIds
 {
     public const string Plain = "plain";
     public const string Prompt = "prompt";
+    public const string Markdown = "markdown";
     public const string Dax = "dax";
     public const string SqlServer = "sqlserver";
     public const string Kql = "kql";
@@ -351,7 +352,7 @@ public static class TextLanguageIds
     /// </summary>
     public static IReadOnlyList<string> All { get; } =
     [
-        Plain, Prompt, Dax, SqlServer, Kql,
+        Plain, Prompt, Markdown, Dax, SqlServer, Kql,
         Python, C, Cpp, Java, CSharp, JavaScript, TypeScript, VbNet, R, Rust, Php,
     ];
 
@@ -362,7 +363,7 @@ public static class TextLanguageIds
     /// paste is code if any language says it is, and text otherwise, with no
     /// setting to change.
     /// </summary>
-    public static IReadOnlyList<string> DetectionOrder { get; } = [Dax, SqlServer, Kql, Plain];
+    public static IReadOnlyList<string> DetectionOrder { get; } = [Dax, SqlServer, Kql, Markdown, Plain];
 
     /// <summary>
     /// Whether the language can claim a paste. The rest are chosen by hand, so

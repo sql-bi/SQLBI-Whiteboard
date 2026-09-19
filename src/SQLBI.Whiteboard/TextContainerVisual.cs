@@ -101,14 +101,19 @@ internal static class TextContainerVisual
         double width,
         double visualScale,
         double pixelsPerDip = 1,
-        string languageId = TextLanguageIds.Plain)
+        string languageId = TextLanguageIds.Plain,
+        bool editing = false)
     {
         ITextLanguageService language = TextLanguageRegistry.Resolve(languageId);
         double scale = NormalizeScale(visualScale);
         double padding = ContentPadding * scale;
         double availableWidth = Math.Max(1, width - (2 * padding));
         double bodyHeight;
-        if (language.Id == TextLanguageIds.Prompt)
+        if (language.Id == TextLanguageIds.Markdown && !editing)
+        {
+            bodyHeight = MarkdownContent.Parse(text).Layout(availableWidth / scale).Height * scale;
+        }
+        else if (language.Id == TextLanguageIds.Prompt)
         {
             // The editor's border consumes width that the drawing does not. Measure the
             // narrower body so switching modes cannot hide a final wrapped line.
@@ -118,7 +123,7 @@ internal static class TextContainerVisual
         else
         {
             FormattedText formatted = CreateBodyText(text, BodyFontSize * scale, pixelsPerDip, language);
-            formatted.MaxTextWidth = availableWidth;
+            formatted.MaxTextWidth = Math.Max(1, availableWidth - (editing ? 2 * BorderThickness * scale : 0));
             bodyHeight = formatted.Height;
         }
         return Math.Max(
@@ -189,6 +194,19 @@ internal static class TextContainerVisual
             destination.Top + titleHeight + padding,
             Math.Max(1, destination.Width - (2 * padding)),
             Math.Max(1, destination.Height - titleHeight - (2 * padding)));
+        if (language.Id == TextLanguageIds.Markdown)
+        {
+            var layout = MarkdownContent.Parse(textObject.Text).Layout(
+                Math.Max(1, textObject.Bounds.Width / NormalizeScale(textObject.VisualScale) - 2 * ContentPadding));
+            drawingContext.PushClip(new RectangleGeometry(bodyRectangle));
+            drawingContext.PushTransform(new TranslateTransform(bodyRectangle.Left, bodyRectangle.Top));
+            drawingContext.PushTransform(new ScaleTransform(scale, scale));
+            drawingContext.DrawDrawing(layout.Drawing);
+            drawingContext.Pop();
+            drawingContext.Pop();
+            drawingContext.Pop();
+            return;
+        }
         if (language.Id == TextLanguageIds.Prompt)
         {
             var layout = new PromptTextLayout(textObject.Text, bodyRectangle.Width,

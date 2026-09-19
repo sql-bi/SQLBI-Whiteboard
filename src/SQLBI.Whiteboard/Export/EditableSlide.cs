@@ -64,6 +64,7 @@ internal static class EditableSlide
             {
                 ImageBoardObject image => ImageElement(document, image, camera),
                 LiveViewBoardObject liveView => LiveViewElement(document, liveView, camera, liveViewImageSourceProvider),
+                TextBoardObject { LanguageId: TextLanguageIds.Markdown } markdown => MarkdownElement(document, markdown, camera),
                 TextBoardObject text => TextElement(text, camera),
                 ShapeBoardObject shape => ShapeElement(shape, camera),
                 FreeTextBoardObject label => LabelElement(label, camera),
@@ -302,6 +303,19 @@ internal static class EditableSlide
     {
         PointD screen = camera.WorldToScreen(point);
         return new SlidePosition(screen.X, screen.Y);
+    }
+
+    private static SlideElement MarkdownElement(BoardDocument document, TextBoardObject text, Camera2D camera)
+    {
+        // Until the editable export model carries tables and rich blocks, preserve
+        // their appearance as a picture. The original source still goes in notes.
+        var bounds = ToPage(text.Bounds, camera);
+        double factor = Math.Min(2, 4096 / Math.Max(bounds.Width, bounds.Height));
+        var bitmap = BoardRasterizer.Render(document, text.Bounds,
+            Math.Max(1, (int)Math.Ceiling(bounds.Width * factor)),
+            Math.Max(1, (int)Math.Ceiling(bounds.Height * factor)),
+            paddingFraction: 0, drawBackground: false, objectFilter: item => item.Id == text.Id);
+        return new SlideImageElement(bounds, WpfImageCodec.EncodePng(bitmap), PngContentType);
     }
 
     private static SlideElement TextElement(TextBoardObject text, Camera2D camera)

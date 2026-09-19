@@ -59,13 +59,14 @@ internal static class TextLanguageRegistry
     private static readonly ITextLanguageService Kql = new KqlTextLanguageService();
 
     /// <summary>
-    /// Every text type the selectors offer. Prompt sits beside plain text but
-    /// is chosen by hand, so adding it leaves snippet detection unchanged.
+    /// Every text type the selectors offer. Prompt is explicit; Markdown can
+    /// also recognize structured text through the snippet format order.
     /// </summary>
     public static IReadOnlyList<ITextLanguageService> All { get; } =
     [
         Plain,
         new PromptTextLanguageService(),
+        new MarkdownTextLanguageService(),
         Dax,
         SqlServer,
         Kql,
@@ -152,6 +153,29 @@ internal static class TextLanguageRegistry
         }
 
         public bool TryAccept(string source) => false;
+
+        public override string ToString() => DisplayName;
+    }
+
+    private sealed class MarkdownTextLanguageService : ITextLanguageService
+    {
+        public string Id => TextLanguageIds.Markdown;
+        public string DisplayName => "Markdown";
+        public string FontFamilyName => "Consolas";
+        public bool CanFormat => false;
+        public bool CanDetect => true;
+        public bool ShowLineNumbers => false;
+        public bool WordWrap => true;
+        public bool UseBackgroundAnalysis => false;
+        public Uri? FormattingRequestUri => null;
+
+        public TextLanguageAnalysis Analyze(string source, string fallbackTitle) => new("Markdown", []);
+        public bool TryAccept(string source) => MarkdownContent.LooksLike(source);
+        public bool TryFormat(string source, int columns, out string formatted)
+        {
+            formatted = source;
+            return false;
+        }
 
         public override string ToString() => DisplayName;
     }
