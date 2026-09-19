@@ -936,7 +936,7 @@ handles on a label or a picture, per-board grid settings, and grouping as a save
 "Modes: Teaching, Design, Custom".
 
 1.6.0 added an Insert tab, a palette, handles on a selected shape, a bar over every
-selection with a menu on it, two more depth commands, and a lasso. Someone who opens this
+selection with a menu on it, and two more depth commands. Someone who opens this
 application to annotate a demo needs none of them, and every one of them is in the way. A
 **mode** — **Teaching**, **Design**, or **Custom**, in **Preferences → Mode** or on the
 **Design** toggle on the View row — says which of them exist.
@@ -947,6 +947,14 @@ application to annotate a demo needs none of them, and every one of them is in t
   connector still follows its shapes. Only the tools to make or restyle them are absent.
   The alternative — a Teaching board that simply cannot hold these objects — would have made
   the mode a property of the file, and a file somebody could not open where they made it.
+
+- **Teaching keeps the lasso.** It was in the first cut of this and came out after the
+  first morning with it: selecting a few of the strokes you have just drawn, to move them
+  or wipe them, is annotating rather than designing, and the rectangle alone cannot take
+  three strokes out of a diagram without taking the rest. It costs Teaching nothing on the
+  screen — the lasso is the Select button behaving differently after a hold — so Teaching
+  is the **Extended selection** group and nothing else, which also leaves the two
+  Selection preferences in its Preferences, where they now have something to configure.
 
 - **Four groups, not twenty switches and not one.** **Design tools**, **Property bar**,
   **Extended selection**, **Depth and duplicate**. Each is a group because the things in it
@@ -981,8 +989,11 @@ application to annotate a demo needs none of them, and every one of them is in t
 - **The settings behind a group are left untouched.** Turning the design tools off hides the
   Insert palette without clearing the setting that says it is shown, and takes the lasso
   away without forgetting that Lasso was armed. The area gesture meanwhile behaves as though
-  the two Selection preferences were at their defaults, so an area in Teaching takes what it
-  covers and never grows, whatever a file written in Design still holds.
+  the two Selection preferences were at their defaults, so an area with that group off takes
+  what it covers and never grows, whatever a file written in Design still holds. The four
+  rows in Preferences follow the same rule from the other side: under Teaching or Design
+  they show the feature set the mode resolves to, greyed, and read nothing from the
+  switches, so what a greyed row says is what the board will do.
 
 ---
 

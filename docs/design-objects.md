@@ -621,17 +621,20 @@ absent.
 
 ### The three modes
 
-- **Teaching**: the 1.5.2 experience plus what is invisible until used. Ink, laser,
-  eraser, pan; paste, drop, import, LiveView, text containers; frames and export; the
-  grid; rubber band, Ctrl+A, Ctrl+Shift+A, group move and resize; Bring to front and
-  Send to back. Nothing else.
+- **Teaching**: the 1.5.2 experience plus what is invisible until used, and the extended
+  selection with it. Ink, laser, eraser, pan; paste, drop, import, LiveView, text
+  containers; frames and export; the grid; rubber band, lasso, a tap on a stroke, Ctrl+A,
+  Ctrl+Shift+A, group move and resize; Bring to front and Send to back. Nothing else.
+  The lasso is in because picking up what you have just drawn is annotation, not design,
+  and it puts nothing on the screen: it is the Select button behaving differently after a
+  hold.
 - **Design** (default): everything.
-- **Custom**: Teaching plus whichever of four feature groups are switched on. It exists so
-  that a change meant for Teaching can be tried one group at a time.
+- **Custom**: whichever of four feature groups are switched on, and nothing else. It
+  exists so that a change meant for Teaching can be tried one group at a time.
 
 ### The four feature groups
 
-Each is one switch, and Teaching is all four off, Design all four on:
+Each is one switch, and Teaching is Extended selection alone, Design all four on:
 
 | Group | What it turns on |
 | --- | --- |
@@ -650,8 +653,14 @@ command that belongs to a group that is off does nothing — no dialog, no beep.
 - **Preferences → Mode**, a new first category: a **Mode** row (Teaching, Design, Custom)
   and the four group switches, enabled only while Custom is chosen. Choosing Teaching or
   Design does not overwrite the Custom switches, so Custom remembers its last
-  arrangement. The Toolbar and Selection rows that belong to a group are hidden while
-  that group is off, so Teaching's Preferences are 1.5.2's plus Mode and Board.
+  arrangement, and while one of them is chosen the four rows show the feature set that
+  mode resolves to rather than the switches behind it — a greyed row says what the mode
+  does. The Toolbar and Selection rows that belong to a group are hidden while
+  that group is off, so Teaching's Preferences are 1.5.2's plus Mode, Board, and
+  Selection. The four group rows draw their two pictures where a combo sits, beside the
+  words rather than on a line below them, and at half the size of the rows drawn before
+  1.6.0: all five rows of this category have to be on the screen together at the dialog's
+  default size, and on their own line they cost more height than five rows have.
 - **View → Design**, a toggle beside Grid: checked while the mode is Design; a press
   switches to Design, and a press while in Design returns to the last mode that was not
   Design (Teaching, or Custom if that is where the person came from), the way Grid
@@ -667,7 +676,8 @@ Insert tab collapsed, the two depth buttons collapsed, the Design toggle); `Main
 (every creation tool, handle, hover, key, and the palette consult the feature set; the
 property bar is not shown at all with its group off); `PropertyBar` (rows and the menu
 by group); `BoardSurface` (handles only when their group is on). Tests: settings round
-trip and normalization, and `Resolve` for Teaching (all off), Design (all on), and a
+trip and normalization, and `Resolve` for Teaching (Extended selection alone), Design
+(all on), and a
 Custom arrangement.
 
 The notes: one sentence folded into an existing 1.6.0 entry, not a fifth entry; the
