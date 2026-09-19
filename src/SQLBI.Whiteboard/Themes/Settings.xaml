@@ -487,6 +487,19 @@
                                     Property="BorderThickness"
                                     Value="2" />
                         </Trigger>
+
+                        <!-- A drawn choice is pictures and a word, and neither
+                             greys itself the way a switch or a combo does. The
+                             segment is faded whole, so the choice in force is
+                             still readable while the row cannot be used. -->
+                        <Trigger Property="IsEnabled"
+                                 Value="False">
+                            <Setter TargetName="Root"
+                                    Property="Opacity"
+                                    Value="0.4" />
+                            <Setter Property="Cursor"
+                                    Value="Arrow" />
+                        </Trigger>
                     </ControlTemplate.Triggers>
                 </ControlTemplate>
             </Setter.Value>

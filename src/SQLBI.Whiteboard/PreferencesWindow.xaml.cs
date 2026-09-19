@@ -23,11 +23,11 @@ public partial class PreferencesWindow : Window
     private string? _selectedCategory;
     private bool _suppressChange;
 
-    // The Eraser's pictures are drawn from the Layout setting, which sits in the
-    // same list and can change under them. Held so that one editor can be
-    // redrawn where rebuilding the list would lose the scroll position and the
-    // rows anyone had opened.
-    private ContentControl? _eraserChoice;
+    // The Eraser's pictures, and the Insert button's, are drawn from the Layout
+    // setting, which sits in the same list and can change under them. Held as
+    // the act of redrawing one editor, because rebuilding the list would lose
+    // the scroll position and the rows anyone had opened.
+    private readonly List<Action> _layoutFollowers = [];
 
     public PreferencesWindow(AppSettings settings, Action applied)
     {
@@ -117,7 +117,7 @@ public partial class PreferencesWindow : Window
     private void RebuildSettings(IReadOnlyList<SettingDescriptor> settings, string? query)
     {
         SettingsHost.Children.Clear();
-        _eraserChoice = null;
+        _layoutFollowers.Clear();
         var empty = settings.Count == 0;
         EmptyState.Visibility = empty ? Visibility.Visible : Visibility.Collapsed;
         if (empty)
@@ -286,7 +286,8 @@ public partial class PreferencesWindow : Window
                  SettingEditorKind.PenButtonChoice or
                  SettingEditorKind.ToolbarPlacementChoice or
                  SettingEditorKind.ToolbarLayoutChoice or
-                 SettingEditorKind.EraserButtonChoice)
+                 SettingEditorKind.EraserButtonChoice or
+                 SettingEditorKind.DrawnChoice)
         {
             Grid.SetRow(editor, 1);
             Grid.SetColumnSpan(editor, 2);
@@ -323,6 +324,7 @@ public partial class PreferencesWindow : Window
             SettingEditorKind.ToolbarLayoutChoice =>
                 CreateSampleChoice(setting, CreateToolbarLayoutSample),
             SettingEditorKind.EraserButtonChoice => CreateEraserButtonChoice(setting),
+            SettingEditorKind.DrawnChoice => CreateDrawnChoice(setting),
             _ => CreateEnumCombo(setting),
         };
 
@@ -379,6 +381,11 @@ public partial class PreferencesWindow : Window
                 ToolTip = choice.Title,
                 HorizontalContentAlignment = HorizontalAlignment.Stretch,
             };
+
+            // A picture has no text to be read out, and the label under it is
+            // the choice alone - so the setting is named with it, as the switch
+            // these rows replaced was named.
+            AutomationProperties.SetName(segment, $"{setting.Title}: {choice.Title}");
             segment.Click += (_, _) =>
             {
                 foreach (var other in segments)
@@ -609,7 +616,7 @@ public partial class PreferencesWindow : Window
     {
         var access = _settings.CalligraphyAccess;
         var rows = SampleToolbarRows(access);
-        var eraser = SampleEraser(shown: id == SettingsCatalog.EraserButton.On);
+        var eraser = SampleEraser(shown: id == SettingsCatalog.BooleanChoice.On);
         if (access == CalligraphyAccess.DualPalette)
         {
             // Its own row under the palette, which is where it goes there. The
@@ -673,9 +680,11 @@ public partial class PreferencesWindow : Window
         Visibility = shown ? Visibility.Visible : Visibility.Hidden,
     };
 
-    private static Border SampleBoard(UIElement content) => new()
+    // Wider than the board samples where a toolbar miniature has more on it
+    // than the bar itself, so the picture is not squeezed to fit the default.
+    private static Border SampleBoard(UIElement content, double width = 76) => new()
     {
-        Width = 76,
+        Width = width,
         Height = 46,
         CornerRadius = new CornerRadius(6),
         Background = SampleBoardBrush,
@@ -738,34 +747,39 @@ public partial class PreferencesWindow : Window
         return row;
     }
 
+    private FrameworkElement CreateEraserButtonChoice(SettingDescriptor setting) =>
+        CreateFollowingChoice(setting, CreateEraserButtonSample);
+
+    /// <summary>
+    /// A drawn choice whose pictures hold a toolbar, and are therefore stale as
+    /// soon as Layout chooses another arrangement. The samples are built again
+    /// into the same holder, so the row keeps its place in a list nobody asked
+    /// to have rebuilt.
+    /// </summary>
+    private FrameworkElement CreateFollowingChoice(
+        SettingDescriptor setting,
+        Func<string, FrameworkElement?> sampleFor)
+    {
+        var holder = new ContentControl
+        {
+            Focusable = false,
+            Content = CreateSampleChoice(setting, sampleFor),
+        };
+        _layoutFollowers.Add(() => holder.Content = CreateSampleChoice(setting, sampleFor));
+        return holder;
+    }
+
+    private void RefreshLayoutFollowers()
+    {
+        foreach (var refresh in _layoutFollowers)
+        {
+            refresh();
+        }
+    }
+
     // Each option is drawn as the strokes it produces, at the same width and
     // opacity the trail itself would use, so the choice is made by looking
     // rather than by imagining what a word means.
-    private FrameworkElement CreateEraserButtonChoice(SettingDescriptor setting)
-    {
-        _eraserChoice = new ContentControl
-        {
-            Focusable = false,
-            Content = CreateSampleChoice(setting, CreateEraserButtonSample),
-        };
-        return _eraserChoice;
-    }
-
-    private void RefreshEraserChoice()
-    {
-        if (_eraserChoice is null)
-        {
-            return;
-        }
-
-        var setting = SettingsCatalog.All.FirstOrDefault(
-            item => item.Id == SettingsCatalog.Ids.ShowEraserButton);
-        if (setting is not null)
-        {
-            _eraserChoice.Content = CreateSampleChoice(setting, CreateEraserButtonSample);
-        }
-    }
-
     private FrameworkElement CreateLaserWeightChoice(SettingDescriptor setting) =>
         CreateSampleChoice(setting, id =>
         {
@@ -897,22 +911,7 @@ public partial class PreferencesWindow : Window
         ToggleButton button = setting.Editor == SettingEditorKind.BooleanCheckbox
             ? new CheckBox { MinWidth = 44, MinHeight = 44, VerticalContentAlignment = VerticalAlignment.Center }
             : new ToggleButton { Style = (Style)FindResource("SettingsSwitch") };
-        button.IsChecked = setting.Id switch
-        {
-            SettingsCatalog.Ids.DesignTools => _settings.DesignTools,
-            SettingsCatalog.Ids.PropertyBar => _settings.PropertyBar,
-            SettingsCatalog.Ids.ExtendedSelection => _settings.ExtendedSelection,
-            SettingsCatalog.Ids.DepthAndDuplicate => _settings.DepthAndDuplicate,
-            SettingsCatalog.Ids.StartFullScreen => _settings.StartFullScreen,
-            SettingsCatalog.Ids.WarnWhenNoDigitizer => _settings.WarnWhenNoDigitizer,
-            SettingsCatalog.Ids.RestoreLastSession => _settings.RestoreLastSession,
-            SettingsCatalog.Ids.SuggestMouseMode => _settings.SuggestMouseMode,
-            SettingsCatalog.Ids.InsertOnToolbar => _settings.InsertOnToolbar,
-            SettingsCatalog.Ids.InsertPalette => _settings.InsertPaletteShown,
-            SettingsCatalog.Ids.CheckForUpdates => _settings.CheckForUpdates,
-            SettingsCatalog.Ids.PauseLiveViewsWhenUnfocused => _settings.PauseLiveViewsWhenUnfocused,
-            _ => false,
-        };
+        button.IsChecked = CurrentBoolean(setting) ?? false;
         AutomationProperties.SetName(button, setting.Title);
         button.Checked += (_, _) => SetBoolean(setting, true);
         button.Unchecked += (_, _) => SetBoolean(setting, false);
@@ -1070,6 +1069,30 @@ public partial class PreferencesWindow : Window
         NotifyApplied();
     }
 
+    /// <summary>
+    /// What a boolean setting holds, or null for a setting that is not one. The
+    /// same answer serves a switch, a checkbox, and the two drawn choices a
+    /// boolean is offered as when a picture says more than a name.
+    /// </summary>
+    private bool? CurrentBoolean(SettingDescriptor setting) =>
+        setting.Id switch
+        {
+            SettingsCatalog.Ids.DesignTools => _settings.DesignTools,
+            SettingsCatalog.Ids.PropertyBar => _settings.PropertyBar,
+            SettingsCatalog.Ids.ExtendedSelection => _settings.ExtendedSelection,
+            SettingsCatalog.Ids.DepthAndDuplicate => _settings.DepthAndDuplicate,
+            SettingsCatalog.Ids.StartFullScreen => _settings.StartFullScreen,
+            SettingsCatalog.Ids.WarnWhenNoDigitizer => _settings.WarnWhenNoDigitizer,
+            SettingsCatalog.Ids.RestoreLastSession => _settings.RestoreLastSession,
+            SettingsCatalog.Ids.SuggestMouseMode => _settings.SuggestMouseMode,
+            SettingsCatalog.Ids.ShowEraserButton => _settings.ShowEraserButton,
+            SettingsCatalog.Ids.InsertOnToolbar => _settings.InsertOnToolbar,
+            SettingsCatalog.Ids.InsertPalette => _settings.InsertPaletteShown,
+            SettingsCatalog.Ids.CheckForUpdates => _settings.CheckForUpdates,
+            SettingsCatalog.Ids.PauseLiveViewsWhenUnfocused => _settings.PauseLiveViewsWhenUnfocused,
+            _ => null,
+        };
+
     private string CurrentEnumId(SettingDescriptor setting) =>
         setting.Id switch
         {
@@ -1085,10 +1108,12 @@ public partial class PreferencesWindow : Window
             SettingsCatalog.Ids.PenButton => _settings.PenButtons.Barrel.ToString(),
             SettingsCatalog.Ids.Grid => _settings.Grid.ToString(),
             SettingsCatalog.Ids.AfterInsert => _settings.AfterInsert.ToString(),
-            SettingsCatalog.Ids.ShowEraserButton => _settings.ShowEraserButton
-                ? SettingsCatalog.EraserButton.On
-                : SettingsCatalog.EraserButton.Off,
-            _ => string.Empty,
+
+            // A boolean offered as two pictures answers with the id of the
+            // picture in force, so one read serves every drawn choice.
+            _ => CurrentBoolean(setting) is { } flag
+                ? flag ? SettingsCatalog.BooleanChoice.On : SettingsCatalog.BooleanChoice.Off
+                : string.Empty,
         };
 
     private void SetBoolean(SettingDescriptor setting, bool value)
@@ -1129,6 +1154,10 @@ public partial class PreferencesWindow : Window
         else if (setting.Id == SettingsCatalog.Ids.SuggestMouseMode)
         {
             _settings.SuggestMouseMode = value;
+        }
+        else if (setting.Id == SettingsCatalog.Ids.ShowEraserButton)
+        {
+            _settings.ShowEraserButton = value;
         }
         else if (setting.Id == SettingsCatalog.Ids.InsertOnToolbar)
         {
@@ -1244,9 +1273,6 @@ public partial class PreferencesWindow : Window
                 when Enum.TryParse<ExtendSelection>(id, out var extendSelection):
                 _settings.ExtendSelection = extendSelection;
                 break;
-            case SettingsCatalog.Ids.ShowEraserButton:
-                _settings.ShowEraserButton = id == SettingsCatalog.EraserButton.On;
-                break;
             case SettingsCatalog.Ids.AfterInsert
                 when Enum.TryParse<AfterInsert>(id, out var afterInsert):
                 _settings.AfterInsert = afterInsert;
@@ -1263,15 +1289,24 @@ public partial class PreferencesWindow : Window
                 }
 
                 break;
+
+            // A boolean offered as two pictures arrives here with the id of the
+            // picture that was pressed, and is written as the boolean it is.
             default:
+                if (CurrentBoolean(setting) is not null)
+                {
+                    SetBoolean(setting, id == SettingsCatalog.BooleanChoice.On);
+                }
+
                 return;
         }
 
-        // The Eraser is drawn into whichever toolbar Layout has just chosen, so
-        // its two pictures are stale the moment that choice changes.
+        // The Eraser and the Insert button are drawn into whichever toolbar
+        // Layout has just chosen, so their pictures are stale the moment that
+        // choice changes.
         if (setting.Id == SettingsCatalog.Ids.ToolbarLayout)
         {
-            RefreshEraserChoice();
+            RefreshLayoutFollowers();
         }
 
         RebuildIfModeSetting(setting);

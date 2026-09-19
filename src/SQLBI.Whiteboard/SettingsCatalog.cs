@@ -42,6 +42,17 @@ internal enum SettingEditorKind
     /// pictures follow whatever <see cref="ToolbarLayoutChoice"/> has chosen.
     /// </summary>
     EraserButtonChoice,
+
+    /// <summary>
+    /// A choice drawn rather than named, where the picture is not one of the
+    /// five above. Every one of them asks what the board will look like or what
+    /// a gesture will take, and a name for that is a promise the reader has to
+    /// imagine; the row's <see cref="SettingDescriptor.Id"/> is what picks the
+    /// pictures, so a new one of these is a factory rather than another member
+    /// here. A boolean joins them by carrying the two
+    /// <see cref="SettingsCatalog.BooleanChoice"/> ids as its choices.
+    /// </summary>
+    DrawnChoice,
 }
 
 internal sealed class SettingChoice
@@ -151,15 +162,25 @@ internal static class SettingsCatalog
     }
 
     /// <summary>
-    /// The two states of <see cref="Ids.ShowEraserButton"/>. It is stored as a
-    /// boolean and offered as a pair of drawn choices, so it needs choice ids
-    /// where the other booleans need none.
+    /// The two states of a boolean that is offered as a pair of drawn choices
+    /// rather than as a switch. Such a row needs choice ids where a switched
+    /// boolean needs none, and they are the same two for every one of them, so
+    /// that one read and one write serve them all.
     /// </summary>
-    public static class EraserButton
+    public static class BooleanChoice
     {
         public const string Off = "Off";
         public const string On = "On";
     }
+
+    /// <summary>
+    /// The choices of a drawn boolean, which are the same wherever they appear.
+    /// </summary>
+    private static readonly SettingChoice[] OffOn =
+    [
+        new() { Id = BooleanChoice.Off, Title = "Off" },
+        new() { Id = BooleanChoice.On, Title = "On" },
+    ];
 
     public const string Mode = "Mode";
     public const string Startup = "Startup";
@@ -218,7 +239,8 @@ internal static class SettingsCatalog
             Title = "Design tools",
             Summary = "The Insert tab and palette, the shape, connector, and text tools, and their handles",
             Keywords = ["insert", "shape", "connector", "text", "palette", "rotation", "handle", "custom"],
-            Editor = SettingEditorKind.BooleanSwitch,
+            Editor = SettingEditorKind.DrawnChoice,
+            Choices = OffOn,
             EnabledWhen = IsCustom,
         },
         new()
@@ -228,7 +250,8 @@ internal static class SettingsCatalog
             Title = "Property bar",
             Summary = "The bar above a selection: color, thickness, fill, font, and the … menu",
             Keywords = ["property", "bar", "color", "thickness", "fill", "font", "menu", "custom"],
-            Editor = SettingEditorKind.BooleanSwitch,
+            Editor = SettingEditorKind.DrawnChoice,
+            Choices = OffOn,
             EnabledWhen = IsCustom,
         },
         new()
@@ -238,7 +261,8 @@ internal static class SettingsCatalog
             Title = "Extended selection",
             Summary = "A tap selecting a stroke, the lasso, and the two Selection settings",
             Keywords = ["selection", "stroke", "lasso", "area", "extend", "touching", "custom"],
-            Editor = SettingEditorKind.BooleanSwitch,
+            Editor = SettingEditorKind.DrawnChoice,
+            Choices = OffOn,
             EnabledWhen = IsCustom,
         },
         new()
@@ -248,7 +272,8 @@ internal static class SettingsCatalog
             Title = "Depth and duplicate",
             Summary = "Bring forward, Send backward, and Duplicate",
             Keywords = ["depth", "forward", "backward", "duplicate", "order", "z-order", "custom"],
-            Editor = SettingEditorKind.BooleanSwitch,
+            Editor = SettingEditorKind.DrawnChoice,
+            Choices = OffOn,
             EnabledWhen = IsCustom,
         },
         new()
@@ -366,7 +391,7 @@ internal static class SettingsCatalog
             Summary = "Whether an object has to be wholly inside the area",
             Description = "Objects partly inside takes anything the area meets, which is how a quick sweep picks up a diagram. Only objects fully inside asks for the whole of a stroke or an object to be inside, which is what you want when the thing you are after sits among others.",
             Keywords = ["select", "selection", "area", "rubber", "band", "lasso", "marquee", "inside", "partly", "fully"],
-            Editor = SettingEditorKind.EnumChoice,
+            Editor = SettingEditorKind.DrawnChoice,
             Choices =
             [
                 new() { Id = nameof(Core.Model.AreaSelection.PartlyInside), Title = "Objects partly inside" },
@@ -382,7 +407,7 @@ internal static class SettingsCatalog
             Summary = "Whether the selection grows to what it touches",
             Description = "Ignore takes the area at its word. Single adds one round, so a label beside a picture comes along with it. Recursive keeps going until nothing more is added, which takes a whole connected diagram from one stroke in it.",
             Keywords = ["select", "selection", "extend", "touching", "grow", "recursive", "connected", "neighbour", "neighbor"],
-            Editor = SettingEditorKind.EnumChoice,
+            Editor = SettingEditorKind.DrawnChoice,
             Choices =
             [
                 new() { Id = nameof(Core.Model.ExtendSelection.Ignore), Title = "Ignore" },
@@ -399,7 +424,7 @@ internal static class SettingsCatalog
             Summary = "A faint grid behind the board, off by default",
             Description = "Lines or Dots draw a faint grid under everything on screen, and never in an export, a preview, or the Explorer thumbnail.",
             Keywords = ["grid", "lines", "dots", "background", "board", "zoom", "graph paper", "squared"],
-            Editor = SettingEditorKind.EnumChoice,
+            Editor = SettingEditorKind.DrawnChoice,
             Choices =
             [
                 new() { Id = nameof(GridStyle.Off), Title = "Off" },
@@ -479,7 +504,7 @@ internal static class SettingsCatalog
             Summary = "Whether a new stroke keeps the previous trail alive",
             Description = "Whether a new stroke keeps the previous trail alive or starts its own timer.",
             Keywords = ["laser", "hold", "shared", "stroke"],
-            Editor = SettingEditorKind.EnumChoice,
+            Editor = SettingEditorKind.DrawnChoice,
             Choices =
             [
                 new() { Id = nameof(LaserHoldMode.Shared), Title = "Shared across strokes" },
@@ -547,8 +572,8 @@ internal static class SettingsCatalog
             Editor = SettingEditorKind.EraserButtonChoice,
             Choices =
             [
-                new() { Id = EraserButton.Off, Title = "Off" },
-                new() { Id = EraserButton.On, Title = "On" },
+                new() { Id = BooleanChoice.Off, Title = "Off" },
+                new() { Id = BooleanChoice.On, Title = "On" },
             ],
         },
         new()
@@ -559,7 +584,8 @@ internal static class SettingsCatalog
             Summary = "An Insert button and a Lasso chevron on the floating toolbar, which grows wider",
             Description = "Off, shapes, connectors, and text come from the Insert tab in the tab strip, and holding the Select button switches what a drag on empty canvas draws. On, the floating toolbar gains an Insert button beside Select whose flyout offers the same things, and a chevron on Select offering Rectangle and Lasso.",
             Keywords = ["insert", "shape", "toolbar", "lasso", "select", "chevron", "flyout", "button"],
-            Editor = SettingEditorKind.BooleanSwitch,
+            Editor = SettingEditorKind.DrawnChoice,
+            Choices = OffOn,
             VisibleWhen = HasDesignTools,
         },
         new()
@@ -570,7 +596,8 @@ internal static class SettingsCatalog
             Summary = "A second palette with the shapes, connectors, and Text, that you can move",
             Description = "On, a panel holds the eight shapes, the three connectors, and Text where you can reach them while you draw. The grip along its left edge drags it anywhere in the window with a mouse, a pen, or a finger.",
             Keywords = ["insert", "palette", "shape", "connector", "text", "pin", "float", "move", "drag"],
-            Editor = SettingEditorKind.BooleanSwitch,
+            Editor = SettingEditorKind.DrawnChoice,
+            Choices = OffOn,
             VisibleWhen = HasDesignTools,
         },
         new()
@@ -581,7 +608,7 @@ internal static class SettingsCatalog
             Summary = "Whether the Insert tool stays for the next drag",
             Description = "Keep the tool leaves the shape, connector, or text tool active, so the next drag draws another of the same thing. Return to Select hands Select back as soon as one object has been drawn, with that object selected, so the next drag moves it rather than starting another.",
             Keywords = ["insert", "shape", "connector", "text", "tool", "sticky", "select", "after"],
-            Editor = SettingEditorKind.EnumChoice,
+            Editor = SettingEditorKind.DrawnChoice,
             Choices =
             [
                 new() { Id = nameof(Core.Settings.AfterInsert.KeepTool), Title = "Keep the tool" },
