@@ -136,28 +136,24 @@ internal static class MarkdownSmokeTests
             <script>SECRET_SCRIPT</script><style>SECRET_STYLE</style><button>Copy code</button>
             <p><a href="javascript:alert(1)">Unsafe link</a><img src="file:///private" alt="not loaded"></p>
             """;
-        Assert(ClipboardMarkdown.TryConvertHtml(html, out var converted) &&
-            converted.Contains("## Résumé 😀") && converted.Contains("**bold**") &&
-            converted.Contains("```sql\nSELECT 1;\n  -- keep indentation & Unicode café") &&
-            !converted.Contains("SECRET") && !converted.Contains("javascript:") &&
+        Assert(ClipboardMarkdown.TryConvertHtml(html, out var converted),
+            "Structured HTML must convert to Markdown.");
+        Assert(converted.Contains("## Résumé 😀") && converted.Contains("**bold**"),
+            "HTML conversion must preserve headings, emphasis, and Unicode.");
+        Assert(converted.Contains("```sql\nSELECT 1;\n  -- keep indentation & Unicode café"),
+            "HTML code blocks must preserve indentation and Unicode with LF line endings.");
+        Assert(!converted.Contains("SECRET") && !converted.Contains("javascript:") &&
             !converted.Contains("file:///") && !converted.Contains("Copy code"),
-            "HTML conversion must preserve structure and Unicode without importing scripts, UI controls, or external resources.");
+            "HTML conversion must not import scripts, UI controls, or external resources.");
+        CheckClipboardLineEndings(html);
         var parsed = MarkdownContent.Parse(converted).Document;
         Assert(parsed.Descendants<Table>().Single() is { Count: 2 } table &&
             table.OfType<TableRow>().All(row => row.Count == 2) &&
             parsed.Descendants<ListBlock>().Count() == 2 && parsed.Descendants<FencedCodeBlock>().Count() == 1,
             "HTML tables (including pipes inside code), nested lists, and code fences must parse back correctly.");
 
-        string before = "<html><body>é😀<!--StartFragment-->";
-        string after = "<!--EndFragment-->Outside</body></html>";
-        const string headerTemplate = "Version:1.0\r\nStartHTML:{0:D10}\r\nEndHTML:{1:D10}\r\nStartFragment:{2:D10}\r\nEndFragment:{3:D10}\r\n";
-        int headerLength = Encoding.UTF8.GetByteCount(string.Format(headerTemplate, 0, 0, 0, 0));
-        int fragmentStart = headerLength + Encoding.UTF8.GetByteCount(before);
-        int fragmentEnd = fragmentStart + Encoding.UTF8.GetByteCount(html);
-        string cfHtml = string.Format(headerTemplate, headerLength,
-            fragmentEnd + Encoding.UTF8.GetByteCount(after), fragmentStart, fragmentEnd) + before + html + after;
         var selected = new DataObject(DataFormats.UnicodeText, "Résumé\nRule Count\nA B");
-        selected.SetData(DataFormats.Html, cfHtml);
+        selected.SetData(DataFormats.Html, ClipboardHtml(html));
         Assert(ClipboardMarkdown.TryGetText(selected, out source, out tagged) &&
             source == converted && !tagged && !source.Contains("Outside"),
             "A selected rich response must honor CF_HTML byte offsets, including non-ASCII text before the fragment.");
@@ -195,6 +191,51 @@ internal static class MarkdownSmokeTests
         prompt.SetData(ClipboardPrompt.MetadataFormat, """{"type":"Prompt","version":1}""");
         Assert(ClipboardPrompt.TryGetText(prompt, out source) && source == "- Keep Prompt",
             "The existing explicit Prompt clipboard metadata must keep working.");
+    }
+
+    private static void CheckClipboardLineEndings(string html)
+    {
+        Assert(ClipboardMarkdown.TryConvertHtml(html.ReplaceLineEndings("\n"), out var expected),
+            "The LF HTML fixture must convert.");
+        foreach (var (name, newline) in new[] { ("LF", "\n"), ("CRLF", "\r\n"), ("CR", "\r") })
+        {
+            string input = html.ReplaceLineEndings(newline);
+            Assert(ClipboardMarkdown.TryConvertHtml(input, out var converted) && converted == expected,
+                $"{name} HTML must produce the same Markdown as LF HTML.");
+            Assert(ClipboardMarkdown.TryConvertHtml(ClipboardHtml(input), out converted) && converted == expected,
+                $"{name} CF_HTML must honor original UTF-8 byte offsets before normalizing code line endings.");
+            Assert(ClipboardMarkdown.TryConvertHtml($"<p><code>first{newline}second</code></p>", out converted) &&
+                converted == "` first second `",
+                $"{name} line endings inside inline code must become one space.");
+
+            string original = Source.ReplaceLineEndings(newline);
+            var raw = new DataObject(DataFormats.UnicodeText, original);
+            Assert(ClipboardMarkdown.TryGetText(raw, out var text, out bool tagged) && text == original && !tagged,
+                $"Raw {name} Markdown must keep its original line endings.");
+            raw.SetData(DataFormats.Html, Markdig.Markdown.ToHtml(original,
+                new MarkdownPipelineBuilder().UsePipeTables().UseEmphasisExtras().Build()));
+            Assert(ClipboardMarkdown.TryGetText(raw, out text, out tagged) && text == original && !tagged,
+                $"Raw {name} Markdown must stay verbatim when equivalent HTML accompanies it.");
+            raw.SetData(ClipboardMarkdown.Format, Encoding.UTF8.GetBytes(original));
+            Assert(ClipboardMarkdown.TryGetText(raw, out text, out tagged) && text == original && tagged,
+                $"Explicit UTF-8 {name} Markdown must keep its original line endings.");
+        }
+        Assert(ClipboardMarkdown.TryConvertHtml("<pre>first\r\n  second\r    third\nfourth</pre>", out var mixed) &&
+            mixed == "```\nfirst\n  second\n    third\nfourth\n```",
+            "Mixed code-block line endings must normalize without changing indentation.");
+    }
+
+    private static string ClipboardHtml(string html)
+    {
+        // No fragment markers: these cases must use the offsets, not the fallback.
+        const string before = "<html><body>é😀\r\n<strong>Outside before</strong>\r\n";
+        const string after = "\r\n<strong>Outside after</strong></body></html>";
+        const string headerTemplate = "Version:1.0\r\nStartHTML:{0:D10}\r\nEndHTML:{1:D10}\r\nStartFragment:{2:D10}\r\nEndFragment:{3:D10}\r\n";
+        int headerLength = Encoding.UTF8.GetByteCount(string.Format(headerTemplate, 0, 0, 0, 0));
+        int fragmentStart = headerLength + Encoding.UTF8.GetByteCount(before);
+        int fragmentEnd = fragmentStart + Encoding.UTF8.GetByteCount(html);
+        return string.Format(headerTemplate, headerLength,
+            fragmentEnd + Encoding.UTF8.GetByteCount(after), fragmentStart, fragmentEnd) + before + html + after;
     }
 
     private static void CheckExports(string? previewPath)

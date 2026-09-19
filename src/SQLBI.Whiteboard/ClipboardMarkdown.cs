@@ -143,7 +143,9 @@ internal static class ClipboardMarkdown
         if (node.Name == "pre")
         {
             var code = node.SelectSingleNode("./code") ?? node;
-            string source = Decode(code.InnerText).TrimEnd('\r', '\n');
+            // Generated Markdown uses LF. Normalize code after fragment extraction,
+            // since CF_HTML offsets refer to the original UTF-8 bytes.
+            string source = Decode(code.InnerText).ReplaceLineEndings("\n").TrimEnd('\n');
             string fence = new('`', Math.Max(3, LongestBackticks(source) + 1));
             string language = Regex.Match(code.GetAttributeValue("class", ""), @"(?:^|\s)language-([\w#+-]+)").Groups[1].Value;
             return $"\n\n{fence}{language}\n{source}\n{fence}\n\n";
@@ -231,7 +233,7 @@ internal static class ClipboardMarkdown
     private static string InlineCode(string source)
     {
         string fence = new('`', Math.Max(1, LongestBackticks(source) + 1));
-        return fence + " " + source.Replace("\r", "").Replace("\n", " ") + " " + fence;
+        return fence + " " + source.ReplaceLineEndings(" ") + " " + fence;
     }
 
     private static int LongestBackticks(string source) =>
