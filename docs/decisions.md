@@ -930,6 +930,62 @@ handles on a label or a picture, per-board grid settings, and grouping as a save
 
 ---
 
+## 33. A mode says which tools exist, and never what a board contains
+
+**Implemented** in 1.6.0. The plan is [design-objects.md](design-objects.md), under
+"Modes: Teaching, Design, Custom".
+
+1.6.0 added an Insert tab, a palette, handles on a selected shape, a bar over every
+selection with a menu on it, two more depth commands, and a lasso. Someone who opens this
+application to annotate a demo needs none of them, and every one of them is in the way. A
+**mode** — **Teaching**, **Design**, or **Custom**, in **Preferences → Mode** or on the
+**Design** toggle on the View row — says which of them exist.
+
+- **A mode is about the tools, never about the file.** A board made in Design opens in
+  Teaching with every shape, label, and connector still drawn, still a container ink links
+  to, still moved, resized from the corner, deleted with its ink, and exported natively; a
+  connector still follows its shapes. Only the tools to make or restyle them are absent.
+  The alternative — a Teaching board that simply cannot hold these objects — would have made
+  the mode a property of the file, and a file somebody could not open where they made it.
+
+- **Four groups, not twenty switches and not one.** **Design tools**, **Property bar**,
+  **Extended selection**, **Depth and duplicate**. Each is a group because the things in it
+  arrive and leave together: the rotation handle, the quarter turns, and a shape's own text
+  are all the same answer to "can this shape be designed with". A switch per control would
+  be a second Preferences dialog nobody could hold in their head, and one switch would have
+  made trying a change impossible.
+
+- **Design is the default, and the default does not follow the channel.** A release is
+  judged on what it does, and an upgrade that quietly took the 1.6.0 tools away from
+  somebody who had them would be a bug report rather than a preference. Tying the default to
+  the Dev or the released channel was considered and dropped: the channel says which build
+  this is, not who is using it, the same copy is promoted from one to the other without
+  being rebuilt (decision 9), and a mode that changed under someone when their build was
+  promoted would be the worst of both.
+
+- **Custom exists to try a Teaching change one group at a time.** Teaching is a claim about
+  what a person who only annotates needs, and the way to test a claim like that is to put
+  one group back and use the board for a week. Choosing Teaching or Design leaves the four
+  switches exactly as they were, so Custom comes back to the arrangement it was left in, and
+  the View row's toggle returns to Custom rather than to Teaching when that is where it came
+  from — the same memory the Grid button keeps of its last style.
+
+- **A control a mode leaves out is gone, not greyed.** The Insert tab leaves the strip, the
+  two depth buttons leave the View row, the toolbar's Insert button and the Select chevron
+  are collapsed whatever their own preference says, and the Preferences rows that only
+  configure an absent group leave the list — so Teaching's Preferences are 1.5.2's plus Mode
+  and Board. A key or a command belonging to a group that is off does nothing at all: no
+  dialog, no beep. Greying them would have kept every one of them on the screen, which is
+  the thing Teaching exists to stop.
+
+- **The settings behind a group are left untouched.** Turning the design tools off hides the
+  Insert palette without clearing the setting that says it is shown, and takes the lasso
+  away without forgetting that Lasso was armed. The area gesture meanwhile behaves as though
+  the two Selection preferences were at their defaults, so an area in Teaching takes what it
+  covers and never grows, whatever a file written in Design still holds.
+
+---
+
 ## Open questions
 
 - arm64 is not built; add it if Surface devices matter for a pen application.

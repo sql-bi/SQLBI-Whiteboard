@@ -239,6 +239,13 @@ public partial class MainWindow : Window
     private bool _isNibPickerOpen;
     private AppSettings _settings = new();
 
+    /// <summary>
+    /// Which of the design-era controls this mode offers. It is resolved once
+    /// in <see cref="ApplyMode"/> and read everywhere else, so a control asks
+    /// one object rather than the mode and four switches.
+    /// </summary>
+    private FeatureSet _features = Modes.All;
+
     private const double ChevronInkOptionsWidth = 240;
 
     private bool _syntheticLaserContact;
@@ -323,9 +330,7 @@ public partial class MainWindow : Window
         ApplyCalligraphyAccess();
         ApplyPointerModes();
         ApplyGrid();
-        ApplyInsertOnToolbar();
-        ApplyInsertPalette();
-        UpdateSelectButtonGlyph();
+        ApplyMode();
         ApplyDrawingAttributes();
         SetActiveTool(BoardTool.Pen);
         InkSurface.Focus();
@@ -2550,7 +2555,7 @@ public partial class MainWindow : Window
             return;
         }
 
-        BoardObject? hit = _document.HitTestTopSelectable(worldPoint, _camera.Zoom);
+        BoardObject? hit = SelectableAt(worldPoint);
         if (hit is null)
         {
             BeginAreaGesture(screenPoint, worldPoint, extend);
@@ -2814,7 +2819,9 @@ public partial class MainWindow : Window
     /// selected with something else, and offers no handle.
     /// </summary>
     private BoardObject? RotationTarget() =>
-        SingleSelected<ShapeBoardObject>() ?? (BoardObject?)SingleSelected<FreeTextBoardObject>();
+        !_features.DesignTools
+            ? null
+            : SingleSelected<ShapeBoardObject>() ?? (BoardObject?)SingleSelected<FreeTextBoardObject>();
 
     /// <summary>
     /// Whether the pointer has hold of the rotation handle. A shape's top
@@ -3010,7 +3017,9 @@ public partial class MainWindow : Window
         // Nothing while the shape's own text is being typed: the editor's box
         // stands over it, the arrows are not drawn, and a press there commits
         // the text first, which is when the handles come back.
-        if (_shapeEditBefore is not null || SingleSelected<ShapeBoardObject>() is not { } shape)
+        if (!_features.DesignTools ||
+            _shapeEditBefore is not null ||
+            SingleSelected<ShapeBoardObject>() is not { } shape)
         {
             return null;
         }
@@ -3284,15 +3293,29 @@ public partial class MainWindow : Window
             return;
         }
 
+        // Without Extended selection the two Selection preferences have no
+        // rows, so the band takes what it covers and never grows, whatever a
+        // file written in another mode still holds.
         IEnumerable<Guid> taken = _document
-            .ObjectsInArea(area, _settings.AreaSelection)
+            .ObjectsInArea(
+                area,
+                _features.ExtendedSelection ? _settings.AreaSelection : AreaSelection.PartlyInside)
             .Select(item => item.Id);
-        SelectMany(_document.GrowSelection(taken, _settings.ExtendSelection), extend);
+        SelectMany(
+            _document.GrowSelection(
+                taken,
+                _features.ExtendedSelection ? _settings.ExtendSelection : ExtendSelection.Ignore),
+            extend);
         SceneSurface.InvalidateVisual();
         UpdateLiveViewActionOverlay();
     }
 
-    private bool IsLassoArea => _settings.AreaSelectionTool == AreaSelectionTool.Lasso;
+    /// <summary>
+    /// Whether a drag on empty canvas draws a lasso. Without Extended selection
+    /// there is no lasso to draw, whatever the setting remembers.
+    /// </summary>
+    private bool IsLassoArea =>
+        _features.ExtendedSelection && _settings.AreaSelectionTool == AreaSelectionTool.Lasso;
 
     /// <summary>
     /// Ctrl+A takes everything an area could take; Ctrl+Shift+A takes the ink
@@ -3353,6 +3376,11 @@ public partial class MainWindow : Window
     /// </summary>
     private void ChooseShapeTool(ShapeKind kind)
     {
+        if (!_features.DesignTools)
+        {
+            return;
+        }
+
         _shapeKind = kind;
         SetInsertOptionsOpen(false);
         ChooseTool(BoardTool.Shape);
@@ -3479,6 +3507,11 @@ public partial class MainWindow : Window
     /// </summary>
     private void ChooseConnectorTool(ConnectorKind kind)
     {
+        if (!_features.DesignTools)
+        {
+            return;
+        }
+
         _connectorKind = kind;
         _settings.Connector.Kind = kind;
         PersistSettings();
@@ -3857,14 +3890,23 @@ public partial class MainWindow : Window
     private bool IsZGroupAtBack(IReadOnlyList<BoardObject> group) =>
         ZOrder.IsAtBack(_document.Objects, group.Select(item => item.Id).ToArray());
 
+    // The two one-step commands go with Duplicate: Bring to front and Send to
+    // back stay in every mode, since a board without them has no way to put one
+    // thing over another at all.
     private void BringSelectionForward()
     {
-        MoveSelectedZGroup(forward: true);
+        if (_features.DepthAndDuplicate)
+        {
+            MoveSelectedZGroup(forward: true);
+        }
     }
 
     private void SendSelectionBackward()
     {
-        MoveSelectedZGroup(forward: false);
+        if (_features.DepthAndDuplicate)
+        {
+            MoveSelectedZGroup(forward: false);
+        }
     }
 
     /// <summary>
@@ -3990,7 +4032,8 @@ public partial class MainWindow : Window
     /// </summary>
     private void DuplicateSelection()
     {
-        if (_selectedObjectIds.Count == 0 ||
+        if (!_features.DepthAndDuplicate ||
+            _selectedObjectIds.Count == 0 ||
             _textEditBefore is not null ||
             _labelEditBefore is not null ||
             _shapeEditBefore is not null)
@@ -4483,7 +4526,7 @@ public partial class MainWindow : Window
     /// </summary>
     private void BeginSelectedShapeTextEdit()
     {
-        if (SingleSelected<ShapeBoardObject>() is { } shape)
+        if (_features.DesignTools && SingleSelected<ShapeBoardObject>() is { } shape)
         {
             BeginShapeTextEdit(shape, replaceText: false);
         }
@@ -4683,7 +4726,8 @@ public partial class MainWindow : Window
     /// </summary>
     private void StartShapeTextTyping(KeyEventArgs e)
     {
-        if (_activeTool != BoardTool.Select ||
+        if (!_features.DesignTools ||
+            _activeTool != BoardTool.Select ||
             Keyboard.Modifiers.HasFlag(ModifierKeys.Control) ||
             Keyboard.Modifiers.HasFlag(ModifierKeys.Alt) ||
             SessionBar.IsCommandRowOpen ||
@@ -5227,7 +5271,7 @@ public partial class MainWindow : Window
         // The style clicks on press, so this is the press. A press while Select
         // is already in hand switches the area tool, which is the mouse's way to
         // it: nobody with a mouse will wait out a long press.
-        var switchArea = _activeTool == BoardTool.Select;
+        var switchArea = _activeTool == BoardTool.Select && _features.ExtendedSelection;
         SetActiveTool(BoardTool.Select);
         if (switchArea)
         {
@@ -5275,6 +5319,14 @@ public partial class MainWindow : Window
     /// </summary>
     private void ChooseTool(BoardTool tool)
     {
+        // The three Insert tools are the design tools themselves, so a mode
+        // without them cannot hand one over, whichever button asked.
+        if (!_features.DesignTools &&
+            tool is BoardTool.Shape or BoardTool.Connector or BoardTool.Text)
+        {
+            return;
+        }
+
         if (tool is not (BoardTool.Select or BoardTool.Pan or BoardTool.Laser))
         {
             ClearSelection();
@@ -5970,8 +6022,7 @@ public partial class MainWindow : Window
         UpdateConnectorHandleHover(screen);
 
         BoardObject? hovered =
-            _document.HitTestTopSelectable(_camera.ScreenToWorld(screen), _camera.Zoom)
-            ?? FindTextContainerAtRightEdge(screen);
+            SelectableAt(_camera.ScreenToWorld(screen)) ?? FindTextContainerAtRightEdge(screen);
         var hoveredId = hovered?.Id;
         if (SceneSurface.HoveredObjectId == hoveredId)
         {
@@ -6022,10 +6073,22 @@ public partial class MainWindow : Window
             return Cursors.SizeWE;
         }
 
-        return _document.HitTestTopSelectable(_camera.ScreenToWorld(screen), _camera.Zoom) is null
+        return SelectableAt(_camera.ScreenToWorld(screen)) is null
             ? Cursors.Arrow
             : Cursors.SizeAll;
     }
+
+    /// <summary>
+    /// What a tap with Select can take hold of. Without Extended selection a
+    /// stroke is passed over the way a frame is passed over by an area: the ink
+    /// is still drawn, still erased, still taken by a band, and a tap on it
+    /// reaches whatever is under it rather than picking the stroke up.
+    /// </summary>
+    private BoardObject? SelectableAt(PointD worldPoint) =>
+        _document.HitTestTopSelectable(
+            worldPoint,
+            _camera.Zoom,
+            _features.ExtendedSelection ? null : static item => item is not InkStrokeObject);
 
     /// <summary>
     /// The right edge of a text container is its width handle: dragging it
@@ -6115,9 +6178,14 @@ public partial class MainWindow : Window
     {
         var lasso = IsLassoArea;
         var geometry = (Geometry)FindResource(lasso ? "LassoGeometry" : "ImageSelectGeometry");
-        var tooltip = lasso
-            ? "Lasso. Hold, or tap again, for Rectangle"
-            : "Select. Hold, or tap again, for Lasso";
+
+        // Without Extended selection the hold and the second tap do nothing,
+        // so the tooltip stops offering them.
+        var tooltip = !_features.ExtendedSelection
+            ? "Select"
+            : lasso
+                ? "Lasso. Hold, or tap again, for Rectangle"
+                : "Select. Hold, or tap again, for Lasso";
         var name = lasso ? "Lasso" : "Select";
         if (SelectToolIcon is not null)
         {
@@ -6151,7 +6219,8 @@ public partial class MainWindow : Window
     /// </summary>
     private void BeginSelectHold(object source)
     {
-        if (_selectHoldTimer is not null ||
+        if (!_features.ExtendedSelection ||
+            _selectHoldTimer is not null ||
             _activeTool == BoardTool.Select ||
             (!ReferenceEquals(source, SelectToolButton) && !ReferenceEquals(source, DualSelectButton)))
         {
@@ -6206,7 +6275,10 @@ public partial class MainWindow : Window
     /// </summary>
     private void ApplyInsertOnToolbar()
     {
-        var on = _settings.InsertOnToolbar;
+        // Whatever the preference says: a button for tools that are not there
+        // is a button that does nothing, and the chevron offers a lasso the
+        // mode has taken away.
+        var on = _settings.InsertOnToolbar && _features.DesignTools;
         Visibility visibility = on ? Visibility.Visible : Visibility.Collapsed;
         if (InsertToolButton is not null)
         {
@@ -6220,12 +6292,18 @@ public partial class MainWindow : Window
 
         if (SelectChevronButton is not null)
         {
-            SelectChevronButton.Visibility = visibility;
+            SelectChevronButton.Visibility = IsSelectChevronOffered
+                ? Visibility.Visible
+                : Visibility.Collapsed;
         }
 
         if (!on)
         {
             SetInsertOptionsOpen(false);
+        }
+
+        if (!IsSelectChevronOffered)
+        {
             SetSelectOptionsOpen(false);
         }
     }
@@ -6260,9 +6338,17 @@ public partial class MainWindow : Window
         UpdateInsertButtonChecks();
     }
 
+    /// <summary>
+    /// Whether Select carries the chevron that offers Rectangle and Lasso. It
+    /// is one of the design tools by the preference that puts it there, and it
+    /// offers a lasso, so both groups have to be on for it to mean anything.
+    /// </summary>
+    private bool IsSelectChevronOffered =>
+        _settings.InsertOnToolbar && _features.DesignTools && _features.ExtendedSelection;
+
     private void SetSelectOptionsOpen(bool open)
     {
-        _isSelectOptionsOpen = open && _settings.InsertOnToolbar;
+        _isSelectOptionsOpen = open && IsSelectChevronOffered;
         if (SelectOptionsPanel is not null)
         {
             SelectOptionsPanel.Visibility = _isSelectOptionsOpen
@@ -6504,7 +6590,9 @@ public partial class MainWindow : Window
     /// </summary>
     private void ApplyInsertPalette()
     {
-        var shown = _settings.InsertPaletteShown;
+        // The Shown setting is left alone, so the palette is where it was when
+        // the design tools come back.
+        var shown = _settings.InsertPaletteShown && _features.DesignTools;
         SessionBar.SetInsertPaletteChecked(shown);
         InsertPalette.Visibility = shown ? Visibility.Visible : Visibility.Collapsed;
         if (!shown)
@@ -6815,8 +6903,7 @@ public partial class MainWindow : Window
         ApplyPointerModes();
         UpdateSelectButtonGlyph();
         ApplyGrid();
-        ApplyInsertOnToolbar();
-        ApplyInsertPalette();
+        ApplyMode();
         if (!_settings.CheckForUpdates)
         {
             SessionBar.HideUpdateNotice();
@@ -6902,6 +6989,60 @@ public partial class MainWindow : Window
         });
     }
 
+    /// <summary>
+    /// Everything the mode governs, in one place: the strip, the toolbar, the
+    /// palette, the handles the surface draws, and the bar. A control that a
+    /// mode leaves out is collapsed rather than disabled - a board without the
+    /// design tools should look like a board that never had them - and the
+    /// settings behind each of them are left exactly as they were, so the mode
+    /// can be turned back on and find its own arrangement.
+    /// </summary>
+    private void ApplyMode()
+    {
+        _features = Modes.Resolve(_settings);
+        SessionBar.SetFeatures(_features);
+        SessionBar.SetDesignChecked(
+            _settings.Mode == BoardMode.Design,
+            ModeName(_settings.LastNonDesignMode));
+        SelectionPropertyBar.Features = _features;
+        SceneSurface.ShowRotationHandle = _features.DesignTools;
+        SceneSurface.ShowConnectorHandles = _features.DesignTools;
+
+        // A tool that has just stopped existing cannot stay in the hand.
+        if (!_features.DesignTools &&
+            _activeTool is BoardTool.Shape or BoardTool.Connector or BoardTool.Text)
+        {
+            ChooseTool(BoardTool.Select);
+        }
+
+        ApplyInsertOnToolbar();
+        ApplyInsertPalette();
+        UpdateSelectButtonGlyph();
+        UpdateSelectionPropertyBar();
+        SceneSurface.InvalidateVisual();
+    }
+
+    private static string ModeName(BoardMode mode) => mode switch
+    {
+        BoardMode.Custom => "Custom",
+        _ => "Teaching",
+    };
+
+    /// <summary>
+    /// The View row's Design toggle: into the design tools from anywhere else,
+    /// and back out to wherever it came from, the way Grid goes back to the
+    /// style it was last set to.
+    /// </summary>
+    private void ToggleDesignMode()
+    {
+        (BoardMode mode, BoardMode lastNonDesign) =
+            Modes.Toggle(_settings.Mode, _settings.LastNonDesignMode);
+        _settings.Mode = mode;
+        _settings.LastNonDesignMode = lastNonDesign;
+        ApplyMode();
+        PersistSettings();
+    }
+
     private void ApplyGrid()
     {
         SceneSurface.GridStyle = _settings.Grid;
@@ -6975,6 +7116,9 @@ public partial class MainWindow : Window
                     _chromeMode == SessionChromeMode.CanvasOnly
                         ? SessionChromeMode.Windowed
                         : SessionChromeMode.CanvasOnly);
+                break;
+            case SessionCommand.ToggleDesignMode:
+                ToggleDesignMode();
                 break;
             case SessionCommand.ToggleGrid:
                 ToggleGrid();
@@ -7945,7 +8089,8 @@ public partial class MainWindow : Window
         // they are answered here too, whether or not the bar ends up shown.
         UpdateZOrderCommands();
 
-        if (_textEditBefore is not null ||
+        if (!_features.PropertyBar ||
+            _textEditBefore is not null ||
             _gestureBefore.Length > 0 ||
             _areaActive ||
             SelectionBounds() is not RectD bounds ||
@@ -8958,12 +9103,16 @@ public partial class MainWindow : Window
             BeginTextEdit(textObject);
             e.Handled = true;
         }
-        else if (e.Key == Key.F2 && SingleSelected<FreeTextBoardObject>() is { } selectedLabel)
+        else if (e.Key == Key.F2 &&
+                 _features.DesignTools &&
+                 SingleSelected<FreeTextBoardObject>() is { } selectedLabel)
         {
             BeginLabelEdit(selectedLabel, isNew: false);
             e.Handled = true;
         }
-        else if (e.Key == Key.F2 && SingleSelected<ShapeBoardObject>() is { } selectedShape)
+        else if (e.Key == Key.F2 &&
+                 _features.DesignTools &&
+                 SingleSelected<ShapeBoardObject>() is { } selectedShape)
         {
             BeginShapeTextEdit(selectedShape, replaceText: false);
             e.Handled = true;

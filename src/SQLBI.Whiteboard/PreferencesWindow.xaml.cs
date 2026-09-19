@@ -7,6 +7,7 @@ using System.Windows.Documents;
 using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Shapes;
+using System.Windows.Threading;
 using SQLBI.Whiteboard.Core.Model;
 using SQLBI.Whiteboard.Core.Settings;
 
@@ -72,7 +73,7 @@ public partial class PreferencesWindow : Window
     private void Rebuild()
     {
         var query = SearchBox.Text;
-        var matching = SettingsCatalog.Filter(query, category: null);
+        var matching = SettingsCatalog.Filter(query, category: null, _settings);
         var visibleCategories = SettingsCatalog.CategoriesFor(matching);
         if (_selectedCategory is not null &&
             !visibleCategories.Contains(_selectedCategory, StringComparer.Ordinal))
@@ -80,7 +81,7 @@ public partial class PreferencesWindow : Window
             _selectedCategory = null;
         }
 
-        var visible = SettingsCatalog.Filter(query, _selectedCategory);
+        var visible = SettingsCatalog.Filter(query, _selectedCategory, _settings);
         RebuildCategories(visibleCategories);
         RebuildSettings(visible, query);
     }
@@ -252,6 +253,11 @@ public partial class PreferencesWindow : Window
     private Border CreateRow(SettingDescriptor setting, string? query)
     {
         var editor = CreateEditor(setting);
+
+        // A group switch outside Custom still shows what Custom is holding: it
+        // is greyed rather than hidden, because the arrangement it would give
+        // is what choosing Custom means.
+        editor.IsEnabled = setting.EnabledWhen is null || setting.EnabledWhen(_settings);
         var body = new Grid();
         body.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
         body.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
@@ -893,6 +899,10 @@ public partial class PreferencesWindow : Window
             Style = (Style)FindResource("SettingsSwitch"),
             IsChecked = setting.Id switch
             {
+                SettingsCatalog.Ids.DesignTools => _settings.DesignTools,
+                SettingsCatalog.Ids.PropertyBar => _settings.PropertyBar,
+                SettingsCatalog.Ids.ExtendedSelection => _settings.ExtendedSelection,
+                SettingsCatalog.Ids.DepthAndDuplicate => _settings.DepthAndDuplicate,
                 SettingsCatalog.Ids.StartFullScreen => _settings.StartFullScreen,
                 SettingsCatalog.Ids.WarnWhenNoDigitizer => _settings.WarnWhenNoDigitizer,
                 SettingsCatalog.Ids.RestoreLastSession => _settings.RestoreLastSession,
@@ -1062,6 +1072,7 @@ public partial class PreferencesWindow : Window
     private string CurrentEnumId(SettingDescriptor setting) =>
         setting.Id switch
         {
+            SettingsCatalog.Ids.Mode => _settings.Mode.ToString(),
             SettingsCatalog.Ids.LaserHoldMode => _settings.Laser.HoldMode.ToString(),
             SettingsCatalog.Ids.LaserTrailWeight => _settings.Laser.TrailWeight.ToString(),
             SettingsCatalog.Ids.ToolbarPlacement => _settings.ToolbarPlacement.ToString(),
@@ -1086,7 +1097,23 @@ public partial class PreferencesWindow : Window
             return;
         }
 
-        if (setting.Id == SettingsCatalog.Ids.StartFullScreen)
+        if (setting.Id == SettingsCatalog.Ids.DesignTools)
+        {
+            _settings.DesignTools = value;
+        }
+        else if (setting.Id == SettingsCatalog.Ids.PropertyBar)
+        {
+            _settings.PropertyBar = value;
+        }
+        else if (setting.Id == SettingsCatalog.Ids.ExtendedSelection)
+        {
+            _settings.ExtendedSelection = value;
+        }
+        else if (setting.Id == SettingsCatalog.Ids.DepthAndDuplicate)
+        {
+            _settings.DepthAndDuplicate = value;
+        }
+        else if (setting.Id == SettingsCatalog.Ids.StartFullScreen)
         {
             _settings.StartFullScreen = value;
         }
@@ -1119,6 +1146,7 @@ public partial class PreferencesWindow : Window
             return;
         }
 
+        RebuildIfModeSetting(setting);
         NotifyApplied();
     }
 
@@ -1161,6 +1189,20 @@ public partial class PreferencesWindow : Window
 
         switch (setting.Id)
         {
+            case SettingsCatalog.Ids.Mode
+                when Enum.TryParse<BoardMode>(id, out var mode):
+                _settings.Mode = mode;
+
+                // Teaching and Design leave the four switches as they are, so
+                // Custom comes back to the arrangement it was left in; what
+                // changes here is only what the toggle on the View row returns
+                // to.
+                if (mode != BoardMode.Design)
+                {
+                    _settings.LastNonDesignMode = mode;
+                }
+
+                break;
             case SettingsCatalog.Ids.LaserHoldMode
                 when Enum.TryParse<LaserHoldMode>(id, out var holdMode):
                 _settings.Laser.HoldMode = holdMode;
@@ -1227,7 +1269,24 @@ public partial class PreferencesWindow : Window
             RefreshEraserChoice();
         }
 
+        RebuildIfModeSetting(setting);
         NotifyApplied();
+    }
+
+    /// <summary>
+    /// The Mode rows say which other rows are there at all and which of the
+    /// four switches can be used, so the list is built again behind them. It
+    /// waits for the handler to finish: the control being answered is one of
+    /// the ones about to be replaced.
+    /// </summary>
+    private void RebuildIfModeSetting(SettingDescriptor setting)
+    {
+        if (setting.Category != SettingsCatalog.Mode)
+        {
+            return;
+        }
+
+        Dispatcher.BeginInvoke(DispatcherPriority.Background, new Action(Rebuild));
     }
 
     private void NotifyApplied()

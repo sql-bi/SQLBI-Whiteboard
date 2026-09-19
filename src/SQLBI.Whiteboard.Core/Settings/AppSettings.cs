@@ -123,6 +123,33 @@ public enum GridStyle
 }
 
 /// <summary>
+/// Which of the design-era controls exist. A mode says nothing about what a
+/// board contains: a board made in Design opens in Teaching with every shape,
+/// label, and connector still drawn and still exported, and only the tools to
+/// make or restyle them are absent.
+/// </summary>
+public enum BoardMode
+{
+    /// <summary>
+    /// The 1.5.2 board: ink, laser, eraser, pan, containers, frames, export,
+    /// the grid, and the selection everything else already had.
+    /// </summary>
+    Teaching = 0,
+
+    /// <summary>
+    /// Everything. The default, because a release is judged on what it does
+    /// rather than on what it withholds.
+    /// </summary>
+    Design = 1,
+
+    /// <summary>
+    /// Teaching plus whichever feature groups are switched on, so a change
+    /// meant for Teaching can be tried one group at a time.
+    /// </summary>
+    Custom = 2,
+}
+
+/// <summary>
 /// What happens to the Insert tool once it has drawn something. Handing it back
 /// to Select is the default, so the shape just drawn is the thing the next tap
 /// picks up rather than the start of another; Escape and any tool button leave
@@ -137,6 +164,29 @@ public enum AfterInsert
 public sealed class AppSettings
 {
     public int Version { get; set; } = AppSettingsSerializer.CurrentVersion;
+
+    public BoardMode Mode { get; set; } = BoardMode.Design;
+
+    /// <summary>
+    /// What the View row's Design toggle turns back to, the way
+    /// <see cref="LastGridStyle"/> says which grid the Grid button brings back.
+    /// Design itself is never kept here: it would leave the toggle with nothing
+    /// to return to.
+    /// </summary>
+    public BoardMode LastNonDesignMode { get; set; } = BoardMode.Teaching;
+
+    /// <summary>
+    /// The four groups <see cref="BoardMode.Custom"/> is made of. They are on
+    /// by default, and choosing Teaching or Design leaves them as they are, so
+    /// Custom comes back to the arrangement it was left in.
+    /// </summary>
+    public bool DesignTools { get; set; } = true;
+
+    public bool PropertyBar { get; set; } = true;
+
+    public bool ExtendedSelection { get; set; } = true;
+
+    public bool DepthAndDuplicate { get; set; } = true;
 
     public AreaSelection AreaSelection { get; set; } = AreaSelection.PartlyInside;
 
@@ -337,6 +387,19 @@ public static class AppSettingsSerializer
         if (settings is null)
         {
             return new AppSettings();
+        }
+
+        if (!Enum.IsDefined(settings.Mode))
+        {
+            settings.Mode = BoardMode.Design;
+        }
+
+        // Design here would leave the View row's toggle with nothing to return
+        // to, the way Off would leave the Grid button with nothing to turn on.
+        if (!Enum.IsDefined(settings.LastNonDesignMode) ||
+            settings.LastNonDesignMode == BoardMode.Design)
+        {
+            settings.LastNonDesignMode = BoardMode.Teaching;
         }
 
         if (!Enum.IsDefined(settings.ToolbarPlacement))

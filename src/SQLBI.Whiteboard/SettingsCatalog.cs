@@ -94,12 +94,32 @@ internal sealed class SettingDescriptor
     public string Unit { get; init; } = string.Empty;
 
     public bool HideInStore { get; init; }
+
+    /// <summary>
+    /// Whether the row is in the list at all. A setting that only governs a
+    /// feature group that is off has nothing to say, so it leaves rather than
+    /// sitting there greyed: Teaching's Preferences are 1.5.2's plus Mode and
+    /// Board.
+    /// </summary>
+    public Func<AppSettings, bool>? VisibleWhen { get; init; }
+
+    /// <summary>
+    /// Whether the row's editor can be used. Unlike <see cref="VisibleWhen"/>
+    /// the row stays, showing the value it holds: the four group switches are
+    /// what Custom is made of, and reading them is how Custom is chosen at all.
+    /// </summary>
+    public Func<AppSettings, bool>? EnabledWhen { get; init; }
 }
 
 internal static class SettingsCatalog
 {
     public static class Ids
     {
+        public const string Mode = "mode.mode";
+        public const string DesignTools = "mode.designTools";
+        public const string PropertyBar = "mode.propertyBar";
+        public const string ExtendedSelection = "mode.extendedSelection";
+        public const string DepthAndDuplicate = "mode.depthAndDuplicate";
         public const string StartupMonitor = "startup.monitor";
         public const string StartFullScreen = "startup.fullscreen";
         public const string ImportHorizontalSpacing = "import.horizontalSpacing";
@@ -139,6 +159,7 @@ internal static class SettingsCatalog
         public const string On = "On";
     }
 
+    public const string Mode = "Mode";
     public const string Startup = "Startup";
     public const string Input = "Input";
     public const string Selection = "Selection";
@@ -149,10 +170,84 @@ internal static class SettingsCatalog
     public const string Updates = "Updates";
 
     public static IReadOnlyList<string> Categories { get; } =
-        [Startup, Input, Selection, Board, Import, Laser, Toolbar, Updates];
+        [Mode, Startup, Input, Selection, Board, Import, Laser, Toolbar, Updates];
+
+    /// <summary>
+    /// Whether a group switch can be used: only while the mode is Custom, which
+    /// is the one mode made of them.
+    /// </summary>
+    private static bool IsCustom(AppSettings settings) =>
+        settings.Mode == BoardMode.Custom;
+
+    /// <summary>
+    /// A setting that only says how a feature group behaves goes with the group
+    /// it belongs to, rather than offering a choice about something that is not
+    /// there.
+    /// </summary>
+    private static bool HasDesignTools(AppSettings settings) =>
+        Modes.Resolve(settings).DesignTools;
+
+    private static bool HasExtendedSelection(AppSettings settings) =>
+        Modes.Resolve(settings).ExtendedSelection;
 
     public static IReadOnlyList<SettingDescriptor> All { get; } =
     [
+        new()
+        {
+            Id = Ids.Mode,
+            Category = Mode,
+            Title = "Mode",
+            Summary = "Which of the design controls the board offers",
+            Description = "Design has everything. Teaching leaves out the Insert tab and its palette, the shape, connector, and text tools, the bar above a selection, the lasso, and Duplicate: somebody who only annotates meets the board as 1.5.2 had it, without a control they will never use. Nothing on a board changes either way - a shape, a label, or a connector already drawn is still drawn, still moved, still deleted, still exported. Custom is Teaching plus whichever of the four groups below are switched on, so a change meant for Teaching can be tried one group at a time.",
+            Keywords = ["mode", "teaching", "design", "custom", "simple", "hide", "tools", "insert"],
+            Editor = SettingEditorKind.EnumChoice,
+            Choices =
+            [
+                new() { Id = nameof(BoardMode.Teaching), Title = "Teaching" },
+                new() { Id = nameof(BoardMode.Design), Title = "Design" },
+                new() { Id = nameof(BoardMode.Custom), Title = "Custom" },
+            ],
+        },
+        new()
+        {
+            Id = Ids.DesignTools,
+            Category = Mode,
+            Title = "Design tools",
+            Summary = "The Insert tab and palette, the shape, connector, and text tools, and their handles",
+            Keywords = ["insert", "shape", "connector", "text", "palette", "rotation", "handle", "custom"],
+            Editor = SettingEditorKind.BooleanSwitch,
+            EnabledWhen = IsCustom,
+        },
+        new()
+        {
+            Id = Ids.PropertyBar,
+            Category = Mode,
+            Title = "Property bar",
+            Summary = "The bar above a selection: color, thickness, fill, font, and the … menu",
+            Keywords = ["property", "bar", "color", "thickness", "fill", "font", "menu", "custom"],
+            Editor = SettingEditorKind.BooleanSwitch,
+            EnabledWhen = IsCustom,
+        },
+        new()
+        {
+            Id = Ids.ExtendedSelection,
+            Category = Mode,
+            Title = "Extended selection",
+            Summary = "A tap selecting a stroke, the lasso, and the two Selection settings",
+            Keywords = ["selection", "stroke", "lasso", "area", "extend", "touching", "custom"],
+            Editor = SettingEditorKind.BooleanSwitch,
+            EnabledWhen = IsCustom,
+        },
+        new()
+        {
+            Id = Ids.DepthAndDuplicate,
+            Category = Mode,
+            Title = "Depth and duplicate",
+            Summary = "Bring forward, Send backward, and Duplicate",
+            Keywords = ["depth", "forward", "backward", "duplicate", "order", "z-order", "custom"],
+            Editor = SettingEditorKind.BooleanSwitch,
+            EnabledWhen = IsCustom,
+        },
         new()
         {
             Id = Ids.StartupMonitor,
@@ -274,6 +369,7 @@ internal static class SettingsCatalog
                 new() { Id = nameof(Core.Model.AreaSelection.PartlyInside), Title = "Objects partly inside" },
                 new() { Id = nameof(Core.Model.AreaSelection.FullyInside), Title = "Only objects fully inside" },
             ],
+            VisibleWhen = HasExtendedSelection,
         },
         new()
         {
@@ -290,6 +386,7 @@ internal static class SettingsCatalog
                 new() { Id = nameof(Core.Model.ExtendSelection.Single), Title = "Single" },
                 new() { Id = nameof(Core.Model.ExtendSelection.Recursive), Title = "Recursive" },
             ],
+            VisibleWhen = HasExtendedSelection,
         },
         new()
         {
@@ -450,6 +547,7 @@ internal static class SettingsCatalog
             Description = "Off, the Insert tab in the tab strip is where shapes, connectors, and text come from, and holding the Select button switches what a drag on empty canvas draws. On, the floating toolbar gains an Insert button beside Select whose flyout offers the same things, and a chevron on Select offering Rectangle and Lasso. It is off by default because the toolbar sits under a presenter picture-in-picture during recording, and both controls make it wider.",
             Keywords = ["insert", "shape", "toolbar", "lasso", "select", "chevron", "flyout", "button"],
             Editor = SettingEditorKind.BooleanSwitch,
+            VisibleWhen = HasDesignTools,
         },
         new()
         {
@@ -460,6 +558,7 @@ internal static class SettingsCatalog
             Description = "On, a panel in the toolbar's own chrome holds the eight shapes, the three connectors, and Text, and the grip along its left edge drags it anywhere in the window with a mouse, a pen, or a finger. Where it is left is kept as a fraction of the window, so another window size or another monitor puts it back roughly where it was. The pin at the end of the Insert row asks for the same thing as this row, and a right-click on the palette hides it as one on the toolbar hides that. The floating toolbar is unchanged either way.",
             Keywords = ["insert", "palette", "shape", "connector", "text", "pin", "float", "move", "drag"],
             Editor = SettingEditorKind.BooleanSwitch,
+            VisibleWhen = HasDesignTools,
         },
         new()
         {
@@ -475,6 +574,7 @@ internal static class SettingsCatalog
                 new() { Id = nameof(Core.Settings.AfterInsert.KeepTool), Title = "Keep the tool" },
                 new() { Id = nameof(Core.Settings.AfterInsert.ReturnToSelect), Title = "Return to Select" },
             ],
+            VisibleWhen = HasDesignTools,
         },
         new()
         {
@@ -489,9 +589,14 @@ internal static class SettingsCatalog
         },
     ];
 
-    public static IReadOnlyList<SettingDescriptor> Filter(string? query, string? category)
+    public static IReadOnlyList<SettingDescriptor> Filter(
+        string? query,
+        string? category,
+        AppSettings settings)
     {
-        IEnumerable<SettingDescriptor> items = All;
+        ArgumentNullException.ThrowIfNull(settings);
+        IEnumerable<SettingDescriptor> items = All
+            .Where(setting => setting.VisibleWhen is null || setting.VisibleWhen(settings));
         if (StorePackage.IsStoreInstall)
         {
             items = items.Where(setting => !setting.HideInStore);

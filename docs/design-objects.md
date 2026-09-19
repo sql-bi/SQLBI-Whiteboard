@@ -606,3 +606,70 @@ and runs both harnesses from the branch, merges when the checks pass, starts the
 wave from the merged `main`, and writes no code. A pull request that meets a conflict
 merges `origin/main` in, never rebases. Each pull request lists under **To try by hand**
 what the harnesses cannot see.
+
+## Modes: Teaching, Design, Custom
+
+Status: approved on 19 September 2026, not started. One pull request, `feature/modes`.
+
+1.6.0 added controls that a person who only annotates never needs: an Insert tab, a
+palette, handles on a selected shape, a bar over every selection, a menu on it, depth
+commands, a lasso. A **mode** says which of those exist. It is a setting, changed in
+Preferences or with one tap on the View row, and it never changes what a board contains:
+a board made in Design mode opens in Teaching mode with every shape, label, and connector
+still drawn, still a container, still exported; only the tools to make or restyle them are
+absent.
+
+### The three modes
+
+- **Teaching**: the 1.5.2 experience plus what is invisible until used. Ink, laser,
+  eraser, pan; paste, drop, import, LiveView, text containers; frames and export; the
+  grid; rubber band, Ctrl+A, Ctrl+Shift+A, group move and resize; Bring to front and
+  Send to back. Nothing else.
+- **Design** (default): everything.
+- **Custom**: Teaching plus whichever of four feature groups are switched on. It exists so
+  that a change meant for Teaching can be tried one group at a time.
+
+### The four feature groups
+
+Each is one switch, and Teaching is all four off, Design all four on:
+
+| Group | What it turns on |
+| --- | --- |
+| **Design tools** | The Insert tab and its row, the Insert palette and its pin, the toolbar Insert button and the Select chevron (still behind their own preference), the shape, connector, and label tools, typing / F2 / the bar's button to edit a shape's or a label's text, the rotation handle and the ↶ ↷ row, the connector handles on a selected shape, the Anchors row, and the Toolbar preferences that only concern them (Insert and Lasso on the toolbar, After inserting an object, Insert palette). |
+| **Property bar** | The bar above a selection: color and thickness for strokes, fill, font and text color, and the … menu. With this off and Design tools on, a shape's text and rotation are reached by F2 and the handles only. |
+| **Extended selection** | A tap selecting a stroke, Lasso (the hold, the second tap, the chevron), and the two Selection preferences. With it off, the rubber band takes what is partly inside and never grows, whatever the stored preferences say. |
+| **Depth and duplicate** | Bring forward, Send backward (View row and menu), Duplicate and Ctrl+D. |
+
+What is passive in Teaching or with a group off: a shape, label, or connector already on
+the board is drawn, selected by its outline or rectangle, moved, resized from the corner,
+deleted with its ink, exported natively; a connector still follows its shapes. A key or a
+command that belongs to a group that is off does nothing — no dialog, no beep.
+
+### Where it is set
+
+- **Preferences → Mode**, a new first category: a **Mode** row (Teaching, Design, Custom)
+  and the four group switches, enabled only while Custom is chosen. Choosing Teaching or
+  Design does not overwrite the Custom switches, so Custom remembers its last
+  arrangement. The Toolbar and Selection rows that belong to a group are hidden while
+  that group is off, so Teaching's Preferences are 1.5.2's plus Mode and Board.
+- **View → Design**, a toggle beside Grid: checked while the mode is Design; a press
+  switches to Design, and a press while in Design returns to the last mode that was not
+  Design (Teaching, or Custom if that is where the person came from), the way Grid
+  remembers its last style. Access key D is taken on the View row; pick a free letter.
+- Settings version stays 19; `Mode` (default Design), `LastNonDesignMode` (default
+  Teaching), and the four switches (default true), all normalized.
+
+### What it touches
+
+`AppSettings` and `SettingsCatalog`; a `FeatureSet` resolved from the settings in Core
+(`Modes.Resolve(settings)`), which is the one thing the window asks; `SessionChrome` (the
+Insert tab collapsed, the two depth buttons collapsed, the Design toggle); `MainWindow`
+(every creation tool, handle, hover, key, and the palette consult the feature set; the
+property bar is not shown at all with its group off); `PropertyBar` (rows and the menu
+by group); `BoardSurface` (handles only when their group is on). Tests: settings round
+trip and normalization, and `Resolve` for Teaching (all off), Design (all on), and a
+Custom arrangement.
+
+The notes: one sentence folded into an existing 1.6.0 entry, not a fifth entry; the
+README's Preferences sentence and a Controls row for View → Design; one sentence in the
+guide where Preferences are described; decision 33 in `docs/decisions.md`.

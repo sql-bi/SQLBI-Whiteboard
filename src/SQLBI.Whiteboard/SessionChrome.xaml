@@ -261,6 +261,24 @@
                                            Text="G" />
                             </StackPanel>
                         </Button>
+                        <Button x:Name="DesignModeButton"
+                                Style="{StaticResource SessionCommandButton}"
+                                ToolTip="Turn on the design tools"
+                                Tag="ToggleDesignMode"
+                                Click="Command_Click">
+                            <StackPanel HorizontalAlignment="Center">
+                                <Path Width="18"
+                                      Height="18"
+                                      Stretch="Uniform"
+                                      Fill="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"
+                                      Data="{StaticResource DesignModeGeometry}" />
+                                <TextBlock Margin="0,4,0,0"
+                                           HorizontalAlignment="Center"
+                                           Text="Design" />
+                                <TextBlock Style="{StaticResource SessionShortcutHint}"
+                                           Text="E" />
+                            </StackPanel>
+                        </Button>
                         <Border Style="{StaticResource SessionCommandSeparator}" />
                         <Button x:Name="BringToFrontButton"
                                 Style="{StaticResource SessionCommandButton}"

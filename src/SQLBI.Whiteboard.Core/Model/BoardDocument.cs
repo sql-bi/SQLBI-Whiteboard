@@ -146,8 +146,18 @@ public sealed class BoardDocument
     /// of the line itself. Each object answers for itself, and the zoom sizes
     /// the bands so they stay the same size under the pen at any zoom.
     /// </summary>
-    public BoardObject? HitTestTopSelectable(PointD worldPoint, double zoom = 1) =>
-        _objects.Where(item => Hits(item, worldPoint, zoom))
+    /// <param name="accepts">
+    /// Which kinds of object the caller can take hold of at all. A mode that
+    /// leaves out stroke selection passes strokes over here, the way an area
+    /// passes frames over: the ink stays on the board, and what is under it
+    /// answers instead of nothing answering.
+    /// </param>
+    public BoardObject? HitTestTopSelectable(
+        PointD worldPoint,
+        double zoom = 1,
+        Func<BoardObject, bool>? accepts = null) =>
+        _objects.Where(item => accepts is null || accepts(item))
+            .Where(item => Hits(item, worldPoint, zoom))
             .OrderByDescending(item => item.ZIndex)
             .FirstOrDefault();
 

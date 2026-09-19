@@ -5,6 +5,7 @@ using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Threading;
 using SQLBI.Whiteboard.Core.Model;
+using SQLBI.Whiteboard.Core.Settings;
 
 namespace SQLBI.Whiteboard;
 
@@ -23,6 +24,7 @@ public enum SessionCommand
     FullScreen,
     CanvasOnly,
     ToggleGrid,
+    ToggleDesignMode,
     BringToFront,
     SendToBack,
     BringForward,
@@ -145,6 +147,52 @@ public partial class SessionChrome : UserControl
     }
 
     /// <summary>
+    /// The Design toggle says which way it goes: into the design tools from
+    /// anywhere else, and back to wherever it came from while it is in them.
+    /// </summary>
+    public void SetDesignChecked(bool on, string returnsTo)
+    {
+        if (DesignModeButton is null)
+        {
+            return;
+        }
+
+        DesignModeButton.Background = on
+            ? (Brush)FindResource("ToolbarSelectedBrush")
+            : Brushes.Transparent;
+        DesignModeButton.Foreground = on
+            ? (Brush)FindResource("ToolbarAccentBrush")
+            : (Brush)FindResource("ToolbarIconBrush");
+        DesignModeButton.ToolTip = on
+            ? "Put the design tools away and go back to " + returnsTo
+            : "Turn on the design tools";
+    }
+
+    /// <summary>
+    /// What the mode leaves in the strip: the Insert tab goes with its tools,
+    /// and the two one-step depth commands go with theirs. A tab that is not
+    /// there cannot be the open one, so the strip closes on whatever was in it.
+    /// </summary>
+    public void SetFeatures(FeatureSet features)
+    {
+        ArgumentNullException.ThrowIfNull(features);
+        if (InsertTab is null)
+        {
+            return;
+        }
+
+        InsertTab.Visibility = features.DesignTools ? Visibility.Visible : Visibility.Collapsed;
+        BringForwardButton.Visibility =
+            features.DepthAndDuplicate ? Visibility.Visible : Visibility.Collapsed;
+        SendBackwardButton.Visibility =
+            features.DepthAndDuplicate ? Visibility.Visible : Visibility.Collapsed;
+        if (!features.DesignTools && ReferenceEquals(_openTab, InsertTab))
+        {
+            Collapse();
+        }
+    }
+
+    /// <summary>
     /// The pin reads as on while the Insert palette is on the board, for the
     /// same reason the Grid button does: it is the one place in the row that
     /// says what state something is already in.
@@ -201,7 +249,7 @@ public partial class SessionChrome : UserControl
             Key.H => HelpTab,
             _ => null,
         };
-        if (tab is null)
+        if (tab is null || tab.Visibility != Visibility.Visible)
         {
             return false;
         }
@@ -354,13 +402,16 @@ public partial class SessionChrome : UserControl
 
     private void FocusFirstCommand()
     {
-        var first = VisibleCommands().FirstOrDefault(button => button.IsEnabled);
+        var first = VisibleCommands().FirstOrDefault(
+            button => button.IsEnabled && button.Visibility == Visibility.Visible);
         first?.Focus();
     }
 
     private void MoveCommandFocus(Key key)
     {
-        var buttons = VisibleCommands().Where(button => button.IsEnabled).ToArray();
+        var buttons = VisibleCommands()
+            .Where(button => button.IsEnabled && button.Visibility == Visibility.Visible)
+            .ToArray();
         if (buttons.Length == 0)
         {
             return;
@@ -393,6 +444,7 @@ public partial class SessionChrome : UserControl
 
         var button = VisibleCommands().FirstOrDefault(item =>
             item.IsEnabled &&
+            item.Visibility == Visibility.Visible &&
             item.Tag is string name &&
             name == command.Value.ToString());
         if (button is null)
@@ -419,6 +471,10 @@ public partial class SessionChrome : UserControl
             'F' when ViewRow.Visibility == Visibility.Visible => SessionCommand.FullScreen,
             'C' when ViewRow.Visibility == Visibility.Visible => SessionCommand.CanvasOnly,
             'G' when ViewRow.Visibility == Visibility.Visible => SessionCommand.ToggleGrid,
+
+            // D is Disconnect LiveView, and W and K are the two depth commands,
+            // so the Design toggle takes the next letter of its own name.
+            'E' when ViewRow.Visibility == Visibility.Visible => SessionCommand.ToggleDesignMode,
             'B' when ViewRow.Visibility == Visibility.Visible => SessionCommand.BringToFront,
             'S' when ViewRow.Visibility == Visibility.Visible => SessionCommand.SendToBack,
             'W' when ViewRow.Visibility == Visibility.Visible => SessionCommand.BringForward,
