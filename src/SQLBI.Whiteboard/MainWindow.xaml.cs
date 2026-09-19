@@ -6292,7 +6292,7 @@ public partial class MainWindow : Window
 
         if (SelectChevronButton is not null)
         {
-            SelectChevronButton.Visibility = _settings.InsertOnToolbar && _features.ExtendedSelection
+            SelectChevronButton.Visibility = IsSelectChevronOffered
                 ? Visibility.Visible
                 : Visibility.Collapsed;
         }
@@ -6300,6 +6300,10 @@ public partial class MainWindow : Window
         if (!on)
         {
             SetInsertOptionsOpen(false);
+        }
+
+        if (!IsSelectChevronOffered)
+        {
             SetSelectOptionsOpen(false);
         }
     }
@@ -6334,9 +6338,17 @@ public partial class MainWindow : Window
         UpdateInsertButtonChecks();
     }
 
+    /// <summary>
+    /// Whether Select carries the chevron that offers Rectangle and Lasso. It
+    /// is one of the design tools by the preference that puts it there, and it
+    /// offers a lasso, so both groups have to be on for it to mean anything.
+    /// </summary>
+    private bool IsSelectChevronOffered =>
+        _settings.InsertOnToolbar && _features.DesignTools && _features.ExtendedSelection;
+
     private void SetSelectOptionsOpen(bool open)
     {
-        _isSelectOptionsOpen = open && _settings.InsertOnToolbar;
+        _isSelectOptionsOpen = open && IsSelectChevronOffered;
         if (SelectOptionsPanel is not null)
         {
             SelectOptionsPanel.Visibility = _isSelectOptionsOpen
