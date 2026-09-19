@@ -381,6 +381,11 @@ public partial class PreferencesWindow : Window
                 ToolTip = choice.Title,
                 HorizontalContentAlignment = HorizontalAlignment.Stretch,
             };
+
+            // A picture has no text to be read out, and the label under it is
+            // the choice alone - so the setting is named with it, as the switch
+            // these rows replaced was named.
+            AutomationProperties.SetName(segment, $"{setting.Title}: {choice.Title}");
             segment.Click += (_, _) =>
             {
                 foreach (var other in segments)

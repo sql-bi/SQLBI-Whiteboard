@@ -334,17 +334,19 @@ public partial class PreferencesWindow
         {
             for (var index = 0; index < 3; index++)
             {
-                SampleOutline(scene, 5 + (index * 21), 15, 18, 14, SampleInkBrush);
+                SampleOutline(scene, 5 + (index * 21), 9, 18, 13, SampleInkBrush);
             }
 
-            SamplePen(scene, 48, 26);
+            // Clear of the shapes: drawn over the last one the pen read as a
+            // tail on it rather than as the tool still in hand.
+            SamplePen(scene, 46, 24);
             return SampleFrame(scene);
         }
 
-        SampleOutline(scene, 22, 14, 28, 18, SampleInkBrush, SampleSelectedFillBrush);
-        SampleHandle(scene, 22, 14);
-        SampleHandle(scene, 50, 32);
-        SamplePointer(scene, 40, 24);
+        SampleOutline(scene, 22, 12, 28, 18, SampleInkBrush, SampleSelectedFillBrush);
+        SampleHandle(scene, 22, 12);
+        SampleHandle(scene, 50, 30);
+        SamplePointer(scene, 33, 18);
         return SampleFrame(scene);
     }
 
@@ -462,8 +464,8 @@ public partial class PreferencesWindow
         var lasso = new Path
         {
             Data = Geometry.Parse(
-                "M10,26 C6,14 20,7 34,9 C50,11 66,10 68,20 " +
-                "C70,32 56,40 38,39 C22,38 13,36 10,26 Z"),
+                "M8,26 C4,13 20,6 34,8 C52,10 68,8 70,20 " +
+                "C72,33 56,41 38,40 C21,39 11,36 8,26 Z"),
             Stroke = SampleAccentBrush,
             StrokeThickness = 1.2,
             StrokeDashArray = [3, 2.5],
@@ -542,18 +544,23 @@ public partial class PreferencesWindow
         PlaceRow(scene, startLeft, firstTop + Glyph + Gap, Glyph, Gap, second);
     }
 
-    // The pen tip that stays on the board while the tool does.
+    // The pen still in hand, drawn at its final size rather than stretched, so
+    // that the body and the tip keep their places against each other.
     private static void SamplePen(Canvas scene, double left, double top)
     {
-        var pen = new Path
+        var body = new Path
         {
-            Data = Geometry.Parse("M0,0 L6,2.6 L2.6,9.5 L1.6,11 L0.8,9.3 Z"),
+            Data = Geometry.Parse("M2.4,0 L9,2.4 L5,12.6 L2.6,11.7 Z"),
             Fill = SampleInkBrush,
-            Stretch = Stretch.Uniform,
-            Width = 7,
-            Height = 12,
         };
-        Place(scene, pen, left, top);
+        var tip = new Path
+        {
+            Data = Geometry.Parse("M5,12.6 L3.4,16.6 L2.6,11.7 Z"),
+            Fill = SampleAccentBrush,
+        };
+        Place(scene, body, left, top);
+
+        Place(scene, tip, left, top);
     }
 
     // The arrow the tool hands back to.
