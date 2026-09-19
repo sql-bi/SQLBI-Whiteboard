@@ -110,8 +110,8 @@ internal sealed class SettingDescriptor
     /// <summary>
     /// Whether the row is in the list at all. A setting that only governs a
     /// feature group that is off has nothing to say, so it leaves rather than
-    /// sitting there greyed: Teaching's Preferences are 1.5.2's plus Mode and
-    /// Board.
+    /// sitting there greyed: Teaching's Preferences are 1.5.2's plus Mode,
+    /// Board, and the Selection rows its own group keeps.
     /// </summary>
     public Func<AppSettings, bool>? VisibleWhen { get; init; }
 
@@ -222,7 +222,7 @@ internal static class SettingsCatalog
             Category = Mode,
             Title = "Mode",
             Summary = "Which of the design controls the board offers",
-            Description = "Design has every tool: the Insert tab and palette, the shape, connector, and text tools, the bar above a selection, the lasso, and Duplicate. Teaching leaves them out; a shape, label, or connector already drawn is still drawn, moved, and deleted. Custom is Teaching plus whichever of the four groups below are switched on.",
+            Description = "Design offers every tool. Teaching keeps the annotation tools and the lasso, and hides the rest. Custom uses the groups below.",
             Keywords = ["mode", "teaching", "design", "custom", "simple", "hide", "tools", "insert"],
             Editor = SettingEditorKind.EnumChoice,
             Choices =
