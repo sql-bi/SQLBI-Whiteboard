@@ -506,6 +506,17 @@
         </Setter>
     </Style>
 
+    <!-- The segment of a row drawn at the 1.6.0 size: the same button around a
+         smaller picture, with the padding cut to match, so that the five rows
+         of the Mode category are on the screen together at the dialog's
+         default size. The rows drawn before it keep the segment above. -->
+    <Style x:Key="SettingsCompactSampleSegment"
+           TargetType="ToggleButton"
+           BasedOn="{StaticResource SettingsSampleSegment}">
+        <Setter Property="Padding"
+                Value="6,6" />
+    </Style>
+
     <Style x:Key="SettingsComboBoxItem"
            TargetType="ComboBoxItem">
         <Setter Property="Padding"

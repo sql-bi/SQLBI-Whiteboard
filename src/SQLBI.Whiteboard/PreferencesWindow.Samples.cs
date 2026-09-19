@@ -14,15 +14,25 @@ namespace SQLBI.Whiteboard;
 /// what a gesture will take, and the answer is a small still picture of the
 /// board rather than a name for it: the row is chosen by looking.
 ///
-/// Every sample is drawn at the same size as the laser and toolbar samples, on
-/// a scene of plain shapes in the dialog's own palette, so that a row of them
-/// reads as one choice and a narrowed dialog shrinks them evenly. No sample
-/// carries text unless the thing itself does.
+/// They are drawn at half the size of the laser and toolbar samples, because
+/// the Mode category has five of these rows and all five have to be on the
+/// screen together at the dialog's default size. Half the size is not half the
+/// picture: where the detail would have become specks - the Insert palette
+/// under the tab strip, the glyphs inside the palette, a fourth thing in a bar
+/// - it is left out instead, so that what remains is still legible at 100%.
+/// No sample carries text unless the thing itself does.
 /// </summary>
 public partial class PreferencesWindow
 {
-    private const double SampleWidth = 76;
-    private const double SampleHeight = 48;
+    private const double SampleWidth = 40;
+    private const double SampleHeight = 26;
+
+    /// <summary>
+    /// A toolbar miniature carries more than an empty board does, so the two
+    /// pictures that hold one are wider than the rest of the family rather
+    /// than squeezing the bar into it.
+    /// </summary>
+    private const double ToolbarSampleWidth = 52;
 
     // The chrome behind a tab strip or a palette, a shade lighter than the
     // board's own edge so that a panel sitting on the board still has one.
@@ -42,8 +52,8 @@ public partial class PreferencesWindow
     /// </summary>
     private FrameworkElement CreateDrawnChoice(SettingDescriptor setting) =>
         setting.Id == SettingsCatalog.Ids.InsertOnToolbar
-            ? CreateFollowingChoice(setting, id => DrawnSample(setting.Id, id))
-            : CreateSampleChoice(setting, id => DrawnSample(setting.Id, id));
+            ? CreateFollowingChoice(setting, id => DrawnSample(setting.Id, id), compact: true)
+            : CreateSampleChoice(setting, id => DrawnSample(setting.Id, id), compact: true);
 
     /// <summary>
     /// One choice of one drawn row, or null where the row and the choice do not
@@ -84,25 +94,25 @@ public partial class PreferencesWindow
         _ => null,
     };
 
-    // The tab strip is where the Insert tab appears, and the palette is what it
-    // opens, so the group is drawn as the two things it puts on the screen.
+    // The tab strip is where the Insert tab appears, so the group is the strip
+    // with and without that tab. The palette it opens was in this picture too
+    // and is not any more: at this size it was a gray box with specks in it,
+    // and the tab is the thing that arrives and leaves.
     private static FrameworkElement DesignToolsSample(bool on)
     {
         var scene = SampleScene();
-        SampleBlock(scene, 0, 0, scene.Width, 13, SampleChromeBrush, radius: 0);
-        SampleBlock(scene, 0, 12.5, scene.Width, 1, SampleEdgeBrush, radius: 0);
+        SampleBlock(scene, 0, 0, scene.Width, 9, SampleChromeBrush, radius: 0);
+        SampleBlock(scene, 0, 8.4, scene.Width, 0.8, SampleEdgeBrush, radius: 0);
         for (var index = 0; index < 4; index++)
         {
-            SampleBlock(scene, 4 + (index * 13), 3.5, 11, 6, SampleGhostBrush);
+            SampleBlock(scene, 2 + (index * 7), 2.5, 5.5, 4, SampleGhostBrush, radius: 1.5);
         }
 
-        if (!on)
+        if (on)
         {
-            return SampleFrame(scene);
+            SampleBlock(scene, 30, 2.5, 5.5, 4, SampleAccentBrush, radius: 1.5);
         }
 
-        SampleBlock(scene, 56, 3.5, 11, 6, SampleAccentBrush);
-        SamplePalette(scene, left: 16, top: 20, width: 42, height: 20);
         return SampleFrame(scene);
     }
 
@@ -111,25 +121,25 @@ public partial class PreferencesWindow
     private static FrameworkElement PropertyBarSample(bool on)
     {
         var scene = SampleScene();
-        SampleOutline(scene, 24, 26, 26, 14, SampleInkBrush);
-        SampleDashed(scene, 20, 22, 34, 22);
-        SampleHandle(scene, 20, 22);
-        SampleHandle(scene, 54, 44);
+        SampleOutline(scene, 13, 13, 13, 7, SampleInkBrush);
+        SampleDashed(scene, 11, 11, 17, 11);
+        SampleHandle(scene, 11, 11);
+        SampleHandle(scene, 28, 22);
         if (!on)
         {
             return SampleFrame(scene);
         }
 
-        SampleBlock(scene, 15, 4, 44, 13, SampleChromeBrush, radius: 3);
-        SampleOutline(scene, 15, 4, 44, 13, SampleEdgeBrush, radius: 3, thickness: 1);
+        SampleBlock(scene, 6, 2, 26, 7, SampleChromeBrush, radius: 2);
+        SampleOutline(scene, 6, 2, 26, 7, SampleEdgeBrush, radius: 2, thickness: 0.8);
         for (var index = 0; index < 3; index++)
         {
-            SampleDot(scene, 22 + (index * 8), 10.5, 5.5, index == 0 ? SampleAccentBrush : SampleGhostBrush);
+            SampleDot(scene, 10 + (index * 4.6), 5.5, 3.2, index == 0 ? SampleAccentBrush : SampleGhostBrush);
         }
 
         for (var index = 0; index < 3; index++)
         {
-            SampleDot(scene, 45 + (index * 4), 10.5, 2.2, SampleInkBrush);
+            SampleDot(scene, 24 + (index * 2.6), 5.5, 1.4, SampleInkBrush);
         }
 
         return SampleFrame(scene);
@@ -140,20 +150,20 @@ public partial class PreferencesWindow
     private static FrameworkElement ExtendedSelectionSample(bool on)
     {
         var scene = SampleScene();
-        Point[] first = [new(9, 33), new(15, 22), new(21, 32)];
-        Point[] second = [new(27, 34), new(32, 24), new(38, 33)];
-        SampleOutline(scene, 44, 18, 22, 16, SampleInkBrush);
+        Point[] first = [new(5, 17), new(8, 11), new(11, 16)];
+        Point[] second = [new(14, 18), new(17, 12), new(20, 17)];
+        SampleOutline(scene, 24, 9, 11, 8, SampleInkBrush);
         if (!on)
         {
-            SampleStroke(scene, SampleInkBrush, 1.8, first);
-            SampleStroke(scene, SampleInkBrush, 1.8, second);
-            SampleDashed(scene, 5, 12, 62, 28);
+            SampleStroke(scene, SampleInkBrush, 1.2, first);
+            SampleStroke(scene, SampleInkBrush, 1.2, second);
+            SampleDashed(scene, 2, 6, 33, 14);
             return SampleFrame(scene);
         }
 
-        SampleStroke(scene, SampleInkBrush, 1.8, first);
-        SampleStroke(scene, SampleSelectedFillBrush, 6, second);
-        SampleStroke(scene, SampleAccentBrush, 1.8, second);
+        SampleStroke(scene, SampleInkBrush, 1.2, first);
+        SampleStroke(scene, SampleSelectedFillBrush, 4, second);
+        SampleStroke(scene, SampleAccentBrush, 1.2, second);
         SampleLasso(scene);
         return SampleFrame(scene);
     }
@@ -165,18 +175,18 @@ public partial class PreferencesWindow
         var scene = SampleScene();
         if (on)
         {
-            SampleOutline(scene, 9, 11, 28, 18, SampleGhostBrush);
+            SampleOutline(scene, 2, 4, 13, 8, SampleGhostBrush);
         }
 
-        SampleOutline(scene, 14, 16, 28, 18, SampleInkBrush, SampleBoardBrush);
-        SampleEllipse(scene, 30, 22, 24, 17, SampleInkBrush, SampleBoardBrush);
+        SampleOutline(scene, 5, 8, 13, 8, SampleInkBrush, SampleBoardBrush);
+        SampleEllipse(scene, 12, 11, 12, 9, SampleInkBrush, SampleBoardBrush);
         if (!on)
         {
             return SampleFrame(scene);
         }
 
-        SampleStroke(scene, SampleAccentBrush, 1.8, new Point(60, 16), new Point(64, 11.5), new Point(68, 16));
-        SampleStroke(scene, SampleAccentBrush, 1.8, new Point(60, 26), new Point(64, 30.5), new Point(68, 26));
+        SampleStroke(scene, SampleAccentBrush, 1.3, new Point(29, 9), new Point(32, 6), new Point(35, 9));
+        SampleStroke(scene, SampleAccentBrush, 1.3, new Point(29, 16), new Point(32, 19), new Point(35, 16));
         return SampleFrame(scene);
     }
 
@@ -185,7 +195,7 @@ public partial class PreferencesWindow
     private static FrameworkElement GridSample(GridStyle style)
     {
         var scene = SampleScene();
-        const double Step = 11;
+        const double Step = 6;
         if (style == GridStyle.Lines)
         {
             for (var x = Step; x < scene.Width; x += Step)
@@ -204,7 +214,7 @@ public partial class PreferencesWindow
             {
                 for (var y = Step; y < scene.Height; y += Step)
                 {
-                    SampleDot(scene, x, y, 2.4, SampleGridBrush);
+                    SampleDot(scene, x, y, 1.8, SampleGridBrush);
                 }
             }
         }
@@ -218,56 +228,56 @@ public partial class PreferencesWindow
     {
         var scene = SampleScene();
         var older = mode == LaserHoldMode.Shared ? 0.8 : 0.2;
-        SampleStroke(scene, LaserBrush(older), 4.5, new Point(9, 32), new Point(17, 21), new Point(25, 30));
-        SampleStroke(scene, LaserBrush(0.8), 4.5, new Point(42, 32), new Point(50, 21), new Point(58, 30));
+        SampleStroke(scene, LaserBrush(older), 3, new Point(5, 17), new Point(9, 10), new Point(13, 16));
+        SampleStroke(scene, LaserBrush(0.8), 3, new Point(23, 17), new Point(27, 10), new Point(31, 16));
         return SampleFrame(scene);
     }
 
-    // One object inside the area and two across its edge, which is the whole of
-    // the difference between the two answers.
+    // One object inside the area and one across its edge, which is the whole of
+    // the difference between the two answers. The old picture had a second
+    // object on the far edge saying the same thing twice, and three of them at
+    // this size were a tangle.
     private static FrameworkElement AreaSelectionSample(AreaSelection selection)
     {
         var scene = SampleScene();
         var partly = selection == AreaSelection.PartlyInside;
         SampleOutline(
-            scene, 2, 26, 16, 11,
+            scene, 22, 12, 14, 8,
             partly ? SampleAccentBrush : SampleInkBrush,
             partly ? SampleSelectedFillBrush : null);
-        SampleOutline(
-            scene, 48, 11, 22, 11,
-            partly ? SampleAccentBrush : SampleInkBrush,
-            partly ? SampleSelectedFillBrush : null);
-        SampleOutline(scene, 21, 15, 18, 12, SampleAccentBrush, SampleSelectedFillBrush);
-        SampleDashed(scene, 10, 8, 46, 30);
+        SampleOutline(scene, 8, 5, 12, 8, SampleAccentBrush, SampleSelectedFillBrush);
+        SampleDashed(scene, 3, 2, 26, 15);
         return SampleFrame(scene);
     }
 
-    // Four shapes in a chain and an area over the first, so each round of the
-    // setting is a count of how far along the chain the selection went.
+    // Three shapes in a chain and an area over the first, so each round of the
+    // setting is a count of how far along the chain the selection went. A
+    // fourth link fitted only by making every shape too small to see which of
+    // them the area had taken.
     private static FrameworkElement ExtendSelectionSample(ExtendSelection extend)
     {
         var scene = SampleScene();
         var reached = extend switch
         {
             ExtendSelection.Single => 2,
-            ExtendSelection.Recursive => 4,
+            ExtendSelection.Recursive => 3,
             _ => 1,
         };
 
-        for (var index = 0; index < 4; index++)
+        for (var index = 0; index < 3; index++)
         {
             var selected = index < reached;
             SampleOutline(
                 scene,
-                6 + (index * 14),
-                20,
-                14,
-                13,
+                3 + (index * 12),
+                9,
+                10,
+                9,
                 selected ? SampleAccentBrush : SampleInkBrush,
                 selected ? SampleSelectedFillBrush : SampleBoardBrush);
         }
 
-        SampleDashed(scene, 3, 16, 16, 21);
+        SampleDashed(scene, 1, 6, 12, 15);
         return SampleFrame(scene);
     }
 
@@ -276,51 +286,51 @@ public partial class PreferencesWindow
     // rather than moving the bar.
     private FrameworkElement InsertOnToolbarSample(bool on)
     {
-        var rows = SampleToolbarRows(_settings.CalligraphyAccess);
+        var rows = CompactToolbarRows(_settings.CalligraphyAccess);
         var last = (StackPanel)rows.Children[^1];
         last.Children.Add(new Rectangle
         {
-            Width = 8,
-            Height = 8,
-            RadiusX = 2,
-            RadiusY = 2,
-            Margin = new Thickness(4, 0, 0, 0),
+            Width = 5,
+            Height = 5,
+            RadiusX = 1.5,
+            RadiusY = 1.5,
+            Margin = new Thickness(3, 0, 0, 0),
             VerticalAlignment = VerticalAlignment.Center,
             Fill = SampleAccentBrush,
             Visibility = on ? Visibility.Visible : Visibility.Hidden,
         });
         last.Children.Add(new Polyline
         {
-            Points = [new Point(0, 0), new Point(3.5, 3.5), new Point(7, 0)],
+            Points = [new Point(0, 0), new Point(2.5, 2.5), new Point(5, 0)],
             Stroke = SampleAccentBrush,
-            StrokeThickness = 1.6,
-            Margin = new Thickness(2, 0, 0, 0),
+            StrokeThickness = 1.2,
+            Margin = new Thickness(1.5, 0, 0, 0),
             VerticalAlignment = VerticalAlignment.Center,
             Visibility = on ? Visibility.Visible : Visibility.Hidden,
         });
-        return SampleBoard(rows, width: 92);
+        return CompactBoard(rows);
     }
 
     // A second panel beside the toolbar, which is the whole of what this adds:
     // the toolbar is the same in both pictures.
     private static FrameworkElement InsertPaletteSample(bool on)
     {
-        var scene = SampleScene(92, 46);
-        SampleBlock(scene, scene.Width - 34, 5, 30, 12, SampleChromeBrush, radius: 6);
-        SampleOutline(scene, scene.Width - 34, 5, 30, 12, SampleEdgeBrush, radius: 6, thickness: 1);
+        var scene = SampleScene(ToolbarSampleWidth, SampleHeight);
+        SampleBlock(scene, scene.Width - 24, 3, 21, 8, SampleChromeBrush, radius: 4);
+        SampleOutline(scene, scene.Width - 24, 3, 21, 8, SampleEdgeBrush, radius: 4, thickness: 0.8);
         for (var index = 0; index < 3; index++)
         {
             SampleDot(
                 scene,
-                scene.Width - 27 + (index * 8),
-                11,
-                6,
+                scene.Width - 19 + (index * 5.5),
+                7,
+                4,
                 index == 0 ? SampleAccentBrush : SampleGhostBrush);
         }
 
         if (on)
         {
-            SamplePalette(scene, left: 6, top: 22, width: 44, height: 20);
+            SamplePalette(scene, left: 3, top: 11, width: 22, height: 11);
         }
 
         return SampleFrame(scene);
@@ -334,19 +344,19 @@ public partial class PreferencesWindow
         {
             for (var index = 0; index < 3; index++)
             {
-                SampleOutline(scene, 5 + (index * 21), 9, 18, 13, SampleInkBrush);
+                SampleOutline(scene, 2 + (index * 12), 3, 10, 7, SampleInkBrush);
             }
 
             // Clear of the shapes: drawn over the last one the pen read as a
             // tail on it rather than as the tool still in hand.
-            SamplePen(scene, 46, 24);
+            SamplePen(scene, 25, 10.2);
             return SampleFrame(scene);
         }
 
-        SampleOutline(scene, 22, 12, 28, 18, SampleInkBrush, SampleSelectedFillBrush);
-        SampleHandle(scene, 22, 12);
-        SampleHandle(scene, 50, 30);
-        SamplePointer(scene, 33, 18);
+        SampleOutline(scene, 11, 6, 16, 11, SampleInkBrush, SampleSelectedFillBrush);
+        SampleHandle(scene, 11, 6);
+        SampleHandle(scene, 27, 17);
+        SamplePointer(scene, 17, 10);
         return SampleFrame(scene);
     }
 
@@ -362,12 +372,110 @@ public partial class PreferencesWindow
     {
         Width = scene.Width + 2,
         Height = scene.Height + 2,
-        CornerRadius = new CornerRadius(6),
+        CornerRadius = new CornerRadius(4),
         Background = SampleBoardBrush,
         BorderBrush = SampleEdgeBrush,
         BorderThickness = new Thickness(1),
         Child = scene,
     };
+
+    // The board the toolbar miniature sits on, at the family's height and the
+    // width a bar needs.
+    private static Border CompactBoard(UIElement content) => new()
+    {
+        Width = ToolbarSampleWidth,
+        Height = SampleHeight,
+        CornerRadius = new CornerRadius(4),
+        Background = SampleBoardBrush,
+        BorderBrush = SampleEdgeBrush,
+        BorderThickness = new Thickness(1),
+        Child = content,
+    };
+
+    // The toolbar each layout produces, at this family's size: the chips say
+    // how many rows there are and which tool is in hand, which is as much as a
+    // bar this wide can say.
+    private static StackPanel CompactToolbarRows(CalligraphyAccess access)
+    {
+        var rows = new StackPanel
+        {
+            HorizontalAlignment = HorizontalAlignment.Center,
+            VerticalAlignment = VerticalAlignment.Center,
+        };
+
+        switch (access)
+        {
+            case CalligraphyAccess.DualPalette:
+                // Two tools' colors and sizes, both on show at once.
+                rows.Children.Add(CompactChipRow(4, chevron: false, nibs: false));
+                rows.Children.Add(CompactChipRow(4, chevron: false, nibs: false));
+                break;
+            case CalligraphyAccess.Chevron:
+                // One compact bar, the second tool behind a chevron.
+                rows.Children.Add(CompactChipRow(4, chevron: true, nibs: false));
+                break;
+            default:
+                // One bar, the nibs trailing the size chips.
+                rows.Children.Add(CompactChipRow(3, chevron: false, nibs: true));
+                break;
+        }
+
+        return rows;
+    }
+
+    private static StackPanel CompactChipRow(int chips, bool chevron, bool nibs)
+    {
+        var row = new StackPanel
+        {
+            Orientation = Orientation.Horizontal,
+            HorizontalAlignment = HorizontalAlignment.Center,
+            Margin = new Thickness(0, 1, 0, 1),
+        };
+
+        for (var index = 0; index < chips; index++)
+        {
+            var size = nibs ? 3.5 + index : 5;
+            row.Children.Add(new Ellipse
+            {
+                Width = size,
+                Height = size,
+                Margin = new Thickness(1, 0, 1, 0),
+                VerticalAlignment = VerticalAlignment.Center,
+                Fill = index == 0 ? SampleAccentBrush : SampleGhostBrush,
+            });
+        }
+
+        if (chevron)
+        {
+            row.Children.Add(new Polyline
+            {
+                Points = [new Point(0, 0), new Point(2.5, 2.5), new Point(5, 0)],
+                Stroke = SampleInkBrush,
+                StrokeThickness = 1.2,
+                Margin = new Thickness(2, 0, 0, 0),
+                VerticalAlignment = VerticalAlignment.Center,
+            });
+        }
+
+        if (nibs)
+        {
+            for (var index = 0; index < 2; index++)
+            {
+                row.Children.Add(new Rectangle
+                {
+                    Width = 5,
+                    Height = index == 0 ? 5 : 2,
+                    RadiusX = 1,
+                    RadiusY = 1,
+                    Margin = new Thickness(2, 0, 0, 0),
+                    VerticalAlignment = VerticalAlignment.Center,
+                    Fill = SampleInkBrush,
+                });
+            }
+        }
+
+        return row;
+    }
 
     private static Brush LaserBrush(double opacity)
     {
@@ -408,8 +516,8 @@ public partial class PreferencesWindow
         double height,
         Brush stroke,
         Brush? fill = null,
-        double radius = 3,
-        double thickness = 1.4)
+        double radius = 2,
+        double thickness = 1)
     {
         var outline = new Rectangle
         {
@@ -438,7 +546,7 @@ public partial class PreferencesWindow
             Width = width,
             Height = height,
             Stroke = stroke,
-            StrokeThickness = 1.4,
+            StrokeThickness = 1,
             Fill = fill,
         };
         Place(scene, ellipse, left, top);
@@ -452,13 +560,16 @@ public partial class PreferencesWindow
             Width = width,
             Height = height,
             Stroke = SampleAccentBrush,
-            StrokeThickness = 1.2,
-            StrokeDashArray = [3, 2.5],
+            StrokeThickness = 1,
+            StrokeDashArray = [2.5, 2],
             Fill = SampleSelectedFillBrush,
         };
         Place(scene, area, left, top);
     }
 
+    // The lasso, stretched into the board rather than drawn in its own units,
+    // so that the one closed freehand outline serves whatever size the family
+    // is drawn at.
     private static void SampleLasso(Canvas scene)
     {
         var lasso = new Path
@@ -466,12 +577,15 @@ public partial class PreferencesWindow
             Data = Geometry.Parse(
                 "M8,26 C4,13 20,6 34,8 C52,10 68,8 70,20 " +
                 "C72,33 56,41 38,40 C21,39 11,36 8,26 Z"),
+            Stretch = Stretch.Fill,
+            Width = scene.Width - 4,
+            Height = scene.Height - 4,
             Stroke = SampleAccentBrush,
-            StrokeThickness = 1.2,
-            StrokeDashArray = [3, 2.5],
+            StrokeThickness = 1,
+            StrokeDashArray = [2.5, 2],
             Fill = SampleSelectedFillBrush,
         };
-        Place(scene, lasso, 0, 0);
+        Place(scene, lasso, 2, 2);
     }
 
     private static void SampleDot(Canvas scene, double centerX, double centerY, double diameter, Brush fill)
@@ -491,15 +605,15 @@ public partial class PreferencesWindow
     {
         var handle = new Rectangle
         {
-            Width = 5,
-            Height = 5,
+            Width = 3.6,
+            Height = 3.6,
             RadiusX = 1,
             RadiusY = 1,
             Fill = SampleBoardBrush,
             Stroke = SampleAccentBrush,
-            StrokeThickness = 1.2,
+            StrokeThickness = 1,
         };
-        Place(scene, handle, centerX - 2.5, centerY - 2.5);
+        Place(scene, handle, centerX - 1.8, centerY - 1.8);
     }
 
     private static void SampleStroke(Canvas scene, Brush stroke, double thickness, params Point[] points)
@@ -516,38 +630,46 @@ public partial class PreferencesWindow
         Place(scene, line, 0, 0);
     }
 
-    // The Insert palette: two rows of the things it holds, drawn as the shapes
-    // themselves rather than as the glyphs, which lose their outline this small.
+    // The Insert palette: a panel with the buttons it holds. The shapes
+    // themselves were drawn here at the old size; at this one a triangle and an
+    // arrow four pixels wide were two smudges, so the buttons are plain and the
+    // panel is what the picture says.
     private static void SamplePalette(Canvas scene, double left, double top, double width, double height)
     {
-        SampleBlock(scene, left, top, width, height, SampleChromeBrush, radius: 3);
-        SampleOutline(scene, left, top, width, height, SampleEdgeBrush, radius: 3, thickness: 1);
-        const double Glyph = 7;
-        const double Gap = 4;
+        SampleBlock(scene, left, top, width, height, SampleChromeBrush, radius: 2);
+        SampleOutline(scene, left, top, width, height, SampleEdgeBrush, radius: 2, thickness: 0.8);
+        const double Glyph = 4;
+        const double Gap = 2;
         var rowWidth = (3 * Glyph) + (2 * Gap);
         var startLeft = left + ((width - rowWidth) / 2);
         var firstTop = top + ((height - ((2 * Glyph) + Gap)) / 2);
-        FrameworkElement[] first =
-        [
-            new Rectangle { RadiusX = 1.5, RadiusY = 1.5, Fill = SampleGhostBrush },
-            new Ellipse { Fill = SampleGhostBrush },
-            new Path { Data = Geometry.Parse("M5,0 L10,10 L0,10 Z"), Fill = SampleGhostBrush, Stretch = Stretch.Uniform },
-        ];
-        FrameworkElement[] second =
-        [
-            new Path { Data = Geometry.Parse("M5,0 L10,5 L5,10 L0,5 Z"), Fill = SampleGhostBrush, Stretch = Stretch.Uniform },
-            new Path { Data = Geometry.Parse("M0,4 L7,4 L7,2 L10,5 L7,8 L7,6 L0,6 Z"), Fill = SampleGhostBrush, Stretch = Stretch.Uniform },
-            new Path { Data = Geometry.Parse("M0,0 L10,0 L10,2.6 L6.3,2.6 L6.3,10 L3.7,10 L3.7,2.6 L0,2.6 Z"), Fill = SampleGhostBrush, Stretch = Stretch.Uniform },
-        ];
-
-        PlaceRow(scene, startLeft, firstTop, Glyph, Gap, first);
-        PlaceRow(scene, startLeft, firstTop + Glyph + Gap, Glyph, Gap, second);
+        for (var row = 0; row < 2; row++)
+        {
+            for (var column = 0; column < 3; column++)
+            {
+                SampleBlock(
+                    scene,
+                    startLeft + (column * (Glyph + Gap)),
+                    firstTop + (row * (Glyph + Gap)),
+                    Glyph,
+                    Glyph,
+                    SampleGhostBrush,
+                    radius: 1);
+            }
+        }
     }
 
-    // The pen still in hand, drawn at its final size rather than stretched, so
-    // that the body and the tip keep their places against each other.
+    // The pen still in hand, drawn at its own proportions and scaled as one
+    // thing, so that the body and the tip keep their places against each other.
     private static void SamplePen(Canvas scene, double left, double top)
     {
+        const double Scale = 0.8;
+        var pen = new Canvas
+        {
+            Width = 10,
+            Height = 17,
+            RenderTransform = new ScaleTransform(Scale, Scale),
+        };
         var body = new Path
         {
             Data = Geometry.Parse("M2.4,0 L9,2.4 L5,12.6 L2.6,11.7 Z"),
@@ -558,9 +680,9 @@ public partial class PreferencesWindow
             Data = Geometry.Parse("M5,12.6 L3.4,16.6 L2.6,11.7 Z"),
             Fill = SampleAccentBrush,
         };
-        Place(scene, body, left, top);
-
-        Place(scene, tip, left, top);
+        pen.Children.Add(body);
+        pen.Children.Add(tip);
+        Place(scene, pen, left, top);
     }
 
     // The arrow the tool hands back to.
@@ -571,29 +693,12 @@ public partial class PreferencesWindow
             Data = Geometry.Parse("M0,0 L0,11.5 L2.9,8.7 L4.7,12.2 L6.6,11.3 L4.8,7.9 L8.4,7.7 Z"),
             Fill = SampleBoardBrush,
             Stroke = SampleInkBrush,
-            StrokeThickness = 1.1,
+            StrokeThickness = 1,
             Stretch = Stretch.Uniform,
-            Width = 9,
-            Height = 13,
+            Width = 6,
+            Height = 9,
         };
         Place(scene, pointer, left, top);
-    }
-
-    private static void PlaceRow(
-        Canvas scene,
-        double left,
-        double top,
-        double size,
-        double gap,
-        IReadOnlyList<FrameworkElement> items)
-    {
-        for (var index = 0; index < items.Count; index++)
-        {
-            var item = items[index];
-            item.Width = size;
-            item.Height = size;
-            Place(scene, item, left + (index * (size + gap)), top);
-        }
     }
 
     private static void Place(Canvas scene, UIElement element, double left, double top)
