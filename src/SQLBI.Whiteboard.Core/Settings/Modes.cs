@@ -33,16 +33,19 @@ public static class Modes
     public static FeatureSet All { get; } = new(true, true, true, true);
 
     /// <summary>
-    /// Teaching: the 1.5.2 board, plus what is invisible until it is used.
+    /// Teaching: the 1.5.2 board, plus what is invisible until it is used, and
+    /// the extended selection with it. A tap on a stroke and the lasso are how
+    /// somebody who only annotates picks up what they have just drawn, and
+    /// neither puts anything on the screen to be in the way.
     /// </summary>
-    public static FeatureSet None { get; } = new(false, false, false, false);
+    public static FeatureSet Annotation { get; } = new(false, false, true, false);
 
     public static FeatureSet Resolve(AppSettings settings)
     {
         ArgumentNullException.ThrowIfNull(settings);
         return settings.Mode switch
         {
-            BoardMode.Teaching => None,
+            BoardMode.Teaching => Annotation,
             BoardMode.Design => All,
             _ => new FeatureSet(
                 settings.DesignTools,
