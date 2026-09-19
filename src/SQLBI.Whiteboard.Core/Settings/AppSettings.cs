@@ -294,6 +294,8 @@ public sealed class AppSettings
 
     public ImportSettings Import { get; set; } = new();
 
+    public bool PauseLiveViewsWhenUnfocused { get; set; }
+
     /// <summary>
     /// Whether to say at startup that Windows reports nothing to draw with. The
     /// tablet list this reads is a list of digitizers rather than an answer

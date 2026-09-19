@@ -28,7 +28,7 @@ internal sealed class LiveViewCaptureSession : IDisposable
     private GraphicsCaptureSession? _captureSession;
     private Direct3D11CaptureFrame? _pendingFrame;
     private SizeInt32 _contentSize;
-    private bool _isFrozen;
+    private readonly LiveViewPlaybackState _playback = new();
     private bool _captureCursor;
     private int _desiredFrameRate = 15;
     private long _lastAcceptedTimestamp;
@@ -65,7 +65,41 @@ internal sealed class LiveViewCaptureSession : IDisposable
         {
             lock (_gate)
             {
-                return _isFrozen;
+                return _playback.IsFrozen;
+            }
+        }
+    }
+
+    public bool IsSuspended
+    {
+        get
+        {
+            lock (_gate)
+            {
+                return _playback.IsSuspended;
+            }
+        }
+    }
+
+    public void SetSuspended(bool suspended)
+    {
+        VerifyDispatcherAccess();
+        lock (_gate)
+        {
+            ThrowIfDisposed();
+            if (!_playback.SetSuspended(suspended))
+            {
+                return;
+            }
+
+            // Retain the target and presentation texture, but stop producing frames.
+            if (suspended)
+            {
+                StopCaptureCore();
+            }
+            else
+            {
+                StartCaptureCore();
             }
         }
     }
@@ -141,7 +175,7 @@ internal sealed class LiveViewCaptureSession : IDisposable
             _captureItem = captureItem;
             _captureItem.Closed += CaptureItem_Closed;
             _contentSize = SanitizeSize(captureItem.Size);
-            _isFrozen = false;
+            _playback.IsFrozen = false;
             StartCaptureCore();
         }
 
@@ -153,12 +187,12 @@ internal sealed class LiveViewCaptureSession : IDisposable
         VerifyDispatcherAccess();
         lock (_gate)
         {
-            if (_captureItem is null || _isFrozen)
+            if (_captureItem is null || _playback.IsFrozen)
             {
                 return;
             }
 
-            _isFrozen = true;
+            _playback.IsFrozen = true;
             StopCaptureCore();
         }
     }
@@ -168,12 +202,12 @@ internal sealed class LiveViewCaptureSession : IDisposable
         VerifyDispatcherAccess();
         lock (_gate)
         {
-            if (_captureItem is null || !_isFrozen)
+            if (_captureItem is null || !_playback.IsFrozen)
             {
                 return;
             }
 
-            _isFrozen = false;
+            _playback.IsFrozen = false;
             StartCaptureCore();
         }
     }
@@ -185,7 +219,7 @@ internal sealed class LiveViewCaptureSession : IDisposable
         {
             StopCaptureCore();
             ReleaseCaptureItem();
-            _isFrozen = true;
+            _playback.IsFrozen = true;
         }
     }
 
@@ -259,7 +293,7 @@ internal sealed class LiveViewCaptureSession : IDisposable
 
     private void StartCaptureCore()
     {
-        if (_captureItem is null || _winRtDevice is null || _isFrozen || _framePool is not null)
+        if (_captureItem is null || _winRtDevice is null || !_playback.CanCapture || _framePool is not null)
         {
             return;
         }
@@ -323,6 +357,15 @@ internal sealed class LiveViewCaptureSession : IDisposable
         Direct3D11CaptureFrame? frame = null;
         try
         {
+            lock (_gate)
+            {
+                // A queued notification can outlive the pool stopped on focus loss.
+                if (_disposed || !ReferenceEquals(sender, _framePool) || !_playback.CanCapture)
+                {
+                    return;
+                }
+            }
+
             frame = sender.TryGetNextFrame();
             if (frame is null)
             {
@@ -332,7 +375,7 @@ internal sealed class LiveViewCaptureSession : IDisposable
             SizeInt32 size = SanitizeSize(frame.ContentSize);
             lock (_gate)
             {
-                if (!ReferenceEquals(sender, _framePool) || _isFrozen)
+                if (!ReferenceEquals(sender, _framePool) || !_playback.CanCapture)
                 {
                     WinRtThreading.Release(frame);
                     return;
@@ -374,7 +417,7 @@ internal sealed class LiveViewCaptureSession : IDisposable
             Interlocked.Exchange(ref _lastAcceptedTimestamp, now);
             lock (_gate)
             {
-                if (!ReferenceEquals(sender, _framePool) || _isFrozen)
+                if (!ReferenceEquals(sender, _framePool) || !_playback.CanCapture)
                 {
                     WinRtThreading.Release(frame);
                     return;
@@ -426,7 +469,7 @@ internal sealed class LiveViewCaptureSession : IDisposable
 
             StopCaptureCore();
             ReleaseCaptureItem();
-            _isFrozen = true;
+            _playback.IsFrozen = true;
         }
 
         TargetClosed?.Invoke();

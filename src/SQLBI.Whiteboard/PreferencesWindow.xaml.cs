@@ -311,7 +311,7 @@ public partial class PreferencesWindow : Window
     private FrameworkElement CreateEditor(SettingDescriptor setting) =>
         setting.Editor switch
         {
-            SettingEditorKind.BooleanSwitch => CreateSwitch(setting),
+            SettingEditorKind.BooleanSwitch or SettingEditorKind.BooleanCheckbox => CreateSwitch(setting),
             SettingEditorKind.DoubleRange => CreateSlider(setting),
             SettingEditorKind.MonitorChoice => CreateMonitorCombo(),
             SettingEditorKind.OrderedList => CreateOrderedList(setting),
@@ -894,25 +894,26 @@ public partial class PreferencesWindow : Window
 
     private ToggleButton CreateSwitch(SettingDescriptor setting)
     {
-        var button = new ToggleButton
+        ToggleButton button = setting.Editor == SettingEditorKind.BooleanCheckbox
+            ? new CheckBox { MinWidth = 44, MinHeight = 44, VerticalContentAlignment = VerticalAlignment.Center }
+            : new ToggleButton { Style = (Style)FindResource("SettingsSwitch") };
+        button.IsChecked = setting.Id switch
         {
-            Style = (Style)FindResource("SettingsSwitch"),
-            IsChecked = setting.Id switch
-            {
-                SettingsCatalog.Ids.DesignTools => _settings.DesignTools,
-                SettingsCatalog.Ids.PropertyBar => _settings.PropertyBar,
-                SettingsCatalog.Ids.ExtendedSelection => _settings.ExtendedSelection,
-                SettingsCatalog.Ids.DepthAndDuplicate => _settings.DepthAndDuplicate,
-                SettingsCatalog.Ids.StartFullScreen => _settings.StartFullScreen,
-                SettingsCatalog.Ids.WarnWhenNoDigitizer => _settings.WarnWhenNoDigitizer,
-                SettingsCatalog.Ids.RestoreLastSession => _settings.RestoreLastSession,
-                SettingsCatalog.Ids.SuggestMouseMode => _settings.SuggestMouseMode,
-                SettingsCatalog.Ids.InsertOnToolbar => _settings.InsertOnToolbar,
-                SettingsCatalog.Ids.InsertPalette => _settings.InsertPaletteShown,
-                SettingsCatalog.Ids.CheckForUpdates => _settings.CheckForUpdates,
-                _ => false,
-            },
+            SettingsCatalog.Ids.DesignTools => _settings.DesignTools,
+            SettingsCatalog.Ids.PropertyBar => _settings.PropertyBar,
+            SettingsCatalog.Ids.ExtendedSelection => _settings.ExtendedSelection,
+            SettingsCatalog.Ids.DepthAndDuplicate => _settings.DepthAndDuplicate,
+            SettingsCatalog.Ids.StartFullScreen => _settings.StartFullScreen,
+            SettingsCatalog.Ids.WarnWhenNoDigitizer => _settings.WarnWhenNoDigitizer,
+            SettingsCatalog.Ids.RestoreLastSession => _settings.RestoreLastSession,
+            SettingsCatalog.Ids.SuggestMouseMode => _settings.SuggestMouseMode,
+            SettingsCatalog.Ids.InsertOnToolbar => _settings.InsertOnToolbar,
+            SettingsCatalog.Ids.InsertPalette => _settings.InsertPaletteShown,
+            SettingsCatalog.Ids.CheckForUpdates => _settings.CheckForUpdates,
+            SettingsCatalog.Ids.PauseLiveViewsWhenUnfocused => _settings.PauseLiveViewsWhenUnfocused,
+            _ => false,
         };
+        AutomationProperties.SetName(button, setting.Title);
         button.Checked += (_, _) => SetBoolean(setting, true);
         button.Unchecked += (_, _) => SetBoolean(setting, false);
         return button;
@@ -1136,6 +1137,10 @@ public partial class PreferencesWindow : Window
         else if (setting.Id == SettingsCatalog.Ids.InsertPalette)
         {
             _settings.InsertPaletteShown = value;
+        }
+        else if (setting.Id == SettingsCatalog.Ids.PauseLiveViewsWhenUnfocused)
+        {
+            _settings.PauseLiveViewsWhenUnfocused = value;
         }
         else if (setting.Id == SettingsCatalog.Ids.CheckForUpdates)
         {

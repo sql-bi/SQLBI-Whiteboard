@@ -17,6 +17,17 @@ using SQLBI.Whiteboard.SqlServer;
 
 ImportLayoutSmokeTests.Run();
 
+Assert(!new AppSettings().PauseLiveViewsWhenUnfocused &&
+    !AppSettingsSerializer.Parse("{}").PauseLiveViewsWhenUnfocused &&
+    !AppSettingsSerializer.Parse("{\"version\":18}").PauseLiveViewsWhenUnfocused,
+    "Focus-based LiveView pausing is opt-in for both new and upgraded settings.");
+foreach (var enabled in new[] { true, false })
+{
+    var saved = AppSettingsSerializer.Format(new AppSettings { PauseLiveViewsWhenUnfocused = enabled });
+    Assert(AppSettingsSerializer.Parse(saved).PauseLiveViewsWhenUnfocused == enabled,
+        "The LiveView focus preference must round-trip in both states.");
+}
+
 var camera = new Camera2D();
 camera.Resize(1000, 800);
 var anchor = new PointD(720, 310);

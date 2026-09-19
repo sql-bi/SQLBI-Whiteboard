@@ -88,6 +88,8 @@ internal sealed class LiveViewPresenter : IDisposable
 
     public void Resume() => _capture.Resume();
 
+    public void SetSuspended(bool suspended) => _capture.SetSuspended(suspended);
+
     public void ClearTarget() => _capture.ClearTarget();
 
     public byte[]? CaptureSnapshotPng()
@@ -178,7 +180,7 @@ internal sealed class LiveViewPresenter : IDisposable
         _ = _dispatcher.BeginInvoke(DispatcherPriority.Render, () =>
         {
             Interlocked.Exchange(ref _invalidateQueued, 0);
-            if (!_disposed)
+            if (!_disposed && !_capture.IsSuspended)
             {
                 Surface.Invalidate();
             }
@@ -189,7 +191,7 @@ internal sealed class LiveViewPresenter : IDisposable
     {
         _ = _dispatcher.BeginInvoke(DispatcherPriority.Normal, () =>
         {
-            if (_disposed)
+            if (_disposed || _capture.IsSuspended)
             {
                 return;
             }
