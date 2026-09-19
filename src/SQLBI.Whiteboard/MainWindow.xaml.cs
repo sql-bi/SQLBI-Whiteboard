@@ -83,6 +83,7 @@ public partial class MainWindow : Window
 
     private readonly SessionStore? _session = SessionStore.Acquire();
     private readonly DispatcherTimer _autosaveTimer;
+    private readonly DeferredCloseRequest _closeRequest = new();
     private bool _closeConfirmed;
     private bool _autosaveRunning;
 
@@ -9432,14 +9433,14 @@ public partial class MainWindow : Window
         CommitTextEdit();
         if (!_closeConfirmed)
         {
-            // Closing runs synchronously, while asking about unsaved changes and writing
-            // the session do not. So the first pass always calls the close off, finishes
-            // the work, and closes again - and nothing below this is reached until it has.
+            // Cancel this pass before preparing the exit. Preparation is explicitly
+            // deferred: awaiting it alone would not leave Closing when it completes
+            // synchronously. Repeated requests share the pending exit.
             e.Cancel = true;
             bool proceed;
             try
             {
-                proceed = await PrepareToCloseAsync();
+                proceed = await _closeRequest.PrepareAsync(PrepareToCloseAsync);
             }
             catch (Exception exception)
             {
