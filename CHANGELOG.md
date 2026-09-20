@@ -17,7 +17,7 @@ broke. The heading is parsed by `scripts/release-notes.ps1`, so keep its shape; 
 under it is ordinary Markdown, and the renderer handles paragraphs, lists, links, `code`
 and **bold**.
 
-## 1.6.0 - 18 September 2026
+## 1.6.0 - 20 September 2026
 
 ### Shapes and text on the board
 The new **Insert** tab — or the palette its pin makes — draws eight shapes by dragging and
