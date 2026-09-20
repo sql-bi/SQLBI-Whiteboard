@@ -377,8 +377,8 @@ internal static class SettingsCatalog
             Id = Ids.SnippetFormatOrder,
             Category = Input,
             Title = "Snippet format order",
-            Summary = "Which language pasted text is tried as first",
-            Description = "Paste tries formats from top to bottom and uses the first that accepts the text. Plain text always accepts and comes last, so code is recognized and a note stays a note; put it first to keep every paste plain. Recognized file extensions (.dax, .sql, .kql, .txt) keep their language. Languages you choose by hand on a container are not in this list.",
+            Summary = "Which format pasted text is tried as first",
+            Description = "Paste tries formats from top to bottom and uses the first that accepts the text. Plain text always accepts and comes last, so code and Markdown are recognized and a note stays a note; put it first to keep every paste plain. Recognized file extensions (.dax, .sql, .kql, .txt) keep their language. Languages you choose by hand on a container are not in this list.",
             Keywords =
                 ["snippet", "language", "dax", "sql", "kql", "paste", "format", "text", "order"],
             Editor = SettingEditorKind.OrderedList,
