@@ -17,7 +17,7 @@ broke. The heading is parsed by `scripts/release-notes.ps1`, so keep its shape; 
 under it is ordinary Markdown, and the renderer handles paragraphs, lists, links, `code`
 and **bold**.
 
-## 1.6.0 - 18 September 2026
+## 1.6.0 - 20 September 2026
 
 ### Shapes and text on the board
 The new **Insert** tab — or the palette its pin makes — draws eight shapes by dragging and
@@ -44,6 +44,17 @@ whether the selection grows to what it touches.
 and **Grid** on the View row turns them on and off. The spacing is fixed in board pixels, so
 zooming out spreads the grid and then steps it coarser. It is off by default, and it never
 appears in an export or a preview.
+
+### Markdown is a text type of its own
+Pick **Markdown** from the title-bar chip, or paste a formatted answer, and headings, lists,
+tables, quotations, and code blocks keep the layout they had. **F2** edits the Markdown source
+and **Ctrl+Enter** renders it again. An export carries the container as a picture, with the
+source in the deck's notes.
+
+### LiveView pauses while you work in another application
+**Preferences → Live View → Pause when Whiteboard loses focus** stops capture while another
+application is in front, and picks it up again when you come back. It is off by default, and a
+view you paused yourself stays paused.
 
 ## 1.5.2 - 16 September 2026
 
