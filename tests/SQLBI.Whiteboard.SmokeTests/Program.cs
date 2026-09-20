@@ -18,13 +18,13 @@ using SQLBI.Whiteboard.Export;
 // changes the source.
 
 var registry = TextLanguageRegistry.All;
-Assert(registry.Count == 16, "The selectors offer sixteen text types.");
+Assert(registry.Count == 17, "The selectors offer seventeen text types.");
 Assert(
-    registry.Count(language => language.CanDetect) == 4 &&
+    registry.Count(language => language.CanDetect) == 5 &&
     registry.Where(language => language.CanDetect)
         .Select(language => language.Id)
-        .SequenceEqual([TextLanguageIds.Plain, TextLanguageIds.Dax, TextLanguageIds.SqlServer, TextLanguageIds.Kql]),
-    "Only the original four can claim a paste.");
+        .SequenceEqual([TextLanguageIds.Plain, TextLanguageIds.Markdown, TextLanguageIds.Dax, TextLanguageIds.SqlServer, TextLanguageIds.Kql]),
+    "Markdown joins the original four text types that can claim a paste.");
 Assert(
     registry.Where(language => !language.CanDetect && language.Id != TextLanguageIds.Prompt)
         .All(language => !language.CanFormat &&
@@ -578,10 +578,12 @@ Assert(
 }
 
 SQLBI.Whiteboard.SmokeTests.PromptSmokeTests.Run(Environment.GetEnvironmentVariable("SQLBI_WHITEBOARD_PROMPT_PREVIEW"));
+SQLBI.Whiteboard.SmokeTests.MarkdownSmokeTests.Run(Environment.GetEnvironmentVariable("SQLBI_WHITEBOARD_MARKDOWN_PREVIEW"));
 SQLBI.Whiteboard.SmokeTests.GridSmokeTests.Run(Environment.GetEnvironmentVariable("SQLBI_WHITEBOARD_GRID_PREVIEW"));
 SQLBI.Whiteboard.SmokeTests.LabelSmokeTests.Run();
 SQLBI.Whiteboard.SmokeTests.DesignExportSmokeTests.Run();
 SQLBI.Whiteboard.SmokeTests.PreferencesSmokeTests.Run();
+SQLBI.Whiteboard.SmokeTests.WindowCloseSmokeTests.Run();
 SQLBI.Whiteboard.SmokeTests.LiveViewFocusSmokeTests.Run();
 
 Console.WriteLine("SQLBI.Whiteboard smoke tests passed.");

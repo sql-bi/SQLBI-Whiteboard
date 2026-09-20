@@ -83,6 +83,7 @@ public partial class MainWindow : Window
 
     private readonly SessionStore? _session = SessionStore.Acquire();
     private readonly DispatcherTimer _autosaveTimer;
+    private readonly DeferredCloseRequest _closeRequest = new();
     private bool _closeConfirmed;
     private bool _autosaveRunning;
 
@@ -298,6 +299,7 @@ public partial class MainWindow : Window
         LanguageChipCombo.ItemsSource = TextLanguageRegistry.All;
         TextEditor.TextArea.TextView.LineTransformers.Add(_textColorizer);
         TextEditor.TextArea.TextView.ElementGenerators.Add(_promptBulletGenerator);
+        DataObject.AddPastingHandler(TextEditor, TextEditor_Pasting);
         TextEditor.Options.ConvertTabsToSpaces = true;
         TextEditor.Options.IndentationSize = 4;
         _textHighlightTimer = new DispatcherTimer(DispatcherPriority.Background)
@@ -4815,6 +4817,14 @@ public partial class MainWindow : Window
 
         InkStrokeObject[] linkedBefore = _textEditLinkedBefore;
         RectD afterBounds = _textEditBounds;
+        if (_textEditLanguageId == TextLanguageIds.Markdown)
+        {
+            // Source and rendered Markdown have different line counts.
+            double height = TextContainerVisual.MeasureDesiredHeight(
+                TextEditor.Text, afterBounds.Width, before.VisualScale,
+                VisualTreeHelper.GetDpi(SceneSurface).PixelsPerDip, TextLanguageIds.Markdown);
+            afterBounds = afterBounds.WithSize(afterBounds.Width, height);
+        }
         var after = before with
         {
             Bounds = afterBounds,
@@ -4921,6 +4931,16 @@ public partial class MainWindow : Window
         if (updateCombo)
         {
             TextEditorLanguageCombo.SelectedItem = language;
+        }
+    }
+
+    private void TextEditor_Pasting(object sender, DataObjectPastingEventArgs e)
+    {
+        if (_textEditLanguageId == TextLanguageIds.Markdown &&
+            ClipboardMarkdown.TryGetText(e.DataObject, out string markdown, out _))
+        {
+            e.DataObject = new DataObject(DataFormats.UnicodeText, markdown);
+            e.FormatToApply = DataFormats.UnicodeText;
         }
     }
 
@@ -5154,7 +5174,8 @@ public partial class MainWindow : Window
             _textEditBounds.Width,
             textObject.VisualScale,
             VisualTreeHelper.GetDpi(SceneSurface).PixelsPerDip,
-            _textEditLanguageId);
+            _textEditLanguageId,
+            editing: _textEditLanguageId == TextLanguageIds.Markdown);
         if (desiredHeight > _textEditBounds.Height)
         {
             _textEditBounds = _textEditBounds.WithSize(_textEditBounds.Width, desiredHeight);
@@ -7622,7 +7643,8 @@ public partial class MainWindow : Window
         {
             // Explicit Prompt Assistant metadata takes precedence over an accompanying
             // picture or code-like text. Untagged clipboard data keeps its usual priority.
-            if (ClipboardPrompt.TryGetText(Clipboard.GetDataObject(), out string prompt))
+            IDataObject? clipboard = Clipboard.GetDataObject();
+            if (ClipboardPrompt.TryGetText(clipboard, out string prompt))
             {
                 AddText(prompt, languageId: TextLanguageIds.Prompt);
                 return;
@@ -7654,10 +7676,10 @@ public partial class MainWindow : Window
                 return;
             }
 
-            if (Clipboard.ContainsText(TextDataFormat.UnicodeText))
+            if (ClipboardMarkdown.TryGetContainerText(clipboard, _settings.SnippetFormatOrder,
+                out string text, out string languageId))
             {
-                string text = Clipboard.GetText(TextDataFormat.UnicodeText);
-                AddText(text, languageId: ResolveSnippetLanguage(text));
+                AddText(text, languageId: languageId);
             }
         }
         catch (Exception exception)
@@ -8623,7 +8645,16 @@ public partial class MainWindow : Window
 
             if (selected is TextBoardObject text)
             {
-                Clipboard.SetText(text.Text, TextDataFormat.UnicodeText);
+                if (text.LanguageId == TextLanguageIds.Markdown)
+                {
+                    var data = new DataObject(DataFormats.UnicodeText, text.Text);
+                    data.SetData(ClipboardMarkdown.Format, text.Text);
+                    Clipboard.SetDataObject(data, copy: true);
+                }
+                else
+                {
+                    Clipboard.SetText(text.Text, TextDataFormat.UnicodeText);
+                }
                 return;
             }
 
@@ -9402,14 +9433,14 @@ public partial class MainWindow : Window
         CommitTextEdit();
         if (!_closeConfirmed)
         {
-            // Closing runs synchronously, while asking about unsaved changes and writing
-            // the session do not. So the first pass always calls the close off, finishes
-            // the work, and closes again - and nothing below this is reached until it has.
+            // Cancel this pass before preparing the exit. Preparation is explicitly
+            // deferred: awaiting it alone would not leave Closing when it completes
+            // synchronously. Repeated requests share the pending exit.
             e.Cancel = true;
             bool proceed;
             try
             {
-                proceed = await PrepareToCloseAsync();
+                proceed = await _closeRequest.PrepareAsync(PrepareToCloseAsync);
             }
             catch (Exception exception)
             {

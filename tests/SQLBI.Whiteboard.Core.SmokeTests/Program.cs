@@ -791,6 +791,41 @@ Assert(
     "Every language the selector offers round-trips through a board file.");
 
 const string promptSource = "Keep this text.\r\n- An instruction with Unicode café 世界.\r\n  - An indented instruction.\n\n- ";
+const string markdownSource = "# Résumé 😀\r\n\r\n| Rule | Count |\n| --- | ---: |\n| **All** years | 42 |\n\n- Keep the source.";
+var markdownObject = new TextBoardObject(Guid.NewGuid(), 0, new RectD(20, 30, 640, 360),
+    "Markdown", markdownSource, 1.5, TextLanguageIds.Markdown);
+var markdownDocument = new BoardDocument();
+markdownDocument.AddObject(markdownObject);
+var markdownInk = InkStrokeObject.Create([new InkPoint(new PointD(100, 120), 0.6f, 1)],
+    PenStyle.Default, 1, containerId: markdownObject.Id);
+markdownDocument.AddObject(markdownInk);
+Assert(markdownDocument.FindSingleTouchedContainer(markdownInk)?.Id == markdownObject.Id &&
+    markdownDocument.HitTestTopContainer(new PointD(100, 120))?.Id == markdownObject.Id,
+    "Markdown remains an ordinary ink-linkable text container.");
+await using var markdownArchive = new MemoryStream();
+await BoardArchive.SaveAsync(markdownDocument, markdownArchive);
+markdownArchive.Position = 0;
+var loadedMarkdown = await BoardArchive.LoadAsync(markdownArchive);
+Assert(loadedMarkdown.Objects.OfType<TextBoardObject>().Single() == markdownObject &&
+    loadedMarkdown.LinkedStrokes(markdownObject.Id).Single().Points[0] == markdownInk.Points[0],
+    "Markdown source, type, geometry, scaling, Unicode, line endings, and ink links must round-trip exactly.");
+var markdownHistory = new CommandHistory();
+var transformedMarkdown = (TextBoardObject)markdownObject.WithBounds(new RectD(40, 60, 1280, 720));
+var transformedMarkdownInk = markdownInk.TransformWithContainer(markdownObject.Bounds, transformedMarkdown.Bounds);
+markdownHistory.Execute(new ReplaceObjectsCommand([markdownObject, markdownInk],
+    [transformedMarkdown, transformedMarkdownInk]), markdownDocument);
+Assert(transformedMarkdown.VisualScale == 3 && transformedMarkdown.Text == markdownSource &&
+    transformedMarkdownInk.Points[0].Position == new PointD(200, 240),
+    "Scaling Markdown should preserve layout/source and carry ink with it.");
+markdownHistory.Undo(markdownDocument);
+Assert(markdownDocument.Objects.OfType<TextBoardObject>().Single() == markdownObject,
+    "Undo must restore Markdown bounds and content.");
+markdownHistory.Redo(markdownDocument);
+markdownHistory.Execute(new RemoveObjectsCommand(markdownDocument.GetDeletionGroup(markdownObject.Id)), markdownDocument);
+Assert(markdownDocument.Objects.Count == 0, "Deleting Markdown must delete linked annotations.");
+markdownHistory.Undo(markdownDocument);
+Assert(markdownDocument.Objects.Count == 2, "Undo must restore Markdown and its annotations.");
+
 var promptObject = new TextBoardObject(Guid.NewGuid(), 0, new RectD(0, 0, 320, 200),
     "Prompt", promptSource, 1, TextLanguageIds.Prompt);
 var promptDocument = new BoardDocument();
@@ -1298,11 +1333,11 @@ Assert(
     AppSettingsSerializer.Parse("{ \"lastGridStyle\": \"Off\" }").LastGridStyle == GridStyle.Lines,
     "Off as the remembered style would leave the toggle nothing to turn on, so it reads as lines.");
 Assert(
-    defaultSettings.SnippetFormatOrder is ["dax", "sqlserver", "kql", "plain"],
+    defaultSettings.SnippetFormatOrder is ["dax", "sqlserver", "kql", "markdown", "plain"],
     "A new setup tries every language before plain text, so pasted code is code without a setting.");
 Assert(
     TextLanguageIds.NormalizeOrder(["sqlserver", "plain", "dax", "plain", "not-a-language"]) is
-        ["sqlserver", "kql", "plain", "dax"],
+        ["sqlserver", "kql", "markdown", "plain", "dax"],
     "Snippet format order should drop unknowns, keep first-seen order, and put a missing language in front of plain text.");
 var snippetOrderRoundTrip = AppSettingsSerializer.Parse(
     AppSettingsSerializer.Format(new AppSettings
@@ -1310,43 +1345,43 @@ var snippetOrderRoundTrip = AppSettingsSerializer.Parse(
         SnippetFormatOrder = ["dax", "sqlserver", "plain"],
     }));
 Assert(
-    snippetOrderRoundTrip.SnippetFormatOrder is ["dax", "sqlserver", "kql", "plain"],
+    snippetOrderRoundTrip.SnippetFormatOrder is ["dax", "sqlserver", "kql", "markdown", "plain"],
     "A language added by an upgrade joins in front of plain text when plain text is not first.");
 Assert(
-    TextLanguageIds.NormalizeOrder(["plain", "dax"]) is ["plain", "dax", "sqlserver", "kql"],
+    TextLanguageIds.NormalizeOrder(["plain", "dax"]) is ["plain", "dax", "sqlserver", "kql", "markdown"],
     "An order that starts with plain text keeps pastes plain: added languages go last.");
 Assert(
     AppSettingsSerializer.Parse("{ }").SnippetFormatOrder is
-        ["dax", "sqlserver", "kql", "plain"],
+        ["dax", "sqlserver", "kql", "markdown", "plain"],
     "Partial settings should fill the default snippet format order.");
 Assert(
     AppSettingsSerializer.Parse("""{ "version": 15, "snippetFormatOrder": ["plain", "dax", "sqlserver"] }""").SnippetFormatOrder is
-        ["dax", "sqlserver", "kql", "plain"] &&
+        ["dax", "sqlserver", "kql", "markdown", "plain"] &&
     AppSettingsSerializer.Parse("""{ "version": 15, "snippetFormatOrder": ["plain", "dax", "sqlserver", "kql"] }""").SnippetFormatOrder is
-        ["dax", "sqlserver", "kql", "plain"],
+        ["dax", "sqlserver", "kql", "markdown", "plain"],
     "An older file still holding a shipped default was never customized and takes the new default.");
 Assert(
     AppSettingsSerializer.Parse("""{ "version": 15, "snippetFormatOrder": ["sqlserver", "plain", "dax"] }""").SnippetFormatOrder is
-        ["sqlserver", "kql", "plain", "dax"],
+        ["sqlserver", "kql", "markdown", "plain", "dax"],
     "An older file with a chosen order keeps it, with the new language in front of plain text.");
 Assert(
     AppSettingsSerializer.Parse("""{ "version": 16, "snippetFormatOrder": ["plain", "dax", "sqlserver", "kql"] }""").SnippetFormatOrder is
-        ["plain", "dax", "sqlserver", "kql"],
+        ["plain", "dax", "sqlserver", "kql", "markdown"],
     "A current file that puts plain text first chose to, and is left alone.");
 
 // Choosing a language and recognizing one are two lists. Everything the selector offers
-// is saved and restored; only the four that can read a snippet claim a paste, so a
+// is saved and restored; only those that can read a snippet claim a paste, so a
 // language chosen by hand is skipped in the snippet format order rather than read as
 // plain text, which would move plain text up an order it was never part of.
 Assert(
-    TextLanguageIds.All.Count == 16 &&
+    TextLanguageIds.All.Count == 17 &&
     TextLanguageIds.All[0] == TextLanguageIds.Plain &&
-    TextLanguageIds.All.Distinct(StringComparer.Ordinal).Count() == 16,
-    "The selector offers sixteen distinct text types, plain text first.");
+    TextLanguageIds.All.Distinct(StringComparer.Ordinal).Count() == 17,
+    "The selector offers seventeen distinct text types, plain text first.");
 Assert(
-    TextLanguageIds.DetectionOrder is ["dax", "sqlserver", "kql", "plain"] &&
-    TextLanguageIds.All.Count(TextLanguageIds.CanDetect) == 4,
-    "Only the four languages that read a snippet take part in detection.");
+    TextLanguageIds.DetectionOrder is ["dax", "sqlserver", "kql", "markdown", "plain"] &&
+    TextLanguageIds.All.Count(TextLanguageIds.CanDetect) == 5,
+    "Only the five languages that read a snippet take part in detection.");
 Assert(
     TextLanguageIds.Normalize("Python") == TextLanguageIds.Python &&
     TextLanguageIds.Normalize(" VBNET ") == TextLanguageIds.VbNet &&
@@ -1354,15 +1389,15 @@ Assert(
     "A language added for manual selection normalizes for persistence; a caption is not an identifier.");
 Assert(
     TextLanguageIds.NormalizeOrder(["dax", "prompt", "python", "rust", "plain"]) is
-        ["dax", "sqlserver", "kql", "plain"],
+        ["dax", "sqlserver", "kql", "markdown", "plain"],
     "A language chosen by hand is ignored in the snippet format order, not read as plain text.");
 Assert(
     TextLanguageIds.NormalizeOrder(["not-a-language", "dax"]) is
-        ["plain", "dax", "sqlserver", "kql"],
+        ["plain", "dax", "sqlserver", "kql", "markdown"],
     "A name that is no language still reads as plain text, so an order beginning with one keeps pastes plain.");
 Assert(
     AppSettingsSerializer.Parse("""{ "version": 16, "snippetFormatOrder": ["python", "dax", "rust", "plain"] }""")
-        .SnippetFormatOrder is ["dax", "sqlserver", "kql", "plain"],
+        .SnippetFormatOrder is ["dax", "sqlserver", "kql", "markdown", "plain"],
     "A manual-only language written into settings is dropped from the saved order.");
 
 // F6 answers a language it cannot format by asking for a vote, and the issue it opens

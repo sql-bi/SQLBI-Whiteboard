@@ -200,10 +200,10 @@ Use **Copy settings** after finding a useful combination so the exact values can
 | Space | Temporarily switch to Pan |
 | Ctrl+Z / Ctrl+Y | Undo / redo |
 | Ctrl+C | Copy the selection. Copying a LiveView copies its last frame as a bitmap |
-| Ctrl+V | Paste prefers an image (including a file on the clipboard) over text. Otherwise create a text container from plain text |
+| Ctrl+V | Paste prefers an image (including a file on the clipboard) over text. Otherwise create a text container; Markdown and rich clipboard HTML can retain tables, lists, and headings |
 | F2 | Edit the selected text container or label, put words inside the selected shape, or rename the selected frame. Typing a printable character with one shape selected starts its text too |
 | View > Frame | Add a frame the size of the screen: a slide drawn on the board, selected by its edge or its tab, which Export takes as it is |
-| Language chip | Choose a language or Prompt on a selected text container |
+| Language chip | Choose a language, Prompt, or Markdown on a selected text container |
 | F6 | Format DAX, SQL, or KQL on the selected text container; DAX wraps to the container's columns. In F2, formats in place. On a language that is only highlighted, opens that language's issue on GitHub |
 | Drag right edge, or Shift + drag handle | Change a text container's width in columns and reflow it; the handle shows the count. A plain drag of the corner scales it |
 | Ctrl+Enter | Commit the F2 edit, including an F6 format done in that session, and return to display mode |
@@ -245,6 +245,8 @@ Paste plain text to create a selected text container in display mode. **Help →
 Choose **Prompt** from the title-bar chip for AI instructions, or paste text tagged as Prompt by Prompt Assistant to select it automatically. Lines beginning with `- ` display as bullets; wrapped lines align with the item text, including space-indented lists. In F2 the original `- ` stays visible and editable, with the same hanging indentation. Copying and saving preserve the source text exactly, and F6 does not rewrite it. This is list layout, not a full Markdown renderer.
 
 Prompt detection uses clipboard format `SQLBI.PromptAssistant.Metadata.v1` containing UTF-8 JSON `{"type":"Prompt","version":1}`, alongside the clipboard text. This explicit tag takes priority over snippet detection and accompanying images. Missing, invalid, or unsupported metadata keeps the usual paste behavior. Pasting into an existing editor inserts text without changing its language.
+
+Choose **Markdown** for formatted answers and notes with headings, emphasis, lists, tables, quotations, and code blocks. Paste recognizes Markdown through Snippet format order and can convert structured clipboard HTML when it carries formatting absent from the plain text. **F2** edits the original Markdown and **Ctrl+Enter** renders it again; normal resizing scales it, while the width handle reflows it. Linked pen annotations behave as on other containers. Markdown exports as a picture to preserve its layout, with its source retained in PowerPoint notes. See [docs/markdown.md](docs/markdown.md) for clipboard behavior, supported structures, and limitations.
 
 Image files, and `.txt`, `.dax`, `.sql`, and `.kql` files, can be dropped directly from File Explorer. Their initial center is the board position at which they were dropped. DAX, SQL, and KQL files open in the matching language mode. Other dropped text files use Snippet format order.
 
