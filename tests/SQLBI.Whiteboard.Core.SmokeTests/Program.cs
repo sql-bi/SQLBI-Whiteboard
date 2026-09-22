@@ -1075,9 +1075,10 @@ Assert(
     defaultSettings.StartupMonitor == StartupMonitorKind.WacomIfPresent &&
     defaultSettings.StartupMonitorName is null &&
     !defaultSettings.StartFullScreen &&
+    !defaultSettings.EnableAutoFullScreen &&
     defaultSettings.FingerMode == FingerMode.WhenNoPen &&
     defaultSettings.CheckForUpdates,
-    "Missing settings should default to Wacom-if-present, a windowed start, finger drawing when no pen is detected, and update checks on.");
+    "Missing settings should default to Wacom-if-present, a windowed start without auto full screen, finger drawing when no pen is detected, and update checks on.");
 // A mode says which of the design-era controls exist, and nothing about what a
 // board contains. Design is the default, and the toggle on the View row has to
 // have somewhere to come back to.
@@ -1237,6 +1238,16 @@ Assert(
     namedStartup.StartupMonitorName == "Cintiq Pro 27" &&
     namedStartup.StartFullScreen,
     "Settings JSON should round-trip a named startup monitor and full-screen start.");
+foreach (bool enabled in new[] { false, true })
+{
+    var automatic = AppSettingsSerializer.Parse(AppSettingsSerializer.Format(new AppSettings
+    {
+        EnableAutoFullScreen = enabled,
+        StartFullScreen = !enabled,
+    }));
+    Assert(automatic.EnableAutoFullScreen == enabled && automatic.StartFullScreen == !enabled,
+        "Auto full screen must persist independently of full screen at startup.");
+}
 Assert(
     AppSettingsSerializer.Parse("{ \"fingerMode\": \"Sideways\" }").FingerMode == FingerMode.WhenNoPen,
     "Unknown finger-mode values should fall back to when-no-pen.");

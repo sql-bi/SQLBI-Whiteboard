@@ -204,6 +204,8 @@ public sealed class AppSettings
 
     public bool StartFullScreen { get; set; }
 
+    public bool EnableAutoFullScreen { get; set; }
+
     public FingerMode FingerMode { get; set; } = FingerMode.WhenNoPen;
 
     public MouseMode MouseMode { get; set; } = MouseMode.WhenNoDigitizer;

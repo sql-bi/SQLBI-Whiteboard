@@ -134,6 +134,7 @@ internal static class SettingsCatalog
         public const string DepthAndDuplicate = "mode.depthAndDuplicate";
         public const string StartupMonitor = "startup.monitor";
         public const string StartFullScreen = "startup.fullscreen";
+        public const string EnableAutoFullScreen = "startup.autoFullScreen";
         public const string ImportHorizontalSpacing = "import.horizontalSpacing";
         public const string ImportVerticalSpacing = "import.verticalSpacing";
         public const string PauseLiveViewsWhenUnfocused = "liveView.pauseWhenUnfocused";
@@ -293,6 +294,16 @@ internal static class SettingsCatalog
             Summary = "Fill the monitor and hide the chrome at launch",
             Description = "Fill the current monitor and hide the title and tabs the next time the application starts. F11 still toggles this session. Ctrl+F11 hides chrome without filling the monitor.",
             Keywords = ["fullscreen", "full screen", "f11", "maximize"],
+            Editor = SettingEditorKind.BooleanSwitch,
+        },
+        new()
+        {
+            Id = Ids.EnableAutoFullScreen,
+            Category = Startup,
+            Title = "Go full screen when idle",
+            Summary = "Fill the monitor after 10 seconds without input",
+            Description = "Fill the current monitor and hide the title and tabs after 10 seconds without pen, touch, mouse, or keyboard input, while Whiteboard is the active window. F11 and Escape leave full screen as usual, and the 10 seconds start again.",
+            Keywords = ["fullscreen", "full screen", "automatic", "idle", "inactivity", "10 seconds", "f11"],
             Editor = SettingEditorKind.BooleanSwitch,
         },
         new()
@@ -464,7 +475,7 @@ internal static class SettingsCatalog
             Category = LiveView,
             Title = "Pause when Whiteboard loses focus",
             Summary = "Resume previously active LiveViews when you return",
-            Description = "Stops capture while another application is in the foreground and keeps the last frame visible. LiveViews you paused manually stay paused. Whiteboard dialogs do not count as switching applications. Off by default; changes apply immediately.",
+            Description = "Stops capture while another application is in the foreground and keeps the last frame visible. LiveViews you paused manually stay paused. Whiteboard dialogs do not count as switching applications.",
             Keywords = ["liveview", "live view", "capture", "pause", "resume", "focus", "background", "GPU"],
             Editor = SettingEditorKind.BooleanCheckbox,
         },

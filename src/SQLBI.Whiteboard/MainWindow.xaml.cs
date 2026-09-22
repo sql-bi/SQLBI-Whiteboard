@@ -83,6 +83,8 @@ public partial class MainWindow : Window
 
     private readonly SessionStore? _session = SessionStore.Acquire();
     private readonly DispatcherTimer _autosaveTimer;
+    private readonly AutoFullScreenController _autoFullScreen;
+    private Point? _autoFullScreenMousePosition;
     private readonly DeferredCloseRequest _closeRequest = new();
     private bool _closeConfirmed;
     private bool _autosaveRunning;
@@ -317,6 +319,19 @@ public partial class MainWindow : Window
             Interval = AutosaveInterval,
         };
         _autosaveTimer.Tick += AutosaveTimer_Tick;
+        _autoFullScreen = new AutoFullScreenController(
+            () => IsLoaded && IsVisible && IsActive && IsEnabled &&
+                WindowState != WindowState.Minimized &&
+                _chromeMode != SessionChromeMode.FullScreen &&
+                !_closeRequest.IsPending && !_closeConfirmed &&
+                !ComponentDispatcher.IsThreadModal &&
+                !_penInContact && _stylusAction == PointerAction.None &&
+                _mouseAction == PointerAction.None && _touchPoints.Count == 0 &&
+                Mouse.Captured is null && Stylus.Captured is null,
+            () => SetChromeMode(SessionChromeMode.FullScreen));
+        InputManager.Current.PreProcessInput += AutoFullScreen_PreProcessInput;
+        Activated += AutoFullScreen_StateChanged;
+        StateChanged += AutoFullScreen_StateChanged;
         InkSurface.HoverTracker.Hovered += HoverTracker_Hovered;
         SourceInitialized += MainWindow_SourceInitialized;
         Loaded += MainWindow_Loaded;
@@ -372,6 +387,7 @@ public partial class MainWindow : Window
 
         SessionStore.Prune();
         _autosaveTimer.Start();
+        _autoFullScreen.Enabled = _settings.EnableAutoFullScreen;
     }
 
     /// <summary>
@@ -6922,6 +6938,7 @@ public partial class MainWindow : Window
 
     private void ApplyPreferences()
     {
+        _autoFullScreen.Enabled = _settings.EnableAutoFullScreen;
         UpdateLiveViewSuspension();
         ApplyToolbarPlacement();
         ApplyCalligraphyAccess();
@@ -9296,6 +9313,7 @@ public partial class MainWindow : Window
 
     private void SetChromeMode(SessionChromeMode mode)
     {
+        _autoFullScreen.Reset();
         if (_chromeMode == mode)
         {
             return;
@@ -9402,8 +9420,31 @@ public partial class MainWindow : Window
     private static bool IsControlFocused() =>
         Keyboard.FocusedElement is ButtonBase or Slider or ComboBox or MenuItem;
 
+    private void AutoFullScreen_StateChanged(object? sender, EventArgs e) => _autoFullScreen.Reset();
+
+    private void AutoFullScreen_PreProcessInput(object sender, PreProcessInputEventArgs e)
+    {
+        if (!_autoFullScreen.Enabled || !IsActive) return;
+        InputEventArgs input = e.StagingItem.Input;
+        if (input.RoutedEvent == Mouse.PreviewMouseMoveEvent)
+        {
+            Point position = Mouse.GetPosition(this);
+            // WPF can synthesize stationary mouse moves when the scene changes.
+            // A LiveView repaint must not keep the board out of full screen.
+            if (_autoFullScreenMousePosition == position) return;
+            _autoFullScreenMousePosition = position;
+        }
+        else if (input is not (KeyEventArgs or TextCompositionEventArgs or
+            MouseButtonEventArgs or MouseWheelEventArgs or StylusEventArgs or TouchEventArgs))
+        {
+            return;
+        }
+        _autoFullScreen.RecordActivity();
+    }
+
     private void Window_Deactivated(object? sender, EventArgs e)
     {
+        _autoFullScreen.Reset();
         if (_stylusAction == PointerAction.Erase || _mouseAction == PointerAction.Erase)
         {
             CompleteErase();
@@ -9430,6 +9471,7 @@ public partial class MainWindow : Window
 
     private async void Window_Closing(object? sender, CancelEventArgs e)
     {
+        _autoFullScreen.Reset();
         CommitTextEdit();
         if (!_closeConfirmed)
         {
@@ -9455,11 +9497,19 @@ public partial class MainWindow : Window
                 _closeConfirmed = true;
                 Close();
             }
+            else
+            {
+                _autoFullScreen.Reset();
+            }
 
             return;
         }
 
         _autosaveTimer.Stop();
+        _autoFullScreen.Dispose();
+        InputManager.Current.PreProcessInput -= AutoFullScreen_PreProcessInput;
+        Activated -= AutoFullScreen_StateChanged;
+        StateChanged -= AutoFullScreen_StateChanged;
         Application.Current.Activated -= Application_Activated;
         Application.Current.Deactivated -= Application_Deactivated;
         // Unregister Vortice's retained Window.Closed callbacks and unload the

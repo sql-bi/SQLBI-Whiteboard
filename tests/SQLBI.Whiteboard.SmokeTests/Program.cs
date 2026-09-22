@@ -584,6 +584,7 @@ SQLBI.Whiteboard.SmokeTests.LabelSmokeTests.Run();
 SQLBI.Whiteboard.SmokeTests.DesignExportSmokeTests.Run();
 SQLBI.Whiteboard.SmokeTests.PreferencesSmokeTests.Run();
 SQLBI.Whiteboard.SmokeTests.WindowCloseSmokeTests.Run();
+SQLBI.Whiteboard.SmokeTests.AutoFullScreenSmokeTests.Run();
 SQLBI.Whiteboard.SmokeTests.LiveViewFocusSmokeTests.Run();
 
 Console.WriteLine("SQLBI.Whiteboard smoke tests passed.");
