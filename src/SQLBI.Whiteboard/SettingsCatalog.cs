@@ -134,6 +134,7 @@ internal static class SettingsCatalog
         public const string DepthAndDuplicate = "mode.depthAndDuplicate";
         public const string StartupMonitor = "startup.monitor";
         public const string StartFullScreen = "startup.fullscreen";
+        public const string EnableAutoFullScreen = "startup.autoFullScreen";
         public const string ImportHorizontalSpacing = "import.horizontalSpacing";
         public const string ImportVerticalSpacing = "import.verticalSpacing";
         public const string PauseLiveViewsWhenUnfocused = "liveView.pauseWhenUnfocused";
@@ -293,6 +294,16 @@ internal static class SettingsCatalog
             Summary = "Fill the monitor and hide the chrome at launch",
             Description = "Fill the current monitor and hide the title and tabs the next time the application starts. F11 still toggles this session. Ctrl+F11 hides chrome without filling the monitor.",
             Keywords = ["fullscreen", "full screen", "f11", "maximize"],
+            Editor = SettingEditorKind.BooleanSwitch,
+        },
+        new()
+        {
+            Id = Ids.EnableAutoFullScreen,
+            Category = Startup,
+            Title = "Enable auto full screen",
+            Summary = "Go full screen after 10 seconds of inactivity",
+            Description = "Fill the current monitor after 10 seconds without mouse, pen, touch, or keyboard activity in Whiteboard. Wait while another window or a dialog is active, or a gesture is in progress. F11 or Escape still leaves full screen and starts a fresh countdown. Off by default; changes apply immediately.",
+            Keywords = ["fullscreen", "full screen", "automatic", "idle", "inactivity", "10 seconds", "f11"],
             Editor = SettingEditorKind.BooleanSwitch,
         },
         new()

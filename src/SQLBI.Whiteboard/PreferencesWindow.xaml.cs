@@ -1121,6 +1121,7 @@ public partial class PreferencesWindow : Window
             SettingsCatalog.Ids.ExtendedSelection => Modes.Resolve(_settings).ExtendedSelection,
             SettingsCatalog.Ids.DepthAndDuplicate => Modes.Resolve(_settings).DepthAndDuplicate,
             SettingsCatalog.Ids.StartFullScreen => _settings.StartFullScreen,
+            SettingsCatalog.Ids.EnableAutoFullScreen => _settings.EnableAutoFullScreen,
             SettingsCatalog.Ids.WarnWhenNoDigitizer => _settings.WarnWhenNoDigitizer,
             SettingsCatalog.Ids.RestoreLastSession => _settings.RestoreLastSession,
             SettingsCatalog.Ids.SuggestMouseMode => _settings.SuggestMouseMode,
@@ -1181,6 +1182,10 @@ public partial class PreferencesWindow : Window
         else if (setting.Id == SettingsCatalog.Ids.StartFullScreen)
         {
             _settings.StartFullScreen = value;
+        }
+        else if (setting.Id == SettingsCatalog.Ids.EnableAutoFullScreen)
+        {
+            _settings.EnableAutoFullScreen = value;
         }
         else if (setting.Id == SettingsCatalog.Ids.WarnWhenNoDigitizer)
         {

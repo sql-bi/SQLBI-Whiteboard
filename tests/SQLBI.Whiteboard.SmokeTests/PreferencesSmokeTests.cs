@@ -21,6 +21,7 @@ internal static class PreferencesSmokeTests
             try
             {
                 CheckImportSliders();
+                CheckAutoFullScreen();
                 CheckDrawnChoices();
             }
             catch (Exception exception)
@@ -39,6 +40,46 @@ internal static class PreferencesSmokeTests
         {
             throw new InvalidOperationException("Preferences smoke tests failed.", failure);
         }
+    }
+
+    private static void CheckAutoFullScreen()
+    {
+        var settings = new AppSettings();
+        int changes = 0;
+        string saved = string.Empty;
+        var window = new PreferencesWindow(settings, () =>
+        {
+            changes++;
+            saved = AppSettingsSerializer.Format(settings);
+        });
+        try
+        {
+            var category = Descendants(window).OfType<ToggleButton>()
+                .Single(button => button.Content is "Startup");
+            category.RaiseEvent(new RoutedEventArgs(ButtonBase.ClickEvent));
+            var toggle = Descendants(window).OfType<ToggleButton>()
+                .Single(button => AutomationProperties.GetName(button) == "Enable auto full screen");
+            Assert(toggle.IsChecked == false && changes == 0,
+                "Startup must expose auto full screen as an initially disabled option without applying it.");
+            toggle.IsChecked = true;
+            Assert(changes == 1 && settings.EnableAutoFullScreen && !settings.StartFullScreen &&
+                AppSettingsSerializer.Parse(saved).EnableAutoFullScreen,
+                "Enabling auto full screen must apply and save immediately, independently of Start full screen.");
+            var reopened = new PreferencesWindow(AppSettingsSerializer.Parse(saved), () =>
+                throw new InvalidOperationException("Reopening Preferences must not apply a change."));
+            try
+            {
+                Assert(Descendants(reopened).OfType<ToggleButton>()
+                    .Single(button => AutomationProperties.GetName(button) == "Enable auto full screen").IsChecked == true,
+                    "Auto full screen must display its saved value when Preferences is reopened.");
+            }
+            finally { reopened.Close(); }
+            toggle.IsChecked = false;
+            Assert(changes == 2 && !settings.EnableAutoFullScreen &&
+                !AppSettingsSerializer.Parse(saved).EnableAutoFullScreen,
+                "Disabling auto full screen must apply and save immediately.");
+        }
+        finally { window.Close(); }
     }
 
     private static void CheckImportSliders()
