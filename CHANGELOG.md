@@ -20,10 +20,10 @@ and **bold**.
 ## 1.6.1 - 22 September 2026
 
 ### Full screen by itself when the board is left alone
-**Preferences → Startup → Go full screen when idle** fills the current monitor after 10
-seconds without pen, touch, mouse, or keyboard input, so a board left on the projector fills
-it without a key press. **F11** and **Escape** leave full screen as usual, and the 10 seconds
-start again. It is off by default.
+**Preferences → Startup → Go full screen when idle** fills the current monitor after 20
+seconds without input in Whiteboard, even while you work in another app, so a board left on
+the projector fills it without a key press. **F11** and **Escape** leave full screen as
+usual, and the 20 seconds start again. It is off by default.
 
 ## 1.6.0 - 20 September 2026
 
