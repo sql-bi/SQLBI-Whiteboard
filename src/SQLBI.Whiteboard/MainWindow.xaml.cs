@@ -320,7 +320,7 @@ public partial class MainWindow : Window
         };
         _autosaveTimer.Tick += AutosaveTimer_Tick;
         _autoFullScreen = new AutoFullScreenController(
-            () => IsLoaded && IsVisible && IsActive && IsEnabled &&
+            () => IsLoaded && IsVisible && IsEnabled &&
                 WindowState != WindowState.Minimized &&
                 _chromeMode != SessionChromeMode.FullScreen &&
                 !_closeRequest.IsPending && !_closeConfirmed &&
@@ -328,9 +328,9 @@ public partial class MainWindow : Window
                 !_penInContact && _stylusAction == PointerAction.None &&
                 _mouseAction == PointerAction.None && _touchPoints.Count == 0 &&
                 Mouse.Captured is null && Stylus.Captured is null,
-            () => SetChromeMode(SessionChromeMode.FullScreen));
+            () => MonitorStartupPlacement.WithoutActivation(
+                this, () => SetChromeMode(SessionChromeMode.FullScreen)));
         InputManager.Current.PreProcessInput += AutoFullScreen_PreProcessInput;
-        Activated += AutoFullScreen_StateChanged;
         StateChanged += AutoFullScreen_StateChanged;
         InkSurface.HoverTracker.Hovered += HoverTracker_Hovered;
         SourceInitialized += MainWindow_SourceInitialized;
@@ -9424,8 +9424,11 @@ public partial class MainWindow : Window
 
     private void AutoFullScreen_PreProcessInput(object sender, PreProcessInputEventArgs e)
     {
-        if (!_autoFullScreen.Enabled || !IsActive) return;
+        if (!_autoFullScreen.Enabled) return;
         InputEventArgs input = e.StagingItem.Input;
+        // Background hover still belongs to Whiteboard; input in another
+        // window does not. Active-window popups also count as local activity.
+        if (!AutoFullScreenController.IsInputForWindow(this, input)) return;
         if (input.RoutedEvent == Mouse.PreviewMouseMoveEvent)
         {
             Point position = Mouse.GetPosition(this);
@@ -9444,7 +9447,6 @@ public partial class MainWindow : Window
 
     private void Window_Deactivated(object? sender, EventArgs e)
     {
-        _autoFullScreen.Reset();
         if (_stylusAction == PointerAction.Erase || _mouseAction == PointerAction.Erase)
         {
             CompleteErase();
@@ -9508,7 +9510,6 @@ public partial class MainWindow : Window
         _autosaveTimer.Stop();
         _autoFullScreen.Dispose();
         InputManager.Current.PreProcessInput -= AutoFullScreen_PreProcessInput;
-        Activated -= AutoFullScreen_StateChanged;
         StateChanged -= AutoFullScreen_StateChanged;
         Application.Current.Activated -= Application_Activated;
         Application.Current.Deactivated -= Application_Deactivated;

@@ -301,9 +301,9 @@ internal static class SettingsCatalog
             Id = Ids.EnableAutoFullScreen,
             Category = Startup,
             Title = "Go full screen when idle",
-            Summary = "Fill the monitor after 10 seconds without input",
-            Description = "Fill the current monitor and hide the title and tabs after 10 seconds without pen, touch, mouse, or keyboard input, while Whiteboard is the active window. F11 and Escape leave full screen as usual, and the 10 seconds start again.",
-            Keywords = ["fullscreen", "full screen", "automatic", "idle", "inactivity", "10 seconds", "f11"],
+            Summary = "Fill the monitor after 20 seconds without input",
+            Description = "After 20 seconds without pen, touch, mouse, or keyboard input in Whiteboard, fill the monitor without taking focus. Using another app does not restart the countdown. F11 and Escape leave full screen as usual and restart the 20 seconds.",
+            Keywords = ["fullscreen", "full screen", "automatic", "idle", "inactivity", "20 seconds", "background", "focus", "f11"],
             Editor = SettingEditorKind.BooleanSwitch,
         },
         new()
