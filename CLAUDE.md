@@ -3,7 +3,7 @@
 Guidance for coding agents lives in tool-agnostic files, so that every contributor works
 from the same instructions. Read these before making changes:
 
-- [CONTRIBUTING.md](CONTRIBUTING.md) — branch and pull request workflow, code style, and the
+- [CONTRIBUTING.md](CONTRIBUTING.md) — branch and pull request workflow, code style, how text people read is written, and the
   mistakes this codebase invites.
 - [docs/decisions.md](docs/decisions.md) — what was decided about packaging, signing, and
   releases, and why. Each entry states whether it is implemented or only agreed.

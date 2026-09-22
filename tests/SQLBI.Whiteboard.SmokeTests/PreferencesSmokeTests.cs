@@ -58,7 +58,7 @@ internal static class PreferencesSmokeTests
                 .Single(button => button.Content is "Startup");
             category.RaiseEvent(new RoutedEventArgs(ButtonBase.ClickEvent));
             var toggle = Descendants(window).OfType<ToggleButton>()
-                .Single(button => AutomationProperties.GetName(button) == "Enable auto full screen");
+                .Single(button => AutomationProperties.GetName(button) == "Go full screen when idle");
             Assert(toggle.IsChecked == false && changes == 0,
                 "Startup must expose auto full screen as an initially disabled option without applying it.");
             toggle.IsChecked = true;
@@ -70,7 +70,7 @@ internal static class PreferencesSmokeTests
             try
             {
                 Assert(Descendants(reopened).OfType<ToggleButton>()
-                    .Single(button => AutomationProperties.GetName(button) == "Enable auto full screen").IsChecked == true,
+                    .Single(button => AutomationProperties.GetName(button) == "Go full screen when idle").IsChecked == true,
                     "Auto full screen must display its saved value when Preferences is reopened.");
             }
             finally { reopened.Close(); }

@@ -17,6 +17,14 @@ broke. The heading is parsed by `scripts/release-notes.ps1`, so keep its shape; 
 under it is ordinary Markdown, and the renderer handles paragraphs, lists, links, `code`
 and **bold**.
 
+## 1.6.1 - 22 September 2026
+
+### Full screen by itself when the board is left alone
+**Preferences → Startup → Go full screen when idle** fills the current monitor after 10
+seconds without pen, touch, mouse, or keyboard input, so a board left on the projector fills
+it without a key press. **F11** and **Escape** leave full screen as usual, and the 10 seconds
+start again. It is off by default.
+
 ## 1.6.0 - 20 September 2026
 
 ### Shapes and text on the board
