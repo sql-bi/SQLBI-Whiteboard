@@ -231,7 +231,7 @@ Use **Copy settings** after finding a useful combination so the exact values can
 | View > Bring to front / Bring forward / Send backward / Send to back | Reorder the selection (and its linked strokes) as one block. Letters B, W, K, and S while the View strip is open, and the same four behind the property bar's … |
 | Help > About | Version, channel, license, the product site, and a download link when a newer release is known |
 | View > LiveView | Capture, freeze, disconnect, or reconnect a window or display |
-| F11 | Fill the current monitor and hide title and tabs. Escape leaves it when a text container is not being edited. **Preferences → Startup → Go full screen when idle** does the same by itself after 10 seconds without pen, touch, mouse, or keyboard input |
+| F11 | Fill the current monitor and hide title and tabs. Escape leaves it when a text container is not being edited. **Preferences → Startup → Go full screen when idle** does the same after 20 seconds without input in Whiteboard, even while another app has focus |
 | Ctrl+F11 | Hide title and tabs but keep this window’s size and place |
 
 With the mouse, selection is automatic: click a container to move it, or drag the circular bottom-right handle to resize it while preserving its aspect ratio. Double-click a container to center it and fit it to the canvas. Releasing the mouse returns to the previously selected drawing tool.

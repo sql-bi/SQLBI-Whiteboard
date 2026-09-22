@@ -86,6 +86,22 @@ internal static class MonitorStartupPlacement
             _ => null,
         };
 
+    public static void WithoutActivation(Window window, Action change)
+    {
+        bool showActivated = window.ShowActivated;
+        try
+        {
+            // WPF otherwise activates a maximized window when restoring it to
+            // Normal, before the non-activating full-monitor resize takes place.
+            window.ShowActivated = false;
+            change();
+        }
+        finally
+        {
+            window.ShowActivated = showActivated;
+        }
+    }
+
     public static void FillCurrentMonitor(Window window)
     {
         ArgumentNullException.ThrowIfNull(window);
@@ -94,7 +110,7 @@ internal static class MonitorStartupPlacement
         var monitorHandle = MonitorFromWindow(windowHandle, MonitorDefaultToNearest);
         if (monitorHandle == 0)
         {
-            window.WindowState = WindowState.Maximized;
+            MaximizeIfActivationAllowed(window);
             return;
         }
 
@@ -104,7 +120,7 @@ internal static class MonitorStartupPlacement
         };
         if (!GetMonitorInfo(monitorHandle, ref monitorInfo))
         {
-            window.WindowState = WindowState.Maximized;
+            MaximizeIfActivationAllowed(window);
             return;
         }
 
@@ -117,6 +133,14 @@ internal static class MonitorStartupPlacement
             Math.Max(1, area.Right - area.Left),
             Math.Max(1, area.Bottom - area.Top),
             SwpNoZOrder | SwpNoActivate | SwpFrameChanged);
+    }
+
+    private static void MaximizeIfActivationAllowed(Window window)
+    {
+        // Unlike SetWindowPos, maximizing cannot preserve an inactive window.
+        // On a failed monitor lookup, leave its bounds alone rather than steal focus.
+        if (window.IsActive || window.ShowActivated)
+            window.WindowState = WindowState.Maximized;
     }
 
     /// <summary>

@@ -1,10 +1,12 @@
+using System.Windows;
+using System.Windows.Input;
 using System.Windows.Threading;
 
 namespace SQLBI.Whiteboard;
 
 internal sealed class AutoFullScreenController : IDisposable
 {
-    internal static readonly TimeSpan Delay = TimeSpan.FromSeconds(10);
+    internal static readonly TimeSpan Delay = TimeSpan.FromSeconds(20);
     private readonly Func<bool> _canEnter;
     private readonly Action _enter;
     private readonly TimeProvider _clock;
@@ -39,6 +41,11 @@ internal sealed class AutoFullScreenController : IDisposable
     {
         if (_enabled) _lastActivity = _clock.GetTimestamp();
     }
+
+    internal static bool IsInputForWindow(Window window, InputEventArgs input) =>
+        window.IsActive ||
+        ((input.OriginalSource ?? input.Source ?? input.Device?.Target) is DependencyObject target &&
+            Window.GetWindow(target) == window);
 
     public void Reset()
     {
