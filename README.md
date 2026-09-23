@@ -182,7 +182,7 @@ Use **Copy settings** after finding a useful combination so the exact values can
 | Input | Behavior |
 | --- | --- |
 | Pen tip | Current tool; Pen is selected at startup |
-| Shift + pen tip | Constrain the stroke to horizontal or vertical, whichever is nearer, at a uniform width. Press or release mid-stroke to start or end the constraint from that point. The barrel button does the same when assigned to Straight line |
+| Shift + pen tip | Constrain the stroke to horizontal or vertical, whichever is nearer, at a uniform width. Press or release mid-stroke to start or end the constraint from that point |
 | Pen hover | Show the small red pointer dot and hide the arrow |
 | Pen contact | Hide both the pointer dot and arrow |
 | Physical mouse movement | Show the normal arrow |
@@ -191,7 +191,7 @@ Use **Copy settings** after finding a useful combination so the exact values can
 | Double-click container | Center and fit the image, text, or LiveView to the canvas. With Mouse drawing on and an ink or eraser tool selected, hold Ctrl: two plain clicks are two strokes |
 | Double-click empty canvas | Center and fit all board content, or reset an empty board |
 | Pen eraser | Erase complete strokes. The upper side button erases too: Windows reports it the same way as a pen turned round. A pen with neither reaches the Eraser through **Help → Preferences → Toolbar → Always show the Eraser** |
-| Pen barrel | Hold the barrel button for the action assigned in Preferences: Laser (default) or Straight line. Laser returns to the previous tool on release |
+| Pen barrel | Hold for Laser, or hold before starting a stroke for Straight line, as assigned in Preferences. Releasing ends the action; a mid-stroke press cannot start Straight line |
 | One finger | Pan. With Finger drawing on, uses the current tool instead |
 | Two fingers | Pan and pinch zoom. Cancels an in-progress finger stroke when Finger drawing is on |
 | Mouse wheel | Zoom at the pointer. Shift+wheel zooms more slowly |

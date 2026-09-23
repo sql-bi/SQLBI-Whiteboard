@@ -18,7 +18,7 @@ public static class StraightLineSnap
     // How far the pen must travel from the anchor before the axis is settled and
     // kept. Once chosen it is not revisited: a hand drifting off the axis is
     // still drawing the line it asked for.
-    // Eight pixels was too eager: pressing the button in the middle of a stroke
+    // Eight pixels was too eager: pressing Shift in the middle of a stroke
     // leaves a few milliseconds of the previous direction still arriving, and
     // the line committed to that instead of to where the hand then went - a
     // fourteen-pixel horizontal stub in front of a hundred-pixel vertical

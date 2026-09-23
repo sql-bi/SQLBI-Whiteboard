@@ -111,6 +111,7 @@ public partial class MainWindow : Window
     private StylusButton? _barrelButton;
     private bool _lastContactWasPen;
     private readonly List<InkPoint> _penInk = [];
+    private readonly PenStraightLineConstraint _penStraightLine = new();
     private PointD? _penInkAnchor;
     private StraightLineDirection _penInkDirection;
     private PointD? _penInkPrevious;
@@ -648,9 +649,8 @@ public partial class MainWindow : Window
     }
 
     // Every packet the pen reports, in contact or not. This is the whole of the
-    // pen ink path: the constraint is one question asked per point, exactly as
-    // it is for Shift, because nothing here depends on WPF believing the pen is
-    // down. It does not believe it for as long as a barrel button is held.
+    // pen ink path: nothing here depends on WPF believing the pen is down. It
+    // does not believe it for as long as a barrel button is held.
     private void AppendPenInk(StylusEventArgs e)
     {
         if (!IsInkTool || _stylusAction != PointerAction.None || e.StylusDevice.Inverted)
@@ -670,6 +670,7 @@ public partial class MainWindow : Window
             }
 
             pressed = true;
+            _penStraightLine.Update(StraightLineButtonDown(point));
             AppendInkPoint(new PointD(point.X, point.Y), point.PressureFactor);
         }
 
@@ -758,6 +759,7 @@ public partial class MainWindow : Window
 
     private void EndPenInk()
     {
+        _penStraightLine.EndStroke();
         _penInkWeightless = 0;
         _penInkAnchor = null;
         _penInkDirection = StraightLineDirection.None;
@@ -891,6 +893,15 @@ public partial class MainWindow : Window
         else
         {
             _stylusAction = PointerAction.None;
+            if (!IsTouchStylus(e) && IsInkTool)
+            {
+                // Remember the button before the first move arrives. A press
+                // between this contact and that move is already mid-stroke.
+                var points = e.GetStylusPoints(InkSurface);
+                _penStraightLine.Update(points.Count > 0
+                    ? StraightLineButtonDown(points[0])
+                    : BarrelHolds(PenButtonAction.StraightLine));
+            }
         }
 
         Debug.WriteLine("[WpfInk] stylus-down reached WPF");
@@ -1344,6 +1355,11 @@ public partial class MainWindow : Window
     private void InkSurface_PreviewStylusButtonUp(object sender, StylusButtonEventArgs e)
     {
         PenTrace.Write("button-up", e, PenTraceState());
+        if (!IsTouchStylus(e) && IsBarrelButton(e.StylusDevice, e.StylusButton))
+        {
+            _penStraightLine.ReleaseButton();
+        }
+
         if (!ReferenceEquals(e.StylusButton, _barrelButton))
         {
             return;
@@ -1421,6 +1437,14 @@ public partial class MainWindow : Window
     private bool BarrelHolds(PenButtonAction action) =>
         _barrelButton is not null && _settings.PenButtons.Barrel == action;
 
+    // Packet state belongs to this sample, unlike a routed button event that
+    // can arrive later (or before the pen enters the window).
+    private bool StraightLineButtonDown(StylusPoint point) =>
+        _settings.PenButtons.Barrel == PenButtonAction.StraightLine &&
+        (point.HasProperty(StylusPointProperties.BarrelButton)
+            ? point.GetPropertyValue(StylusPointProperties.BarrelButton) != 0
+            : _barrelButton is not null);
+
     // Actions that swap the tool for as long as the button is held. A modifier
     // such as the straight-line constraint has no tool of its own.
     private static BoardTool? BarrelToolFor(PenButtonAction action) => action switch
@@ -1495,8 +1519,7 @@ public partial class MainWindow : Window
     private const int LiftedPacketCount = 4;
 
     private bool StraightLineConstraintActive =>
-        Keyboard.Modifiers.HasFlag(ModifierKeys.Shift) ||
-        BarrelHolds(PenButtonAction.StraightLine);
+        _penStraightLine.IsActive(Keyboard.Modifiers.HasFlag(ModifierKeys.Shift));
 
     private bool IsInkTool =>
         EffectiveTool is BoardTool.Pen or BoardTool.Highlighter or BoardTool.Calligraphy;

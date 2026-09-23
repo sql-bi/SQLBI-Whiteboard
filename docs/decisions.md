@@ -429,9 +429,13 @@ So the window reads that stream directly. `MainWindow.AppendPenInk` owns the con
 begins at the first pressured packet and ends after a run of weightless ones — and applies
 the straight-line constraint and the calligraphy dynamics to each point as it arrives. The
 wet stroke is drawn by `BoardSurface.PendingStroke` rather than by WPF's dynamic renderer.
-The straight-line constraint is then one boolean read per point, which is what makes the
-barrel button behave exactly like the Shift key: neither has any opinion about whether WPF
-thinks the pen is down.
+The straight-line constraint is one boolean read per point, independent of whether WPF
+thinks the pen is down. Shift can change it at any time. The barrel button must instead
+be held at the start of the physical stroke, so an accidental press during writing does
+not straighten the ink. `PenStraightLineConstraint` remembers that choice at contact
+(or the first pressured packet when WPF misses the down). A release disables it for the
+rest of that stroke; fabricated up/down events cannot rearm it. Only `EndPenInk` resets
+the choice for a new stroke.
 
 `TouchInkCanvas` keeps the InkCanvas for finger ink, where nothing tears the contact, and
 hosts the laser sampler and the hover tracker. It collects no pen ink; strokes the

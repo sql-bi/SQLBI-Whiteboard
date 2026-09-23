@@ -374,7 +374,7 @@ internal static class SettingsCatalog
             Category = Input,
             Title = "Pen button",
             Summary = "What holding the barrel button does",
-            Description = "The barrel button on the side of the pen. Hold it for the assigned action: Laser lasts only while the button is down, Straight line is the same constraint as holding Shift. The reverse end of the pen always erases, and so does the upper button, because Windows reports the two the same way.",
+            Description = "Hold the barrel button for Laser, or hold it before starting a stroke for Straight line. Releasing it ends the action; pressing it mid-stroke does not start Straight line. The reverse end and upper button always erase.",
             Keywords = ["pen", "barrel", "button", "laser", "straight", "line", "shift", "stylus", "eraser", "wacom", "cintiq"],
             Editor = SettingEditorKind.PenButtonChoice,
             Choices =

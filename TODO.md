@@ -79,10 +79,10 @@ button, because they cannot be told apart:
   than under the tip, because there is no wet-ink path for points the InkCanvas never
   sees. Giving it one means drawing a provisional stroke on the scene surface.
 
-- **The straight-line constraint cannot start mid-stroke from a button on this pen.** It
-  can from Shift, and from the barrel button, because both are reported while the tip is
-  down. Anything reported only through `Inverted` is not, since Invert and Tip are
-  mutually exclusive on this device.
+- **Straight line from the barrel button is chosen at stroke start.** Hold the button
+  before touching down; a press during writing is ignored. Releasing it removes the
+  constraint for the rest of the stroke. Shift can still start or end the constraint
+  mid-stroke. The pressure-based contact tracking is described in decision 22.
 
 - **Two constants stand in for signals the hardware does not give.** `AppendPenInk` calls
   four consecutive weightless packets a lift rather than a dropped reading — no digitizer
