@@ -6,58 +6,90 @@ internal static class PenStraightLineSmokeTests
 {
     public static void Run()
     {
-        var constraint = new PenStraightLineConstraint();
-        Assert(!constraint.IsActive(shiftDown: false), "An idle pen must not constrain ink.");
+        // A pen button mapped to Shift must follow the same rule as a native
+        // barrel button, including when it is pressed before the first move.
+        foreach (var barrel in new[] { true, false })
+        {
+            var shift = !barrel;
+            var name = barrel ? "Barrel" : "Shift";
+            var constraint = new PenStraightLineConstraint();
+            Assert(!constraint.IsActive, $"{name}: an idle pen must not constrain ink.");
 
-        constraint.Update(straightLineButtonDown: false);
-        constraint.Update(straightLineButtonDown: true);
-        constraint.Update(straightLineButtonDown: true);
-        Assert(!constraint.IsActive(shiftDown: false),
-            "A barrel press after contact, even before the first move, must leave the stroke freehand.");
-        Assert(constraint.IsActive(shiftDown: true),
-            "Shift must still constrain a stroke whose barrel press was ignored.");
-        Assert(!constraint.IsActive(shiftDown: false),
-            "Releasing Shift must restore freehand ink even while the ignored barrel press is held.");
+            constraint.Update(straightLineButtonDown: false, shiftDown: false);
+            constraint.Update(barrel, shift);
+            constraint.Update(barrel, shift);
+            Assert(!constraint.IsActive,
+                $"{name}: pressing after contact must leave the stroke freehand.");
 
-        constraint.EndStroke();
-        Assert(!constraint.IsActive(shiftDown: false), "A real lift must clear the constraint.");
-        constraint.Update(straightLineButtonDown: true);
-        Assert(constraint.IsActive(shiftDown: false),
-            "A button held before contact must constrain the new stroke.");
-        constraint.Update(straightLineButtonDown: true);
-        Assert(constraint.IsActive(shiftDown: false),
-            "Repeated contact samples and synthetic stylus downs must preserve the starting constraint.");
+            constraint.EndStroke();
+            constraint.Update(barrel, shift);
+            Assert(constraint.IsActive,
+                $"{name}: held before contact must constrain the new stroke.");
+            constraint.Update(barrel, shift);
+            Assert(constraint.IsActive,
+                $"{name}: repeated samples and synthetic stylus downs must preserve the starting constraint.");
 
-        constraint.Update(straightLineButtonDown: false);
-        Assert(!constraint.IsActive(shiftDown: false),
-            "A released button in a pen packet must remove the constraint.");
-        constraint.Update(straightLineButtonDown: true);
-        Assert(!constraint.IsActive(shiftDown: false),
-            "Re-pressing during the same physical stroke must not restart Straight line.");
+            constraint.Update(straightLineButtonDown: false, shiftDown: false);
+            Assert(!constraint.IsActive, $"{name}: releasing must remove the constraint.");
+            constraint.Update(barrel, shift);
+            Assert(!constraint.IsActive,
+                $"{name}: re-pressing during the same stroke must not restart Straight line.");
 
-        constraint.EndStroke();
-        constraint.Update(straightLineButtonDown: true);
-        constraint.ReleaseButton();
-        constraint.Update(straightLineButtonDown: true);
-        Assert(!constraint.IsActive(shiftDown: false),
-            "Release and re-press between position samples must also leave the rest of the stroke freehand.");
-        Assert(constraint.IsActive(shiftDown: true),
-            "Shift must work after a previously active barrel constraint has been released.");
+            constraint.EndStroke();
+            constraint.Update(barrel, shift);
+            if (barrel)
+            {
+                constraint.ReleaseButton();
+            }
+            else
+            {
+                constraint.ReleaseShift();
+            }
+            constraint.Update(barrel, shift);
+            Assert(!constraint.IsActive,
+                $"{name}: release/re-press between position samples must also disarm the rest of the stroke.");
 
-        constraint.EndStroke();
-        constraint.ReleaseButton();
-        constraint.Update(straightLineButtonDown: true);
-        Assert(constraint.IsActive(shiftDown: false),
-            "A release while hovering must not prevent a later stroke from starting with the button held.");
-        constraint.EndStroke();
-        constraint.Update(straightLineButtonDown: false);
-        Assert(!constraint.IsActive(shiftDown: false),
-            "A new freehand stroke must not inherit the previous stroke's constraint.");
+            constraint.EndStroke();
+            constraint.ReleaseButton();
+            constraint.ReleaseShift();
+            constraint.Update(barrel, shift);
+            Assert(constraint.IsActive,
+                $"{name}: release while hovering must not prevent the next stroke from being constrained.");
+            constraint.EndStroke();
+            constraint.Update(straightLineButtonDown: false, shiftDown: false);
+            Assert(!constraint.IsActive, $"{name}: a new freehand stroke must not inherit the constraint.");
+            constraint.EndStroke();
+            constraint.EndStroke();
+            Assert(!constraint.IsActive, $"{name}: a lift or tool change must clear the constraint.");
+        }
 
-        constraint.EndStroke();
-        constraint.EndStroke();
-        Assert(!constraint.IsActive(shiftDown: false) && constraint.IsActive(shiftDown: true),
-            "Ending ink for a tool change or mouse stroke must clear barrel state without changing Shift.");
+        var both = new PenStraightLineConstraint();
+        both.Update(straightLineButtonDown: true, shiftDown: true);
+        both.ReleaseShift();
+        Assert(both.IsActive, "Releasing Shift must preserve the barrel button held at stroke start.");
+        both.ReleaseButton();
+        Assert(!both.IsActive, "Releasing both original modifiers must restore freehand ink.");
+        both.Update(straightLineButtonDown: true, shiftDown: true);
+        Assert(!both.IsActive, "Neither modifier may rearm the other during the same stroke.");
+
+        both.EndStroke();
+        both.Update(straightLineButtonDown: true, shiftDown: true);
+        both.ReleaseButton();
+        Assert(both.IsActive, "Releasing the barrel button must preserve Shift held at stroke start.");
+        both.ReleaseShift();
+        Assert(!both.IsActive, "The remaining Shift constraint must end on release.");
+
+        both.EndStroke();
+        both.Update(straightLineButtonDown: true, shiftDown: false);
+        both.Update(straightLineButtonDown: true, shiftDown: true);
+        both.Update(straightLineButtonDown: false, shiftDown: true);
+        Assert(!both.IsActive, "A mid-stroke Shift press must not take over from the barrel constraint.");
+
+        both.EndStroke();
+        both.Update(straightLineButtonDown: false, shiftDown: true);
+        both.Update(straightLineButtonDown: true, shiftDown: true);
+        both.Update(straightLineButtonDown: true, shiftDown: false);
+        Assert(!both.IsActive, "A mid-stroke barrel press must not take over from the Shift constraint.");
     }
 
     private static void Assert(bool condition, string message)

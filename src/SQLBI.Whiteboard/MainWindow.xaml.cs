@@ -670,8 +670,10 @@ public partial class MainWindow : Window
             }
 
             pressed = true;
-            _penStraightLine.Update(StraightLineButtonDown(point));
-            AppendInkPoint(new PointD(point.X, point.Y), point.PressureFactor);
+            AppendInkPoint(
+                new PointD(point.X, point.Y),
+                point.PressureFactor,
+                StraightLineButtonDown(point));
         }
 
         if (pressed)
@@ -695,13 +697,12 @@ public partial class MainWindow : Window
         EndPenInk();
     }
 
-    // Shared by the pen and the mouse: it takes a screen point and a pressure,
-    // and has no opinion about where either came from. The straight-line
-    // constraint and the calligraphy dynamics live here, which is why the mouse
-    // gets both without a second implementation.
-    private void AppendInkPoint(PointD screen, float pressure)
+    // Both pen and mouse ink use the same stroke-start constraint and dynamics.
+    // Only pen samples carry a barrel button; Shift applies to either source.
+    private void AppendInkPoint(PointD screen, float pressure, bool straightLineButtonDown = false)
     {
-        var constrained = StraightLineConstraintActive;
+        _penStraightLine.Update(straightLineButtonDown, Keyboard.Modifiers.HasFlag(ModifierKeys.Shift));
+        var constrained = _penStraightLine.IsActive;
         if (!constrained)
         {
             _penInkAnchor = null;
@@ -895,12 +896,14 @@ public partial class MainWindow : Window
             _stylusAction = PointerAction.None;
             if (!IsTouchStylus(e) && IsInkTool)
             {
-                // Remember the button before the first move arrives. A press
+                // Remember the modifiers before the first move arrives. A press
                 // between this contact and that move is already mid-stroke.
                 var points = e.GetStylusPoints(InkSurface);
-                _penStraightLine.Update(points.Count > 0
-                    ? StraightLineButtonDown(points[0])
-                    : BarrelHolds(PenButtonAction.StraightLine));
+                _penStraightLine.Update(
+                    points.Count > 0
+                        ? StraightLineButtonDown(points[0])
+                        : BarrelHolds(PenButtonAction.StraightLine),
+                    Keyboard.Modifiers.HasFlag(ModifierKeys.Shift));
             }
         }
 
@@ -1517,9 +1520,6 @@ public partial class MainWindow : Window
     // Packets arrive a few milliseconds apart, so a lift is tens of weightless
     // ones. A shorter run is the digitizer missing a reading.
     private const int LiftedPacketCount = 4;
-
-    private bool StraightLineConstraintActive =>
-        _penStraightLine.IsActive(Keyboard.Modifiers.HasFlag(ModifierKeys.Shift));
 
     private bool IsInkTool =>
         EffectiveTool is BoardTool.Pen or BoardTool.Highlighter or BoardTool.Calligraphy;
@@ -9432,6 +9432,14 @@ public partial class MainWindow : Window
 
     private void Window_PreviewKeyUp(object sender, KeyEventArgs e)
     {
+        if (e.Key is Key.LeftShift or Key.RightShift &&
+            !Keyboard.Modifiers.HasFlag(ModifierKeys.Shift))
+        {
+            // Catch release/re-press even when no position sample falls between
+            // them. Releasing one Shift while the other is held is not a lift.
+            _penStraightLine.ReleaseShift();
+        }
+
         if (e.Key == Key.Space && _spaceTemporaryPan)
         {
             _spaceTemporaryPan = false;

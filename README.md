@@ -182,7 +182,7 @@ Use **Copy settings** after finding a useful combination so the exact values can
 | Input | Behavior |
 | --- | --- |
 | Pen tip | Current tool; Pen is selected at startup |
-| Shift + pen tip | Constrain the stroke to horizontal or vertical, whichever is nearer, at a uniform width. Press or release mid-stroke to start or end the constraint from that point |
+| Shift + pen tip | Hold Shift before starting a stroke to constrain it to horizontal or vertical at a uniform width. Releasing ends the constraint; a mid-stroke press is ignored |
 | Pen hover | Show the small red pointer dot and hide the arrow |
 | Pen contact | Hide both the pointer dot and arrow |
 | Physical mouse movement | Show the normal arrow |
@@ -320,7 +320,7 @@ touching any mouse handler:
    startup notice describes it.
 2. Draw with Pen, Highlighter, and Calligraphy. Only Calligraphy should vary its width.
 3. Click without moving, and confirm a dot is drawn rather than nothing.
-4. Press and release Shift mid-stroke and confirm the constraint starts and ends there.
+4. Hold Shift before drawing and confirm the stroke is constrained. Release it to return to freehand, and confirm pressing it during a stroke does nothing.
 5. Erase, and confirm the dashed square matches what is removed.
 6. Ctrl-drag a container, and confirm the drawing tool comes back on release.
 7. Two quick clicks with the Pen, and confirm the board does not reframe.
