@@ -245,7 +245,7 @@ With **Mouse drawing** on:
 | Gesture | Behaviour |
 | --- | --- |
 | Left drag | The active tool. Pen, Highlighter and Calligraphy ink; Eraser erases whole strokes; Select moves and resizes; Pan pans; Laser draws the trail |
-| Shift + left drag | Constrain the stroke to horizontal or vertical, at uniform width. Works already: the constraint is read per point from `Keyboard.Modifiers` |
+| Shift + left drag | Hold Shift before starting the stroke to constrain it to horizontal or vertical at uniform width. Releasing ends the constraint; pressing mid-stroke is ignored |
 | Ctrl + left drag | Select, move or resize one container, then return to the previous drawing tool — today's plain left-drag |
 | Ctrl + left double-click | Center and fit the container, or frame the board |
 | Left double-click | With Select or Pan: frames, as today. With an ink or eraser tool: two strokes |
@@ -326,7 +326,7 @@ README:
 1. On a machine with no pen and no touchscreen, confirm the default turns the mode on.
 2. Draw with each of Pen, Highlighter and Calligraphy; confirm width behaviour matches
    conflict 3.
-3. Shift mid-stroke, pressed and released, and confirm the constraint starts and ends there.
+3. Start a stroke with Shift held and confirm it is constrained. Release to return to freehand, and confirm a mid-stroke press cannot start or restart the constraint.
 4. Erase; confirm the dashed square matches what is removed.
 5. `Ctrl` + drag a container, and confirm the tool comes back.
 6. Two quick dabs with the Pen, and confirm the board does not reframe.
