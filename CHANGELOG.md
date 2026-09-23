@@ -17,6 +17,14 @@ broke. The heading is parsed by `scripts/release-notes.ps1`, so keep its shape; 
 under it is ordinary Markdown, and the renderer handles paragraphs, lists, links, `code`
 and **bold**.
 
+## 1.6.2 - 23 September 2026
+
+### Straight line only when you ask for it first
+**Shift**, or the barrel button assigned to **Straight line**, now has to be held before the
+pen or mouse touches the board. Pressing it in the middle of writing no longer bends the rest
+of the stroke into a line, which a pen button mapped to Shift could do by accident. Releasing
+it still returns the stroke to freehand.
+
 ## 1.6.1 - 22 September 2026
 
 ### Full screen by itself when the board is left alone
