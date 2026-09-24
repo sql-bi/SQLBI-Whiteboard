@@ -353,8 +353,8 @@ is still an approval on that same run, and the Store still takes the MSIX from i
 1.0.0 reaches people by the path 0.9.5 already proved, which is the reason the number
 could be treated as a statement about the product rather than an event in the pipeline.
 
-The Store carries `1.0.0.0` as its identity version, and winget continues from whatever
-version its first submission settles on.
+The Store carries `1.0.0.0` as its identity version. winget starts at 1.2.2, the version its
+first submission settled on.
 
 ---
 

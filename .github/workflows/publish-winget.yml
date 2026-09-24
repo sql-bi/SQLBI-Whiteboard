@@ -29,10 +29,11 @@
 #      workflow has no browser, so this is the one place a token is unavoidable.
 #
 #      It must be a **classic** token - wingetcreate does not support fine-grained tokens,
-#      which is now what GitHub offers first. The scope is public_repo, not full repo;
-#      winget-pkgs and the fork are both public. delete_repo is worth adding as well: it
-#      lets wingetcreate remove the fork it created when a submission fails, instead of
-#      leaving one behind on every failure.
+#      which is now what GitHub offers first. The scopes are public_repo and workflow, not
+#      full repo; winget-pkgs and the fork are both public, and workflow lets wingetcreate
+#      sync the fork after upstream edits its own workflows, which GitHub otherwise
+#      refuses. delete_repo is worth adding as well: it lets wingetcreate remove the fork
+#      it created when a submission fails, instead of leaving one behind on every failure.
 #
 #      wingetcreate forks winget-pkgs and opens the pull request as whoever owns the
 #      token, so it is an identity rather than only a permission. GITHUB_TOKEN cannot
@@ -162,5 +163,5 @@ jobs:
               --submit `
               --token $env:WINGET_TOKEN
           if ($LASTEXITCODE -ne 0) {
-              throw "wingetcreate exited with $LASTEXITCODE. If this is the first submission, installer/winget/ has to be submitted by hand once before update can work."
+              throw "wingetcreate exited with $LASTEXITCODE. If the fork could not be synced, sync it on GitHub and run this workflow again; docs/release-management.md has the cause."
           }

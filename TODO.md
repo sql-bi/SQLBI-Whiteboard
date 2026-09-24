@@ -43,8 +43,8 @@ submission are done and proven: the manifests are live at
 <https://whiteboard.sqlbi.com/stable.json>, and the pipeline's Store stage has carried
 two releases through certification unattended. The install-side verification list was
 walked in full for 1.0.0, which was the last part of the chain that had only ever been
-reasoned about. winget is the one piece still waiting, below. All of it is described in
-[docs/release-management.md](docs/release-management.md).
+reasoned about. winget closed the chain on 24 September 2026, when the first submission
+merged. All of it is described in [docs/release-management.md](docs/release-management.md).
 
 ## Pen buttons: what was settled, and what is left
 
@@ -91,15 +91,3 @@ button, because they cannot be told apart:
   the previous direction pick the axis; a trace of real strokes is the way to revisit it.
   Once settled the axis is kept for the whole segment, however far off it the hand
   drifts — turning a corner instead was tried and produced a staircase out of a diagonal.
-
-## Waiting on the first winget submission
-
-Not work, but the reason winget is not finished yet.
-[microsoft/winget-pkgs#421386](https://github.com/microsoft/winget-pkgs/pull/421386)
-submits `SQLBI.Whiteboard` 0.9.2 and is in review. Nothing in this repository depends on
-it: the workflow that keeps the package current afterwards is already in place, and the
-token it needs is set.
-
-Until that pull request merges, `.github/workflows/publish-winget.yml` fails on every
-release, because `wingetcreate update` has no previous version to read. That failure is
-visible and gates nothing.
