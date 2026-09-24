@@ -357,34 +357,43 @@ It runs beside the release rather than inside it, for the reason the Store submi
 by people, and it can sit for days. Nothing about the download being available depends on
 it.
 
-The first submission has to be made by hand, and nothing else works until it has merged:
+The first submission had to be made by hand, and nothing else worked until it had merged:
 `wingetcreate update` reads the previous version's manifests out of winget-pkgs, so while the
 identifier is absent every run of this workflow fails with
-`manifests/s/SQLBI/Whiteboard was not found`. That error means the seed has not landed, not
-that `WINGET_TOKEN` is wrong.
+`manifests/s/SQLBI/Whiteboard was not found`.
 
 Ours went in on 20 August 2026 as
-[microsoft/winget-pkgs#421386](https://github.com/microsoft/winget-pkgs/pull/421386) and was
-still open a month later, so every release from 0.9.3 onwards has a failed run of this
-workflow behind it. Two things held it up: a `Needs-CLA` label that stayed on the pull
-request while the `license/cla` check itself was green, and an in-place update of the
-manifests from 0.9.2 to 1.2.2 on 2 September, which disarmed the auto-merge the bot had armed
-when validation passed and did not arm it again. Leave a submission under review alone, even
+[microsoft/winget-pkgs#421386](https://github.com/microsoft/winget-pkgs/pull/421386) and
+merged on 24 September 2026 at 1.2.2, so every release from 0.9.3 to 1.6.2 has a failed
+run of this workflow behind it. Two things held it up: a `Needs-CLA` label that stayed on
+the pull request while the `license/cla` check itself was green, and an in-place update of
+the manifests from 0.9.2 to 1.2.2 on 2 September, which disarmed the auto-merge the bot had
+armed when validation passed and did not arm it again. Leave a submission under review alone, even
 when it is behind; once the identifier is in, a stale version is corrected by an ordinary
 update.
 
-When it merges, the releases published in the meantime are caught up with one **Run workflow**
-on **Publish to winget**, which submits the newest released version. After that each release
-submits itself.
+The releases published in the meantime were caught up with one **Run workflow** on
+**Publish to winget**, which submits the newest released version and skips the ones between.
+After that each release submits itself.
+
+`wingetcreate` opens each pull request from a fork of winget-pkgs owned by the token's
+account, and syncs that fork with upstream first. GitHub refuses the sync when upstream has
+changed anything under `.github/workflows` since the last one, unless the token carries the
+`workflow` scope, and the run then fails with `The forked repository could not be synced
+with the upstream commits`. winget-pkgs edits its workflows often, so without that scope the
+failure returns whenever a release comes after such an edit. The immediate fix is
+**Sync fork** on the fork's page, or `gh repo sync <owner>/winget-pkgs`, followed by
+**Run workflow**.
 
 `WINGET_TOKEN` is a repository secret holding a GitHub personal access token, and the
 workflow cannot succeed without it. Two constraints on that token are easy to get wrong:
 
 - It must be a **classic** token. `wingetcreate` does not support fine-grained tokens, and
   fine-grained is what GitHub offers first now.
-- The scope is `public_repo`, not full `repo` - winget-pkgs and the fork are both public.
-  Adding `delete_repo` lets `wingetcreate` clean up the fork it created when a submission
-  fails, rather than leaving one behind each time.
+- The scopes are `public_repo` and `workflow`, not full `repo` - winget-pkgs and the fork
+  are both public, and `workflow` is what lets the fork be synced, above. Adding
+  `delete_repo` lets `wingetcreate` clean up the fork it created when a submission fails,
+  rather than leaving one behind each time.
 
 `wingetcreate` forks winget-pkgs and opens the pull request as whoever owns the token, so
 it is an identity rather than only a permission, and `GITHUB_TOKEN` cannot stand in.
