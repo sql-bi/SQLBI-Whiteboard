@@ -6,6 +6,12 @@ using SQLBI.Whiteboard.Core.Settings;
 
 namespace SQLBI.Whiteboard.Import;
 
+/// <summary>
+/// How far opening a deck has got. <see cref="Total"/> is zero while the step has
+/// no count to report, such as PowerPoint starting.
+/// </summary>
+internal readonly record struct OpenProgress(string Step, int Done, int Total);
+
 internal sealed record DeckSlide(int Number, string? Title, int Section, bool Hidden);
 
 internal sealed record DeckInfo(
@@ -68,12 +74,12 @@ internal sealed class PowerPointDeck : IAsyncDisposable
 
     public static bool IsAvailable => Type.GetTypeFromProgID("PowerPoint.Application") is not null;
 
-    public static async Task<PowerPointDeck> OpenAsync(string path)
+    public static async Task<PowerPointDeck> OpenAsync(string path, IProgress<OpenProgress>? progress = null)
     {
         var deck = new PowerPointDeck(new ComThread(), Directory.CreateTempSubdirectory("whiteboard-pptx-").FullName);
         try
         {
-            deck.Info = await deck._thread.Run(() => deck.Open(Path.GetFullPath(path)));
+            deck.Info = await deck._thread.Run(() => deck.Open(Path.GetFullPath(path), progress));
             return deck;
         }
         catch
@@ -161,9 +167,10 @@ internal sealed class PowerPointDeck : IAsyncDisposable
         }
     }
 
-    private DeckInfo Open(string path)
+    private DeckInfo Open(string path, IProgress<OpenProgress>? progress)
     {
         _startedPowerPoint = Process.GetProcessesByName("POWERPNT").Length == 0;
+        progress?.Report(new OpenProgress(_startedPowerPoint ? "Starting PowerPoint" : "Connecting to PowerPoint", 0, 0));
         var type = Type.GetTypeFromProgID("PowerPoint.Application")
             ?? throw new InvalidOperationException(NotInstalledMessage);
         _application = Activator.CreateInstance(type)
@@ -190,6 +197,7 @@ internal sealed class PowerPointDeck : IAsyncDisposable
 
         if (_presentation is null)
         {
+            progress?.Report(new OpenProgress("Opening the deck", 0, 0));
             _presentation = _application.Presentations.Open(path, MsoTrue, MsoFalse, MsoFalse);
             _openedPresentation = true;
         }
@@ -206,6 +214,7 @@ internal sealed class PowerPointDeck : IAsyncDisposable
         int slideCount = _presentation.Slides.Count;
         for (var number = 1; number <= slideCount; number++)
         {
+            progress?.Report(new OpenProgress("Reading the slides", number - 1, slideCount));
             dynamic slide = _presentation.Slides[number];
             slides.Add(new DeckSlide(
                 number,

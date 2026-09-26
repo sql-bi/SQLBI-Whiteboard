@@ -1,8 +1,11 @@
 using System.ComponentModel;
 using System.IO;
 using System.Windows;
+using System.Windows.Automation;
 using System.Windows.Controls;
+using System.Windows.Controls.Primitives;
 using System.Windows.Input;
+using System.Windows.Media;
 using SQLBI.Whiteboard.Core.Settings;
 
 namespace SQLBI.Whiteboard.Import;
@@ -23,6 +26,9 @@ internal sealed record DeckImport(
 /// </summary>
 public partial class PowerPointImportWindow : Window
 {
+    private const double LayoutSampleWidth = 64;
+    private const double LayoutSampleHeight = 40;
+
     private readonly string _path;
     private readonly PowerPointImportSettings _settings;
     private readonly Action _persistSettings;
@@ -31,6 +37,8 @@ public partial class PowerPointImportWindow : Window
     private CancellationTokenSource? _export;
     private bool _finished;
     private bool _closed;
+    private SlidePictures _pictures;
+    private SlideArrangement _arrangement;
 
     public PowerPointImportWindow(string path, PowerPointImportSettings settings, Action persistSettings)
     {
@@ -40,6 +48,8 @@ public partial class PowerPointImportWindow : Window
         _path = path;
         _settings = settings;
         _persistSettings = persistSettings;
+        _pictures = settings.Pictures;
+        _arrangement = settings.Arrangement;
         InitializeComponent();
         DeckName.Text = Path.GetFileName(path);
         PopulateOptions();
@@ -52,40 +62,72 @@ public partial class PowerPointImportWindow : Window
 
     private void PopulateOptions()
     {
-        PicturesCombo.Items.Add(new Choice("Auto", SlidePictures.Auto));
-        PicturesCombo.Items.Add(new Choice("Sharp at any zoom", SlidePictures.Svg));
-        PicturesCombo.Items.Add(new Choice("Exact look", SlidePictures.Png));
-        Select(PicturesCombo, _settings.Pictures);
+        // Each choice carries its description on the tile, so it is read before it is
+        // chosen; a tooltip would ask for a hover that a pen or a finger cannot give.
+        AddTiles(PicturesChoices, "Pictures", _pictures, value => _pictures = value, OnPicturesChanged,
+        [
+            (SlidePictures.Auto, TextTile("Auto", "SVG, or PNG for a slide whose fonts are missing")),
+            (SlidePictures.Svg, TextTile("SVG", "Sharp at any zoom, drawn from the deck's fonts")),
+            (SlidePictures.Png, TextTile("PNG", "Exactly as PowerPoint draws it, at a fixed size")),
+        ]);
+
+        AddTiles(LayoutChoices, "Layout", _arrangement, value => _arrangement = value, onChanged: null,
+        [
+            (SlideArrangement.RowPerSection, DrawnTile(RowPerSectionSample(), "A row per section")),
+            (SlideArrangement.OneRow, DrawnTile(OneRowSample(), "One row")),
+            (SlideArrangement.OneColumn, DrawnTile(OneColumnSample(), "One column")),
+        ]);
 
         foreach (var width in PowerPointImportSettings.PngWidthChoices)
         {
             ResolutionCombo.Items.Add(new Choice($"{width} pixels wide", width));
         }
 
-        Select(ResolutionCombo, _settings.PngWidth);
-
-        LayoutCombo.Items.Add(new Choice("A row per section", SlideArrangement.RowPerSection));
-        LayoutCombo.Items.Add(new Choice("One row", SlideArrangement.OneRow));
-        LayoutCombo.Items.Add(new Choice("One column", SlideArrangement.OneColumn));
-        Select(LayoutCombo, _settings.Arrangement);
+        ResolutionCombo.SelectedItem = ResolutionCombo.Items.OfType<Choice>()
+            .FirstOrDefault(choice => choice.Value.Equals(_settings.PngWidth)) ?? ResolutionCombo.Items[0];
+        ShowResolution();
 
         FramesSwitch.IsChecked = _settings.Frames;
         HiddenSwitch.IsChecked = _settings.IncludeHidden;
-        ShowPicturesHint();
+        OnPicturesChanged();
     }
 
     private async void Window_Loaded(object sender, RoutedEventArgs e)
     {
+        // PowerPoint takes a few seconds to start and to open a deck, and nothing here
+        // can be chosen until it has said what is in it, so the wait is said out loud.
+        Cursor = Cursors.Wait;
+        var opening = new Progress<OpenProgress>(report =>
+        {
+            OpeningProgress.IsIndeterminate = report.Total == 0;
+            if (report.Total > 0)
+            {
+                OpeningProgress.Maximum = report.Total;
+                OpeningProgress.Value = report.Done;
+                DeckFacts.Text = $"{report.Step}: {report.Done * 100 / report.Total}%";
+            }
+            else
+            {
+                DeckFacts.Text = report.Step + "…";
+            }
+        });
+
         try
         {
-            _deck = await PowerPointDeck.OpenAsync(_path);
+            _deck = await PowerPointDeck.OpenAsync(_path, opening);
         }
         catch (Exception exception)
         {
+            Cursor = null;
+            OpeningProgress.Visibility = Visibility.Collapsed;
             DeckFacts.Text = "PowerPoint could not open it.";
             Summary.Text = exception.Message;
             CancelButton.Content = "Close";
             return;
+        }
+        finally
+        {
+            Cursor = null;
         }
 
         // Closed while PowerPoint was still opening it: nothing else will let it go.
@@ -109,27 +151,48 @@ public partial class PowerPointImportWindow : Window
             facts.Add(Count(info.Sections.Count, "section"));
         }
 
+        OpeningProgress.Visibility = Visibility.Collapsed;
         DeckFacts.Text = string.Join(", ", facts);
-        HiddenRow.Visibility = hidden > 0 ? Visibility.Visible : Visibility.Collapsed;
-        HiddenLabel.Text = $"Include hidden slides ({hidden})";
+
+        // The switch stays when there is nothing for it to do, so it is where it is
+        // expected on the next deck; it says why it cannot be used.
+        HiddenSwitch.IsEnabled = hidden > 0;
+        HiddenHint.Text = hidden > 0 ? $"{Count(hidden, "slide")} in this deck" : "This deck has none";
         Options.IsEnabled = true;
         ImportButton.IsEnabled = info.Slides.Count > 0;
         ImportButton.Focus();
     }
 
-    private void PicturesCombo_SelectionChanged(object sender, SelectionChangedEventArgs e) => ShowPicturesHint();
-
-    private void ShowPicturesHint()
+    private void OnPicturesChanged()
     {
-        var pictures = Selected<SlidePictures>(PicturesCombo);
-        ResolutionCombo.IsEnabled = pictures != SlidePictures.Svg;
-        PicturesHint.Text = pictures switch
+        // Resolution is how wide a PNG is, and SVG makes none.
+        var usesPng = _pictures != SlidePictures.Svg;
+        ResolutionLine.Visibility = usesPng && ResolutionCombo.Visibility != Visibility.Visible
+            ? Visibility.Visible
+            : Visibility.Collapsed;
+        if (!usesPng)
         {
-            SlidePictures.Svg => "Every slide as SVG: sharp at any zoom, text as PowerPoint wrote it.",
-            SlidePictures.Png => "Every slide as PNG, exactly as PowerPoint draws it.",
-            _ => "SVG, sharp at any zoom, and PNG for a slide whose fonts are not on this PC.",
-        };
+            ResolutionCombo.Visibility = Visibility.Collapsed;
+        }
     }
+
+    private void ResolutionLink_Click(object sender, RoutedEventArgs e)
+    {
+        ResolutionLine.Visibility = Visibility.Collapsed;
+        ResolutionCombo.Visibility = Visibility.Visible;
+        ResolutionCombo.Focus();
+        ResolutionCombo.IsDropDownOpen = true;
+    }
+
+    private void ResolutionCombo_DropDownClosed(object? sender, EventArgs e)
+    {
+        ShowResolution();
+        ResolutionCombo.Visibility = Visibility.Collapsed;
+        OnPicturesChanged();
+    }
+
+    private void ShowResolution() =>
+        ResolutionText.Text = ResolutionCombo.SelectedItem is Choice choice ? choice.Title : string.Empty;
 
     private async void ImportButton_Click(object sender, RoutedEventArgs e)
     {
@@ -242,7 +305,8 @@ public partial class PowerPointImportWindow : Window
 
     private void Window_PreviewKeyDown(object sender, KeyEventArgs e)
     {
-        if (e.Key != Key.Escape)
+        // Escape in the open resolution list closes the list, not the dialog.
+        if (e.Key != Key.Escape || ResolutionCombo.IsDropDownOpen)
         {
             return;
         }
@@ -273,9 +337,11 @@ public partial class PowerPointImportWindow : Window
 
     private void ReadSettings()
     {
-        _settings.Pictures = Selected<SlidePictures>(PicturesCombo);
-        _settings.PngWidth = Selected<int>(ResolutionCombo);
-        _settings.Arrangement = Selected<SlideArrangement>(LayoutCombo);
+        _settings.Pictures = _pictures;
+        _settings.PngWidth = ResolutionCombo.SelectedItem is Choice { Value: int width }
+            ? width
+            : PowerPointImportSettings.DefaultPngWidth;
+        _settings.Arrangement = _arrangement;
         _settings.Frames = FramesSwitch.IsChecked == true;
         _settings.IncludeHidden = HiddenSwitch.IsChecked == true;
     }
@@ -293,15 +359,117 @@ public partial class PowerPointImportWindow : Window
         }
     }
 
+    /// <summary>
+    /// A row of tiles of which one is chosen, drawn like the pictured rows in Preferences.
+    /// </summary>
+    private void AddTiles<T>(
+        UniformGrid host,
+        string name,
+        T current,
+        Action<T> choose,
+        Action? onChanged,
+        IReadOnlyList<(T Value, (FrameworkElement Content, string Title) Tile)> choices)
+        where T : struct, Enum
+    {
+        var tiles = new List<ToggleButton>();
+        foreach (var (value, (content, title)) in choices)
+        {
+            var tile = new ToggleButton
+            {
+                Style = (Style)FindResource("SettingsSampleSegment"),
+                Content = content,
+                IsChecked = value.Equals(current),
+                HorizontalContentAlignment = HorizontalAlignment.Stretch,
+            };
+            AutomationProperties.SetName(tile, $"{name}: {title}");
+            tile.Click += (_, _) =>
+            {
+                foreach (var other in tiles)
+                {
+                    other.IsChecked = ReferenceEquals(other, tile);
+                }
+
+                choose(value);
+                onChanged?.Invoke();
+            };
+            tiles.Add(tile);
+            host.Children.Add(tile);
+        }
+    }
+
+    private (FrameworkElement Content, string Title) TextTile(string title, string description)
+    {
+        var content = new StackPanel();
+        content.Children.Add(new TextBlock
+        {
+            Text = title,
+            FontFamily = new FontFamily("Segoe UI"),
+            FontSize = 13,
+            FontWeight = FontWeights.SemiBold,
+            Foreground = (Brush)FindResource("SettingsTextBrush"),
+            TextAlignment = TextAlignment.Center,
+        });
+        content.Children.Add(new TextBlock
+        {
+            Style = (Style)FindResource("ImportHint"),
+            Text = description,
+            Margin = new Thickness(0, 4, 0, 0),
+            TextAlignment = TextAlignment.Center,
+        });
+        return (content, title);
+    }
+
+    private (FrameworkElement Content, string Title) DrawnTile(FrameworkElement sample, string title)
+    {
+        var content = new StackPanel();
+        sample.HorizontalAlignment = HorizontalAlignment.Center;
+        content.Children.Add(sample);
+        content.Children.Add(new TextBlock
+        {
+            Style = (Style)FindResource("SettingsValueLabel"),
+            Text = title,
+            Margin = new Thickness(0, 8, 0, 0),
+            TextAlignment = TextAlignment.Center,
+            HorizontalAlignment = HorizontalAlignment.Stretch,
+        });
+        return (content, title);
+    }
+
+    // The three layouts as the board will hold them: slides as small cards, the first
+    // one in the accent so the reading order is visible.
+    private static FrameworkElement RowPerSectionSample() => LayoutSample([(0, 0), (1, 0), (2, 0), (0, 1), (1, 1), (0, 2), (1, 2), (2, 2)]);
+
+    private static FrameworkElement OneRowSample() => LayoutSample([(0, 1), (1, 1), (2, 1), (3, 1), (4, 1)]);
+
+    private static FrameworkElement OneColumnSample() => LayoutSample([(2, 0), (2, 1), (2, 2)]);
+
+    private static FrameworkElement LayoutSample(IReadOnlyList<(int Column, int Row)> slides)
+    {
+        const double SlideWidth = 10;
+        const double SlideHeight = 6;
+        const double Gap = 2;
+        var scene = PreferencesWindow.SampleScene(LayoutSampleWidth, LayoutSampleHeight);
+        var columns = slides.Max(slide => slide.Column) + 1;
+        var rows = 3;
+        var left = (scene.Width - (columns * SlideWidth) - ((columns - 1) * Gap)) / 2;
+        var top = (scene.Height - (rows * SlideHeight) - ((rows - 1) * Gap)) / 2;
+        for (var index = 0; index < slides.Count; index++)
+        {
+            var (column, row) = slides[index];
+            PreferencesWindow.SampleBlock(
+                scene,
+                left + (column * (SlideWidth + Gap)),
+                top + (row * (SlideHeight + Gap)),
+                SlideWidth,
+                SlideHeight,
+                index == 0 ? PreferencesWindow.SampleAccentBrush : PreferencesWindow.SampleGhostBrush,
+                radius: 1);
+        }
+
+        return PreferencesWindow.SampleFrame(scene);
+    }
+
     private static string Count(int count, string noun) => count == 1 ? $"1 {noun}" : $"{count} {noun}s";
-
-    private static void Select(ComboBox combo, object value) =>
-        combo.SelectedItem = combo.Items.OfType<Choice>().FirstOrDefault(choice => choice.Value.Equals(value))
-            ?? combo.Items[0];
-
-    private static T Selected<T>(ComboBox combo) => combo.SelectedItem is Choice { Value: T value }
-        ? value
-        : (T)((Choice)combo.Items[0]).Value;
 
     // Title and IsSeparator are what the settings combo's item template binds,
     // so a choice here is drawn like one in Preferences.

@@ -154,10 +154,18 @@ commands would leave nothing to find.
   `PowerPointImportWindow` is the dialog. `SvgImageCodec.CanDrawAsAuthored` is the test
   Auto applies to each slide. The dialog's settings are `PowerPointImport` in the
   application settings.
-- **The dialog uses drop-downs and switches,** as the export dialog does, rather than the
-  radio buttons in the mock-up: Pictures and Resolution share a line, Layout is below them,
-  and the hidden-slides switch shows the count and appears only when the deck has hidden
-  slides.
+- **The dialog uses tiles, not drop-downs.** Pictures is three tiles, Auto, SVG, and PNG,
+  each with its description on it, so the choice is read before it is made; a tooltip was
+  considered and left out, because a pen or a finger cannot hover. Layout is three drawn
+  tiles, like the pictured rows in Preferences, whose drawing helpers it borrows. The PNG
+  resolution is one line, *PNG resolution: 2560 pixels wide*, whose value opens the list
+  when clicked, and which is not shown when Pictures is SVG, since SVG has no pixels. The
+  hidden-slides switch is always there, and disabled with *This deck has none* when the
+  deck has no hidden slides.
+- **Opening says what it is waiting for.** Starting PowerPoint and opening the file take
+  seconds and cannot be counted, so the dialog shows the step, *Starting PowerPoint…* then
+  *Opening the deck…*, an indeterminate bar, and the wait cursor; reading the slides is
+  counted, as a percentage.
 - **The summary names the reason.** A slide that falls back because PowerPoint did not hand
   over its SVG is counted apart from one whose fonts are missing.
 - **Face names and kerning are rewritten** (see *Fonts*). Before the rewrite, Auto sent 8

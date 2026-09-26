@@ -518,11 +518,11 @@ public partial class PreferencesWindow : Window
         }
     }
 
-    private static readonly Brush SampleInkBrush = Frozen(0xFF374151);
-    private static readonly Brush SampleGhostBrush = Frozen(0x59374151);
+    internal static readonly Brush SampleInkBrush = Frozen(0xFF374151);
+    internal static readonly Brush SampleGhostBrush = Frozen(0x59374151);
     private static readonly Brush SampleBoardBrush = Frozen(0xFFFFFFFF);
     private static readonly Brush SampleEdgeBrush = Frozen(0xFFD1D5DB);
-    private static readonly Brush SampleAccentBrush = Frozen(0xFF2563EB);
+    internal static readonly Brush SampleAccentBrush = Frozen(0xFF2563EB);
 
     private static Brush Frozen(uint argb)
     {

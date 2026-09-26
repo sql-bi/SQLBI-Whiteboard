@@ -360,7 +360,7 @@ public partial class PreferencesWindow
         return SampleFrame(scene);
     }
 
-    private static Canvas SampleScene(double width = SampleWidth, double height = SampleHeight) =>
+    internal static Canvas SampleScene(double width = SampleWidth, double height = SampleHeight) =>
         new()
         {
             Width = width - 2,
@@ -368,7 +368,7 @@ public partial class PreferencesWindow
             ClipToBounds = true,
         };
 
-    private static Border SampleFrame(Canvas scene) => new()
+    internal static Border SampleFrame(Canvas scene) => new()
     {
         Width = scene.Width + 2,
         Height = scene.Height + 2,
@@ -488,7 +488,7 @@ public partial class PreferencesWindow
         return brush;
     }
 
-    private static void SampleBlock(
+    internal static void SampleBlock(
         Canvas scene,
         double left,
         double top,
