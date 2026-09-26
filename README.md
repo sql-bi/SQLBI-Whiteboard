@@ -1,6 +1,6 @@
 # SQLBI Whiteboard
 
-A native Windows 11 whiteboard built with C# and WPF. WPF's dedicated dynamic ink renderer owns the live pen stroke, while a retained viewport renders an unbounded world-coordinate document beneath it.
+A native Windows 11 whiteboard built with C# and WPF. A retained viewport renders an unbounded world-coordinate document and draws the live pen stroke, which is read directly from the pen's packets. Finger ink uses WPF's dynamic ink renderer.
 
 How the project is developed and shipped is documented separately:
 [CONTRIBUTING.md](CONTRIBUTING.md) for the working agreement,
@@ -9,7 +9,7 @@ How the project is developed and shipped is documented separately:
 
 ## Included in the application
 
-- Low-latency, pressure-aware WPF wet ink, including rear-eraser detection on any pen that reports it
+- Low-latency, pressure-aware wet ink, including rear-eraser detection on any pen that reports it
 - A normal cursor for physical mouse input, and a pen-hover indicator that shows what a tap would do: the laser with its halo and speed trail, a dashed square around what the eraser would clear, and a high-contrast dot for everything else. All of them disappear on contact
 - Optional mouse drawing (default when Windows reports neither a pen tablet nor a touchscreen): the left button uses the current tool, Ctrl and the left button move and resize a container, and Eraser and Pan appear on the toolbar. A mouse reports no pressure, so ink is drawn at an even width and Calligraphy is the one tool that still varies, because its width comes from speed. Nothing about the pen changes when it is on. With it off, picking a tool from the toolbar with the mouse offers to turn it on, once a session
 - Touch panning and two-finger pinch zoom
@@ -148,9 +148,10 @@ update check read. They are generated per deployment, not committed. The schema 
 
 ## Application
 
-`SQLBI.Whiteboard` is the WPF application project. It uses `InkCanvas` only for live wet ink; completed
-pressure strokes are converted into `SQLBI.Whiteboard.Core` world coordinates and
-rendered by the retained WPF scene layer.
+`SQLBI.Whiteboard` is the WPF application project. It uses `InkCanvas` only for live finger
+ink, and draws the live pen stroke itself from the pen's packets. Completed pressure strokes
+are converted into `SQLBI.Whiteboard.Core` world coordinates and rendered by the retained
+WPF scene layer.
 
 After building the solution, start the application with:
 
@@ -164,7 +165,7 @@ Choose **View → LiveView** and select an application window or display in the 
 
 Use **View > Freeze** to stop capture while retaining the last frame. The same command resumes a target that is still available. **View > Disconnect** releases the target, keeps the last frame, and hides the on-frame freeze/play controls; **View > Reconnect** is then the only way back to a live feed.
 
-**Preferences → Live View → Pause when Whiteboard loses focus** stops capture while another application is in the foreground, keeping the last frame visible. Returning to Whiteboard resumes only the LiveViews that were playing; manually paused or disconnected views stay that way. Whiteboard's own dialogs do not interrupt capture. The checkbox is off by default and takes effect immediately.
+**Preferences → Live View → Pause when Whiteboard loses focus** stops capture while another application is in the foreground, keeping the last frame visible. Returning to Whiteboard resumes only the LiveViews that were playing; manually paused or disconnected views stay that way. Whiteboard's own dialogs do not interrupt capture.
 
 Saving a board captures the latest LiveView bitmap and stores it with the source label, frame-rate setting, cursor setting, frozen state, and container geometry. Loading a board displays that bitmap immediately. Windows capture permission objects cannot be serialized, so use **Reconnect** to restore the live feed after loading.
 
