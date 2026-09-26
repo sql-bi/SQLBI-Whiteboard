@@ -18,8 +18,9 @@ How the project is developed and shipped is documented separately:
 - Basic palm rejection: touch navigation is suspended when the pen makes contact
 - Mouse-wheel zoom and middle-button or temporary Space-key panning
 - Whole-stroke erasing
-- PNG, JPEG, BMP, GIF, and SVG import, clipboard bitmap paste, and Explorer drag-and-drop of images, text files, and `.wimport` recipes
-- SVG stays vector: it is stored as its markup and redrawn at every zoom and resize rather than rasterized on arrival. Pasting SVG markup that was copied as text — the output of a DAX SVG measure, for instance — creates a picture, and copying an SVG container puts both the markup and a bitmap on the clipboard
+- PNG, JPEG, BMP, GIF, and SVG import, clipboard bitmap paste, and Explorer drag-and-drop of images, text files, `.wimport` recipes, and PowerPoint decks
+- PowerPoint decks imported as one picture per slide through PowerPoint from Microsoft 365: SVG, or PNG for a slide whose fonts are not installed, placed in one row per section, with an optional frame around each slide. **File → Open** creates a new board from the deck; **File → Import** and drag-and-drop add it below the board's content
+- SVG stays vector: it is stored as its markup and redrawn at every zoom and resize rather than rasterized on arrival. Pasting SVG markup that was copied as text — the output of a DAX SVG measure, for instance — creates a picture, and copying an SVG container puts both the markup and a bitmap on the clipboard. Text set in a Microsoft 365 font such as Aptos is drawn in that font when Office has it on the machine
 - Image selection, movement, resizing, and deletion
 - Text containers created by pasting plain text, with display and in-place edit modes
 - Seventeen text-container types: fifteen languages with live syntax highlighting, plus Prompt and Markdown, and local F6 formatting for DAX, SQL Server, and KQL
@@ -203,12 +204,14 @@ Use **Copy settings** after finding a useful combination so the exact values can
 | Ctrl+V | Paste prefers an image (including a file on the clipboard) over text. Otherwise create a text container; Markdown and rich clipboard HTML can retain tables, lists, and headings |
 | F2 | Edit the selected text container or label, put words inside the selected shape, or rename the selected frame. Typing a printable character with one shape selected starts its text too |
 | View > Frame | Add a frame the size of the screen: a slide drawn on the board, selected by its edge or its tab, which Export takes as it is |
+| View > Show frames | Hide the frames and their titles, or show them again. Hidden frames are still slides for Export, and the choice is saved with the board. Letter H while the View strip is open |
 | Language chip | Choose a language, Prompt, or Markdown on a selected text container |
 | F6 | Format DAX, SQL, or KQL on the selected text container; DAX wraps to the container's columns. In F2, formats in place. On a language that is only highlighted, opens that language's issue on GitHub |
 | Drag right edge, or Shift + drag handle | Change a text container's width in columns and reflow it; the handle shows the count. A plain drag of the corner scales it |
 | Ctrl+Enter | Commit the F2 edit, including an F6 format done in that session, and return to display mode |
 | Escape | Cancel the active text edit, clear the selection, put down an Insert tool, close the command strip, or leave full screen or canvas only |
 | Ctrl+S / Ctrl+O | Save / open a board |
+| File > Import | Add a PowerPoint deck, an image, or a `.wimport` recipe to the board. Letter I while the File strip is open |
 | Shift+F12 | Save As |
 | Ctrl+E | Export the board to PowerPoint or PDF |
 | Delete | Delete the selected container and its linked strokes |

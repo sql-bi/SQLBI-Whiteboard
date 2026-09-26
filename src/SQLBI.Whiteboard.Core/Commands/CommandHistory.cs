@@ -193,3 +193,14 @@ public sealed record ReplaceObjectsCommand(
     public void Execute(BoardDocument document) => document.ReplaceObjects(After);
     public void Undo(BoardDocument document) => document.ReplaceObjects(Before);
 }
+
+/// <summary>
+/// Showing or hiding the frames is part of the board, saved with it, so it goes
+/// through the history like any other edit: it marks the board modified, and
+/// undo puts it back.
+/// </summary>
+public sealed record SetShowFramesCommand(bool Before, bool After) : IBoardCommand
+{
+    public void Execute(BoardDocument document) => document.SetShowFrames(After);
+    public void Undo(BoardDocument document) => document.SetShowFrames(Before);
+}

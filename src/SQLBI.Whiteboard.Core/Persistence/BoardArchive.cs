@@ -77,7 +77,8 @@ public static class BoardArchive
         var scene = new SceneDto(
             VersionFor(document),
             document.Objects.Select(ToDto).ToArray(),
-            assetDtos.ToArray());
+            assetDtos.ToArray(),
+            document.ShowFrames ? null : false);
 
         var sceneEntry = archive.CreateEntry(SceneEntryName, CompressionLevel.Optimal);
         await using var sceneStream = sceneEntry.Open();
@@ -109,6 +110,7 @@ public static class BoardArchive
         }
 
         var document = new BoardDocument();
+        document.SetShowFrames(scene.ShowFrames ?? true);
 
         foreach (var assetDto in scene.Assets)
         {
@@ -489,7 +491,11 @@ public static class BoardArchive
     private static double NormalizeTextVisualScale(double? scale) =>
         scale is > 0 and < 100 ? scale.Value : 1;
 
-    private sealed record SceneDto(int Version, ObjectDto[] Objects, AssetDto[] Assets);
+    /// <param name="ShowFrames">
+    /// Written only when frames are hidden. The archive version does not change,
+    /// because a release that does not know the field ignores it and shows the frames.
+    /// </param>
+    private sealed record SceneDto(int Version, ObjectDto[] Objects, AssetDto[] Assets, bool? ShowFrames = null);
 
     private sealed record ObjectDto(
         string Type,

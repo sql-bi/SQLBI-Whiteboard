@@ -46,6 +46,18 @@ walked in full for 1.0.0, which was the last part of the chain that had only eve
 reasoned about. winget closed the chain on 24 September 2026, when the first submission
 merged. All of it is described in [docs/release-management.md](docs/release-management.md).
 
+## Show frames: review once it has been used
+
+**View → Show frames** hides frames while presenting. It is saved with the board, hidden
+frames still define the slides for Export, and they are neither drawn nor hit by the pen.
+One rule was agreed provisionally: **View → Frame** on a board whose frames are hidden
+shows them all again, in the same undo step as the new frame, because otherwise the new
+frame would arrive selected and invisible. Collect usage feedback once it ships and decide
+whether that rule stays. The alternatives are to show only the new frame, which needs a
+per-frame visibility the board does not have, or to leave the frames hidden and say so.
+The PPTX import can add a frame per slide, off by default; see
+[docs/pptx-import.md](docs/pptx-import.md).
+
 ## Pen buttons: what was settled, and what is left
 
 The barrel button is the only assignable one, and it takes Laser or Straight line. Adding

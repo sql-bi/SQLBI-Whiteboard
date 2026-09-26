@@ -296,6 +296,8 @@ public sealed class AppSettings
 
     public ImportSettings Import { get; set; } = new();
 
+    public PowerPointImportSettings PowerPointImport { get; set; } = new();
+
     public bool PauseLiveViewsWhenUnfocused { get; set; }
 
     /// <summary>
@@ -493,6 +495,7 @@ public static class AppSettingsSerializer
         settings.PenButtons = PenButtonSettings.Normalize(settings.PenButtons);
         settings.Export = ExportSettings.Normalize(settings.Export);
         settings.Import = ImportSettings.Normalize(settings.Import);
+        settings.PowerPointImport = PowerPointImportSettings.Normalize(settings.PowerPointImport);
         if (settings.Version < VersionWithPlainTextLast &&
             TextLanguageIds.IsLegacyDefaultOrder(settings.SnippetFormatOrder))
         {

@@ -1,0 +1,164 @@
+<Window x:Class="SQLBI.Whiteboard.Import.PowerPointImportWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Import PowerPoint"
+        Width="560"
+        SizeToContent="Height"
+        ResizeMode="NoResize"
+        WindowStartupLocation="CenterOwner"
+        ShowInTaskbar="False"
+        Background="{DynamicResource ToolbarBackgroundBrush}"
+        Stylus.IsPressAndHoldEnabled="False"
+        PreviewKeyDown="Window_PreviewKeyDown"
+        Loaded="Window_Loaded"
+        Closing="Window_Closing"
+        Closed="Window_Closed">
+    <Window.Resources>
+        <Style x:Key="ImportLabel"
+               TargetType="TextBlock">
+            <Setter Property="FontFamily"
+                    Value="Segoe UI" />
+            <Setter Property="FontSize"
+                    Value="13" />
+            <Setter Property="FontWeight"
+                    Value="SemiBold" />
+            <Setter Property="Foreground"
+                    Value="{DynamicResource SettingsTextBrush}" />
+            <Setter Property="Margin"
+                    Value="0,14,0,6" />
+        </Style>
+        <Style x:Key="ImportHint"
+               TargetType="TextBlock">
+            <Setter Property="FontFamily"
+                    Value="Segoe UI" />
+            <Setter Property="FontSize"
+                    Value="11.5" />
+            <Setter Property="Foreground"
+                    Value="{DynamicResource SettingsHintBrush}" />
+            <Setter Property="TextWrapping"
+                    Value="Wrap" />
+        </Style>
+        <Style x:Key="ImportSwitchLabel"
+               TargetType="TextBlock">
+            <Setter Property="FontFamily"
+                    Value="Segoe UI" />
+            <Setter Property="FontSize"
+                    Value="13" />
+            <Setter Property="Foreground"
+                    Value="{DynamicResource SettingsTextBrush}" />
+            <Setter Property="VerticalAlignment"
+                    Value="Center" />
+        </Style>
+    </Window.Resources>
+    <StackPanel Margin="24,20">
+        <TextBlock x:Name="DeckName"
+                   FontFamily="Segoe UI"
+                   FontSize="15"
+                   FontWeight="SemiBold"
+                   Foreground="{DynamicResource SettingsTextBrush}"
+                   TextTrimming="CharacterEllipsis" />
+        <TextBlock x:Name="DeckFacts"
+                   Style="{StaticResource ImportHint}"
+                   Margin="0,3,0,0" />
+        <ProgressBar x:Name="OpeningProgress"
+                     Height="4"
+                     Margin="0,6,0,0"
+                     IsIndeterminate="True" />
+
+        <StackPanel x:Name="Options"
+                    IsEnabled="False">
+            <TextBlock Style="{StaticResource ImportLabel}"
+                       Text="Pictures" />
+            <UniformGrid x:Name="PicturesChoices"
+                         Columns="3"
+                         Margin="-3,0" />
+            <TextBlock x:Name="ResolutionLine"
+                       Style="{StaticResource ImportHint}"
+                       Margin="0,8,0,0">
+                <Run Text="PNG resolution:" />
+                <Hyperlink x:Name="ResolutionLink"
+                           Click="ResolutionLink_Click"
+                           ToolTip="Change how many pixels across a slide that comes in as PNG">
+                    <Run x:Name="ResolutionText" />
+                </Hyperlink>
+            </TextBlock>
+            <ComboBox x:Name="ResolutionCombo"
+                      Width="220"
+                      Margin="0,6,0,0"
+                      HorizontalAlignment="Left"
+                      Visibility="Collapsed"
+                      Style="{StaticResource SettingsComboBox}"
+                      ItemContainerStyle="{StaticResource SettingsComboBoxItem}"
+                      DropDownClosed="ResolutionCombo_DropDownClosed" />
+
+            <TextBlock Style="{StaticResource ImportLabel}"
+                       Text="Layout" />
+            <UniformGrid x:Name="LayoutChoices"
+                         Columns="3"
+                         Margin="-3,0" />
+
+            <Grid Margin="0,18,0,0">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+                <TextBlock Style="{StaticResource ImportSwitchLabel}"
+                           Text="A frame around each slide" />
+                <ToggleButton x:Name="FramesSwitch"
+                              Grid.Column="1"
+                              Style="{StaticResource SettingsSwitch}" />
+            </Grid>
+            <Grid Margin="0,8,0,0">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+                <StackPanel VerticalAlignment="Center">
+                    <TextBlock Style="{StaticResource ImportSwitchLabel}"
+                               Text="Include hidden slides" />
+                    <TextBlock x:Name="HiddenHint"
+                               Style="{StaticResource ImportHint}" />
+                </StackPanel>
+                <ToggleButton x:Name="HiddenSwitch"
+                              Grid.Column="1"
+                              VerticalAlignment="Center"
+                              Style="{StaticResource SettingsSwitch}" />
+            </Grid>
+        </StackPanel>
+
+        <Grid Margin="0,20,0,0">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="Auto" />
+                <ColumnDefinition Width="Auto" />
+            </Grid.ColumnDefinitions>
+            <StackPanel VerticalAlignment="Center">
+                <TextBlock x:Name="Summary"
+                           Style="{StaticResource ImportHint}"
+                           Foreground="{DynamicResource SettingsTextBrush}"
+                           FontSize="12.5" />
+                <ProgressBar x:Name="Progress"
+                             Height="6"
+                             Margin="0,6,20,0"
+                             Visibility="Collapsed" />
+            </StackPanel>
+            <Button x:Name="ImportButton"
+                    Grid.Column="1"
+                    Width="100"
+                    Height="32"
+                    Margin="12,0,0,0"
+                    IsDefault="True"
+                    IsEnabled="False"
+                    Content="Import"
+                    Click="ImportButton_Click" />
+            <Button x:Name="CancelButton"
+                    Grid.Column="2"
+                    Width="88"
+                    Height="32"
+                    Margin="8,0,0,0"
+                    IsCancel="True"
+                    Content="Cancel"
+                    Click="CancelButton_Click" />
+        </Grid>
+    </StackPanel>
+</Window>

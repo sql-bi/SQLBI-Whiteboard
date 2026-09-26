@@ -15,6 +15,7 @@ public enum SessionCommand
     Open,
     Save,
     SaveAs,
+    Import,
     Export,
     Close,
     Undo,
@@ -31,6 +32,7 @@ public enum SessionCommand
     SendBackward,
     AddLiveView,
     AddFrame,
+    ToggleFrames,
     FreezeLiveView,
     DisconnectLiveView,
     ReconnectLiveView,
@@ -144,6 +146,28 @@ public partial class SessionChrome : UserControl
         GridButton.ToolTip = on
             ? "Hide the grid behind the board"
             : "Show a faint grid behind the board";
+    }
+
+    /// <summary>
+    /// Show frames is saved with the board, not in Preferences. The button shows its
+    /// state the same way the Grid button does.
+    /// </summary>
+    public void SetFramesChecked(bool on)
+    {
+        if (ShowFramesButton is null)
+        {
+            return;
+        }
+
+        ShowFramesButton.Background = on
+            ? (Brush)FindResource("ToolbarSelectedBrush")
+            : Brushes.Transparent;
+        ShowFramesButton.Foreground = on
+            ? (Brush)FindResource("ToolbarAccentBrush")
+            : (Brush)FindResource("ToolbarIconBrush");
+        ShowFramesButton.ToolTip = on
+            ? "Hide the frames and their titles"
+            : "Show the frames and their titles";
     }
 
     /// <summary>
@@ -463,6 +487,7 @@ public partial class SessionChrome : UserControl
             'O' when FileRow.Visibility == Visibility.Visible => SessionCommand.Open,
             'S' when FileRow.Visibility == Visibility.Visible => SessionCommand.Save,
             'A' when FileRow.Visibility == Visibility.Visible => SessionCommand.SaveAs,
+            'I' when FileRow.Visibility == Visibility.Visible => SessionCommand.Import,
             'E' when FileRow.Visibility == Visibility.Visible => SessionCommand.Export,
             'Z' when EditRow.Visibility == Visibility.Visible => SessionCommand.Undo,
             'Y' when EditRow.Visibility == Visibility.Visible => SessionCommand.Redo,
@@ -481,6 +506,7 @@ public partial class SessionChrome : UserControl
             'K' when ViewRow.Visibility == Visibility.Visible => SessionCommand.SendBackward,
             'L' when ViewRow.Visibility == Visibility.Visible => SessionCommand.AddLiveView,
             'A' when ViewRow.Visibility == Visibility.Visible => SessionCommand.AddFrame,
+            'H' when ViewRow.Visibility == Visibility.Visible => SessionCommand.ToggleFrames,
             'Z' when ViewRow.Visibility == Visibility.Visible => SessionCommand.FreezeLiveView,
             'D' when ViewRow.Visibility == Visibility.Visible => SessionCommand.DisconnectLiveView,
             'R' when ViewRow.Visibility == Visibility.Visible => SessionCommand.ReconnectLiveView,

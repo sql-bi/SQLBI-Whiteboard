@@ -680,6 +680,19 @@ Assert(
     BoardArchive.VersionFor(document) == BoardArchive.VersionWithFrames &&
     loadedWithFrame.Objects.OfType<FrameBoardObject>().Single() is { Title: "Slide 1", Bounds.Width: 1000 },
     "A frame round-trips with its title, and asks for the version that brought frames.");
+Assert(loadedWithFrame.ShowFrames, "A board saved with its frames shown loads with them shown.");
+new SetShowFramesCommand(true, false).Execute(document);
+await using var hiddenFramesArchive = new MemoryStream();
+await BoardArchive.SaveAsync(document, hiddenFramesArchive);
+hiddenFramesArchive.Position = 0;
+var loadedHiddenFrames = await BoardArchive.LoadAsync(hiddenFramesArchive);
+Assert(
+    !loadedHiddenFrames.ShowFrames &&
+    BoardArchive.VersionFor(document) == BoardArchive.VersionWithFrames &&
+    !document.Snapshot().ShowFrames,
+    "Hidden frames stay hidden through a save, a load, and an autosave snapshot, without a new version.");
+new SetShowFramesCommand(true, false).Undo(document);
+Assert(document.ShowFrames, "Undo shows the frames again.");
 document.RemoveObject(archivedFrame.Id);
 Assert(loaded.Assets[asset.Id].Data.SequenceEqual(asset.Data), "Archive should round-trip asset bytes.");
 Assert(
@@ -1784,6 +1797,96 @@ Assert(
     Assert(ReferenceEquals(SvgMarkup.Rewrite(plainSvg), plainSvg), "Markup with no clipped image is the same bytes.");
     byte[] brokenSvg = Encoding.UTF8.GetBytes("<svg><image clip-path='u'");
     Assert(ReferenceEquals(SvgMarkup.Rewrite(brokenSvg), brokenSvg), "Markup that does not parse is left for the renderer.");
+    byte[] powerPointSvg = Encoding.UTF8.GetBytes(
+        "<svg xmlns=\"http://www.w3.org/2000/svg\">" +
+        "<text font-family=\"Aptos,Aptos_MSFontService,sans-serif\">a</text>" +
+        "<text font-family='Segoe Sans Text'>b</text>" +
+        "<text style=\"fill:red; font-family: 'Aptos', 'Segoe UI', serif\">c</text></svg>");
+    Assert(
+        SvgMarkup.FontFamilies(powerPointSvg).SequenceEqual(["Aptos", "Aptos_MSFontService", "Segoe Sans Text", "Segoe UI"]),
+        "Font families come from attributes and styles, once each, without quotes or generic families.");
+    Assert(SvgMarkup.FontFamilies(brokenSvg).Count == 0, "Markup naming no font names no family.");
+    var fontLists = SvgMarkup.FontFamilyLists(Encoding.UTF8.GetBytes(
+        "<svg><text font-family=\"Aptos,Aptos_MSFontService,sans-serif\">a</text><text font-family=\"serif\">b</text></svg>"));
+    Assert(
+        fontLists.Count == 2 &&
+        fontLists[0].SequenceEqual(["Aptos", "Aptos_MSFontService"]) &&
+        fontLists[1].Count == 0,
+        "Each declaration keeps its own list, and one naming only generic families asks for nothing.");
+
+    // The font rewrites, with fixed metrics standing in for WPF.
+    var metrics = new FixedFontMetrics();
+    string Fonted(string svg) => Encoding.UTF8.GetString(SvgMarkup.Rewrite(
+        Encoding.UTF8.GetBytes($"<svg xmlns=\"http://www.w3.org/2000/svg\">{svg}</svg>"), metrics));
+    Assert(
+        Fonted("<text font-family=\"Segoe Sans Small Semilight,sans-serif\" font-weight=\"400\">a</text>")
+            .Contains("font-family=\"Segoe Sans Small,sans-serif\" font-weight=\"350\""),
+        "A family that names a weight becomes the family and that weight.");
+    Assert(
+        Fonted("<text font-family=\"Segoe UI Semibold\">a</text>").Contains("font-family=\"Segoe UI Semibold\"") &&
+        Fonted("<text font-family=\"Nowhere Semilight\">a</text>").Contains("font-family=\"Nowhere Semilight\""),
+        "A face name that can be found, or whose family cannot, is left as written.");
+    Assert(
+        Fonted("<text font-family=\"Aptos\" font-size=\"25\" transform=\"matrix(1 0 0 1 106.5 228)\">Deep dive</text>")
+            .Contains("transform=\"matrix(1 0 0 1 106.5 228) scale(0.99 1)\"") &&
+        Fonted("<text font-family=\"Aptos\" font-size=\"25px\" x=\"10\" y=\"20\">Deep dive</text>")
+            .Contains("transform=\"translate(10 20) scale(0.99 1) translate(-10 -20)\""),
+        "A run is squeezed to its kerned width, from where it starts.");
+    Assert(
+        Fonted("<text font-family=\"Aptos\" font-size=\"25\">AVAVAV</text>").Contains("scale(0.95 1)"),
+        "Kerning tighter than five percent is capped, so glyphs do not visibly narrow.");
+    Assert(
+        !Fonted("<text font-family=\"Aptos\" font-size=\"25\" text-anchor=\"middle\">Deep dive</text>").Contains("scale(") &&
+        !Fonted("<text font-family=\"Aptos\" font-size=\"25\" letter-spacing=\"2\">Deep dive</text>").Contains("scale(") &&
+        !Fonted("<text font-family=\"Aptos\" font-size=\"25\" x=\"1 2 3\">Deep dive</text>").Contains("scale(") &&
+        !Fonted("<text font-family=\"Aptos\" font-size=\"25\">Deep <tspan>dive</tspan></text>").Contains("scale(") &&
+        !Fonted("<text font-family=\"Unmeasured\" font-size=\"25\">Deep dive</text>").Contains("scale("),
+        "Anchored, spaced, glyph-placed, nested, or unmeasurable text is left alone.");
+    Assert(
+        Fonted("<g style=\"font-family: Aptos; font-size: 25px\"><text>Deep dive</text></g>").Contains("scale(0.99 1)"),
+        "The font is found on an ancestor, in its style.");
+
+    // PowerPoint import: where the slides go, and what their frames are called.
+    Assert(
+        DroppedFileImport.Classify(@"C:\Talks\Deck.PPTX") == DroppedFileKind.Deck &&
+        DroppedFileImport.CanImport("deck.pptx"),
+        "A .pptx is a deck, whatever the case of its extension.");
+    var wide = SlideDeckLayout.Place([1, 1, 2, 2, 2], 9.0 / 16, SlideArrangement.RowPerSection, existingContent: null);
+    Assert(
+        wide.Count == 5 &&
+        wide[0] == new RectD(0, 0, 1920, 1080) &&
+        wide[1].Left == 1920 + SlideDeckLayout.Gap && wide[1].Top == 0 &&
+        wide[2].Left == 0 && wide[2].Top == 1080 + SlideDeckLayout.Gap &&
+        wide[4].Left == 2 * (1920 + SlideDeckLayout.Gap),
+        "A row per section starts a row where the section changes, and slides are 1920 wide.");
+    var unsectioned = SlideDeckLayout.Place([0, 0, 0], 3.0 / 4, SlideArrangement.RowPerSection, existingContent: null);
+    Assert(
+        unsectioned.All(slide => slide.Top == 0) && unsectioned[0].Height == 1440,
+        "A deck without sections is one row, and a 4:3 deck is taller.");
+    var column = SlideDeckLayout.Place([1, 2], 9.0 / 16, SlideArrangement.OneColumn, existingContent: null);
+    var row = SlideDeckLayout.Place([1, 2], 9.0 / 16, SlideArrangement.OneRow, existingContent: null);
+    Assert(
+        column[1].Left == 0 && column[1].Top > 0 && row[1].Top == 0 && row[1].Left > 0,
+        "One column stacks, one row ignores sections.");
+    var below = SlideDeckLayout.Place([0], 9.0 / 16, SlideArrangement.OneRow, new RectD(-500, -200, 800, 600));
+    Assert(
+        below[0].Left == -500 && below[0].Top == 400 + SlideDeckLayout.Gap,
+        "On a board with content the deck goes below it, aligned with its left edge.");
+    Assert(
+        SlideDeckLayout.FrameTitle(3, "Tabular query\vachitecture ") == "3. Tabular query achitecture" &&
+        SlideDeckLayout.FrameTitle(4, "  ") == "4. Slide 4",
+        "A frame is titled with the slide's number and title, with line breaks folded.");
+    var importSettings = PowerPointImportSettings.Normalize(new PowerPointImportSettings
+    {
+        PngWidth = 1234,
+        Pictures = (SlidePictures)42,
+    });
+    Assert(
+        importSettings.PngWidth == PowerPointImportSettings.DefaultPngWidth &&
+        importSettings.Pictures == SlidePictures.Auto &&
+        !new PowerPointImportSettings().Frames &&
+        !new PowerPointImportSettings().IncludeHidden,
+        "Import settings fall back to 2560 and Auto, with frames and hidden slides off by default.");
 
     byte[] spacedSvg = Encoding.UTF8.GetBytes(
         "<svg xmlns=\"http://www.w3.org/2000/svg\">" +
@@ -1894,6 +1997,15 @@ Assert(
         exportBoard.HitTestTopContainer(new PointD(2100, 50), 1) is null &&
         exportBoard.HitTestTopContainer(new PointD(1900, 150), 1) is FrameBoardObject,
         "Hit testing reaches a frame only by its edge.");
+    exportBoard.SetShowFrames(false);
+    Assert(
+        exportBoard.HitTestTopContainer(new PointD(1900, 150), 1) is null &&
+        exportBoard.HitTestTopSelectable(new PointD(1950, -90), 1) is not FrameBoardObject,
+        "A hidden frame is not hit by its edge or its tab.");
+    Assert(
+        BoardPartitioner.Partition(exportBoard) is { Count: 3 } hiddenFramed && hiddenFramed[0].Title == "Second cluster",
+        "A hidden frame is still a slide for Export.");
+    exportBoard.SetShowFrames(true);
     exportBoard.RemoveObject(frame.Id);
 
     var exportSettings = AppSettingsSerializer.Parse("""{ "export": { "gapThreshold": 9999, "smallestTextPoints": 11, "order": "Drawing" } }""");
