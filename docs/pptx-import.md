@@ -1,0 +1,153 @@
+# PowerPoint import
+
+**Agreed, not implemented.** This document is the plan for bringing a PowerPoint deck onto
+a board, one picture per slide, for release 1.6.3. The decisions below were taken on
+26 September 2026 after a spike, whose findings are recorded here so that the reasons
+survive the code. The spike is `tools/PptxToBoard`, a console tool outside the solution
+that writes a PNG board and an SVG board from a deck.
+
+Background: [export.md](export.md) for frames and how Export cuts a board into slides, and
+[decisions.md](decisions.md) for decision 14 (nothing leaves the machine) and decision 21
+(managed-only dependencies). The import meets both: it drives the PowerPoint already on
+the machine, adds no package, and sends nothing anywhere.
+
+## What it does
+
+A deck becomes one picture per slide, laid out on the board, each optionally inside a
+frame. The picture is SVG where that looks right and PNG where it does not. Slides are not
+turned into editable shapes and text; that was considered and left out, because it is
+weeks of work and lossy on every deck that uses gradients, groups, or rich text.
+
+It needs PowerPoint from Microsoft 365. Without it, or on ARM64, the import explains that
+and does nothing else. The Microsoft 365 conversion service was considered as a fallback
+and left out: it needs sign-in, an app registration, and an upload, and the use this is
+for — preparing a talk on one's own machine — always has PowerPoint.
+
+## Where it starts
+
+- **File → Open** accepts `.pptx` and builds a new, untitled board from the deck. Saving
+  offers the deck's name.
+- **File → Import** adds a deck to the current board. It is a new command on the File row.
+- **Dropping a `.pptx` from Explorer** does what Import does.
+- A `.wimport` directive for decks is not part of this release.
+
+All three show the same dialog.
+
+## The dialog
+
+It appears on every import, filled in with the choices made last time. Those choices are
+remembered in the application settings and have no Preferences section of their own,
+because they are made at import time and seen there.
+
+```
+Import PowerPoint — Inside the VertiPaq Engine.pptx (39 slides, 3 hidden, 4 sections)
+
+  Pictures    (•) Auto   ( ) Sharp at any zoom   ( ) Exact look      Resolution [2560 ▾]
+  Layout      (•) A row per section   ( ) One row   ( ) One column
+  [ ] A frame around each slide
+  [ ] Include hidden slides
+
+                                                         [ Import ]  [ Cancel ]
+```
+
+| Setting | Choices | Default |
+| --- | --- | --- |
+| Pictures | Auto, Sharp at any zoom (SVG), Exact look (PNG) | Auto |
+| Resolution | 1920, 2560, 3840 pixels wide | 2560 |
+| Layout | A row per section, One row, One column | A row per section |
+| A frame around each slide | on, off | off |
+| Include hidden slides | on, off | off |
+
+- **Pictures.** The labels say what a person gets; the format names are in the tooltips.
+  **Auto** uses SVG for each slide and PNG for any slide whose SVG could not be captured
+  or names a font Whiteboard cannot find (see *Fonts*).
+- **Resolution** sits on the Pictures line and applies to PNG only. It is disabled when
+  Pictures is SVG, because nothing would use it. 2560 is sharp on a 1440p projector and
+  is about 45% of the size of 3840: the 39-slide deck made a 74 MB board at 3840.
+- **A row per section** becomes a single row when the deck has no sections.
+- **Frames are off** by default. A frame titles and outlines a slide, which helps while
+  arranging a board and is noise while presenting; **View → Show frames** hides frames
+  that were added. With frames on, each is titled with the slide number and title,
+  `3. Tabular query architecture`, or `3. Slide 3` for a slide without a title. The
+  section is left out because the row already shows it.
+- A range of slides cannot be chosen yet. It is a later addition to the same dialog.
+
+While the import runs the dialog shows `Slide 12 of 36` and Cancel. Cancelling adds
+nothing to the board.
+
+When it finishes and Auto used PNG for any slide, one line says so before the dialog
+closes: `4 slides use a picture because their fonts are not on this PC`. Otherwise the
+dialog closes on its own.
+
+## On the board
+
+- **Size.** Each slide is 1920 wide in board units, and as tall as the deck's aspect ratio
+  makes it, so at 100% zoom a slide is one 1080p screen and pen widths feel as they do on
+  an empty board. The gap between slides is a tenth of a slide width.
+- **Placement.** On an empty board the first slide's top-left is at the origin. On a board
+  with content, the slides go below it, left-aligned with it, so a second deck adds rows
+  instead of lengthening the first deck's.
+- **Afterwards.** The view fits the first imported slide, nothing is selected, and the tool
+  is Select.
+- **Undo.** The whole import is one step.
+
+## How a slide becomes a picture
+
+PowerPoint is driven through COM, late-bound, with no interop assembly, on a background
+thread set up for COM, so the window stays responsive. The deck is opened read-only
+without a window. A PowerPoint the person already has open is used and left open; one the
+import started is closed when it finishes. The spike took 13 seconds for 38 slides.
+
+- **PNG.** `Slide.Export(path, "PNG", width, height)`.
+- **SVG.** `Slide.Export` has no SVG filter in the automation model, and no
+  `SaveAs` format produces SVG. Copying a slide does: `Slide.Copy()` puts `image/svg+xml`
+  on the clipboard, background included. The import reads it from there, retrying while
+  another process holds the clipboard; the spike needed that on its first runs. A slide
+  whose SVG cannot be read in five tries uses PNG.
+- **The clipboard.** Capturing SVG this way replaces whatever was on the clipboard. The
+  import saves the text or picture that was there and puts it back when it finishes, and
+  says so only if that fails.
+- **Slide facts** come from the same COM session: `PageSetup` for the size,
+  `SectionProperties` and `Slide.sectionIndex` for sections,
+  `SlideShowTransition.Hidden` for hidden slides, and the title placeholder for the title.
+
+## Fonts
+
+PowerPoint's SVG keeps text as text and names the deck's fonts. Microsoft 365 cloud fonts
+such as Aptos, its default since 2023, and Segoe Sans live in Office's own cache
+(`%LOCALAPPDATA%\Microsoft\FontCache\4\CloudFonts`), not in Windows. Since 1.6.3
+`SvgImageCodec` hands the renderer the cache folders for the families an SVG names, so
+those draw correctly. A font found in neither place is drawn with a substitute, and
+because PowerPoint places each run of text at an absolute position, a wider substitute
+runs words together. That is the case Auto sends to PNG.
+
+One smaller defect remains with the right font: PowerPoint lays text out about 1% narrower
+than WPF, and a long run can close the space before the next one. [TODO.md](../TODO.md)
+records it and the fix it would take.
+
+## Without PowerPoint
+
+The commands stay where they are. **File → Open** still lists `.pptx`, and a dropped deck
+is still accepted, so that a person who expects it to work finds out why it does not:
+`Importing a PowerPoint deck needs PowerPoint from Microsoft 365 on this PC.` Hiding the
+commands would leave nothing to find.
+
+## Not yet verified
+
+- COM automation from the Store (MSIX) build. Out-of-process COM from a packaged app is
+  expected to work; it has not been tried.
+- Decks that are password-protected, open for editing in PowerPoint, or blocked by
+  Protected View. Each needs a message rather than a stack trace.
+
+## Estimate
+
+The first estimate was 7 to 11 working days. The spike, **View → Show frames**, and the
+font fix are done, which leaves about 6.5 to 7:
+
+| Piece | Days |
+| --- | --- |
+| Layout and placement in Core, with smoke tests | 1 |
+| PowerPoint session: COM lifetime, PNG, SVG through the clipboard, restore, errors | 2 |
+| Dialog, progress, the three entry points, one undo step | 2 |
+| Auto: font check per slide, fallback, summary line | 1 |
+| README, site, CHANGELOG | 0.5–1 |

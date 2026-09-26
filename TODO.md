@@ -55,7 +55,8 @@ shows them all again, in the same undo step as the new frame, because otherwise 
 frame would arrive selected and invisible. Collect usage feedback once it ships and decide
 whether that rule stays. The alternatives are to show only the new frame, which needs a
 per-frame visibility the board does not have, or to leave the frames hidden and say so.
-The PPTX import will create a frame per slide, which is what will exercise this most.
+The PPTX import can add a frame per slide, off by default; see
+[docs/pptx-import.md](docs/pptx-import.md).
 
 ## PowerPoint SVG: words that touch at run boundaries
 
