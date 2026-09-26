@@ -1,10 +1,10 @@
 # PowerPoint import
 
-**Agreed, not implemented.** This document is the plan for bringing a PowerPoint deck onto
-a board, one picture per slide, for release 1.6.3. The decisions below were taken on
-26 September 2026 after a spike, whose findings are recorded here so that the reasons
-survive the code. The spike is `tools/PptxToBoard`, a console tool outside the solution
-that writes a PNG board and an SVG board from a deck.
+**Implemented for 1.6.3.** This document is the plan for bringing a PowerPoint deck onto
+a board, one picture per slide. The decisions below were taken on 26 September 2026 after
+a spike, a throwaway console tool that wrote a PNG board and an SVG board from a deck; its
+findings are recorded here so that the reasons survive the code. *As built* at the end
+lists where the implementation differs from the plan.
 
 Background: [export.md](export.md) for frames and how Export cuts a board into slides, and
 [decisions.md](decisions.md) for decision 14 (nothing leaves the machine) and decision 21
@@ -139,15 +139,27 @@ commands would leave nothing to find.
 - Decks that are password-protected, open for editing in PowerPoint, or blocked by
   Protected View. Each needs a message rather than a stack trace.
 
-## Estimate
+## As built
 
-The first estimate was 7 to 11 working days. The spike, **View → Show frames**, and the
-font fix are done, which leaves about 6.5 to 7:
-
-| Piece | Days |
-| --- | --- |
-| Layout and placement in Core, with smoke tests | 1 |
-| PowerPoint session: COM lifetime, PNG, SVG through the clipboard, restore, errors | 2 |
-| Dialog, progress, the three entry points, one undo step | 2 |
-| Auto: font check per slide, fallback, summary line | 1 |
-| README, site, CHANGELOG | 0.5–1 |
+- **Where the code is.** `SlideDeckLayout` in Core places the slides and titles the frames,
+  with smoke tests. `PowerPointDeck` in the application drives PowerPoint on a thread of
+  its own, `SlideClipboard` reads the SVG and keeps what the clipboard held, and
+  `PowerPointImportWindow` is the dialog. `SvgImageCodec.CanDrawAsAuthored` is the test
+  Auto applies to each slide. The dialog's settings are `PowerPointImport` in the
+  application settings.
+- **The dialog uses drop-downs and switches,** as the export dialog does, rather than the
+  radio buttons in the mock-up: Pictures and Resolution share a line, Layout is below them,
+  and the hidden-slides switch shows the count and appears only when the deck has hidden
+  slides.
+- **The summary names the reason.** A slide that falls back because PowerPoint did not hand
+  over its SVG is counted apart from one whose fonts are missing.
+- **Face names are not found.** PowerPoint sometimes names a weight as a family:
+  *Segoe Sans Small Semilight* rather than *Segoe Sans Small* at weight 350. The renderer
+  finds the family in Office's folder but not the face name, so Auto sends those slides to
+  PNG, which is the right result. Rewriting such names to a family and a weight would keep
+  them as SVG; [TODO.md](../TODO.md) records it.
+- **File → Import is new.** Before it, importing a file had no command on the File row; it
+  now takes decks, images, and `.wimport` recipes, as a drop does.
+- **Tried** on three decks: 13, 38 of 47, and 39 slides, with and without sections, hidden
+  slides, and frames, into a new board and below an existing one. Not tried: the Store
+  build, and password-protected or Protected View decks.

@@ -26,24 +26,47 @@ public static class SvgMarkup
     /// </summary>
     public static IReadOnlyList<string> FontFamilies(byte[] bytes)
     {
+        var families = new List<string>();
+        foreach (var family in FontFamilyLists(bytes).SelectMany(list => list))
+        {
+            if (!families.Contains(family, StringComparer.OrdinalIgnoreCase))
+            {
+                families.Add(family);
+            }
+        }
+
+        return families;
+    }
+
+    /// <summary>
+    /// Each <c>font-family</c> declaration as its own list, in its own order of
+    /// preference, without generic families. A declaration can be drawn as its author
+    /// meant when any family in its list can be found; one that named only generic
+    /// families comes back empty and asks for nothing.
+    /// </summary>
+    public static IReadOnlyList<IReadOnlyList<string>> FontFamilyLists(byte[] bytes)
+    {
         ArgumentNullException.ThrowIfNull(bytes);
 
-        var families = new List<string>();
+        var lists = new List<IReadOnlyList<string>>();
         foreach (Match match in FontFamilyDeclaration.Matches(Encoding.UTF8.GetString(bytes)))
         {
+            var list = new List<string>();
             foreach (var entry in match.Groups["list"].Value.Split(','))
             {
                 var family = entry.Trim().Trim('"', '\'').Trim();
                 if (family.Length > 0 &&
                     family is not ("serif" or "sans-serif" or "monospace" or "cursive" or "fantasy" or "system-ui" or "inherit") &&
-                    !families.Contains(family, StringComparer.OrdinalIgnoreCase))
+                    !list.Contains(family, StringComparer.OrdinalIgnoreCase))
                 {
-                    families.Add(family);
+                    list.Add(family);
                 }
             }
+
+            lists.Add(list);
         }
 
-        return families;
+        return lists;
     }
 
     /// <summary>

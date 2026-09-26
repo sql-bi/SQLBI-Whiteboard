@@ -23,6 +23,7 @@ using SQLBI.Whiteboard.Core.Settings;
 using SQLBI.Whiteboard.Core.Updates;
 using SQLBI.Whiteboard.Core.Viewport;
 using SQLBI.Whiteboard.Export;
+using SQLBI.Whiteboard.Import;
 using SQLBI.Whiteboard.LiveView;
 using Windows.Graphics.Capture;
 
@@ -80,6 +81,12 @@ public partial class MainWindow : Window
     // somebody changing the board, and would otherwise put an unasked question on the way
     // out of an application left running beside a feed.
     private bool _dirtyOutsideHistory;
+
+    /// <summary>
+    /// The name Save offers for a board no file holds yet, when it came from something
+    /// that had one: a PowerPoint deck opened as a board.
+    /// </summary>
+    private string? _untitledBoardName;
 
     private readonly SessionStore? _session = SessionStore.Acquire();
     private readonly DispatcherTimer _autosaveTimer;
@@ -7159,6 +7166,9 @@ public partial class MainWindow : Window
             case SessionCommand.SaveAs:
                 SaveAsMenuItem_Click(this, new RoutedEventArgs());
                 break;
+            case SessionCommand.Import:
+                ImportButton_Click(this, new RoutedEventArgs());
+                break;
             case SessionCommand.Export:
                 ShowExportDialog();
                 break;
@@ -7407,7 +7417,7 @@ public partial class MainWindow : Window
     }
 
     private async void ImportButton_Click(object sender, RoutedEventArgs e) =>
-        await ImportImageAsync();
+        await ImportFileAsync();
 
     private async void PasteButton_Click(object sender, RoutedEventArgs e)
     {
@@ -7665,13 +7675,14 @@ public partial class MainWindow : Window
         _history.Redo(_document);
     }
 
-    private async Task ImportImageAsync()
+    private async Task ImportFileAsync()
     {
+        CommitTextEdit();
         var dialog = new OpenFileDialog
         {
             Title = "Import",
             Filter =
-                "Importable files|*.wimport;*.png;*.jpg;*.jpeg;*.bmp;*.gif;*.svg|Whiteboard import|*.wimport|Images|*.png;*.jpg;*.jpeg;*.bmp;*.gif;*.svg",
+                "Importable files|*.pptx;*.wimport;*.png;*.jpg;*.jpeg;*.bmp;*.gif;*.svg|PowerPoint deck|*.pptx|Whiteboard import|*.wimport|Images|*.png;*.jpg;*.jpeg;*.bmp;*.gif;*.svg",
             Multiselect = false,
         };
         if (dialog.ShowDialog(this) != true)
@@ -7679,10 +7690,14 @@ public partial class MainWindow : Window
             return;
         }
 
-        if (DroppedFileImport.Classify(dialog.FileName) == DroppedFileKind.Import)
+        switch (DroppedFileImport.Classify(dialog.FileName))
         {
-            await ImportRecipeAsync(dialog.FileName, VisibleTopLeft(), replaceDocument: false);
-            return;
+            case DroppedFileKind.Import:
+                await ImportRecipeAsync(dialog.FileName, VisibleTopLeft(), replaceDocument: false);
+                return;
+            case DroppedFileKind.Deck:
+                ImportDeck(dialog.FileName, newBoard: false);
+                return;
         }
 
         try
@@ -8489,7 +8504,7 @@ public partial class MainWindow : Window
                 DefaultExt = ".wboard",
                 AddExtension = true,
                 FileName = string.IsNullOrWhiteSpace(filePath)
-                    ? "Untitled board.wboard"
+                    ? (_untitledBoardName ?? "Untitled board") + ".wboard"
                     : Path.GetFileName(filePath),
             };
             if (dialog.ShowDialog(this) != true)
@@ -8531,7 +8546,7 @@ public partial class MainWindow : Window
         {
             Title = "Open",
             Filter =
-                "Whiteboard|*.wboard;*.wimport|Whiteboard document|*.wboard|Whiteboard import|*.wimport",
+                "Whiteboard|*.wboard;*.wimport;*.pptx|Whiteboard document|*.wboard|Whiteboard import|*.wimport|PowerPoint deck|*.pptx",
             Multiselect = false,
         };
         if (dialog.ShowDialog(this) != true)
@@ -8544,6 +8559,20 @@ public partial class MainWindow : Window
 
     private async Task OpenPathAsync(string filePath, bool confirmDiscard)
     {
+        if (DroppedFileImport.Classify(filePath) == DroppedFileKind.Deck)
+        {
+            // Asked before PowerPoint is started, so a No costs nothing.
+            if (PowerPointDeck.IsAvailable &&
+                confirmDiscard &&
+                !ConfirmDiscardUnsaved("Open this deck as a new board? Any unsaved changes will be lost."))
+            {
+                return;
+            }
+
+            ImportDeck(filePath, newBoard: true);
+            return;
+        }
+
         if (DroppedFileImport.Classify(filePath) == DroppedFileKind.Import)
         {
             if (confirmDiscard &&
@@ -8658,6 +8687,7 @@ public partial class MainWindow : Window
         }
 
         DisposeAllLiveViewPresenters();
+        _untitledBoardName = null;
         _document.Changed -= Document_Changed;
         _document = replacement;
         _document.Changed += Document_Changed;
@@ -8861,6 +8891,13 @@ public partial class MainWindow : Window
                     continue;
                 }
 
+                if (kind == DroppedFileKind.Deck)
+                {
+                    ImportDeck(path, newBoard: false);
+                    imported++;
+                    continue;
+                }
+
                 var center = worldPoint + new PointD(imported * 24, imported * 24);
                 switch (kind)
                 {
@@ -8907,6 +8944,97 @@ public partial class MainWindow : Window
         {
             ShowError("Could not drop file", exception);
         }
+    }
+
+    /// <summary>
+    /// Brings a PowerPoint deck in, one picture per slide, through the import dialog.
+    /// A new board takes the deck's name as the one Save offers; an existing board gets
+    /// the slides below what it holds, as one step to undo.
+    /// </summary>
+    private void ImportDeck(string filePath, bool newBoard)
+    {
+        CommitTextEdit();
+        if (!PowerPointDeck.IsAvailable)
+        {
+            MessageBox.Show(
+                this,
+                PowerPointDeck.NotInstalledMessage,
+                "Import PowerPoint",
+                MessageBoxButton.OK,
+                MessageBoxImage.Information);
+            return;
+        }
+
+        var dialog = new PowerPointImportWindow(filePath, _settings.PowerPointImport, PersistSettings);
+        ShowOwnedDialog(dialog);
+        if (dialog.Result is not { Pictures.Count: > 0 } imported)
+        {
+            return;
+        }
+
+        if (newBoard)
+        {
+            ReplaceDocument(new BoardDocument());
+            _currentBoardPath = null;
+            ResetBoardView();
+            _untitledBoardName = Path.GetFileNameWithoutExtension(filePath);
+        }
+
+        var bounds = SlideDeckLayout.Place(
+            imported.Pictures.Select(picture => picture.Slide.Section).ToArray(),
+            imported.Deck.SlideHeight / imported.Deck.SlideWidth,
+            imported.Arrangement,
+            _document.ContentBounds);
+        var assets = new List<BoardAsset>(imported.Pictures.Count);
+        var objects = new List<BoardObject>(imported.Pictures.Count * 2);
+        var zIndex = _document.NextZIndex;
+        for (var index = 0; index < imported.Pictures.Count; index++)
+        {
+            var picture = imported.Pictures[index];
+            var assetId = Guid.NewGuid().ToString("N");
+            assets.Add(new BoardAsset(
+                assetId,
+                $"slide{picture.Slide.Number}{(picture.IsSvg ? DroppedFileImport.SvgExtension : ".png")}",
+                picture.IsSvg ? DroppedFileImport.SvgContentType : "image/png",
+                picture.Bytes));
+            objects.Add(new ImageBoardObject(Guid.NewGuid(), zIndex++, bounds[index], assetId));
+        }
+
+        // Frames after every picture, so none is drawn under the next slide.
+        if (imported.Frames)
+        {
+            for (var index = 0; index < imported.Pictures.Count; index++)
+            {
+                var slide = imported.Pictures[index].Slide;
+                objects.Add(new FrameBoardObject(
+                    Guid.NewGuid(),
+                    zIndex++,
+                    bounds[index],
+                    SlideDeckLayout.FrameTitle(slide.Number, slide.Title)));
+            }
+        }
+
+        var command = new AddImportCommand(objects, assets);
+        if (newBoard)
+        {
+            // As with a recipe opened as a board: nothing to undo back to, and a
+            // board no file holds yet.
+            command.Execute(_document);
+            _history.Clear();
+            MarkDirtyOutsideHistory();
+        }
+        else
+        {
+            _history.Execute(command, _document);
+        }
+
+        SceneSurface.InvalidateAssets();
+        SelectOnly(null);
+        SetActiveTool(BoardTool.Select);
+        _camera.Frame(bounds[0]);
+        CameraChanged();
+        UpdateLiveViewActionOverlay();
+        UpdateWindowTitle();
     }
 
     private async Task ImportRecipeAsync(

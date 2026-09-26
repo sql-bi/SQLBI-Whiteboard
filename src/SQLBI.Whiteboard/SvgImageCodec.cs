@@ -53,6 +53,37 @@ internal static class SvgImageCodec
     }
 
     /// <summary>
+    /// Whether the SVG will look the way its author drew it: it decodes, and every font
+    /// it names can be found here, installed in Windows or in Office's cache. Text in a
+    /// substitute font is drawn wider or narrower than the positions PowerPoint wrote,
+    /// which is what makes the PowerPoint import use a picture for that slide instead.
+    /// </summary>
+    public static bool CanDrawAsAuthored(byte[] bytes)
+    {
+        ArgumentNullException.ThrowIfNull(bytes);
+
+        var fontsFound = SvgMarkup.FontFamilyLists(bytes).All(list =>
+            list.Count == 0 ||
+            list.Any(family =>
+                OfficeCloudFonts.Has(family) ||
+                new Typeface(family).TryGetGlyphTypeface(out _)));
+        if (!fontsFound)
+        {
+            return false;
+        }
+
+        try
+        {
+            Decode(bytes);
+            return true;
+        }
+        catch (Exception exception) when (exception is not OutOfMemoryException)
+        {
+            return false;
+        }
+    }
+
+    /// <summary>
     /// The fonts Microsoft 365 downloads on demand, such as Aptos, its default since 2023.
     /// Office keeps them in its own cache rather than installing them in Windows, so an
     /// SVG that PowerPoint wrote names a font no other application can find, and the
@@ -64,6 +95,8 @@ internal static class SvgImageCodec
     private static class OfficeCloudFonts
     {
         private static readonly Lazy<IReadOnlyDictionary<string, string>> Folders = new(FindFolders);
+
+        public static bool Has(string family) => Folders.Value.ContainsKey(family);
 
         public static IEnumerable<string> FoldersFor(IEnumerable<string> families) =>
             families

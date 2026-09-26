@@ -115,6 +115,23 @@
                             </StackPanel>
                         </Button>
                         <Button Style="{StaticResource SessionCommandButton}"
+                                ToolTip="Add a PowerPoint deck, an image, or a .wimport recipe to this board"
+                                Tag="Import"
+                                Click="Command_Click">
+                            <StackPanel HorizontalAlignment="Center">
+                                <Path Width="18"
+                                      Height="18"
+                                      Stretch="Uniform"
+                                      Fill="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"
+                                      Data="{StaticResource ImportGeometry}" />
+                                <TextBlock Margin="0,4,0,0"
+                                           HorizontalAlignment="Center"
+                                           Text="Import" />
+                                <TextBlock Style="{StaticResource SessionShortcutHint}"
+                                           Text="I" />
+                            </StackPanel>
+                        </Button>
+                        <Button Style="{StaticResource SessionCommandButton}"
                                 ToolTip="Export to PowerPoint or PDF (Ctrl+E)"
                                 Tag="Export"
                                 Click="Command_Click">

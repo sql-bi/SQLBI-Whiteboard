@@ -73,6 +73,12 @@ with the font the renderer will use, and when it would reach the next run's star
 a space, compress it horizontally to fit. The squeeze is about 1%, which does not show.
 Decide whether it is worth it once the PPTX import is in use.
 
+A second, smaller gap: PowerPoint sometimes names a weight as a family, *Segoe Sans Small
+Semilight* for *Segoe Sans Small* at weight 350. SharpVectors finds the family in Office's
+folder but not that name, so Auto imports those slides as PNG. `SvgMarkup.Rewrite` could
+turn a family that ends in a weight word into the family and a `font-weight`, when the
+shorter name is one Office has, and those slides would stay SVG.
+
 ## Pen buttons: what was settled, and what is left
 
 The barrel button is the only assignable one, and it takes Laser or Straight line. Adding

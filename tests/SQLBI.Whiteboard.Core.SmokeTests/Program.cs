@@ -1806,6 +1806,55 @@ Assert(
         SvgMarkup.FontFamilies(powerPointSvg).SequenceEqual(["Aptos", "Aptos_MSFontService", "Segoe Sans Text", "Segoe UI"]),
         "Font families come from attributes and styles, once each, without quotes or generic families.");
     Assert(SvgMarkup.FontFamilies(brokenSvg).Count == 0, "Markup naming no font names no family.");
+    var fontLists = SvgMarkup.FontFamilyLists(Encoding.UTF8.GetBytes(
+        "<svg><text font-family=\"Aptos,Aptos_MSFontService,sans-serif\">a</text><text font-family=\"serif\">b</text></svg>"));
+    Assert(
+        fontLists.Count == 2 &&
+        fontLists[0].SequenceEqual(["Aptos", "Aptos_MSFontService"]) &&
+        fontLists[1].Count == 0,
+        "Each declaration keeps its own list, and one naming only generic families asks for nothing.");
+
+    // PowerPoint import: where the slides go, and what their frames are called.
+    Assert(
+        DroppedFileImport.Classify(@"C:\Talks\Deck.PPTX") == DroppedFileKind.Deck &&
+        DroppedFileImport.CanImport("deck.pptx"),
+        "A .pptx is a deck, whatever the case of its extension.");
+    var wide = SlideDeckLayout.Place([1, 1, 2, 2, 2], 9.0 / 16, SlideArrangement.RowPerSection, existingContent: null);
+    Assert(
+        wide.Count == 5 &&
+        wide[0] == new RectD(0, 0, 1920, 1080) &&
+        wide[1].Left == 1920 + SlideDeckLayout.Gap && wide[1].Top == 0 &&
+        wide[2].Left == 0 && wide[2].Top == 1080 + SlideDeckLayout.Gap &&
+        wide[4].Left == 2 * (1920 + SlideDeckLayout.Gap),
+        "A row per section starts a row where the section changes, and slides are 1920 wide.");
+    var unsectioned = SlideDeckLayout.Place([0, 0, 0], 3.0 / 4, SlideArrangement.RowPerSection, existingContent: null);
+    Assert(
+        unsectioned.All(slide => slide.Top == 0) && unsectioned[0].Height == 1440,
+        "A deck without sections is one row, and a 4:3 deck is taller.");
+    var column = SlideDeckLayout.Place([1, 2], 9.0 / 16, SlideArrangement.OneColumn, existingContent: null);
+    var row = SlideDeckLayout.Place([1, 2], 9.0 / 16, SlideArrangement.OneRow, existingContent: null);
+    Assert(
+        column[1].Left == 0 && column[1].Top > 0 && row[1].Top == 0 && row[1].Left > 0,
+        "One column stacks, one row ignores sections.");
+    var below = SlideDeckLayout.Place([0], 9.0 / 16, SlideArrangement.OneRow, new RectD(-500, -200, 800, 600));
+    Assert(
+        below[0].Left == -500 && below[0].Top == 400 + SlideDeckLayout.Gap,
+        "On a board with content the deck goes below it, aligned with its left edge.");
+    Assert(
+        SlideDeckLayout.FrameTitle(3, "Tabular query\vachitecture ") == "3. Tabular query achitecture" &&
+        SlideDeckLayout.FrameTitle(4, "  ") == "4. Slide 4",
+        "A frame is titled with the slide's number and title, with line breaks folded.");
+    var importSettings = PowerPointImportSettings.Normalize(new PowerPointImportSettings
+    {
+        PngWidth = 1234,
+        Pictures = (SlidePictures)42,
+    });
+    Assert(
+        importSettings.PngWidth == PowerPointImportSettings.DefaultPngWidth &&
+        importSettings.Pictures == SlidePictures.Auto &&
+        !new PowerPointImportSettings().Frames &&
+        !new PowerPointImportSettings().IncludeHidden,
+        "Import settings fall back to 2560 and Auto, with frames and hidden slides off by default.");
 
     byte[] spacedSvg = Encoding.UTF8.GetBytes(
         "<svg xmlns=\"http://www.w3.org/2000/svg\">" +

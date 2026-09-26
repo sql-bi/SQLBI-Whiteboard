@@ -8,6 +8,11 @@ public enum DroppedFileKind
     Image = 1,
     Text = 2,
     Import = 3,
+
+    /// <summary>
+    /// A PowerPoint deck, brought in one picture per slide through PowerPoint.
+    /// </summary>
+    Deck = 4,
 }
 
 public static class DroppedFileImport
@@ -15,6 +20,7 @@ public static class DroppedFileImport
     public const int MaximumTextBytes = 1_000_000;
     public const int MaximumSvgBytes = 16_000_000;
     public const string ImportExtension = ".wimport";
+    public const string DeckExtension = ".pptx";
     public const string SvgExtension = ".svg";
     public const string SvgContentType = "image/svg+xml";
 
@@ -37,6 +43,11 @@ public static class DroppedFileImport
         if (string.Equals(extension, ImportExtension, StringComparison.OrdinalIgnoreCase))
         {
             return DroppedFileKind.Import;
+        }
+
+        if (string.Equals(extension, DeckExtension, StringComparison.OrdinalIgnoreCase))
+        {
+            return DroppedFileKind.Deck;
         }
 
         if (string.Equals(extension, ".wboard", StringComparison.OrdinalIgnoreCase))
