@@ -176,14 +176,14 @@ internal sealed class PowerPointDeck : IAsyncDisposable
         _application = Activator.CreateInstance(type)
             ?? throw new InvalidOperationException(NotInstalledMessage);
 
-        // No dialog may appear in a PowerPoint nobody can see; what it would have
-        // asked arrives as an error instead. Put back on close, since the person's
-        // own PowerPoint may be this one.
+        // PowerPoint has no visible window here, so its alerts are turned off and it
+        // reports errors instead. The setting is restored on close, because this may be
+        // the PowerPoint the person is using.
         _displayAlerts = (int)_application.DisplayAlerts;
         _application.DisplayAlerts = PpAlertsNone;
 
-        // A deck already open in PowerPoint is used as it is, rather than opened
-        // a second time and then closed under the person editing it.
+        // A deck that is already open in PowerPoint is used as it is. Opening it again
+        // and closing it afterwards would close the person's open copy.
         int openCount = _application.Presentations.Count;
         for (var index = 1; index <= openCount; index++)
         {
@@ -257,7 +257,7 @@ internal sealed class PowerPointDeck : IAsyncDisposable
         }
         catch (COMException)
         {
-            // PowerPoint went away on its own; there is nothing left to close.
+            // PowerPoint has already exited.
         }
         finally
         {

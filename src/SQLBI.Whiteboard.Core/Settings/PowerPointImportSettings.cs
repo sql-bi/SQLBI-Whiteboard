@@ -27,7 +27,7 @@ public enum SlideArrangement
 
 /// <summary>
 /// What the PowerPoint import dialog remembers between uses. Like the export
-/// settings, these are not in Preferences: they are chosen, and seen, at import.
+/// settings, these are not in Preferences, because they are set in the dialog.
 /// </summary>
 public sealed class PowerPointImportSettings
 {

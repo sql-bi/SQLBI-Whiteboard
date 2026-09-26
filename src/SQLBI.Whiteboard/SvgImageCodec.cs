@@ -193,7 +193,8 @@ internal static class SvgImageCodec
                     return found;
                 }
 
-                // The cache is versioned (FontCache\4 today); the newest wins a name.
+                // The cache is versioned (FontCache\4 today). When a family is in more
+                // than one version, the newest is used.
                 foreach (var cloudFonts in Directory.EnumerateDirectories(cache)
                              .OrderByDescending(version => Path.GetFileName(version), StringComparer.Ordinal)
                              .Select(version => Path.Combine(version, "CloudFonts"))
@@ -207,7 +208,7 @@ internal static class SvgImageCodec
             }
             catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
             {
-                // A cache that cannot be read is the same as no cache: the text falls back.
+                // When the cache cannot be read, the text uses substitute fonts.
             }
 
             return found;

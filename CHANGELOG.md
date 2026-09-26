@@ -20,14 +20,14 @@ and **bold**.
 ## 1.6.3 - 26 September 2026
 
 ### Bring a PowerPoint deck onto the board
-**File → Open** a `.pptx` for a board of its slides, or **File → Import** or drop one to add
-them below what is there. Each slide is a picture, sharp at any zoom when its fonts are on
-the PC and an exact image when they are not, in a row per section. It needs PowerPoint
-from Microsoft 365.
+**File → Open** a `.pptx` to create a board from its slides, or use **File → Import** or
+drag the file onto a board to add the slides below its content. Each slide becomes an SVG
+picture, or a PNG picture if it uses fonts that are not installed, with one row per
+section. It needs PowerPoint from Microsoft 365.
 
 ### Hide the frames while you present
-**View → Show frames** hides every frame and its title, and the board remembers the choice.
-Hidden frames still mark out the slides for **Export**, and **View → Frame** shows them
+**View → Show frames** hides every frame and its title, and the board saves this choice.
+Hidden frames still define the slides for **Export**. **View → Frame** shows the frames
 again.
 
 ## 1.6.2 - 23 September 2026

@@ -69,7 +69,8 @@ public static class SlideDeckLayout
 
     /// <summary>
     /// The title on a slide's frame: its number and its title, or its number alone
-    /// when the slide has no title. The section is left out; the row shows it.
+    /// when the slide has no title. The section is not included, because each section
+    /// has its own row.
     /// </summary>
     public static string FrameTitle(int number, string? title) =>
         string.IsNullOrWhiteSpace(title)

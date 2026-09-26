@@ -149,8 +149,8 @@ public partial class SessionChrome : UserControl
     }
 
     /// <summary>
-    /// Show frames belongs to the board rather than to Preferences, and says
-    /// its state the way the Grid button does.
+    /// Show frames is saved with the board, not in Preferences. The button shows its
+    /// state the same way the Grid button does.
     /// </summary>
     public void SetFramesChecked(bool on)
     {

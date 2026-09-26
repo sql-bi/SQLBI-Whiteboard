@@ -492,8 +492,8 @@ public static class BoardArchive
         scale is > 0 and < 100 ? scale.Value : 1;
 
     /// <param name="ShowFrames">
-    /// Written only when frames are hidden. It needs no new version: a release
-    /// that does not know it skips it and shows the frames.
+    /// Written only when frames are hidden. The archive version does not change,
+    /// because a release that does not know the field ignores it and shows the frames.
     /// </param>
     private sealed record SceneDto(int Version, ObjectDto[] Objects, AssetDto[] Assets, bool? ShowFrames = null);
 

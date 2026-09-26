@@ -12,9 +12,8 @@ public sealed class BoardDocument
     public IReadOnlyList<BoardObject> Objects => _objects;
     public IReadOnlyDictionary<string, BoardAsset> Assets => _assets;
     /// <summary>
-    /// Whether frames are drawn and can be taken hold of. Hidden frames still
-    /// cut the board into slides for Export: hiding them is about what the
-    /// audience sees, not about what the slides are.
+    /// Whether frames are drawn and can be selected. Hidden frames still define
+    /// the slides for Export.
     /// </summary>
     public bool ShowFrames { get; private set; } = true;
 
@@ -330,8 +329,8 @@ public sealed class BoardDocument
     /// place that knows which shape that is.
     /// </summary>
     /// <summary>
-    /// A hidden frame answers to nothing: its edge and tab are not drawn, so a
-    /// touch there would start a move nobody could see coming.
+    /// A hidden frame is not hit, because its edge and tab are not drawn and a
+    /// touch there would otherwise move a frame the person cannot see.
     /// </summary>
     private bool Hits(BoardObject item, PointD worldPoint, double zoom) => item switch
     {

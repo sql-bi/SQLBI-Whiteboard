@@ -21,8 +21,8 @@ public static class SvgMarkup
     /// <summary>
     /// Every font family the markup names, from <c>font-family</c> attributes and style
     /// declarations, in the order they first appear. Generic families and quotes are
-    /// dropped. It reads the text rather than the document, so markup that does not
-    /// parse still answers.
+    /// dropped. It searches the text instead of parsing the document, so it also works
+    /// on markup that does not parse.
     /// </summary>
     public static IReadOnlyList<string> FontFamilies(byte[] bytes)
     {
@@ -40,9 +40,9 @@ public static class SvgMarkup
 
     /// <summary>
     /// Each <c>font-family</c> declaration as its own list, in its own order of
-    /// preference, without generic families. A declaration can be drawn as its author
-    /// meant when any family in its list can be found; one that named only generic
-    /// families comes back empty and asks for nothing.
+    /// preference, without generic families. A declaration renders in the intended font
+    /// when any family in its list can be found. A declaration that names only generic
+    /// families returns an empty list.
     /// </summary>
     public static IReadOnlyList<IReadOnlyList<string>> FontFamilyLists(byte[] bytes)
     {
@@ -194,7 +194,8 @@ public static class SvgMarkup
     /// <summary>
     /// A presentation property as it applies to an element: from its own <c>style</c>, then
     /// its own attribute, then the same on each ancestor in turn, or null when nothing sets
-    /// it. A <c>style</c> declaration wins over the attribute beside it, as in CSS.
+    /// it. A <c>style</c> declaration takes precedence over an attribute on the same element,
+    /// as in CSS.
     /// </summary>
     internal static string? Inherited(XElement element, string property)
     {

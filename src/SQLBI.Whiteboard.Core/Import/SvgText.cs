@@ -15,8 +15,8 @@ public sealed record SvgTextRun(
     string Text);
 
 /// <summary>
-/// What only the platform knows about fonts. The application answers from WPF;
-/// the smoke tests answer with fixed numbers.
+/// Font information that depends on the platform. The application provides it from
+/// WPF, and the smoke tests provide fixed values.
 /// </summary>
 public interface ISvgFontMetrics
 {
@@ -33,14 +33,14 @@ public interface ISvgFontMetrics
 }
 
 /// <summary>
-/// The rewrites that need to know about fonts. Both come from how PowerPoint writes
-/// SVG, and both are ordinary SVG afterwards, so any renderer draws the result.
+/// The rewrites that need to know about fonts. Both address how PowerPoint writes SVG,
+/// and both produce standard SVG.
 /// </summary>
 internal static class SvgText
 {
     /// <summary>
-    /// A horizontal squeeze past this would show on the glyphs; kerning that tight is
-    /// display type, and a run drawn a little wide there is the lesser harm.
+    /// The strongest horizontal scaling applied. More than 5% visibly narrows the glyphs,
+    /// so a run that kerns more than that is drawn slightly wider than its kerned width.
     /// </summary>
     private const double TightestKerning = 0.95;
 
@@ -83,7 +83,8 @@ internal static class SvgText
                 var family = Unquote(entries[index]);
                 if (family.Length == 0 || IsGeneric(family) || metrics.IsAvailable(family))
                 {
-                    // The first family that can be drawn is the one that will be.
+                    // The renderer uses the first family it can find, so the list is
+                    // left as it is.
                     break;
                 }
 
@@ -202,8 +203,8 @@ internal static class SvgText
     }
 
     /// <summary>
-    /// A single coordinate, or zero when there is none. A list of them places glyphs one
-    /// by one, which a squeeze of the whole run would undo.
+    /// A single coordinate, or zero when there is none. A list of coordinates positions
+    /// each glyph, and scaling the run would move them, so such text is skipped.
     /// </summary>
     private static double? Coordinate(XElement text, string name)
     {

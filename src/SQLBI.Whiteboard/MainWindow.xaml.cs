@@ -8561,7 +8561,7 @@ public partial class MainWindow : Window
     {
         if (DroppedFileImport.Classify(filePath) == DroppedFileKind.Deck)
         {
-            // Asked before PowerPoint is started, so a No costs nothing.
+            // Asked before PowerPoint starts, so answering No does not start it.
             if (PowerPointDeck.IsAvailable &&
                 confirmDiscard &&
                 !ConfirmDiscardUnsaved("Open this deck as a new board? Any unsaved changes will be lost."))
@@ -9017,8 +9017,8 @@ public partial class MainWindow : Window
         var command = new AddImportCommand(objects, assets);
         if (newBoard)
         {
-            // As with a recipe opened as a board: nothing to undo back to, and a
-            // board no file holds yet.
+            // Same as a recipe opened as a board: the history starts empty, and the
+            // board is marked unsaved because no file holds it yet.
             command.Execute(_document);
             _history.Clear();
             MarkDirtyOutsideHistory();

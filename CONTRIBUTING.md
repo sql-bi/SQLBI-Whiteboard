@@ -124,6 +124,19 @@ apply to all of them.
   what the previous version did. Those go under `docs/` or in the pull request.
 - **Do not hedge and do not sell.** "Fills the monitor", not "tries to fill the monitor
   when possible" and not "conveniently fills the monitor".
+- **No setup and punchline.** Write each sentence to state a fact. Do not build a sentence,
+  or a pair of sentences, toward a turn at the end. The forms it takes:
+  - a contrast placed for effect: "sharp where it can be, exact where it cannot", or "about
+    what the audience sees, not about what the slides are"
+  - a colon or semicolon that reveals a conclusion: "Copying a slide does: …"
+  - a closing line that restates the point as a saying: "Hiding the commands would leave
+    nothing to find."
+  - an object given intentions: "markup that does not parse still answers"
+
+  Say the fact, and give the reason with "because" when one is needed. A contrast is fine
+  when the reader has to choose between the two things, as in a list of options. This rule
+  applies everywhere text is written in this repository: `docs/`, code comments, commit
+  messages, and pull request descriptions included.
 - **Name things as the person sees them.** Menu paths and setting titles as they appear on
   screen, in bold in Markdown and in `<span class="ui">` on the site. Keys as printed on
   the keyboard, in `<kbd>` on the site. Pen, touch, mouse, and keyboard, never "pointer
@@ -167,6 +180,14 @@ where a person meets it, and being offered recovered work when reopening a board
 same story to a reader as being offered it at startup. So count the entries in the two
 versions below yours before writing: that is the shape to match, not a ceiling to approach.
 
+It slips into setup and punchline when a sentence is written to sound finished rather
+than to inform. The 1.6.3 PowerPoint import entry went in as "Each slide is a picture, sharp
+at any zoom when its fonts are on the PC and an exact image when they are not." What was
+wanted:
+
+> Each slide becomes an SVG picture, or a PNG picture if it uses fonts that are not
+> installed.
+
 It slips in a Description by saying everything the code knows. The setting that goes full
 screen after ten idle seconds went in with four sentences: the title restated, the cases
 in which the countdown waits, the default, and that changes apply immediately. Its
@@ -183,7 +204,8 @@ where it belonged as one sentence in the F11 row, and it went into the site nowh
 
 Match the surrounding code. Nullable reference types and implicit usings are enabled.
 Comments explain why, not what, and are sparse — the codebase reads as one voice rather than
-as a series of contributions.
+as a series of contributions. The rule against setup and punchline in *Writing for people*
+applies to comments too.
 
 ## Building
 

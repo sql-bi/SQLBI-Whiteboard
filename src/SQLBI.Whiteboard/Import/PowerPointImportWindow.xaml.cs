@@ -62,8 +62,8 @@ public partial class PowerPointImportWindow : Window
 
     private void PopulateOptions()
     {
-        // Each choice carries its description on the tile, so it is read before it is
-        // chosen; a tooltip would ask for a hover that a pen or a finger cannot give.
+        // Each tile shows its description. A tooltip is not used, because pen and touch
+        // input cannot hover.
         AddTiles(PicturesChoices, "Pictures", _pictures, value => _pictures = value, OnPicturesChanged,
         [
             (SlidePictures.Auto, TextTile("Auto", "SVG, or PNG for a slide whose fonts are missing")),
@@ -94,8 +94,8 @@ public partial class PowerPointImportWindow : Window
 
     private async void Window_Loaded(object sender, RoutedEventArgs e)
     {
-        // PowerPoint takes a few seconds to start and to open a deck, and nothing here
-        // can be chosen until it has said what is in it, so the wait is said out loud.
+        // Starting PowerPoint and opening the deck take a few seconds, and the options
+        // stay disabled until the deck is read, so the dialog shows the current step.
         Cursor = Cursors.Wait;
         var opening = new Progress<OpenProgress>(report =>
         {
@@ -130,7 +130,8 @@ public partial class PowerPointImportWindow : Window
             Cursor = null;
         }
 
-        // Closed while PowerPoint was still opening it: nothing else will let it go.
+        // The dialog was closed while PowerPoint was opening the deck, so the deck is
+        // released here.
         if (_closed)
         {
             await _deck.DisposeAsync();
@@ -154,8 +155,8 @@ public partial class PowerPointImportWindow : Window
         OpeningProgress.Visibility = Visibility.Collapsed;
         DeckFacts.Text = string.Join(", ", facts);
 
-        // The switch stays when there is nothing for it to do, so it is where it is
-        // expected on the next deck; it says why it cannot be used.
+        // The switch is always shown, so its position does not change between decks.
+        // It is disabled when the deck has no hidden slides.
         HiddenSwitch.IsEnabled = hidden > 0;
         HiddenHint.Text = hidden > 0 ? $"{Count(hidden, "slide")} in this deck" : "This deck has none";
         Options.IsEnabled = true;
@@ -165,7 +166,7 @@ public partial class PowerPointImportWindow : Window
 
     private void OnPicturesChanged()
     {
-        // Resolution is how wide a PNG is, and SVG makes none.
+        // The resolution applies to PNG only.
         var usesPng = _pictures != SlidePictures.Svg;
         ResolutionLine.Visibility = usesPng && ResolutionCombo.Visibility != Visibility.Visible
             ? Visibility.Visible
@@ -269,7 +270,7 @@ public partial class PowerPointImportWindow : Window
 
         if (capture > 0)
         {
-            notes.Add($"{Count(capture, "slide")} {(capture == 1 ? "uses" : "use")} a picture because PowerPoint did not hand over {(capture == 1 ? "its" : "their")} SVG.");
+            notes.Add($"{Count(capture, "slide")} {(capture == 1 ? "uses" : "use")} a picture because PowerPoint did not provide {(capture == 1 ? "its" : "their")} SVG.");
         }
 
         if (!restored)
@@ -283,7 +284,7 @@ public partial class PowerPointImportWindow : Window
             return;
         }
 
-        // Said before the dialog goes, so the board it returns to is not a surprise.
+        // The dialog stays open to show why some slides are PNG.
         _finished = true;
         SetBusy(false, 0);
         Options.IsEnabled = false;
@@ -305,7 +306,7 @@ public partial class PowerPointImportWindow : Window
 
     private void Window_PreviewKeyDown(object sender, KeyEventArgs e)
     {
-        // Escape in the open resolution list closes the list, not the dialog.
+        // While the resolution list is open, Escape closes the list and leaves the dialog open.
         if (e.Key != Key.Escape || ResolutionCombo.IsDropDownOpen)
         {
             return;
@@ -435,8 +436,8 @@ public partial class PowerPointImportWindow : Window
         return (content, title);
     }
 
-    // The three layouts as the board will hold them: slides as small cards, the first
-    // one in the accent so the reading order is visible.
+    // The three layouts, with slides drawn as small cards. The first slide is in the
+    // accent color to show the reading order.
     private static FrameworkElement RowPerSectionSample() => LayoutSample([(0, 0), (1, 0), (2, 0), (0, 1), (1, 1), (0, 2), (1, 2), (2, 2)]);
 
     private static FrameworkElement OneRowSample() => LayoutSample([(0, 1), (1, 1), (2, 1), (3, 1), (4, 1)]);

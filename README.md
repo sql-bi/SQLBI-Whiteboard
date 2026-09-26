@@ -19,7 +19,7 @@ How the project is developed and shipped is documented separately:
 - Mouse-wheel zoom and middle-button or temporary Space-key panning
 - Whole-stroke erasing
 - PNG, JPEG, BMP, GIF, and SVG import, clipboard bitmap paste, and Explorer drag-and-drop of images, text files, `.wimport` recipes, and PowerPoint decks
-- PowerPoint decks as one picture per slide, through PowerPoint from Microsoft 365: SVG where it draws as PowerPoint does and PNG where it does not, a row per section, and an optional frame around each slide. **File → Open** makes a new board of the deck; **File → Import** and a drop add it below the board's content
+- PowerPoint decks imported as one picture per slide through PowerPoint from Microsoft 365: SVG, or PNG for a slide whose fonts are not installed, placed in one row per section, with an optional frame around each slide. **File → Open** creates a new board from the deck; **File → Import** and drag-and-drop add it below the board's content
 - SVG stays vector: it is stored as its markup and redrawn at every zoom and resize rather than rasterized on arrival. Pasting SVG markup that was copied as text — the output of a DAX SVG measure, for instance — creates a picture, and copying an SVG container puts both the markup and a bitmap on the clipboard. Text set in a Microsoft 365 font such as Aptos is drawn in that font when Office has it on the machine
 - Image selection, movement, resizing, and deletion
 - Text containers created by pasting plain text, with display and in-place edit modes
