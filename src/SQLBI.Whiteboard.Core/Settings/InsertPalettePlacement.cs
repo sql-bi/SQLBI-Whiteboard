@@ -69,8 +69,7 @@ public static class InsertPalettePlacement
 
     /// <summary>
     /// A place in the window as the fraction of it that settings keep. A window
-    /// with no size yet gives 0, which is the top left rather than a division by
-    /// nothing.
+    /// with no size yet gives 0, the top left, instead of dividing by zero.
     /// </summary>
     public static PointD ToFraction(PointD position, double windowWidth, double windowHeight) =>
         new(

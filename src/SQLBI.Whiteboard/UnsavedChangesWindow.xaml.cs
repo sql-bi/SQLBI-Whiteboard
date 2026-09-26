@@ -22,8 +22,8 @@ public enum UnsavedChangesAnswer
 
 /// <summary>
 /// Asked on the way out of a board that has a name and has strayed from it. A board with no
-/// name is never asked about - it is carried into the session and comes back on its own,
-/// which is the whole reason an untitled board does not need to interrupt anybody.
+/// name is never asked about, because it is carried into the session and comes back on
+/// its own.
 /// </summary>
 public partial class UnsavedChangesWindow : Window
 {

@@ -108,9 +108,9 @@ public partial class SessionChrome : UserControl
     }
 
     /// <summary>
-    /// The four depth commands take two answers: a selection that can be brought
-    /// to the front is exactly one that has something above it to pass, and the
-    /// same the other way down.
+    /// The four depth commands need two flags, because a selection can be brought
+    /// to the front exactly when it has something above it to pass, and sent to
+    /// the back when it has something below it.
     /// </summary>
     public void SetZOrderEnabled(bool canBringToFront, bool canSendToBack)
     {
@@ -194,8 +194,8 @@ public partial class SessionChrome : UserControl
 
     /// <summary>
     /// What the mode leaves in the strip: the Insert tab goes with its tools,
-    /// and the two one-step depth commands go with theirs. A tab that is not
-    /// there cannot be the open one, so the strip closes on whatever was in it.
+    /// and the two one-step depth commands go with theirs. When the Insert tab
+    /// is hidden while it is open, the strip closes.
     /// </summary>
     public void SetFeatures(FeatureSet features)
     {
@@ -217,9 +217,9 @@ public partial class SessionChrome : UserControl
     }
 
     /// <summary>
-    /// The pin reads as on while the Insert palette is on the board, for the
-    /// same reason the Grid button does: it is the one place in the row that
-    /// says what state something is already in.
+    /// The pin reads as on while the Insert palette is on the board, as the
+    /// Grid button does for the grid, because nothing else in the row shows
+    /// what state something is already in.
     /// </summary>
     public void SetInsertPaletteChecked(bool on)
     {

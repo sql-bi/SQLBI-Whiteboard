@@ -193,8 +193,8 @@ internal static class PreferencesSmokeTests
     /// <summary>
     /// Every drawn row has a picture for every choice it offers, and a drawn
     /// boolean reads and writes the setting the switches used to. A missing
-    /// picture is a choice the dialog silently drops, which the eye would only
-    /// catch on the one row nobody opened.
+    /// picture silently drops a choice from the dialog, and on a row nobody
+    /// opens it would go unnoticed.
     /// </summary>
     private static void CheckDrawnChoices()
     {

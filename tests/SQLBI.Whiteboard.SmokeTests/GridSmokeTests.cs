@@ -13,8 +13,7 @@ namespace SQLBI.Whiteboard.SmokeTests;
 /// The grid is drawn rather than computed, so what is worth checking here is what
 /// comes out of the surface: that a style paints something, that the two styles
 /// differ, and that what leaves for a preview is the board without any of it.
-/// How faint it looks is a question for eyes, which is what the preview path is
-/// for.
+/// How faint it looks has to be judged by eye, with the preview path.
 /// </summary>
 internal static class GridSmokeTests
 {
@@ -93,8 +92,8 @@ internal static class GridSmokeTests
     }
 
     /// <summary>
-    /// The three pictures side by side, for a person who wants to see how faint
-    /// faint is: lines, dots, and lines zoomed out past the step.
+    /// The three pictures side by side, to judge by eye how faint the grid is:
+    /// lines, dots, and lines zoomed out past the step.
     /// </summary>
     private static void RenderPreview(string path)
     {

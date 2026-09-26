@@ -9,8 +9,8 @@
     <SolidColorBrush x:Key="SettingsSwitchOffBrush"
                      Color="#22000000" />
 
-    <!-- Amber rather than the blue accent: the accent already means "this is
-         the choice in force", and a search hit is not a choice. -->
+    <!-- Amber rather than the blue accent, because the accent already marks
+         the choice in force and a search hit is not a choice. -->
     <SolidColorBrush x:Key="SettingsHighlightBrush"
                      Color="#FFFDE68A" />
 
@@ -220,8 +220,8 @@
                 Value="Wrap" />
     </Style>
 
-    <!-- The one line that is always there. It wraps rather than clipping, so a
-         narrowed dialog costs a second line instead of half a sentence. -->
+    <!-- The one line that is always there. It wraps rather than clipping, so in a
+         narrowed dialog it takes a second line and no words are cut off. -->
     <Style x:Key="SettingsSummary"
            TargetType="TextBlock">
         <Setter Property="FontFamily"
@@ -400,8 +400,9 @@
                         </Trigger>
 
                         <!-- A switch that cannot be used still shows what it is
-                             set to: the four Mode groups are what Custom is
-                             made of, and greying is what says "not from here". -->
+                             set to, because the four Mode groups are what
+                             Custom is made of. Greying marks that it cannot be
+                             changed from here. -->
                         <Trigger Property="IsEnabled"
                                  Value="False">
                             <Setter TargetName="Switch"
@@ -489,9 +490,10 @@
                         </Trigger>
 
                         <!-- A drawn choice is pictures and a word, and neither
-                             greys itself the way a switch or a combo does. The
-                             segment is faded whole, so the choice in force is
-                             still readable while the row cannot be used. -->
+                             has a disabled look of its own, as a switch or a
+                             combo has. The segment is faded whole, so the
+                             choice in force is still readable while the row
+                             cannot be used. -->
                         <Trigger Property="IsEnabled"
                                  Value="False">
                             <Setter TargetName="Root"

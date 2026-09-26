@@ -10,16 +10,16 @@ namespace SQLBI.Whiteboard;
 
 /// <summary>
 /// The pictures behind <see cref="SettingEditorKind.DrawnChoice"/>. Each of
-/// these settings answers a question about what the board will look like or
-/// what a gesture will take, and the answer is a small still picture of the
-/// board rather than a name for it: the row is chosen by looking.
+/// these settings is about what the board will look like or what a gesture
+/// will take, so each choice is shown as a small still picture of the board
+/// instead of a name.
 ///
 /// They are drawn at half the size of the laser and toolbar samples, because
 /// the Mode category has five of these rows and all five have to be on the
-/// screen together at the dialog's default size. Half the size is not half the
-/// picture: where the detail would have become specks - the Insert palette
-/// under the tab strip, the glyphs inside the palette, a fourth thing in a bar
-/// - it is left out instead, so that what remains is still legible at 100%.
+/// screen together at the dialog's default size. Detail that would have become
+/// specks at that size - the Insert palette under the tab strip, the glyphs
+/// inside the palette, a fourth thing in a bar - is left out, so that what
+/// remains is still legible at 100%.
 /// No sample carries text unless the thing itself does.
 /// </summary>
 public partial class PreferencesWindow
@@ -39,8 +39,8 @@ public partial class PreferencesWindow
     private static readonly Brush SampleChromeBrush = Frozen(0xFFF1F2F4);
 
     // The board's grid, which is 8% black on the surface itself. A miniature of
-    // it at that strength is a blank board at 100% scaling, so it is drawn at
-    // the weight the eye needs rather than the weight the surface uses.
+    // it at that strength is a blank board at 100% scaling, so it is drawn
+    // darker than the surface draws it.
     private static readonly Brush SampleGridBrush = Frozen(0x40000000);
 
     private static readonly Brush SampleSelectedFillBrush = Frozen(0x282563EB);
@@ -95,9 +95,9 @@ public partial class PreferencesWindow
     };
 
     // The tab strip is where the Insert tab appears, so the group is the strip
-    // with and without that tab. The palette it opens was in this picture too
-    // and is not any more: at this size it was a gray box with specks in it,
-    // and the tab is the thing that arrives and leaves.
+    // with and without that tab. The palette it opens is left out, because at
+    // this size it was a gray box with specks in it, and the tab is what
+    // appears and disappears.
     private static FrameworkElement DesignToolsSample(bool on)
     {
         var scene = SampleScene();
@@ -233,10 +233,10 @@ public partial class PreferencesWindow
         return SampleFrame(scene);
     }
 
-    // One object inside the area and one across its edge, which is the whole of
-    // the difference between the two answers. The old picture had a second
-    // object on the far edge saying the same thing twice, and three of them at
-    // this size were a tangle.
+    // One object inside the area and one across its edge, which is the whole
+    // difference between the two choices. A second object on the far edge
+    // would repeat the same point, and three objects at this size overlapped
+    // too much to read.
     private static FrameworkElement AreaSelectionSample(AreaSelection selection)
     {
         var scene = SampleScene();
@@ -311,8 +311,8 @@ public partial class PreferencesWindow
         return CompactBoard(rows);
     }
 
-    // A second panel beside the toolbar, which is the whole of what this adds:
-    // the toolbar is the same in both pictures.
+    // A second panel beside the toolbar, which is all this adds, so the
+    // toolbar is the same in both pictures.
     private static FrameworkElement InsertPaletteSample(bool on)
     {
         var scene = SampleScene(ToolbarSampleWidth, SampleHeight);
@@ -347,8 +347,8 @@ public partial class PreferencesWindow
                 SampleOutline(scene, 2 + (index * 12), 3, 10, 7, SampleInkBrush);
             }
 
-            // Clear of the shapes: drawn over the last one the pen read as a
-            // tail on it rather than as the tool still in hand.
+            // Clear of the shapes, because drawn over the last one the pen
+            // looked like a tail on it rather than the tool still in hand.
             SamplePen(scene, 25, 10.2);
             return SampleFrame(scene);
         }
@@ -392,9 +392,9 @@ public partial class PreferencesWindow
         Child = content,
     };
 
-    // The toolbar each layout produces, at this family's size: the chips say
-    // how many rows there are and which tool is in hand, which is as much as a
-    // bar this wide can say.
+    // The toolbar each layout produces, at this family's size. The chips show
+    // only how many rows there are and which tool is in hand, because a bar
+    // this narrow has no room for more.
     private static StackPanel CompactToolbarRows(CalligraphyAccess access)
     {
         var rows = new StackPanel
@@ -630,10 +630,9 @@ public partial class PreferencesWindow
         Place(scene, line, 0, 0);
     }
 
-    // The Insert palette: a panel with the buttons it holds. The shapes
-    // themselves were drawn here at the old size; at this one a triangle and an
-    // arrow four pixels wide were two smudges, so the buttons are plain and the
-    // panel is what the picture says.
+    // The Insert palette: a panel with the buttons it holds. The buttons are
+    // plain, because at this size a triangle and an arrow four pixels wide were
+    // two smudges, so the picture shows the panel rather than the shapes in it.
     private static void SamplePalette(Canvas scene, double left, double top, double width, double height)
     {
         SampleBlock(scene, left, top, width, height, SampleChromeBrush, radius: 2);

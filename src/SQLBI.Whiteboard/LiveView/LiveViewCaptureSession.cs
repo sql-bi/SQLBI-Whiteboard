@@ -499,8 +499,8 @@ internal sealed class LiveViewCaptureSession : IDisposable
     }
 
     /// <summary>
-    /// Borrows the frame's DXGI texture. Reference counting here is the whole
-    /// point: <c>GetRef</c> hands out one owned reference, and
+    /// Borrows the frame's DXGI texture. The reference counting here has to be
+    /// exact. <c>GetRef</c> hands out one owned reference, and
     /// <c>ComObject.As</c> takes ownership of the pointer it is given — its
     /// temporary wrapper Releases it, including when the QueryInterface throws.
     /// Those two pair exactly. Releasing <c>inspectable</c> again dropped the

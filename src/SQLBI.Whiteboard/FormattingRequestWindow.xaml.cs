@@ -7,8 +7,8 @@ namespace SQLBI.Whiteboard;
 
 /// <summary>
 /// The answer F6 gives for a language Whiteboard colors but does not format.
-/// It asks for a vote rather than apologizing: the issue's reactions are what
-/// decides which language gets a formatter next. Nothing is sent from here -
+/// It asks for a vote, because the issue's reactions decide which language
+/// gets a formatter next. Nothing is sent from here -
 /// the link opens the issue in the browser when someone activates it, and
 /// GitHub handles the sign-in and the reaction.
 /// </summary>

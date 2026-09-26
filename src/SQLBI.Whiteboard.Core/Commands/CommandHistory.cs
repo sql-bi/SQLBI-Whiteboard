@@ -156,10 +156,10 @@ public sealed record RemoveObjectsCommand(IReadOnlyList<BoardObject> Items) : IB
 }
 
 /// <summary>
-/// Several commands as one step of the history. Deleting a shape is the reason
-/// it exists: what is removed and the connectors that have to let go of it are
-/// two changes to the document and one thing that happened, so one undo puts
-/// both back.
+/// Several commands as one step of the history. It exists for deleting a shape,
+/// which removes the shape and detaches the connectors bound to it. Those are
+/// two changes to the document from one action, so one undo has to put both
+/// back.
 /// </summary>
 public sealed record CompositeCommand(IReadOnlyList<IBoardCommand> Commands) : IBoardCommand
 {

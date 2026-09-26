@@ -1,6 +1,6 @@
 # SQLBI Whiteboard
 
-A native Windows 11 whiteboard built with C# and WPF. WPF's dedicated dynamic ink renderer owns the live pen stroke, while a retained viewport renders an unbounded world-coordinate document beneath it.
+A native Windows 11 whiteboard built with C# and WPF. A retained viewport renders an unbounded world-coordinate document and draws the live pen stroke, which is read directly from the pen's packets. Finger ink uses WPF's dynamic ink renderer.
 
 How the project is developed and shipped is documented separately:
 [CONTRIBUTING.md](CONTRIBUTING.md) for the working agreement,
@@ -9,7 +9,7 @@ How the project is developed and shipped is documented separately:
 
 ## Included in the application
 
-- Low-latency, pressure-aware WPF wet ink, including rear-eraser detection on any pen that reports it
+- Low-latency, pressure-aware wet ink, including rear-eraser detection on any pen that reports it
 - A normal cursor for physical mouse input, and a pen-hover indicator that shows what a tap would do: the laser with its halo and speed trail, a dashed square around what the eraser would clear, and a high-contrast dot for everything else. All of them disappear on contact
 - Optional mouse drawing (default when Windows reports neither a pen tablet nor a touchscreen): the left button uses the current tool, Ctrl and the left button move and resize a container, and Eraser and Pan appear on the toolbar. A mouse reports no pressure, so ink is drawn at an even width and Calligraphy is the one tool that still varies, because its width comes from speed. Nothing about the pen changes when it is on. With it off, picking a tool from the toolbar with the mouse offers to turn it on, once a session
 - Touch panning and two-finger pinch zoom
@@ -20,7 +20,7 @@ How the project is developed and shipped is documented separately:
 - Whole-stroke erasing
 - PNG, JPEG, BMP, GIF, and SVG import, clipboard bitmap paste, and Explorer drag-and-drop of images, text files, `.wimport` recipes, and PowerPoint decks
 - PowerPoint decks imported as one picture per slide through PowerPoint from Microsoft 365: SVG, or PNG for a slide whose fonts are not installed, placed in one row per section, with an optional frame around each slide. **File → Open** creates a new board from the deck; **File → Import** and drag-and-drop add it below the board's content
-- SVG stays vector: it is stored as its markup and redrawn at every zoom and resize rather than rasterized on arrival. Pasting SVG markup that was copied as text — the output of a DAX SVG measure, for instance — creates a picture, and copying an SVG container puts both the markup and a bitmap on the clipboard. Text set in a Microsoft 365 font such as Aptos is drawn in that font when Office has it on the machine
+- SVG is stored as its markup and redrawn as vectors at every zoom and resize. Pasting SVG markup that was copied as text — the output of a DAX SVG measure, for instance — creates a picture, and copying an SVG container puts both the markup and a bitmap on the clipboard. Text set in a Microsoft 365 font such as Aptos is drawn in that font when Office has it on the machine
 - Image selection, movement, resizing, and deletion
 - Text containers created by pasting plain text, with display and in-place edit modes
 - Seventeen text-container types: fifteen languages with live syntax highlighting, plus Prompt and Markdown, and local F6 formatting for DAX, SQL Server, and KQL
@@ -148,9 +148,10 @@ update check read. They are generated per deployment, not committed. The schema 
 
 ## Application
 
-`SQLBI.Whiteboard` is the WPF application project. It uses `InkCanvas` only for live wet ink; completed
-pressure strokes are converted into `SQLBI.Whiteboard.Core` world coordinates and
-rendered by the retained WPF scene layer.
+`SQLBI.Whiteboard` is the WPF application project. It uses `InkCanvas` only for live finger
+ink, and draws the live pen stroke itself from the pen's packets. Completed pressure strokes
+are converted into `SQLBI.Whiteboard.Core` world coordinates and rendered by the retained
+WPF scene layer.
 
 After building the solution, start the application with:
 
@@ -164,7 +165,7 @@ Choose **View → LiveView** and select an application window or display in the 
 
 Use **View > Freeze** to stop capture while retaining the last frame. The same command resumes a target that is still available. **View > Disconnect** releases the target, keeps the last frame, and hides the on-frame freeze/play controls; **View > Reconnect** is then the only way back to a live feed.
 
-**Preferences → Live View → Pause when Whiteboard loses focus** stops capture while another application is in the foreground, keeping the last frame visible. Returning to Whiteboard resumes only the LiveViews that were playing; manually paused or disconnected views stay that way. Whiteboard's own dialogs do not interrupt capture. The checkbox is off by default and takes effect immediately.
+**Preferences → Live View → Pause when Whiteboard loses focus** stops capture while another application is in the foreground, keeping the last frame visible. Returning to Whiteboard resumes only the LiveViews that were playing; manually paused or disconnected views stay that way. Whiteboard's own dialogs do not interrupt capture.
 
 Saving a board captures the latest LiveView bitmap and stores it with the source label, frame-rate setting, cursor setting, frozen state, and container geometry. Loading a board displays that bitmap immediately. Windows capture permission objects cannot be serialized, so use **Reconnect** to restore the live feed after loading.
 
@@ -191,7 +192,7 @@ Use **Copy settings** after finding a useful combination so the exact values can
 | Ctrl + left mouse | Select/move/resize a container and return to the previous drawing tool — what the left button does on its own when Mouse drawing is off |
 | Double-click container | Center and fit the image, text, or LiveView to the canvas. With Mouse drawing on and an ink or eraser tool selected, hold Ctrl: two plain clicks are two strokes |
 | Double-click empty canvas | Center and fit all board content, or reset an empty board |
-| Pen eraser | Erase complete strokes. The upper side button erases too: Windows reports it the same way as a pen turned round. A pen with neither reaches the Eraser through **Help → Preferences → Toolbar → Always show the Eraser** |
+| Pen eraser | Erase complete strokes. The upper side button erases too, because Windows reports it the same way as a pen turned round. A pen with neither reaches the Eraser through **Help → Preferences → Toolbar → Always show the Eraser** |
 | Pen barrel | Hold for Laser, or hold before starting a stroke for Straight line, as assigned in Preferences. Releasing ends the action; a mid-stroke press cannot start Straight line |
 | One finger | Pan. With Finger drawing on, uses the current tool instead |
 | Two fingers | Pan and pinch zoom. Cancels an in-progress finger stroke when Finger drawing is on |

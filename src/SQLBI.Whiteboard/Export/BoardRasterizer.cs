@@ -12,7 +12,7 @@ namespace SQLBI.Whiteboard.Export;
 /// Draws any world rectangle at any pixel size, through the same
 /// <see cref="BoardSurface"/> that draws the screen. A fresh surface has no
 /// selection, no hover, and no pending stroke, so nothing transient reaches an
-/// export. Must run on the UI thread: <see cref="RenderTargetBitmap"/> insists.
+/// export. Must run on the UI thread, because <see cref="RenderTargetBitmap"/> requires it.
 /// </summary>
 internal static class BoardRasterizer
 {
@@ -46,8 +46,8 @@ internal static class BoardRasterizer
             ObjectFilter = objectFilter,
             DrawFrames = false,
 
-            // Said rather than left to the default: what goes into a deck, a PDF,
-            // or the clipboard is the board, not the guides drawn around it.
+            // Set explicitly rather than left to the default, because a deck, a
+            // PDF, or the clipboard gets the board without the guides around it.
             GridStyle = GridStyle.Off,
         };
         surface.Configure(document, camera);

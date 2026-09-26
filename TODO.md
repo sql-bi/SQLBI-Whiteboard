@@ -63,18 +63,18 @@ The PPTX import can add a frame per slide, off by default; see
 The barrel button is the only assignable one, and it takes Laser or Straight line. Adding
 an action means an entry in `PenButtonAction`, a choice in `SettingsCatalog`, and — if it
 swaps the tool rather than acting as a modifier — a case in `MainWindow.BarrelToolFor`.
-Nothing else needs to know.
+No other code changes.
 
 Erasing is not assignable. The reverse end of the pen erases, and so does the upper side
 button, because they cannot be told apart:
 
 - **The upper button and a reversed pen are the same signal.** A trace from the
   development pen (`PenTrace`, enabled by pointing `SQLBI_WHITEBOARD_PENTRACE` at a file)
-  settles what several rounds of inference could not. The device exposes exactly two
+  answered the question after several rounds of inference had left it open. The device exposes exactly two
   buttons, `Tip Switch` and `Barrel Switch` — no eraser button, no secondary tip button.
   Clicking the upper side button and turning the pen round produce identical events:
   `Inverted` goes true, both switches stay up, pressure stays zero, and when either one
-  lands the same tip switch closes. So an inversion is the eraser, full stop. A device
+  lands the same tip switch closes. Whiteboard therefore treats every inversion as the eraser. A device
   that reports a real `SecondaryTipButton` would be distinguishable, and supporting one
   would mean re-introducing a second slot — worth doing only if such a device turns up.
 
@@ -97,7 +97,7 @@ button, because they cannot be told apart:
   Shift. The pressure-based contact tracking is described in decision 22.
 
 - **Two constants stand in for signals the hardware does not give.** `AppendPenInk` calls
-  four consecutive weightless packets a lift rather than a dropped reading — no digitizer
+  four consecutive weightless packets a lift rather than a dropped reading, because no digitizer
   misses four readings in a row. `DefaultActivationDistance` is 24 px: how far the pen
   must travel before the axis is settled. It was 8 px, which let a few milliseconds of
   the previous direction pick the axis; a trace of real strokes is the way to revisit it.

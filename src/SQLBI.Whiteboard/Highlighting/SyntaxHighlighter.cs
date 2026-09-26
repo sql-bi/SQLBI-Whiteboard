@@ -14,8 +14,7 @@ namespace SQLBI.Whiteboard.Highlighting;
 /// <summary>
 /// Colors a snippet from one of the embedded syntax definitions. The languages
 /// with a parser of their own classify their tokens themselves; these are the
-/// languages Whiteboard reads lexically, and one definition file each is what
-/// they cost.
+/// languages Whiteboard reads lexically, with one definition file each.
 /// </summary>
 /// <remarks>
 /// The definitions are Whiteboard's own, written against the XSHD schema of
@@ -28,8 +27,8 @@ internal static class SyntaxHighlighter
     /// <summary>
     /// Past this, a text container is no longer a snippet and the per-line rule
     /// scanning stops being worth its time - one 429 KB line measured 837 ms.
-    /// A longer source is shown uncolored rather than slowly, which is also
-    /// what a definition that throws gets.
+    /// A longer source is shown uncolored, as is the source of a definition
+    /// that throws.
     /// </summary>
     private const int MaximumAnalyzedLength = 100_000;
 
@@ -57,8 +56,8 @@ internal static class SyntaxHighlighter
         ["Comment"] = new(Comment, FontWeights.Normal, FontStyles.Italic),
         ["String"] = new(StringLiteral, FontWeights.Normal, FontStyles.Normal),
         ["Character"] = new(StringLiteral, FontWeights.Normal, FontStyles.Normal),
-        // A hole in a string and a variable are the same thing to a reader:
-        // a value where text would otherwise be.
+        // A hole in a string takes the variable's color, because both put a
+        // value where text would otherwise be.
         ["Interpolation"] = new(Variable, FontWeights.SemiBold, FontStyles.Normal),
         ["Variable"] = new(Variable, FontWeights.SemiBold, FontStyles.Normal),
         ["Number"] = new(Number, FontWeights.Normal, FontStyles.Normal),
@@ -74,10 +73,10 @@ internal static class SyntaxHighlighter
     /// <summary>
     /// The whole document at once, in document order: nested grammar styles are
     /// flattened into runs, so the result is ordered, nonoverlapping and within
-    /// the source, which is what the colorizer and the exporters read. Every
-    /// character of the source is left alone; only what covers it is decided
-    /// here, and an unterminated string or comment colors on to where its
-    /// language says it ends.
+    /// the source, which is what the colorizer and the exporters read. This
+    /// decides only the colors over the source and never changes its text, and
+    /// an unterminated string or comment colors on to where its language says
+    /// it ends.
     /// </summary>
     public static IReadOnlyList<StyledTextSpan> Analyze(string source, string definitionName)
     {
@@ -197,8 +196,8 @@ internal static class SyntaxHighlighter
 
     /// <summary>
     /// Lets one definition build on another - TypeScript on JavaScript - and
-    /// keeps that resolution inside this assembly, so the bundled definitions
-    /// of the same name are never what a rule set reference reaches.
+    /// keeps that resolution inside this assembly, so a rule set reference
+    /// never resolves to AvalonEdit's bundled definition of the same name.
     /// </summary>
     private sealed class DefinitionResolver : IHighlightingDefinitionReferenceResolver
     {

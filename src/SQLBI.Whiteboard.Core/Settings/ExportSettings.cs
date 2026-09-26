@@ -62,8 +62,8 @@ public enum ExportSlideContent
 }
 
 /// <summary>
-/// What the export dialog remembers between uses. These are not in Preferences:
-/// they belong to the dialog that shows their effect.
+/// What the export dialog remembers between uses. These are not in Preferences,
+/// because the export dialog is where their effect is shown.
 /// </summary>
 public sealed class ExportSettings
 {

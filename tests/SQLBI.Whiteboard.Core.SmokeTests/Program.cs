@@ -56,8 +56,8 @@ Assert(framedTopLeft.Y >= 49.999999, "Framing must preserve the vertical margin.
     AssertNear(160, GridGeometry.SpacingFor(0.25), "40 at quarter zoom is 10 screen pixels, which is under the floor, so the spacing steps by four.");
     AssertNear(640, GridGeometry.SpacingFor(0.05), "At the minimum zoom the spacing steps twice rather than crowding.");
 
-    // Exactly at the floor the spacing holds: the step is for lines that would be
-    // closer than it, not for lines that reach it.
+    // Exactly at the floor the spacing holds, because the step applies only to
+    // lines that would be closer than the floor.
     var threshold = GridGeometry.MinimumScreenSpacing / GridGeometry.BaseSpacing;
     AssertNear(40, GridGeometry.SpacingFor(threshold), "12 screen pixels apart is close enough, so the spacing holds.");
     AssertNear(
@@ -1093,8 +1093,8 @@ Assert(
     defaultSettings.FingerMode == FingerMode.WhenNoPen &&
     defaultSettings.CheckForUpdates,
     "Missing settings should default to Wacom-if-present, a windowed start without auto full screen, finger drawing when no pen is detected, and update checks on.");
-// A mode says which of the design-era controls exist, and nothing about what a
-// board contains. Design is the default, and the toggle on the View row has to
+// A mode decides which of the design-era controls exist and does not change what
+// a board contains. Design is the default, and the toggle on the View row has to
 // have somewhere to come back to.
 Assert(
     defaultSettings is
@@ -1140,7 +1140,7 @@ Assert(
     },
     "Settings JSON should round-trip the mode, what it returns to, and the four group switches.");
 // Settings written before the modes existed carry none of this, and have to
-// arrive as Design: an upgrade takes nothing away from the board somebody had.
+// arrive as Design, so an upgrade removes nothing from the board somebody had.
 Assert(
     AppSettingsSerializer.Parse("{ \"version\": 19, \"grid\": \"Lines\" }") is
     { Mode: BoardMode.Design, Grid: GridStyle.Lines, DesignTools: true },
@@ -1296,8 +1296,8 @@ Assert(
     mouseModeRoundTrip.MouseMode == MouseMode.On,
     "Settings JSON should round-trip mouse drawing.");
 // Settings written before mouse drawing existed carry no mouseMode at all, and
-// have to arrive as the new default rather than as Off - the whole point is the
-// person who found nothing worked.
+// have to arrive as the new default rather than as Off, because the new default
+// exists for the person who found that nothing worked.
 var settingsFromVersion12 = AppSettingsSerializer.Parse(
     "{ \"version\": 12, \"fingerMode\": \"Off\", \"toolbarPlacement\": \"BottomLeft\" }");
 Assert(
@@ -1977,8 +1977,8 @@ Assert(
         "Smallest text decides how wide an area may be.");
     Assert(BoardPartitioner.Partition(new BoardDocument()).Count == 0, "An empty board has no areas.");
 
-    // Frames win: whatever sits inside one belongs to it, frames come first,
-    // and the rest of the board is still cut automatically.
+    // Frames take precedence: whatever sits inside one belongs to it, frames come
+    // first, and the rest of the board is still cut automatically.
     var frame = new FrameBoardObject(Guid.NewGuid(), 50, new RectD(1900, -100, 800, 500), "Second cluster");
     exportBoard.AddObject(frame);
     var framed = BoardPartitioner.Partition(exportBoard);
@@ -2308,7 +2308,7 @@ Assert(
     }
 
     // The same elements as a vector page, and a label in each font a board offers:
-    // the faces are read from Windows and embedded, so the words stay words. Only
+    // the faces are read from Windows and embedded, so the words stay text. Only
     // Cascadia Mono is written in another face, because Windows ships it as a
     // variable font with no bold or italic file of its own.
     using var designPdfStream = new MemoryStream();
@@ -2320,8 +2320,8 @@ Assert(
     }
 
     // One document per font, so that the face a label was written in is the only
-    // one the document could have got it from: a page holding all nine would name
-    // Arial for its own sake and answer for every family that falls back to it.
+    // one the document could have got it from. A page holding all nine would embed
+    // Arial anyway, which would pass the check for every family that falls back to it.
     foreach (var font in LabelStyles.Fonts)
     {
         using var fontStream = new MemoryStream();
@@ -2351,8 +2351,8 @@ Assert(
 
         // A base font is named after the family, with #20 where a space is. A
         // Windows without the family embeds the stand-in the resolver names for it,
-        // so either answer is the resolver working; what is ruled out is the label
-        // quietly coming out in the page's own face instead.
+        // so either name shows the resolver working. The check fails only when the
+        // label comes out in the page's own face instead.
         var face = (font == "Cascadia Mono" ? "Consolas" : font).Replace(" ", "#20", StringComparison.Ordinal);
         var standIn = font switch
         {
@@ -2454,7 +2454,8 @@ Assert(
         savedHistory.IsAtSavePoint,
         "Undoing that stroke returns to what was saved, so it must stop counting as a change.");
 
-    // Same depth, different history: the save point is the command, never the count.
+    // Same depth, different history. The save point tells them apart because it
+    // records the command rather than the count.
     savedHistory.Execute(new AddObjectCommand(ExportStroke(40, 40, 10, 10, 2)), savedDocument);
     Assert(
         !savedHistory.IsAtSavePoint,
@@ -2465,7 +2466,7 @@ Assert(
 }
 
 // A snapshot is what autosave writes while the board carries on being drawn, so it has to
-// hold what the document held and stop hearing about it afterwards.
+// hold what the document held and not change with the document afterwards.
 {
     var snapshotDocument = new BoardDocument();
     snapshotDocument.AddAsset(new BoardAsset("asset-1", "picture.png", "image/png", [1, 2, 3]));
@@ -2486,7 +2487,7 @@ Assert(
 }
 
 // The session sidecar is read while the application is starting, so nothing it can contain
-// is allowed to be what stops it.
+// may stop the application from starting.
 {
     var state = new SessionState
     {
@@ -2884,8 +2885,8 @@ Assert(
         HasShapePoint(stadium, 30, 0) && HasShapePoint(stadium, 70, 0) && HasShapePoint(stadium, 100, 30),
         "A stadium wider than it is tall has straight sides and semicircular ends.");
 
-    // The band along the outline, and nothing else: what is drawn inside a shape
-    // has to stay reachable.
+    // Only the band along the outline is hit, because what is drawn inside a
+    // shape has to stay reachable.
     var banded = ShapeBoardObject.Create(
         Guid.NewGuid(),
         0,
@@ -2938,7 +2939,7 @@ Assert(
         shapeBoard.FindSingleTouchedContainer(shapeStroke)?.Id == linkedShape.Id,
         "A stroke that touches only a shape links to it, as it does to any other container.");
 
-    // Version 7 is asked for by the board that needs it, and by nothing else.
+    // Only a board that needs version 7 asks for it.
     var shapeArchiveBoard = new BoardDocument();
     Assert(
         BoardArchive.VersionFor(shapeArchiveBoard) == BoardArchive.VersionBeforeFrames,
@@ -3297,7 +3298,7 @@ Assert(
 }
 
 // A shape carries its own text: where it is laid out, what a file keeps of it,
-// what it names an export area, and that a copy says the same thing.
+// what it names an export area, and that a copy carries the same text.
 {
     var textBox = new RectD(0, 0, 200, 100);
     RectD inRectangle = ShapeGeometry.TextBox(ShapeKind.RoundedRectangle, textBox);
@@ -3357,8 +3358,8 @@ Assert(
         written.WithAngle(45).TextBounds.Center.X,
         "A turned shape describes its text box in the rectangle it was drawn in, as it does its outline.");
 
-    // The rotation handle turns a shape through WithAngle, so what it says has
-    // to come through the turn with it.
+    // The rotation handle turns a shape through WithAngle, so its text has to
+    // come through the turn with it.
     ShapeBoardObject turnedByHandle = written.WithAngle(37.5);
     Assert(
         turnedByHandle is
@@ -3491,8 +3492,8 @@ Assert(
     AssertNear(24, moved.FontSize, "Moving a label leaves its size alone.");
     AssertNear(upright.Bounds.Left + 30, moved.Bounds.Left, "Moving a label moves its box.");
 
-    // An angle is any angle: the rotation handle turns an object freely, and
-    // what is put right is only an angle outside one turn or no angle at all.
+    // Any angle is kept, because the rotation handle turns an object freely.
+    // Only an angle outside one turn, or no angle at all, is corrected.
     AssertNear(50, RotatedRectangle.NormalizeAngle(50), "An angle off the grid is kept as it is.");
     AssertNear(10, RotatedRectangle.NormalizeAngle(370), "An angle past a whole turn comes back inside one.");
     AssertNear(315, RotatedRectangle.NormalizeAngle(-45), "A negative angle comes back inside one turn.");
@@ -4172,7 +4173,7 @@ Assert(
 
 // A duplicate has to hold together on its own: the copies of the strokes follow
 // the copy of the shape, the copy of the arrow points at the copy rather than at
-// the original, and the end that pointed at something left behind lets go.
+// the original, and the end that pointed at something left behind is detached.
 {
     var shapeId = Guid.NewGuid();
     var outsideId = Guid.NewGuid();
@@ -4299,7 +4300,7 @@ Assert(
 }
 
 // Bring forward and Send backward move the block past exactly one object, and
-// offer themselves only while there is one to pass.
+// are available only while there is one to pass.
 {
     var zDocument = new BoardDocument();
     ShapeBoardObject[] stack = Enumerable.Range(0, 4)
@@ -4434,8 +4435,8 @@ Assert(
 }
 
 // A connector binds wherever it is dropped on a shape: over the middle, near
-// an edge, and with Ctrl asking for the border instead. A turned shape answers
-// for where it is drawn, not for the box around it.
+// an edge, and with Ctrl asking for the border instead. A turned shape binds
+// where it is drawn rather than across the box around it.
 {
     var bindingId = Guid.NewGuid();
     ShapeBoardObject bindingShape = ShapeBoardObject.Create(
@@ -4668,7 +4669,7 @@ Assert(
         handleShape.AnchorFrame.ConnectorHandles(2)[0].Point.Y,
         "Zoomed in, the handle stands the same 14 screen pixels out, which is half as far on the board.");
 
-    // A shape's text is laid out inside it and says nothing about where its
+    // A shape's text is laid out inside it and does not change where its
     // sides are, so it moves no handle.
     Assert(
         (handleShape with { Text = "Sales" }).AnchorFrame.ConnectorHandles(1)

@@ -116,8 +116,8 @@ public sealed class HoverTrackerPlugIn : StylusPlugIn
     // Contact is deliberately not tracked here. The barrel button opens a stylus
     // down whose up does not arrive until after the next real touch, so a flag
     // set here stayed set across the whole hover in between and every sample was
-    // dropped. The window already knows whether the pen is down, and that is the
-    // only copy of the state worth keeping.
+    // dropped. The window already tracks whether the pen is down, so no second
+    // copy of that state is kept here.
     protected override void OnStylusUp(RawStylusInput rawStylusInput) =>
         Enqueue(rawStylusInput);
 

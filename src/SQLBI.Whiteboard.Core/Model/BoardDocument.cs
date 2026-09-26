@@ -160,14 +160,14 @@ public sealed class BoardDocument
     /// <summary>
     /// The topmost thing a select gesture lands on, whatever it is: a container
     /// anywhere inside it, a frame by its edge or tab, a stroke within a band
-    /// of the line itself. Each object answers for itself, and the zoom sizes
+    /// of the line itself. Each object runs its own hit test, and the zoom sizes
     /// the bands so they stay the same size under the pen at any zoom.
     /// </summary>
     /// <param name="accepts">
     /// Which kinds of object the caller can take hold of at all. A mode that
-    /// leaves out stroke selection passes strokes over here, the way an area
-    /// passes frames over: the ink stays on the board, and what is under it
-    /// answers instead of nothing answering.
+    /// leaves out stroke selection skips strokes here, the way an area skips
+    /// frames. The ink stays on the board, and the gesture reaches the object
+    /// under it instead of reaching nothing.
     /// </param>
     public BoardObject? HitTestTopSelectable(
         PointD worldPoint,
@@ -202,9 +202,9 @@ public sealed class BoardDocument
 
     /// <summary>
     /// What select-all takes, in z-order: everything an area could take, or the
-    /// ink strokes alone. It is the area's own rule with no area, so frames are
-    /// left out here for the reason they are left out there - a band drawn over
-    /// a slide means the things on it.
+    /// ink strokes alone. It applies the area's rule without an area, so frames
+    /// are left out, because a band drawn over a slide is meant to select the
+    /// things on it.
     /// </summary>
     public IReadOnlyList<BoardObject> AllSelectable(bool strokesOnly) =>
         _objects
@@ -323,10 +323,10 @@ public sealed class BoardDocument
             .ToArray();
 
     /// <summary>
-    /// A tap and an area asked of the line as it is drawn. Only a connector
-    /// answers differently for it: a curve bound to a shape that has been turned
-    /// leaves along the side as that side now faces, and the board is the only
-    /// place that knows which shape that is.
+    /// A tap and an area tested against the line as it is drawn. Only a
+    /// connector gives a different result here, because a curve bound to a shape
+    /// that has been turned leaves along the side as that side now faces, and
+    /// only the board knows which shape that is.
     /// </summary>
     /// <summary>
     /// A hidden frame is not hit, because its edge and tab are not drawn and a

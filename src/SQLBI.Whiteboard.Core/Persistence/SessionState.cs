@@ -29,8 +29,8 @@ public sealed class SessionState
 
     /// <summary>
     /// False until the window closes through its own closing path. A slot still reading
-    /// false when nothing holds its lock any more belonged to a copy that crashed, and is
-    /// what turns a silent restore into an offer of recovery.
+    /// false when nothing holds its lock any more belonged to a copy that crashed, so it
+    /// is offered as a recovery instead of being restored silently.
     /// </summary>
     public bool ExitedCleanly { get; set; }
 
@@ -59,8 +59,8 @@ public sealed class SessionState
 
     /// <summary>
     /// Reads a sidecar, returning null for anything that cannot be understood. A slot that
-    /// will not parse is a slot to leave alone, never one to throw over: the application is
-    /// starting up, and a damaged recovery file must not be what stops it.
+    /// does not parse is left alone rather than throwing, because the application is
+    /// starting up and a damaged recovery file must not stop it.
     /// </summary>
     public static SessionState? Parse(string json)
     {

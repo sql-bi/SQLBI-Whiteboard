@@ -6,8 +6,8 @@ namespace SQLBI.Whiteboard;
 /// <summary>
 /// Shown once at startup when Windows reports neither a pen tablet nor a
 /// touchscreen. The application still opens, and with Mouse drawing on it can
-/// be drawn on, so this says which mode the session is in and what a pen would
-/// add rather than apologizing for the machine.
+/// be drawn on, so the notice says which mode the session is in and what a pen
+/// would add.
 /// </summary>
 public partial class NoDigitizerWindow : Window
 {

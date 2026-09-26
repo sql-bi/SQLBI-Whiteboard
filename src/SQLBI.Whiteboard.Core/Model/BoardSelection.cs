@@ -43,7 +43,7 @@ public enum ExtendSelection
 
 /// <summary>
 /// The shape a select gesture drew: a rubber band, or a lasso closed back to
-/// where it started. Both answer the same three questions, so an object is
+/// where it started. Both support the same three tests, so an object is
 /// tested against either without knowing which it is.
 /// </summary>
 public sealed class SelectionArea

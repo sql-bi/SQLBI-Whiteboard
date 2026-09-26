@@ -20,8 +20,8 @@ The board is one unbounded plane. A `.wboard` is a flat list of objects in world
 coordinates — ink strokes, images, text containers, and LiveViews — each with a bounding
 rectangle and a z-index that is also its creation order, plus the assets the images refer
 to. A stroke that touches exactly one container is linked to it and moves with it. Nothing
-in the file says where a page begins or ends, which is the whole problem for the first two
-exports and no problem at all for the third.
+in the file says where a page begins or ends. The first two exports have to decide it, and
+the third does not need it.
 
 Three pieces are shared, and are the first things to build:
 
@@ -58,8 +58,8 @@ Before any cut is chosen, the objects are grouped into units that stay together:
   The link already exists in the model (`InkStrokeObject.ContainerId`), and it is precisely
   the "this ink belongs to that picture" relationship the export wants.
 - Every other stroke is a unit of its own. A stroke that touches two containers is not
-  linked to either, and that is fine: because cuts are only placed where there is empty
-  space, a stroke that spans two containers guarantees they land on the same page.
+  linked to either. Cuts are only placed where there is empty space, so a stroke that
+  spans two containers keeps them on the same page.
 
 ### Recursive whitespace cuts (recommended)
 
@@ -69,9 +69,9 @@ widest band; if it is at least the *gap threshold*, cut the region there and rec
 each side. Stop when a region *fits* the target page, or when no band reaches the
 threshold.
 
-This is the recursive XY-cut from document layout analysis, and it suits a whiteboard
-better than it suits a scanned page: people leave space between the things they draw, and
-the space between two ideas is wider than the space inside one. It has three properties the
+This is the recursive XY-cut from document layout analysis. It suits a whiteboard better
+than a scanned page, because people leave space between the things they draw, and the
+space between two ideas is wider than the space inside one. It has three properties the
 alternatives lack:
 
 - It cannot cut through anything, by construction.
@@ -95,8 +95,8 @@ Two settings drive it, and both are on the dialog:
 
 When a region does not fit and has no band wide enough to cut, it is scaled down anyway
 and the preview marks it ("Area 3 is at 60%"). Tiling it across several slides was
-rejected: a dense drawing cut through the middle is worse on a slide than a small one, and
-PowerPoint can zoom.
+rejected, because a dense drawing cut through the middle is harder to read on a slide than
+a small one, and PowerPoint can zoom.
 
 ### Order
 
@@ -115,7 +115,8 @@ Two orders are offered:
 - **Bottom-up clustering.** Start from the units and merge any two closer than the
   threshold. It produces nearly the same areas as the cuts but has no natural stopping
   rule for "fits a slide", so oversize clusters need a second pass to split, and that
-  second pass is the XY-cut. Rejected as the more complex route to the same place.
+  second pass is the XY-cut. Rejected because it is more complex and gives the same
+  result.
 - **A fixed grid.** Tile the content bounds at a fixed scale and drop empty tiles. Simple,
   and it splits objects. Acceptable for a poster print, not for a slide. Rejected for the
   first version; it is a page-size option for PDF if anyone asks.
@@ -125,7 +126,7 @@ Two orders are offered:
   needs a new object kind and a bump of the archive version to 6 (a board with frames would
   not open in an older release, which is the established policy but still a cost), and
   frames have to be drawn during a session that the automatic version handles unattended.
-  When frames exist, they win: any object inside a frame belongs to it, the rest of the
+  When frames exist, any object inside a frame belongs to it, the rest of the
   board is partitioned automatically, and frames come first in the order.
   **View → Show frames** hides frames for presenting. A hidden frame is not drawn and does
   not respond to the pen, and it still defines a slide for Export. The choice is saved with
@@ -151,8 +152,8 @@ Each area is one slide. In the first version a slide holds:
   order. Ink cannot be copied from a picture, but DAX and SQL can be copied from the
   notes, and the deck becomes searchable.
 - **An overview slide** first, optional and on by default: the whole board, with each
-  area outlined and numbered in slide order. It is the map that makes a fifteen-slide
-  deck from one board navigable.
+  area outlined and numbered in slide order, so a fifteen-slide deck made from one board
+  can be navigated from it.
 
 Selection, hover, the laser, and the pending stroke are never drawn. LiveViews show
 their current frame. Slides are 16:9 by default with 4:3 as an option; the background is
@@ -167,15 +168,15 @@ A second mode, **Editable**, keeps images and text as PowerPoint objects:
 - A text container becomes a text box in the language's monospace font, with syntax
   colors carried over as runs. The classification spans that color the screen are
   available for exactly this; nothing new is parsed.
-- A shape becomes a PowerPoint shape and a label a text box, so both are edited in
-  PowerPoint rather than looked at. A shape takes the preset geometry whose outline is
+- A shape becomes a PowerPoint shape and a label a text box, so both can be edited in
+  PowerPoint. A shape takes the preset geometry whose outline is
   the one the board draws, its fill keeps its translucency through `a:alpha`, and its
   outline keeps the width the screen gives it; a label carries its font, size, color,
   and bold, italic, and underline on the runs, turned about its own centre by
   `a:xfrm rot` with wrapping and autofit off so PowerPoint keeps the lines the board
   measured.
 - A connector becomes a PowerPoint connector with the line's color and width and a
-  triangle tail end, so the arrow stays an arrow when it is re-routed.
+  triangle tail end, so it keeps its arrowhead when it is re-routed.
 - All ink on the slide is one transparent PNG overlay on top. This keeps pressure,
   calligraphy, and the highlighter look with no second renderer. It also puts every
   stroke above every container, which is wrong only for a stroke that was drawn before
@@ -199,12 +200,12 @@ way on the slide:
 | Line and Arrow connector | a connector with `straightConnector1`, flipped when it runs right to left or bottom to top |
 | Curved arrow | a freeform shape with an `a:custGeom` holding the board's own cubic |
 
-`flowChartTerminator` was the other candidate for the stadium, and was not taken: its
-ends are not semicircles on a box wider than it is tall, and a rounded rectangle whose
-corners have eaten the whole of its shorter side is exactly what the board draws.
+`flowChartTerminator` was the other candidate for the stadium, and was not taken, because
+its ends are not semicircles on a box wider than it is tall, and the board draws a stadium
+as a rounded rectangle whose corner radius is half its shorter side.
 `curvedConnector3` was the other candidate for the curved arrow, and was not taken
-either: it leaves its ends along the box's own axes whatever the connector is bound to,
-while the board's curve leaves along the side it is bound to, so the two bend
+either, because it leaves its ends along the box's own axes whatever the connector is
+bound to, while the board's curve leaves along the side it is bound to, so the two bend
 differently often enough to be noticed. The freeform carries the cubic itself and still
 takes the triangle tail end. It is a shape rather than a connector because a connector
 carrying a geometry of its own is legal but not something PowerPoint writes itself, and
@@ -248,7 +249,7 @@ it stops being attractive as soon as the editable mode exists.
 
 ### What is a page
 
-PDF has a freedom PowerPoint lacks: every page may have its own size. That gives three
+In a PDF, unlike a PowerPoint deck, every page may have its own size. That gives three
 sensible page models, and the first two are the ones to ship:
 
 - **One page per area.** The same partition as the deck, one area per page, scaled to
@@ -284,7 +285,7 @@ path stroked with round caps — a line, or the same cubic flattening the board 
 stopped at the base of its own arrowhead so a thick line does not poke through the tip,
 with the head as a filled triangle. A shape is one path built from
 the outline `ShapeGeometry` describes — the description the screen is drawn from, so the
-page and the board cannot disagree about an edge — with the straight parts as lines and
+page and the board draw every edge in the same place — with the straight parts as lines and
 the curved ones as cubic Béziers, a quarter turn at most each, filled with its tint
 through an alpha state and stroked with its outline. A label is text under a matrix
 turned about the label's centre, its lines spread over the height the board measured
@@ -356,7 +357,7 @@ crash loses seconds rather than the session), and the audio track. Reading `scen
 does not change and the archive version does not move; a release without Replay ignores the
 extra entries. A **Remove recording** command drops them.
 
-A sidecar `.wreplay` file was considered and rejected: one file is what gets emailed, and
+A sidecar `.wreplay` file was considered and rejected, because people email one file, and
 the VS Code preview and the Explorer thumbnail read the same ZIP either way.
 
 Size is dominated by audio. An hour of lecturing is roughly two thousand strokes, about
@@ -431,8 +432,8 @@ Replay:
 - **R4** — if wanted: an MP4 render (frames from the rasterizer, muxed with the audio
   through Media Foundation), and a browser player on the site.
 
-Sharing a replay today would mean sharing the board and having the application; R4 is
-what removes that condition.
+Sharing a replay today requires the board and the application. R4 would remove the need
+for the application.
 
 ## Where the code goes
 
@@ -444,8 +445,8 @@ what removes that condition.
 | Replay | `Core/Replay`, `SQLBI.Whiteboard/Replay` | As above. |
 
 Export settings (format, page model, order, threshold, smallest text, overview page,
-notes) are remembered in `AppSettings` and do not appear in Preferences: they belong to the
-dialog that shows their effect.
+notes) are remembered in `AppSettings` and do not appear in Preferences, because the
+export dialog is where their effect is shown.
 
 Documentation that moves with each phase: the feature list in README, the guide and
 shortcuts pages on the site, CHANGELOG, and a numbered decision for each accepted part.

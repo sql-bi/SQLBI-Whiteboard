@@ -71,9 +71,8 @@ public enum FingerMode
 /// <summary>
 /// Whether the mouse draws. It is a setting rather than pure detection because
 /// the digitizer list is unreliable in both directions, and because a mouse
-/// gets the tools, not the gestures: turning this on changes what the left
-/// button means, and that is the kind of change a person should be able to
-/// refuse.
+/// gets the drawing tools and not the gestures. Turning this on changes what
+/// the left button does, so a person has to be able to turn it off.
 /// </summary>
 public enum MouseMode
 {
@@ -93,8 +92,8 @@ public enum MouseMode
     /// Default for a new setup: treat as On only when Windows reports neither a
     /// stylus nor a touchscreen. Deliberately stricter than
     /// <see cref="FingerMode.WhenNoPen"/> - a touchscreen with no pen already
-    /// has something to draw with, so mouse drawing is the last resort rather
-    /// than the second choice.
+    /// has something to draw with, so mouse drawing applies only when there is
+    /// neither.
     /// </summary>
     WhenNoDigitizer = 2,
 }
@@ -123,8 +122,8 @@ public enum GridStyle
 }
 
 /// <summary>
-/// Which of the design-era controls exist. A mode says nothing about what a
-/// board contains: a board made in Design opens in Teaching with every shape,
+/// Which of the design-era controls exist. A mode does not change what a
+/// board contains. A board made in Design opens in Teaching with every shape,
 /// label, and connector still drawn and still exported, and only the tools to
 /// make or restyle them are absent.
 /// </summary>
@@ -137,8 +136,8 @@ public enum BoardMode
     Teaching = 0,
 
     /// <summary>
-    /// Everything. The default, because a release is judged on what it does
-    /// rather than on what it withholds.
+    /// Everything. The default, because a release is judged by the features a
+    /// person can see in it.
     /// </summary>
     Design = 1,
 
@@ -170,8 +169,8 @@ public sealed class AppSettings
     /// <summary>
     /// What the View row's Design toggle turns back to, the way
     /// <see cref="LastGridStyle"/> says which grid the Grid button brings back.
-    /// Design itself is never kept here: it would leave the toggle with nothing
-    /// to return to.
+    /// Design itself is never kept here, because it would leave the toggle with
+    /// nothing to return to.
     /// </summary>
     public BoardMode LastNonDesignMode { get; set; } = BoardMode.Teaching;
 
@@ -212,10 +211,9 @@ public sealed class AppSettings
 
     /// <summary>
     /// Whether to offer Mouse drawing the first time in a session that someone
-    /// picks a tool with the mouse while it is off. Reaching for the toolbar
-    /// with a mouse is the one moment the application can be sure the question
-    /// is worth asking, and the setting is what makes the offer refusable for
-    /// good.
+    /// picks a tool with the mouse while it is off. Picking a tool on the
+    /// toolbar with a mouse is the one moment the application can be sure the
+    /// offer is relevant, and the setting lets a person decline it for good.
     /// </summary>
     public bool SuggestMouseMode { get; set; } = true;
 
@@ -248,7 +246,7 @@ public sealed class AppSettings
     /// <summary>
     /// Whether the Insert palette - the shapes, the connectors, and Text on a
     /// panel of their own - is on the board. The pin at the end of the Insert
-    /// row and the Preferences row both ask for the same thing, so the answer
+    /// row and the Preferences row both control the same thing, so the value
     /// is kept here rather than in either of them.
     /// </summary>
     public bool InsertPaletteShown { get; set; }

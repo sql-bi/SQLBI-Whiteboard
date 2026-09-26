@@ -160,9 +160,9 @@ public partial class PreferencesWindow : Window
     }
 
     // Search matches are marked where they are rather than only counted, so a
-    // row can say why it is in the list. The term is matched exactly as the
-    // search matched it - one case-insensitive substring - so what is marked is
-    // what was found, and nothing else.
+    // row shows why it is in the list. The term is matched exactly as the
+    // search matched it - one case-insensitive substring - so only what the
+    // search found is marked.
     private void FillText(TextBlock block, string text, string? query)
     {
         block.Inlines.Clear();
@@ -201,9 +201,9 @@ public partial class PreferencesWindow : Window
         var summary = new TextBlock { Style = (Style)FindResource("SettingsSummary") };
         FillText(summary, setting.Summary, query);
 
-        // The chevron goes under the title and in front of the summary, where it
-        // belongs to the words it opens. The right-hand edge of the row cannot
-        // have it: editors live there, and two of them carry chevrons of their
+        // The chevron goes under the title and in front of the summary, next to
+        // the words it opens. It is not on the right-hand edge of the row,
+        // because the editors are there and two of them carry chevrons of their
         // own that a disclosure beside them would be mistaken for.
         var summaryRow = new Grid();
         summaryRow.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(DisclosureColumnWidth) });
@@ -212,8 +212,8 @@ public partial class PreferencesWindow : Window
         summaryRow.Children.Add(summary);
         copy.Children.Add(summaryRow);
 
-        // A setting whose summary is the whole story has nothing to disclose,
-        // and a chevron on it would promise something that is not there. Its
+        // A setting whose summary is the whole story gets no chevron, because
+        // there is no description for it to open. Its
         // summary still keeps the indent, so the column of them stays straight.
         if (setting.Description.Length == 0)
         {
@@ -238,9 +238,9 @@ public partial class PreferencesWindow : Window
         disclosure.Checked += (_, _) => detail.Visibility = Visibility.Visible;
         disclosure.Unchecked += (_, _) => detail.Visibility = Visibility.Collapsed;
 
-        // The match is real but nothing on the row shows it. Marking the chevron
-        // says where it is, which is the whole of what the row can honestly say
-        // without opening itself while someone is still typing.
+        // The match is only in the description, which the closed row does not
+        // show. Marking the chevron shows where it is without opening the row
+        // while someone is still typing.
         if (SettingsCatalog.MatchesDescriptionOnly(setting, query))
         {
             disclosure.Background = (Brush)FindResource("SettingsHighlightBrush");
@@ -254,9 +254,9 @@ public partial class PreferencesWindow : Window
     {
         var editor = CreateEditor(setting);
 
-        // A group switch outside Custom still shows what Custom is holding: it
-        // is greyed rather than hidden, because the arrangement it would give
-        // is what choosing Custom means.
+        // Outside Custom, a group switch is greyed rather than hidden, so it
+        // still shows what Custom is holding, because that arrangement is what
+        // choosing Custom gives.
         editor.IsEnabled = setting.EnabledWhen is null || setting.EnabledWhen(_settings);
         var body = new Grid();
         body.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
@@ -364,7 +364,8 @@ public partial class PreferencesWindow : Window
 
             // The sample is drawn at a fixed size and then allowed to shrink
             // with the column. Left to its own width it overflowed a narrowed
-            // dialog and was clipped, edges first, which is worse than small.
+            // dialog and was clipped, edges first, which is harder to read than
+            // a smaller picture.
             sample.HorizontalAlignment = HorizontalAlignment.Center;
             content.Children.Add(new Viewbox
             {
@@ -536,7 +537,7 @@ public partial class PreferencesWindow : Window
     }
 
     // The laser lays a fading trail behind a bright head; the straight line
-    // takes the same wandering hand and rules it flat.
+    // takes the same unsteady stroke and draws it straight.
     private FrameworkElement? CreatePenButtonSample(string id)
     {
         if (!Enum.TryParse<PenButtonAction>(id, out var action))
@@ -595,7 +596,7 @@ public partial class PreferencesWindow : Window
         return canvas;
     }
 
-    // A board with the toolbar in it, so the corner is seen rather than read.
+    // A board with the toolbar in it, so each choice shows the corner instead of naming it.
     private FrameworkElement? CreateToolbarPlacementSample(string id)
     {
         if (!Enum.TryParse<ToolbarPlacement>(id, out var placement))
@@ -642,7 +643,7 @@ public partial class PreferencesWindow : Window
 
     // The Eraser's two pictures are the same toolbar twice, drawn in whichever
     // arrangement Layout has chosen, differing only in the Eraser itself - which
-    // is in the accent color because that difference is the entire question.
+    // is in the accent color because it is the only difference.
     private FrameworkElement CreateEraserButtonSample(string id)
     {
         var access = _settings.CalligraphyAccess;
@@ -784,8 +785,8 @@ public partial class PreferencesWindow : Window
     /// <summary>
     /// A drawn choice whose pictures hold a toolbar, and are therefore stale as
     /// soon as Layout chooses another arrangement. The samples are built again
-    /// into the same holder, so the row keeps its place in a list nobody asked
-    /// to have rebuilt.
+    /// into the same holder, so the row keeps its place and the list is not
+    /// rebuilt.
     /// </summary>
     private FrameworkElement CreateFollowingChoice(
         SettingDescriptor setting,
@@ -810,8 +811,8 @@ public partial class PreferencesWindow : Window
     }
 
     // Each option is drawn as the strokes it produces, at the same width and
-    // opacity the trail itself would use, so the choice is made by looking
-    // rather than by imagining what a word means.
+    // opacity the trail itself would use, so each choice shows its result
+    // instead of naming it.
     private FrameworkElement CreateLaserWeightChoice(SettingDescriptor setting) =>
         CreateSampleChoice(setting, id =>
         {
@@ -1360,8 +1361,8 @@ public partial class PreferencesWindow : Window
     /// <summary>
     /// The Mode rows say which other rows are there at all and which of the
     /// four switches can be used, so the list is built again behind them. It
-    /// waits for the handler to finish: the control being answered is one of
-    /// the ones about to be replaced.
+    /// waits for the handler to finish, because the control that raised the
+    /// change is one of the ones about to be replaced.
     /// </summary>
     private void RebuildIfModeSetting(SettingDescriptor setting)
     {

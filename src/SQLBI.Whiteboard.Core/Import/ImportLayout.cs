@@ -58,7 +58,7 @@ public static class ImportLayout
     /// <summary>
     /// Sizes a vector image. Icons are authored at 16 or 24 units and would arrive as a
     /// speck beside full-size figures, so a vector is grown to a legible edge
-    /// first. Enlarging costs a bitmap its sharpness and a vector nothing.
+    /// first. Only a vector is grown, because enlarging a bitmap blurs it.
     /// </summary>
     public static (double Width, double Height) VectorImageSize(double naturalWidth, double naturalHeight)
     {

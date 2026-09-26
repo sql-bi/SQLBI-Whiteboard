@@ -71,8 +71,8 @@ public static class SvgMarkup
 
     /// <summary>
     /// Applies every rewrite the renderer needs and returns the markup to hand it.
-    /// Markup with nothing to change comes back as the same bytes; markup that does
-    /// not parse is left for the renderer to reject in its own words.
+    /// Markup with nothing to change comes back as the same bytes. Markup that does
+    /// not parse comes back unchanged, so the renderer reports its own error.
     /// </summary>
     public static byte[] Rewrite(byte[] bytes) => Rewrite(bytes, metrics: null);
 
@@ -159,9 +159,9 @@ public static class SvgMarkup
     /// SharpVectors draws spaced text one glyph at a time and gives each glyph the text's
     /// own alignment, so with <c>text-anchor="middle"</c> every glyph is centred on the
     /// pen and the pen advances half a glyph, and with <c>end</c> it does not advance at
-    /// all: the label piles up in half its width or less. Without the spacing the whole
-    /// string is measured and placed at once, which the renderer gets right; the label
-    /// is set a little tighter than the author asked, and where they asked. Spacing the
+    /// all, so the label piles up in half its width or less. Without the spacing the whole
+    /// string is measured and placed at once, which the renderer does correctly. The label
+    /// is then set a little tighter than the author asked, at the position they asked for. Spacing the
     /// renderer already ignores, such as a length with a unit, is left alone.
     /// </summary>
     private static bool DropAnchoredLetterSpacing(XDocument document)

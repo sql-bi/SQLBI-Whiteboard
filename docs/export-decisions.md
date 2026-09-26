@@ -65,7 +65,7 @@ which phase made it and why.
   in the picture already. Selectable text is what the vector phase brings.
 - **The whole-board page is rendered at up to 6000 pixels on the longer edge** and sized
   at 144 dpi, so a 6000-pixel board becomes a 41-inch page, under the 200-inch limit
-  viewers enforce. It has no header or footer: the page is the board.
+  viewers enforce. It has no header or footer, so the page shows only the board.
 - **The overview page** works as for the deck: first, only with two or more areas.
 - **`PdfSharp` 6.2.4** is the writer, MIT and managed-only. Fonts come from the Windows
   fonts folder through its platform resolver; the export runs only on Windows.
@@ -74,7 +74,7 @@ which phase made it and why.
 
 - **Slide content is a choice on the dialog, Picture or Editable**, shown for PowerPoint
   only. Editable is the default for a new setup, by the maintainers' call after trying
-  both: a deck is exported to be reworked more often than to be shown as is. Picture stays
+  both, because a deck is exported to be reworked more often than to be shown as is. Picture stays
   one choice away for the exact rendering.
 - **Elements are placed in the picture's own pixel space.** The rasterizer exposes the
   camera it would have used, and every image, text box, and the ink overlay is mapped
@@ -100,8 +100,8 @@ which phase made it and why.
 ## E4 — Vector PDF
 
 - **Page content is a choice on the dialog, Picture or Vector**, for PDF only, with
-  Picture the default for the same reason as the deck: exact beats best effort until
-  someone needs to select text.
+  Picture the default because it is exact, and Vector is needed only when someone wants to
+  select text.
 - **The vector page reuses the editable slide's elements**, with one difference: the ink
   goes out as strokes in their own z-order between the containers, not as one overlay,
   because a path costs nothing to layer correctly.
@@ -124,7 +124,8 @@ which phase made it and why.
   both allow editable embedding, which covers a subset in a document. Any other family
   a future language service names falls back to Segoe UI until it is added to the
   resolver.
-- **The overview page stays a picture** in both modes; it is a map, not content.
+- **The overview page stays a picture** in both modes, because it shows where the areas
+  are and has no content of its own.
 
 ## E5 — Frames
 
@@ -155,6 +156,7 @@ which phase made it and why.
   frames by z-index, they are also how the slide order is changed.
 - **The archive version moves to 6 only for a board that holds a frame.** A board
   without one is still written as version 5 and keeps opening in every release since
-  format 5; a board with frames asks for this release. The frame's title travels in the
+  format 5; a board with frames needs this release. The frame's title travels in the
   DTO's text title field rather than a new one.
-- **A frame is not copied** by Ctrl+C: there is nothing on the clipboard a frame could be.
+- **A frame is not copied** by Ctrl+C, because the clipboard has no form a frame could
+  take.

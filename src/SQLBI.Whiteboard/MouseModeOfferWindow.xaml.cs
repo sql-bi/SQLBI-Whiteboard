@@ -20,8 +20,8 @@ public partial class MouseModeOfferWindow : Window
     public bool EnableRequested { get; private set; }
 
     /// <summary>
-    /// Whether the offer was declined for good. Unchecked by default: a single
-    /// Cancel is an answer for this session, not for every one after it.
+    /// Whether the offer was declined for good. Unchecked by default, because a
+    /// single Cancel declines the offer for this session only.
     /// </summary>
     public bool DoNotShowAgain => DoNotShowAgainBox.IsChecked == true;
 
@@ -46,7 +46,7 @@ public partial class MouseModeOfferWindow : Window
 
         // Enter is always handled here, and never reaches a button that WPF
         // would otherwise treat as the default. It acts only on a button the
-        // person has deliberately moved focus to, so the answer is theirs.
+        // person has deliberately moved focus to.
         e.Handled = true;
         if (Keyboard.FocusedElement is not Button focused)
         {

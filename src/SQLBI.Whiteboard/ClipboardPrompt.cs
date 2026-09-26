@@ -41,7 +41,7 @@ internal static class ClipboardPrompt
         catch (Exception exception) when (exception is JsonException or DecoderFallbackException or
             IOException or NotSupportedException or ObjectDisposedException or ExternalException)
         {
-            // Metadata is an optional hint from another process, not a reason to lose a normal paste.
+            // Metadata is an optional hint from another process, so failing to read it keeps the normal paste.
             return false;
         }
     }

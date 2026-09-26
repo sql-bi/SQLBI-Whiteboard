@@ -21,7 +21,7 @@ public static class ConnectorGeometry
     /// <summary>
     /// Segments the cubic is flattened into. The polyline is what is drawn,
     /// hit tested, and boxed, so it is fine enough that the curve and the
-    /// polyline are the same answer at any zoom the board offers.
+    /// polyline cannot be told apart at any zoom the board offers.
     /// </summary>
     public const int CurveSegments = 32;
 
@@ -168,17 +168,17 @@ public static class ConnectorGeometry
     /// <summary>
     /// What an endpoint let go here would take from this target: the anchor to
     /// record, the point the preview snaps to, and which of the eight dots is
-    /// the one, so that the drag shows the answer rather than describing it.
+    /// the one, so that the drag can show where the endpoint will bind.
     /// </summary>
     public readonly record struct BindingCandidate(ConnectorAnchor Anchor, PointD Point, int DotIndex);
 
     /// <summary>
     /// Whether the pointer counts as over this target: the rectangle its
     /// anchors are fractions of, out by the reach, rather than within the reach
-    /// of one of the eight points. Being over the object is the question an
-    /// arrow asks, and the middle of a shape is as plainly over it as its
-    /// corner is. The point is turned back before it is asked, so a turned
-    /// shape answers for where it is drawn rather than for the box around it.
+    /// of one of the eight points. An arrow binds to the object it is over, and
+    /// the middle of a shape is over it as much as a corner is. The point is
+    /// turned back before the test, so a turned shape is tested where it is
+    /// drawn rather than by the box around it.
     /// </summary>
     public static bool IsWithinBindingReach(AnchorFrame frame, PointD point, double reach) =>
         frame.Layout.Inflate(reach).Contains(frame.ToLayout(point));
@@ -209,7 +209,7 @@ public static class ConnectorGeometry
     /// <summary>
     /// The anchor of a side's middle: one of the eight, named by the side it is
     /// on rather than by its place in the list, which is how a connector handle
-    /// asks for the point it was pulled out of.
+    /// gets the point it was pulled out of.
     /// </summary>
     public static ConnectorAnchor SideAnchor(Guid objectId, FrameSide side) => side switch
     {
@@ -225,8 +225,8 @@ public static class ConnectorGeometry
     /// anchor picks, so an arrow between two shapes leaves the side that points
     /// at the other one however they are rearranged. A direction that splits
     /// two sides evenly - a corner - takes the horizontal one, because a
-    /// diagram reads left to right and an arrow that leaves sideways is the one
-    /// somebody drew.
+    /// diagram reads left to right and people usually draw an arrow leaving
+    /// sideways.
     /// </summary>
     public static FrameSide AutoAnchor(AnchorFrame frame, PointD towards)
     {
@@ -236,7 +236,7 @@ public static class ConnectorGeometry
         FrameSide best = FrameSide.Right;
         var bestDot = double.NegativeInfinity;
 
-        // The two horizontal sides are asked first, so an exact tie keeps the
+        // The two horizontal sides are tested first, so an exact tie keeps the
         // one that was already ahead.
         foreach (FrameSide side in AutoAnchorOrder)
         {
@@ -311,7 +311,7 @@ public static class ConnectorGeometry
 
     /// <summary>
     /// The two control points of a curved connector's cubic, or nothing for a
-    /// straight one. A writer that draws curves asks for these rather than for
+    /// straight one. A writer that draws curves uses these rather than
     /// the flattened polyline, so the curve leaves the board and arrives in a
     /// deck as the same cubic. The frames are the ones the ends are bound to:
     /// with them the curve leaves the side as that side now faces, so a curve
@@ -341,8 +341,8 @@ public static class ConnectorGeometry
 
     /// <summary>
     /// The cubic as the polyline everything reads, at <see cref="CurveSegments"/>
-    /// steps. Public because the same flattening is what a page draws, and a
-    /// second one would be a second answer.
+    /// steps. Public because a page draws the same flattening, and a second
+    /// implementation could disagree with this one.
     /// </summary>
     public static IReadOnlyList<PointD> Flatten(PointD start, PointD firstControl, PointD secondControl, PointD end)
     {
@@ -569,7 +569,7 @@ public static class ConnectorGeometry
     ];
 
     /// <summary>
-    /// The order the four sides are asked in when one has to face the other
+    /// The order the four sides are tested in when one has to face the other
     /// end: the horizontal pair first, so a direction that splits two sides
     /// evenly keeps the one that was already ahead.
     /// </summary>

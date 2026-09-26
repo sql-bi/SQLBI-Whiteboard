@@ -189,9 +189,8 @@ internal static class EditableSlide
     }
 
     /// <summary>
-    /// A shape is its box and its kind: the writers describe the outline from
-    /// the same <see cref="ShapeGeometry"/> the screen draws, so the box is all
-    /// they need. The outline thickens with the zoom exactly as it does on
+    /// A shape goes out as its box and its kind, because the writers describe
+    /// the outline from the same <see cref="ShapeGeometry"/> the screen draws. The outline thickens with the zoom exactly as it does on
     /// screen. The box is the one the shape was drawn in, before the turn, and
     /// the angle travels beside it as a label's does. The shape's own text goes
     /// with it, at the size it takes on the page, so a deck carries words that
@@ -216,8 +215,8 @@ internal static class EditableSlide
 
     /// <summary>
     /// A label goes out as its layout rectangle before the turn, centred where
-    /// the board centres it, and the angle beside it: a writer that rotates
-    /// about the centre then puts the text where the screen has it.
+    /// the board centres it, and the angle beside it, so that a writer that
+    /// rotates about the centre puts the text where the screen has it.
     /// </summary>
     private static SlideElement LabelElement(FreeTextBoardObject label, Camera2D camera)
     {

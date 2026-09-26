@@ -46,8 +46,8 @@ public partial class PropertyBar : UserControl
     private readonly List<PropertyBarRow> _rows = [];
 
     /// <summary>
-    /// The overflow's button and the menu it opens, built once and kept: what
-    /// changes with the selection is only which of its items can be used.
+    /// The overflow's button and the menu it opens, built once and kept,
+    /// because the selection changes only which of its items can be used.
     /// </summary>
     private readonly Button _overflowButton = new();
 
@@ -185,8 +185,8 @@ public partial class PropertyBar : UserControl
 
     /// <summary>
     /// Which way the selection can still be moved through the board's depth.
-    /// The four commands are two answers: what can go to the front can go one
-    /// step forward, and what can go to the back can go one step back.
+    /// The four commands need two flags, because what can go to the front can
+    /// go one step forward, and what can go to the back can go one step back.
     /// </summary>
     public void SetZOrderEnabled(bool canMoveForward, bool canMoveBackward)
     {
@@ -198,17 +198,17 @@ public partial class PropertyBar : UserControl
 
     /// <summary>
     /// Fills the bar for this selection and says whether there is a bar to show.
-    /// A selection with nothing in common still has itself: Delete, Copy,
-    /// Duplicate, and the four depths apply to a picture, a frame, or a mixture
-    /// as much as to a stroke, so the overflow alone is reason enough for the
-    /// bar to appear.
+    /// A selection with nothing in common still gets a bar, because Delete,
+    /// Copy, Duplicate, and the four depths apply to a picture, a frame, or a
+    /// mixture as much as to a stroke, so the overflow alone is reason enough
+    /// for the bar to appear.
     /// </summary>
     public bool Update(IReadOnlyList<BoardObject> selection)
     {
         ArgumentNullException.ThrowIfNull(selection);
 
-        // Whatever the selection has just become, the menu was opened for what
-        // it was.
+        // The menu was opened for the previous selection, so it closes whenever
+        // the selection changes.
         _overflowPopup.IsOpen = false;
         var shown = false;
         foreach (var row in _rows)
@@ -241,8 +241,7 @@ public partial class PropertyBar : UserControl
     /// <summary>
     /// A pen tap raised as a click. The board's ink surface owns the stylus, so
     /// a control floating over it cannot rely on the promotion to mouse events
-    /// a real mouse gets - the tool palette answers the same problem the same
-    /// way.
+    /// a real mouse gets. The tool palette handles pen taps the same way.
     /// </summary>
     private void PropertyBar_PreviewStylusDown(object sender, StylusDownEventArgs e) =>
         PromoteStylusTap(this, e);
@@ -308,10 +307,10 @@ public partial class PropertyBar : UserControl
 
     /// <summary>
     /// The … at the end of the bar and its menu. A popup rather than a
-    /// <see cref="ContextMenu"/>: the bar floats over the ink surface, which
-    /// owns the stylus, so what opens here has to be something whose taps can be
-    /// promoted the way the bar's own buttons are, and a menu item is not a
-    /// button.
+    /// <see cref="ContextMenu"/>, because the bar floats over the ink surface,
+    /// which owns the stylus, so what opens here has to be made of buttons whose
+    /// taps can be promoted the way the bar's own buttons are, which menu items
+    /// cannot.
     /// </summary>
     private void BuildOverflow()
     {
@@ -581,9 +580,9 @@ public partial class PropertyBar : UserControl
     /// <summary>
     /// The six pen colors for a shape's own words, and the button that opens
     /// the editor on them. The swatches stand beside the font row rather than
-    /// replacing the color row above, which is the shape's outline and has to
-    /// keep saying so. The button is for one shape: there is one editor, and it
-    /// stands over one shape's text box.
+    /// replacing the color row above, which sets the shape's outline. The
+    /// button acts on one shape, because there is one editor and it is placed
+    /// over one shape's text box.
     /// </summary>
     private PropertyBarRow BuildShapeTextRow()
     {
@@ -650,8 +649,8 @@ public partial class PropertyBar : UserControl
 
     /// <summary>
     /// How an object's text is written, for the row that shows what the
-    /// selection has in common. A shape and a label answer the same five
-    /// questions.
+    /// selection has in common. A shape and a label have the same five
+    /// properties.
     /// </summary>
     private readonly record struct TextStyle(
         string FontFamily,
@@ -731,7 +730,7 @@ public partial class PropertyBar : UserControl
     }
 
     /// <summary>
-    /// Each font named in itself, which says more about it than its name does.
+    /// Each font's name written in that font, so the list shows what it looks like.
     /// The row's own template is needed because the shared combo box style
     /// shows a language's display name.
     /// </summary>
@@ -755,7 +754,7 @@ public partial class PropertyBar : UserControl
     }
 
     /// <summary>
-    /// What everything selected says, or nothing when they disagree.
+    /// The value every selected item shares, or null when they differ.
     /// </summary>
     private static object? Common<TItem, T>(IReadOnlyList<TItem> items, Func<TItem, T> property)
         where T : notnull
@@ -854,8 +853,8 @@ public partial class PropertyBar : UserControl
     /// <summary>
     /// Fixed or Auto: whether a bound end stays on the point it was dropped on,
     /// or moves to the side facing the other end as the shapes are rearranged.
-    /// Its own row under the kinds, because it says something about the ends
-    /// rather than about the line.
+    /// Its own row under the kinds, because it applies to the ends rather than
+    /// to the line.
     /// </summary>
     private PropertyBarRow BuildAnchorRow()
     {

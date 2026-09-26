@@ -5,8 +5,8 @@ namespace SQLBI.Whiteboard.Core.Geometry;
 /// rectangle has taken about its own centre. An anchor stays where it was put
 /// on the object - the middle of that side, that corner - however the object is
 /// turned, so the fractions are read in the unturned rectangle and the point
-/// they name is turned with it. An object that has no angle hands over its box
-/// and nothing changes.
+/// they name is turned with it. For an object that has no angle the rectangle
+/// is its box and nothing is turned.
 /// </summary>
 public readonly record struct AnchorFrame(RectD Layout, double AngleDegrees)
 {
@@ -18,9 +18,9 @@ public readonly record struct AnchorFrame(RectD Layout, double AngleDegrees)
         : RotatedRectangle.Rotate(layoutPoint - Layout.Center, AngleDegrees) + Layout.Center;
 
     /// <summary>
-    /// The layout point a world point stands on, which is what a hit test and a
-    /// dropped endpoint ask for: turn it back, and the unturned rectangle
-    /// answers.
+    /// The layout point a world point stands on, which a hit test and a dropped
+    /// endpoint need. The point is turned back and then read in the unturned
+    /// rectangle.
     /// </summary>
     public PointD ToLayout(PointD worldPoint) => AngleDegrees == 0
         ? worldPoint
@@ -44,7 +44,7 @@ public readonly record struct AnchorFrame(RectD Layout, double AngleDegrees)
     /// <summary>
     /// Where the rotation handle stands: clear of the middle of the top side,
     /// along the direction that is up for this object rather than up on the
-    /// screen, so the handle turns with what it turns.
+    /// screen, so the handle turns with the object.
     /// </summary>
     public PointD RotationHandle(double zoom) =>
         TopCenter() +

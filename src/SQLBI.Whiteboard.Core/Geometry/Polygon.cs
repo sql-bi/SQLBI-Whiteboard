@@ -2,16 +2,16 @@ namespace SQLBI.Whiteboard.Core.Geometry;
 
 /// <summary>
 /// The containment tests an area selection is made of. A rubber band and a
-/// lasso ask the same two questions of every object - is it partly inside, is
-/// it wholly inside - so the rectangle and the polygon answer them side by side
+/// lasso apply the same two tests to every object - partly inside, wholly
+/// inside - so the tests for the rectangle and the polygon sit side by side
 /// here, and the document never has to know which one was drawn.
 /// </summary>
 public static class Polygon
 {
     /// <summary>
     /// The even-odd rule: a ray cast to the right crosses an odd number of
-    /// edges for a point inside. It is the rule a lasso wants, because a loop
-    /// drawn back across itself reads as the hole it looks like.
+    /// edges for a point inside. A lasso uses it because a loop drawn back
+    /// across itself then leaves a hole where the drawing shows one.
     /// </summary>
     public static bool Contains(IReadOnlyList<PointD> polygon, PointD point)
     {
@@ -39,9 +39,9 @@ public static class Polygon
 
     /// <summary>
     /// Every corner inside. A concave polygon can still bite into the middle of
-    /// a rectangle whose corners are all inside, and that is deliberate: what
-    /// "fully inside" means for anything the area sees as a box is its corners,
-    /// so a lasso drawn around a picture takes it whatever its outline does
+    /// a rectangle whose corners are all inside, and that is deliberate. For
+    /// anything the area treats as a box, "fully inside" means all its corners
+    /// are inside, so a lasso drawn around a picture takes it whatever its outline does
     /// between the corners.
     /// </summary>
     public static bool ContainsRectangle(IReadOnlyList<PointD> polygon, RectD rectangle) =>

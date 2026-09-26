@@ -25,7 +25,7 @@ internal static class BoardExporter
     /// <summary>
     /// A whole board on one PDF page is read by zooming, so it is rendered
     /// larger than a slide would be. Six thousand pixels on the longer edge is
-    /// a 144 MB transient bitmap, the most this is willing to ask for.
+    /// a 144 MB transient bitmap, which is the largest this allows.
     /// </summary>
     public const int PosterBoxEdge = 6000;
 

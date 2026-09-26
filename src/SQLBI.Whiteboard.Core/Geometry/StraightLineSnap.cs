@@ -16,8 +16,8 @@ public enum StraightLineDirection
 public static class StraightLineSnap
 {
     // How far the pen must travel from the anchor before the axis is settled and
-    // kept. Once chosen it is not revisited: a hand drifting off the axis is
-    // still drawing the line it asked for.
+    // kept. Once chosen it is not revisited, because a hand drifting off the
+    // axis is still drawing the line along that axis.
     public const double DefaultActivationDistance = 24;
 
     private static bool HasActivationDistance(

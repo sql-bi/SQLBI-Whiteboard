@@ -18,9 +18,8 @@ internal static class UpdateCheckClient
     public const string DownloadUrl = "https://whiteboard.sqlbi.com/#get";
 
     // The release manifests the download page and the winget submission already read,
-    // published beside the site by scripts/build-release-manifests.ps1. Reading the same
-    // file is the point: a second source for "what is the newest build" is a second thing
-    // that can disagree.
+    // published beside the site by scripts/build-release-manifests.ps1. The same file is
+    // read because a second source for "what is the newest build" could disagree with it.
     //
     // The channel picks the file. A pre-release copy asks about pre-releases, which is the
     // only sense in which it is up to date; a released copy asks about releases. The
@@ -32,8 +31,8 @@ internal static class UpdateCheckClient
             : "https://whiteboard.sqlbi.com/dev.json";
 
     // Used when the site cannot be reached. It reports the newest full release whichever
-    // channel is asking, so it is a floor rather than an answer, but a stale "up to date"
-    // is worse than a slightly conservative one.
+    // channel is asking, so for a pre-release copy it is only a lower bound. It is used
+    // anyway, because a slightly conservative result is better than a stale "up to date".
     private const string LatestReleaseUrl =
         "https://github.com/sql-bi/SQLBI-Whiteboard/releases/latest";
 

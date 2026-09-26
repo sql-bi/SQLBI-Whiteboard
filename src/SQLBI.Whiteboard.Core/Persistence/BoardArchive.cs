@@ -12,8 +12,8 @@ public static class BoardArchive
 
     /// <summary>
     /// Frames arrived in version 6. A board without one is still written as
-    /// version 5, so it keeps opening in a release that predates them; only
-    /// a board that needs the new object asks for the new reader.
+    /// version 5, so it keeps opening in a release that predates them. Only
+    /// a board with frames needs a reader of version 6.
     /// </summary>
     public const int VersionBeforeFrames = 5;
 
@@ -127,9 +127,9 @@ public static class BoardArchive
                 memory.ToArray()));
         }
 
-        // An anchor is only an anchor while what it names is in the file: a
+        // An anchor is kept only while the object it names is in the file. A
         // board saved from a selection, or edited by hand, can carry a connector
-        // bound to something that is not there, and that endpoint is simply free.
+        // bound to something that is not there, and that endpoint is read as free.
         var savedIds = scene.Objects.Select(item => item.Id).ToHashSet();
         foreach (var objectDto in scene.Objects.OrderBy(item => item.ZIndex))
         {
@@ -219,8 +219,8 @@ public static class BoardArchive
             liveView.DesiredFrameRate,
             liveView.CaptureCursor,
             liveView.IsFrozen),
-        // The frame's title travels in the text title field: one field for
-        // "what this is called" rather than a second that means the same.
+        // The frame's title travels in the text title field, because that field
+        // already means "what this is called" and a second one would repeat it.
         FrameBoardObject frame => new ObjectDto(
             "frame",
             frame.Id,
@@ -231,8 +231,8 @@ public static class BoardArchive
             null,
             null,
             TextTitle: frame.Title),
-        // A label's text travels in the same field as a container's, since it is
-        // the same thing to a reader: what the object says.
+        // A label's text travels in the same field as a container's, since to a
+        // reader both are the text the object shows.
         FreeTextBoardObject label => new ObjectDto(
             "label",
             label.Id,
@@ -347,8 +347,8 @@ public static class BoardArchive
 
     /// <summary>
     /// A connector as the file has it, with the box worked out again from the
-    /// two ends rather than trusted: a normalized kind curves where the saved
-    /// box says it ran straight. A file that says nothing about routing has a
+    /// two ends rather than trusted, because a normalized kind can curve where
+    /// the saved box describes a straight line. A file that says nothing about routing has a
     /// connector that stays where it was drawn, which is what every file
     /// written before Auto existed means.
     /// </summary>
@@ -366,8 +366,8 @@ public static class BoardArchive
             dto.AutoRoute ?? false);
 
     /// <summary>
-    /// An arrow is what a connector whose kind this release does not know
-    /// becomes: it is the one of the three that says which way it was pointing.
+    /// A connector whose kind this release does not know becomes an arrow,
+    /// because the arrow is the one of the three kinds that shows a direction.
     /// </summary>
     private static ConnectorKind NormalizeConnectorKind(string? kind) =>
         Enum.TryParse(kind, ignoreCase: true, out ConnectorKind parsed) && Enum.IsDefined(parsed)
@@ -427,8 +427,8 @@ public static class BoardArchive
     /// because a file can say anything and the box has to be the box of the
     /// rectangle that is actually there. The text and the seven properties it is
     /// written in are optional too and are put right the way a label's are, so a
-    /// shape from a board that had none reads as the shape it was, saying
-    /// nothing.
+    /// shape from a board that had none reads as the shape it was, with no
+    /// text.
     /// </summary>
     private static ShapeBoardObject ShapeFromDto(ObjectDto dto)
     {
