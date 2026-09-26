@@ -680,6 +680,19 @@ Assert(
     BoardArchive.VersionFor(document) == BoardArchive.VersionWithFrames &&
     loadedWithFrame.Objects.OfType<FrameBoardObject>().Single() is { Title: "Slide 1", Bounds.Width: 1000 },
     "A frame round-trips with its title, and asks for the version that brought frames.");
+Assert(loadedWithFrame.ShowFrames, "A board saved with its frames shown loads with them shown.");
+new SetShowFramesCommand(true, false).Execute(document);
+await using var hiddenFramesArchive = new MemoryStream();
+await BoardArchive.SaveAsync(document, hiddenFramesArchive);
+hiddenFramesArchive.Position = 0;
+var loadedHiddenFrames = await BoardArchive.LoadAsync(hiddenFramesArchive);
+Assert(
+    !loadedHiddenFrames.ShowFrames &&
+    BoardArchive.VersionFor(document) == BoardArchive.VersionWithFrames &&
+    !document.Snapshot().ShowFrames,
+    "Hidden frames stay hidden through a save, a load, and an autosave snapshot, without a new version.");
+new SetShowFramesCommand(true, false).Undo(document);
+Assert(document.ShowFrames, "Undo shows the frames again.");
 document.RemoveObject(archivedFrame.Id);
 Assert(loaded.Assets[asset.Id].Data.SequenceEqual(asset.Data), "Archive should round-trip asset bytes.");
 Assert(
@@ -1894,6 +1907,15 @@ Assert(
         exportBoard.HitTestTopContainer(new PointD(2100, 50), 1) is null &&
         exportBoard.HitTestTopContainer(new PointD(1900, 150), 1) is FrameBoardObject,
         "Hit testing reaches a frame only by its edge.");
+    exportBoard.SetShowFrames(false);
+    Assert(
+        exportBoard.HitTestTopContainer(new PointD(1900, 150), 1) is null &&
+        exportBoard.HitTestTopSelectable(new PointD(1950, -90), 1) is not FrameBoardObject,
+        "A hidden frame is not hit by its edge or its tab.");
+    Assert(
+        BoardPartitioner.Partition(exportBoard) is { Count: 3 } hiddenFramed && hiddenFramed[0].Title == "Second cluster",
+        "A hidden frame is still a slide for Export.");
+    exportBoard.SetShowFrames(true);
     exportBoard.RemoveObject(frame.Id);
 
     var exportSettings = AppSettingsSerializer.Parse("""{ "export": { "gapThreshold": 9999, "smallestTextPoints": 11, "order": "Drawing" } }""");

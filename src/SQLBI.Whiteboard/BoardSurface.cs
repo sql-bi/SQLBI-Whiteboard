@@ -240,7 +240,7 @@ internal sealed class BoardSurface : FrameworkElement
             }
         }
 
-        if (DrawFrames)
+        if (DrawFrames && _document.ShowFrames)
         {
             foreach (var frame in _document.Frames)
             {

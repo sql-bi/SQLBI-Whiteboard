@@ -368,6 +368,24 @@
                                            Text="Frame" />
                             </StackPanel>
                         </Button>
+                        <Button x:Name="ShowFramesButton"
+                                Style="{StaticResource SessionCommandButton}"
+                                ToolTip="Hide the frames and their titles"
+                                Tag="ToggleFrames"
+                                Click="Command_Click">
+                            <StackPanel HorizontalAlignment="Center">
+                                <Path Width="18"
+                                      Height="18"
+                                      Stretch="Uniform"
+                                      Fill="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"
+                                      Data="{StaticResource FrameGeometry}" />
+                                <TextBlock Margin="0,4,0,0"
+                                           HorizontalAlignment="Center"
+                                           Text="Show frames" />
+                                <TextBlock Style="{StaticResource SessionShortcutHint}"
+                                           Text="H" />
+                            </StackPanel>
+                        </Button>
                         <Button Style="{StaticResource SessionCommandButton}"
                                 ToolTip="Add LiveView"
                                 Tag="AddLiveView"

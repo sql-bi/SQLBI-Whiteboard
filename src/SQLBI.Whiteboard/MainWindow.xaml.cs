@@ -595,6 +595,12 @@ public partial class MainWindow : Window
         }
 
         _selectedObjectIds.RemoveWhere(id => _document.Objects.All(item => item.Id != id));
+        if (!_document.ShowFrames)
+        {
+            _selectedObjectIds.RemoveWhere(id => _document.Frames.Any(frame => frame.Id == id));
+        }
+
+        SessionBar.SetFramesChecked(_document.ShowFrames);
         PublishSelection();
         SceneSurface.InvalidateVisual();
         UpdateLiveViewActionOverlay();
@@ -7207,6 +7213,10 @@ public partial class MainWindow : Window
             case SessionCommand.AddFrame:
                 AddFrame();
                 break;
+            case SessionCommand.ToggleFrames:
+                CommitTextEdit();
+                _history.Execute(new SetShowFramesCommand(_document.ShowFrames, !_document.ShowFrames), _document);
+                break;
             case SessionCommand.FreezeLiveView:
                 FreezeLiveViewMenuItem_Click(this, new RoutedEventArgs());
                 break;
@@ -7253,7 +7263,16 @@ public partial class MainWindow : Window
             _document.NextZIndex,
             bounds,
             $"Slide {_document.Frames.Count() + 1}");
-        _history.Execute(new AddObjectCommand(frame), _document);
+
+        // A frame added while frames are hidden would arrive selected and
+        // invisible, so adding one shows them all again, in the same undo step.
+        IBoardCommand add = new AddObjectCommand(frame);
+        if (!_document.ShowFrames)
+        {
+            add = new CompositeCommand([new SetShowFramesCommand(false, true), add]);
+        }
+
+        _history.Execute(add, _document);
         SelectOnly(frame.Id);
         SetActiveTool(BoardTool.Select);
         SceneSurface.InvalidateVisual();

@@ -11,6 +11,13 @@ public sealed class BoardDocument
 
     public IReadOnlyList<BoardObject> Objects => _objects;
     public IReadOnlyDictionary<string, BoardAsset> Assets => _assets;
+    /// <summary>
+    /// Whether frames are drawn and can be taken hold of. Hidden frames still
+    /// cut the board into slides for Export: hiding them is about what the
+    /// audience sees, not about what the slides are.
+    /// </summary>
+    public bool ShowFrames { get; private set; } = true;
+
     public int NextZIndex => _objects.Count == 0 ? 0 : _objects.Max(item => item.ZIndex) + 1;
     public RectD? ContentBounds
     {
@@ -96,6 +103,17 @@ public sealed class BoardDocument
         Changed?.Invoke(this, EventArgs.Empty);
     }
 
+    public void SetShowFrames(bool show)
+    {
+        if (ShowFrames == show)
+        {
+            return;
+        }
+
+        ShowFrames = show;
+        Changed?.Invoke(this, EventArgs.Empty);
+    }
+
     public void AddAsset(BoardAsset asset)
     {
         _assets[asset.Id] = asset;
@@ -110,7 +128,7 @@ public sealed class BoardDocument
     /// </summary>
     public BoardDocument Snapshot()
     {
-        var copy = new BoardDocument();
+        var copy = new BoardDocument { ShowFrames = ShowFrames };
         copy._objects.AddRange(_objects);
         foreach (var asset in _assets)
         {
@@ -311,10 +329,17 @@ public sealed class BoardDocument
     /// leaves along the side as that side now faces, and the board is the only
     /// place that knows which shape that is.
     /// </summary>
-    private bool Hits(BoardObject item, PointD worldPoint, double zoom) =>
-        item is ConnectorBoardObject connector
-            ? connector.HitTest(worldPoint, zoom, FrameOf(connector.StartAnchor), FrameOf(connector.EndAnchor))
-            : item.HitTest(worldPoint, zoom);
+    /// <summary>
+    /// A hidden frame answers to nothing: its edge and tab are not drawn, so a
+    /// touch there would start a move nobody could see coming.
+    /// </summary>
+    private bool Hits(BoardObject item, PointD worldPoint, double zoom) => item switch
+    {
+        FrameBoardObject when !ShowFrames => false,
+        ConnectorBoardObject connector =>
+            connector.HitTest(worldPoint, zoom, FrameOf(connector.StartAnchor), FrameOf(connector.EndAnchor)),
+        _ => item.HitTest(worldPoint, zoom),
+    };
 
     private bool Taken(BoardObject item, SelectionArea area, AreaSelection rule) =>
         item is ConnectorBoardObject connector

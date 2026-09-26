@@ -203,6 +203,7 @@ Use **Copy settings** after finding a useful combination so the exact values can
 | Ctrl+V | Paste prefers an image (including a file on the clipboard) over text. Otherwise create a text container; Markdown and rich clipboard HTML can retain tables, lists, and headings |
 | F2 | Edit the selected text container or label, put words inside the selected shape, or rename the selected frame. Typing a printable character with one shape selected starts its text too |
 | View > Frame | Add a frame the size of the screen: a slide drawn on the board, selected by its edge or its tab, which Export takes as it is |
+| View > Show frames | Hide the frames and their titles, or show them again. Hidden frames are still slides for Export, and the choice is saved with the board. Letter H while the View strip is open |
 | Language chip | Choose a language, Prompt, or Markdown on a selected text container |
 | F6 | Format DAX, SQL, or KQL on the selected text container; DAX wraps to the container's columns. In F2, formats in place. On a language that is only highlighted, opens that language's issue on GitHub |
 | Drag right edge, or Shift + drag handle | Change a text container's width in columns and reflow it; the handle shows the count. A plain drag of the corner scales it |

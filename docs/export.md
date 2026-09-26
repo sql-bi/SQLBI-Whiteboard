@@ -127,6 +127,11 @@ Two orders are offered:
   frames have to be drawn during a session that the automatic version handles unattended.
   When frames exist, they win: any object inside a frame belongs to it, the rest of the
   board is partitioned automatically, and frames come first in the order.
+  **View → Show frames** hides them for presenting without changing any of this: a hidden
+  frame is neither drawn nor hit by the pen, and is still a slide. The choice is saved
+  with the board as `showFrames: false` in `scene.json`, written only when frames are
+  hidden, so it needs no new archive version: a release that predates it ignores the
+  field and shows the frames.
 
 ## PowerPoint
 

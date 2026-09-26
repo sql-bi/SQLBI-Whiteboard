@@ -31,6 +31,7 @@ public enum SessionCommand
     SendBackward,
     AddLiveView,
     AddFrame,
+    ToggleFrames,
     FreezeLiveView,
     DisconnectLiveView,
     ReconnectLiveView,
@@ -144,6 +145,28 @@ public partial class SessionChrome : UserControl
         GridButton.ToolTip = on
             ? "Hide the grid behind the board"
             : "Show a faint grid behind the board";
+    }
+
+    /// <summary>
+    /// Show frames belongs to the board rather than to Preferences, and says
+    /// its state the way the Grid button does.
+    /// </summary>
+    public void SetFramesChecked(bool on)
+    {
+        if (ShowFramesButton is null)
+        {
+            return;
+        }
+
+        ShowFramesButton.Background = on
+            ? (Brush)FindResource("ToolbarSelectedBrush")
+            : Brushes.Transparent;
+        ShowFramesButton.Foreground = on
+            ? (Brush)FindResource("ToolbarAccentBrush")
+            : (Brush)FindResource("ToolbarIconBrush");
+        ShowFramesButton.ToolTip = on
+            ? "Hide the frames and their titles"
+            : "Show the frames and their titles";
     }
 
     /// <summary>
@@ -481,6 +504,7 @@ public partial class SessionChrome : UserControl
             'K' when ViewRow.Visibility == Visibility.Visible => SessionCommand.SendBackward,
             'L' when ViewRow.Visibility == Visibility.Visible => SessionCommand.AddLiveView,
             'A' when ViewRow.Visibility == Visibility.Visible => SessionCommand.AddFrame,
+            'H' when ViewRow.Visibility == Visibility.Visible => SessionCommand.ToggleFrames,
             'Z' when ViewRow.Visibility == Visibility.Visible => SessionCommand.FreezeLiveView,
             'D' when ViewRow.Visibility == Visibility.Visible => SessionCommand.DisconnectLiveView,
             'R' when ViewRow.Visibility == Visibility.Visible => SessionCommand.ReconnectLiveView,
