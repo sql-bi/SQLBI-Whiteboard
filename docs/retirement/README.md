@@ -35,5 +35,5 @@ permanently deleted.
   then display "a retirement experience instead of opening". Both are verbatim claims;
   do not paraphrase beyond them.
 - Quote with a screenshot, and prefer an archived copy or the bitmap over the live
-  pages: the schedule changed three times in the ten days around our launch, and may
+  pages, because the schedule changed three times in the ten days around our launch, and may
   change again. Snapshot each revision to the Wayback Machine when it changes.

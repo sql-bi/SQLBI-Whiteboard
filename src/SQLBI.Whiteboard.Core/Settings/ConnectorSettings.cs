@@ -15,7 +15,7 @@ public sealed class ConnectorSettings
 
     /// <summary>
     /// An arrow, because a connector drawn between two shapes is usually
-    /// saying which way round they go.
+    /// meant to show which way round they go.
     /// </summary>
     public ConnectorKind Kind { get; set; } = ConnectorKind.Arrow;
 

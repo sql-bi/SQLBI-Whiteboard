@@ -72,7 +72,7 @@ dotnet run --project .\tests\SQLBI.Whiteboard.Core.SmokeTests\SQLBI.Whiteboard.C
     <table>
       <thead><tr><th>After a merge of</th><th>What happens</th></tr></thead>
       <tbody>
-        <tr><td>Application code</td><td>Azure Pipelines signs and publishes a GitHub <em>prerelease</em> (SQLBI Whiteboard Dev). A full release is an approval on that same run, not a rebuild.</td></tr>
+        <tr><td>Application code</td><td>Azure Pipelines signs and publishes a GitHub <em>prerelease</em> (SQLBI Whiteboard Dev). A full release is an approval on that same run, which promotes the build without rebuilding it.</td></tr>
         <tr><td><code>site/</code></td><td>The <span class="ui">Publish site</span> Action updates this website.</td></tr>
         <tr><td>A new <code>version</code> in <code>vscode/sqlbi-whiteboard/package.json</code></td><td>The <span class="ui">Publish VS Code extension</span> Action publishes <code>sqlbi.sqlbi-whiteboard</code> if that version is not already listed.</td></tr>
         <tr><td>Only <code>docs/</code> or top-level markdown</td><td>Nothing is published.</td></tr>

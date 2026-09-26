@@ -18,19 +18,19 @@ explains why pen ink is read from the pen rather than from the InkCanvas.
 The application was built on a constraint: each input device gets the behaviour it is good
 at, and none of them is asked to imitate another. The pen inks, with pressure, a rear
 eraser and a barrel button. Touch navigates, and draws only when there is no pen. The mouse
-navigates and moves things, and does not draw. That constraint is not a gap; it is the
-reason the pen path is as direct as it is.
+navigates and moves things, and does not draw. That constraint is the reason the pen path
+is as direct as it is.
 
 What happened after release is that people downloaded a whiteboard onto a laptop with no
 pen and no touchscreen, and found that the toolbar did nothing. Version 1.1 says so out
 loud at startup — `NoDigitizerWindow` — and points at
 [discussion 78](https://github.com/sql-bi/SQLBI-Whiteboard/discussions/78) to collect
-votes. That notice is already an admission: the application opens, and there is nothing
-to draw with.
+votes. The notice exists because on such a machine the application opens with nothing to
+draw with.
 
-So the question is not whether a mouse is a good drawing instrument. It is not, and no
-amount of code changes that. The question is whether the application should fail silently
-for someone who has no pen, or give them something honest and limited.
+A mouse is a poor drawing instrument, and code cannot change that. The question is whether
+the application should fail silently for someone who has no pen, or give them a limited
+mouse mode that states its limits.
 
 ## The organizing rule
 
@@ -65,21 +65,19 @@ of this path.
 
 Two facts from that table matter more than the rest.
 
-**The left button has one meaning, and it is not the active tool.** Left-drag is always
-select-and-move, whatever tool is chosen, and the tool is handed back on release. That is
-possible only because the mouse never draws. It is the single most convenient thing about
-mouse input today — you can move an image without leaving the Pen — and it is exactly what
-mouse drawing has to take away.
+**The left button ignores the active tool.** Left-drag is always select-and-move, whatever
+tool is chosen, and the tool is handed back on release. That is possible only because the
+mouse never draws. It lets you move an image without leaving the Pen, which is the most
+convenient part of mouse input today, and mouse drawing has to remove it.
 
 **The erase path is already written and currently unreachable.** `InkSurface_PreviewMouseMove`,
 `CompleteMouseAction` and `InkSurface_LostMouseCapture` all handle `PointerAction.Erase`,
-but no mouse-down ever assigns it. Mouse erasing is a branch in one method away from
-working. That is not an accident to be tidied up; it is a measure of how much of this
-feature already exists.
+but no mouse-down ever assigns it. Mouse erasing needs one branch in one method to work,
+which shows how much of this feature already exists.
 
 ## What the mouse cannot report
 
-These are physical, not oversights, and they define the ceiling.
+These are physical limits of a mouse, and they set the limit of what mouse mode can do.
 
 - **No pressure.** `InkPoint` carries a pressure per point, `BoardSurface` renders width
   from it, and `CalligraphyDynamics.AdjustPressure` shapes it by speed. A mouse reports a
@@ -111,13 +109,13 @@ the pen. The tool becomes sticky: no automatic revert.
 
 **And the convenience is kept, on a modifier.** `Ctrl` + left restores today's behaviour
 precisely: borrow `Select` for one gesture, then return to the previous drawing tool. `Ctrl`
-is free here — there is no multi-select to collide with — and it gives the mouse-mode user
-one thing to learn rather than a lost capability. With mouse mode off, plain left is
+is free here, because there is no multi-select to collide with, and the mouse-mode user
+keeps select-and-move by learning one modifier. With mouse mode off, plain left is
 unchanged, so nobody with a pen notices anything.
 
 **Considered and rejected:** giving select to the right button. Right-drag pan is
-documented, liked, and the only pan that needs no keyboard. Trading it for a modifier is a
-worse deal.
+documented, liked, and the only pan that needs no keyboard, so moving pan behind a modifier
+would cost more than moving select there.
 
 ### 2. Double-click to frame fires while drawing
 
@@ -142,8 +140,7 @@ thickness with no taper at either end. Then:
 - **Highlighter** loses nothing: `InkDrawingAttributes` already sets `IgnorePressure` for it.
 - **Calligraphy** loses almost nothing: its width comes from *speed*, through
   `AdjustPressure(pressure, _penInkSpeed)`, and speed is something a mouse has. A
-  calligraphic mouse stroke will still thin as it accelerates, which is the whole point of
-  the nib.
+  calligraphic mouse stroke will still thin as it accelerates, as the nib is designed to.
 - **Pen** loses its taper. A mouse line is a uniform line.
 
 **Considered:** deriving pen pressure from speed as well, so a mouse stroke tapers. Rejected
@@ -162,8 +159,8 @@ comet, the dashed eraser square — exist because a pen has an "about to touch" 
 
 - **Ink tools:** replace the arrow with the same small high-contrast dot the pen hover uses.
   The arrow's hotspot is its tip, so it is not inaccurate, but its body covers the canvas
-  down and to the right of where the ink will land. This is arguable; the arrow is
-  defensible. **Open question 5.**
+  down and to the right of where the ink will land. Keeping the arrow is also reasonable.
+  **Open question 5.**
 - **Eraser:** show the dashed `EraserHint` square, always, not only on hover. `EraserScreenRadius`
   is 12 px at zoom 1 and has nothing to do with the shape of an arrow, so without it
   nothing on screen says what a click will remove.
@@ -179,8 +176,8 @@ shows it only when finger drawing is effective — because with a pen, erasing i
 end and panning is touch or Space. A mouse has neither.
 
 **Proposed.** Show the same row when *either* finger drawing or mouse drawing is on, and
-rename it to say so. No new toolbar chrome: the palette is deliberately small, and the two
-buttons that mouse mode needs are the two that already exist for the same reason.
+rename it to say so. This adds no toolbar chrome, because the palette is deliberately small
+and the two buttons that mouse mode needs already exist for the same reason.
 
 `ApplyFingerMode` also forces the tool back to `_lastDrawingTool` when Eraser or Pan is
 active and the row disappears. That guard has to consider both modes, or turning finger
@@ -192,9 +189,9 @@ drawing off would strand a mouse user on a tool whose button just vanished.
 drawing yet, and links a vote for it. `SettingsCatalog`'s `WarnWhenNoDigitizer` description
 repeats the claim. So do the site FAQ, guide and shortcut pages.
 
-**Proposed.** Keep the notice and change its job. It stops being an apology and becomes an
-orientation: mouse drawing is on, the left button draws with the selected tool, `Ctrl` moves
-things, and here is what a pen or touchscreen would add. Keep the "do not show this again"
+**Proposed.** Keep the notice and change what it says. Instead of saying that mouse drawing
+is missing, it says that mouse drawing is on, that the left button draws with the selected
+tool, that `Ctrl` moves things, and what a pen or touchscreen would add. Keep the "do not show this again"
 box — it is still the way out of a false positive from the tablet list.
 
 Removing the notice entirely was considered. Against it: a whiteboard that silently behaves
@@ -223,20 +220,20 @@ whose Surface reports a stylus they do not own needs a way in.
 
 Note the deliberate asymmetry with finger drawing. On a touchscreen with no pen,
 `FingerMode.WhenNoPen` turns finger drawing on and `MouseMode.WhenNoDigitizer` leaves mouse
-drawing off — because there is already something to draw with. Mouse mode is the last
-resort, not the second choice.
+drawing off, because there is already something to draw with. By default, mouse mode is
+on only when Windows reports neither pen nor touch.
 
 ### 8. Pen and mouse together
 
-**Not a conflict, and worth stating so.** With `MouseMode.On` on a machine that has a pen,
+**This does not conflict with anything.** With `MouseMode.On` on a machine that has a pen,
 nothing about the pen changes. Every mouse handler already returns early on a non-null
 `StylusDevice`, so pen-promoted mouse events never enter the mouse path, and `AppendPenInk`
 never sees a mouse. `_lastContactWasPen`, palm rejection, the barrel-button recovery in
-`AccumulateMaskedTipInk` and the whole of decision 22 are untouched. The two paths run
-beside each other and never meet.
+`AccumulateMaskedTipInk` and the whole of decision 22 are untouched. The pen events and the
+mouse events are handled separately.
 
-This is the load-bearing fact of the whole proposal: mouse mode is an addition, not a
-redesign. If it required one change to the pen path, it should be rejected.
+The proposal depends on this, because mouse mode adds a path and changes nothing in the
+pen path. If it required one change to the pen path, it should be rejected.
 
 ## The proposed behaviour, in full
 
@@ -257,7 +254,7 @@ With **Mouse drawing** on:
 | Cursor | A dot for ink tools, the dashed square for the eraser, today's cursors for Select and Pan |
 
 Everything else — undo and redo, containers, text, LiveView, import, paste, save, full
-screen, the tab strip — is keyboard and menu work that already has no opinion about the
+screen, the tab strip — is keyboard and menu work that already behaves the same with any
 pointing device.
 
 ## What it costs
@@ -265,14 +262,14 @@ pointing device.
 Said plainly, because the documentation will have to say it too:
 
 - **A mouse line has no taper.** Only Calligraphy still varies its width.
-- **Handwriting with a mouse is bad.** This makes the application usable without a pen. It
-  does not make it good without one, and marketing should not imply otherwise.
+- **Handwriting with a mouse is bad.** Mouse mode makes the application usable without a
+  pen, and marketing should not claim more than that.
 - **Strokes are more angular** at speed, because of the event rate. Smoothing would change
   the ink model for every device and is deliberately out of scope — **open question 8**.
 - **The rear eraser, palm rejection, pressure and hover have no mouse equivalent** and are
   not simulated.
 - **A permanent tax on future input work**: every new input feature now has a third column
-  to fill in. The organizing rule above is what keeps that column mostly reading "n/a".
+  to fill in. Under the organizing rule above, most entries in that column are "n/a".
 
 ## Implementation sketch
 
@@ -311,8 +308,7 @@ description, which currently states that a mouse cannot draw.
 No new subsystem, no new project, no change to persistence or to `Core` beyond one setting.
 The reason it is this small is decision 22: because pen ink is collected from raw points
 rather than from the InkCanvas, the ink pipeline from `AppendPenInkPoint` through
-`CommitInkPoints` to `BoardSurface.PendingStroke` already has no idea what device it is
-serving.
+`CommitInkPoints` to `BoardSurface.PendingStroke` already works the same for any device.
 
 ## Testing
 
@@ -339,8 +335,8 @@ Numbered so they can be answered one at a time.
 
 1. **Does the left button change meaning?** If not, there is no feature. Recommend yes.
 2. **`Ctrl` + left for select-and-move, or make Select a tool you must pick from the
-   toolbar?** Recommend `Ctrl`: it keeps the one genuinely good thing about mouse input
-   today.
+   toolbar?** Recommend `Ctrl`, because it keeps moving a container without leaving the
+   drawing tool, which is the most useful part of mouse input today.
 3. **Double-click framing behind `Ctrl` for ink tools?** Recommend yes; the alternative is a
    board that reframes itself while someone is drawing.
 4. **Constant pressure, or speed-derived pressure for the Pen?** Recommend constant, and
@@ -353,12 +349,12 @@ Numbered so they can be answered one at a time.
 8. **Smoothing for mouse strokes?** Recommend not in a first version. It changes ink for
    every device and deserves its own decision.
 9. **Is the mouse allowed into the marketing?** Recommend no more than a line in the FAQ and
-   the shortcut page. The application stays a pen application that no longer fails silently
-   on a mouse.
+   the shortcut page. The application is still presented as a pen application, with mouse
+   mode as its fallback.
 
 ## Recommendation
 
-**Build it, as a fallback, and say what it is.**
+**Build it as a fallback, and document its limits.**
 
 The case against is real and should be recorded: the founding constraint was that no device
 imitates another, a mouse whiteboard is a worse whiteboard, and supporting one invites
@@ -367,11 +363,10 @@ the one to watch.
 
 The case for is stronger on the specifics. The cost of building it is unusually low — a few
 hundred lines, one setting, no new subsystem, and not one line changed in the pen path —
-because the ink pipeline was already made device-agnostic for an unrelated reason. The
-alternative is not "keep the constraint pure"; it is "keep shipping a startup dialog that
-apologizes". And the constraint survives intact if the organizing rule is written into
-decisions.md alongside the feature: a mouse gets the tools, not the gestures.
+because the ink pipeline was already made device-agnostic for an unrelated reason. Without
+it, the application keeps shipping a startup dialog that says mouse drawing is missing. The
+constraint is kept if the organizing rule, that a mouse gets the tools and not the
+gestures, is written into decisions.md alongside the feature.
 
-If any of the load-bearing pieces fails on inspection — if the pen path has to change, or if
-the left button cannot be given up — that is the signal to stop, and the honest answer to
-discussion 78 becomes no.
+If any of these pieces fails on inspection — if the pen path has to change, or if the left
+button cannot be given up — the work stops, and the answer to discussion 78 is no.

@@ -7,10 +7,9 @@ namespace SQLBI.Whiteboard;
 
 /// <summary>
 /// Writes what the digitizer actually reports to a file, so the pen-button code
-/// can be settled from facts rather than from inference. Windows describes the
-/// upper side button and a pen turned round with the same Invert bit, and which
-/// of the two carries a button event turns out to differ between devices - the
-/// only way to know is to look.
+/// can be based on what devices report. Windows describes the upper side button
+/// and a pen turned round with the same Invert bit, and which of the two carries
+/// a button event differs between devices, so it has to be observed on each.
 ///
 /// Off unless SQLBI_WHITEBOARD_PENTRACE names a file to write to.
 /// </summary>

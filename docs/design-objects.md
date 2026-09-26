@@ -50,7 +50,7 @@ a change to one is a change to this file first.
    as its checks pass, so the next one starts from `main`.
 2. **Where the new tools live.** An **Insert** tab in the tab strip, between View and
    Help, holds the shape grid, the three connectors, and Text. The floating toolbar does
-   not grow by default: it is critical that the compact layouts stay the width they are.
+   not grow by default, because the compact layouts must stay the width they are.
    A Preference, **Insert and Lasso on the toolbar** (off), adds an **Insert** button
    beside Select whose flyout is the same content, and a chevron on Select offering
    Rectangle and Lasso. With it off, Lasso is a toggle on the Edit row.
@@ -459,8 +459,9 @@ What first use showed, and the cause of each in the code as it stands:
 5. **Select all.** With Select active, Ctrl+A selects every object on the board except
    frames (the same set an area can take), and Ctrl+Shift+A selects the ink strokes only.
    Both go through `SelectMany`, so the property bar, Delete, Copy, and the group gesture
-   follow. Ctrl+S stays Save: it is Save in every Windows application and in this one
-   since 1.0, and a Save that instead selected ink would lose someone their work.
+   follow. Ctrl+S stays Save, because it is Save in every Windows application and in this
+   one since 1.0, and someone who pressed it to save would lose their work if it selected
+   ink instead.
    Neither shortcut does anything while a text is being edited (the editor owns them).
 
 ### Priority 2 — shapes complete (four pull requests)
@@ -503,8 +504,8 @@ What first use showed, and the cause of each in the code as it stands:
 
 ### Priority 3 — a palette for inserting, that can be moved (one pull request)
 
-The Insert row is a menu, not a palette: it is far from the pen and it covers the
-toolbar. Four designs were considered:
+The Insert row opens like a menu, far from the pen, and it covers the toolbar. Four
+designs for a palette were considered:
 
 - **A. Pin the Insert row into a floating palette.** A pin at the end of the Insert row
   turns its content, the eight shapes, the three connectors, and Text in two short rows,
@@ -518,7 +519,7 @@ toolbar. Four designs were considered:
 - **C. A bubble beside the last inserted object** offering the next shape. Quick for a
   run of shapes, but it moves with the work and covers it.
 - **D. Tear-off: drag the Insert row out** into a palette. The same result as A with a
-  gesture nobody will find.
+  drag gesture that people are unlikely to discover.
 
 ### Priority 4 — connectors that start from a shape
 
@@ -614,10 +615,10 @@ Status: approved on 19 September 2026, not started. One pull request, `feature/m
 1.6.0 added controls that a person who only annotates never needs: an Insert tab, a
 palette, handles on a selected shape, a bar over every selection, a menu on it, depth
 commands, a lasso. A **mode** says which of those exist. It is a setting, changed in
-Preferences or with one tap on the View row, and it never changes what a board contains:
-a board made in Design mode opens in Teaching mode with every shape, label, and connector
-still drawn, still a container, still exported; only the tools to make or restyle them are
-absent.
+Preferences or with one tap on the View row, and it never changes what a board contains.
+A board made in Design mode opens in Teaching mode with every shape, label, and connector
+still drawn, still a container, and still exported, and without the tools to make or
+restyle them.
 
 ### The three modes
 
@@ -625,9 +626,9 @@ absent.
   selection with it. Ink, laser, eraser, pan; paste, drop, import, LiveView, text
   containers; frames and export; the grid; rubber band, lasso, a tap on a stroke, Ctrl+A,
   Ctrl+Shift+A, group move and resize; Bring to front and Send to back. Nothing else.
-  The lasso is in because picking up what you have just drawn is annotation, not design,
-  and it puts nothing on the screen: it is the Select button behaving differently after a
-  hold.
+  The lasso is in because picking up what you have just drawn is part of annotating, and
+  because it adds no control to the screen, since it is reached by holding the Select
+  button.
 - **Design** (default): everything.
 - **Custom**: whichever of four feature groups are switched on, and nothing else. It
   exists so that a change meant for Teaching can be tried one group at a time.
@@ -653,14 +654,14 @@ command that belongs to a group that is off does nothing — no dialog, no beep.
 - **Preferences → Mode**, a new first category: a **Mode** row (Teaching, Design, Custom)
   and the four group switches, enabled only while Custom is chosen. Choosing Teaching or
   Design does not overwrite the Custom switches, so Custom remembers its last
-  arrangement, and while one of them is chosen the four rows show the feature set that
-  mode resolves to rather than the switches behind it — a greyed row says what the mode
-  does. The Toolbar and Selection rows that belong to a group are hidden while
+  arrangement, and while one of them is chosen the four rows show, greyed, the feature
+  set that mode resolves to rather than the switches behind it. The Toolbar and Selection rows that belong to a group are hidden while
   that group is off, so Teaching's Preferences are 1.5.2's plus Mode, Board, and
   Selection. The four group rows draw their two pictures where a combo sits, beside the
   words rather than on a line below them, and at half the size of the rows drawn before
-  1.6.0: all five rows of this category have to be on the screen together at the dialog's
-  default size, and on their own line they cost more height than five rows have.
+  1.6.0, because all five rows of this category have to be on the screen together at the
+  dialog's default size, and pictures on their own line would need more height than the
+  dialog has for five rows.
 - **View → Design**, a toggle beside Grid: checked while the mode is Design; a press
   switches to Design, and a press while in Design returns to the last mode that was not
   Design (Teaching, or Custom if that is where the person came from), the way Grid

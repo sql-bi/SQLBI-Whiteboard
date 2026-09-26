@@ -36,9 +36,9 @@ internal static class BoardPreviewRenderer
             LiveViewImageSourceProvider = liveViewImageSourceProvider,
             DrawFrames = false,
 
-            // Said rather than left to the default: a preview is what the
-            // Explorer thumbnail and the VS Code preview show, and neither is a
-            // place for the author's own guides.
+            // Set explicitly rather than left to the default, because a preview
+            // is what the Explorer thumbnail and the VS Code preview show, and
+            // the author's own guides are left out of both.
             GridStyle = GridStyle.Off,
         };
         surface.Configure(document, camera);

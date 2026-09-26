@@ -13,9 +13,9 @@ internal sealed class LaserTrailSurface : FrameworkElement
     private const double ResumeDistance = 36;
     private const double MaximumWidth = LaserSettings.MaximumTrailWidth;
 
-    // The hover dot is deliberately independent of the trail weight below: that
-    // setting is about how hard you have to press, and the pointer is drawn
-    // without pressing at all.
+    // The hover dot is deliberately independent of the trail weight below,
+    // because that setting controls how hard you have to press, and the
+    // pointer is drawn while the pen is not pressed at all.
     private const double HoverHeadWidth = 5.1;
 
     // The hover comet is every sample from this window, so its length is the
@@ -184,9 +184,9 @@ internal sealed class LaserTrailSurface : FrameworkElement
         }
     }
 
-    // A solid red centre inside a soft shade. The shade is what separates the
-    // pointer from drawn ink; the centre is what stays legible on a white board
-    // once a projector and a video encoder have had their turn at it.
+    // A solid red centre inside a soft shade. The shade separates the pointer
+    // from drawn ink, and the centre stays legible on a white board after a
+    // projector and a video encoder have degraded the picture.
     private static void DrawHead(
         DrawingContext drawingContext,
         Point head,

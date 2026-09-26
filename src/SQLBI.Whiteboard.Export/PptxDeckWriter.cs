@@ -179,7 +179,7 @@ public static class PptxDeckWriter
     /// The slide id and the preset of every element a connector could be tied
     /// to, by the board object it came from. Only a shape and a label qualify:
     /// both go out as p:sp with a preset geometry that carries connection sites,
-    /// while a picture or a text box has nothing an arrow can hold on to.
+    /// while a picture or a text box has no connection sites.
     /// </summary>
     private static Dictionary<Guid, (uint Id, string Preset)> ShapeIds(IReadOnlyList<SlideElement> elements)
     {
@@ -209,10 +209,10 @@ public static class PptxDeckWriter
     private static string PresetName(A.PresetGeometry geometry) => geometry.Preset?.InnerText ?? string.Empty;
 
     /// <summary>
-    /// What a connector's end holds on to, as PowerPoint wants it: the shape's
+    /// What a connector's end is attached to, as PowerPoint wants it: the shape's
     /// id and the number of the site on it. An end bound to nothing, to
     /// something that did not go out as a shape, or to a point the preset has no
-    /// site for has no answer, and the arrow then stays where it was drawn.
+    /// site for gets null, and the arrow then stays where it was drawn.
     /// </summary>
     private static (uint Id, int Site)? ConnectionOn(
         SlideConnection? connection,
@@ -363,7 +363,7 @@ public static class PptxDeckWriter
     /// tinted fill that keeps its translucency, and the outline as a line of the
     /// width the screen gives it, turned about its centre by a:xfrm as a label is.
     /// The text body is what lets PowerPoint type into the shape once the deck is
-    /// open, and it carries whatever the shape already says.
+    /// open, and it carries whatever text the shape already has.
     /// </summary>
     private static P.Shape GeometryShape(uint id, SlideShapeElement shape, PageFit fit) => new(
         new P.NonVisualShapeProperties(
@@ -382,10 +382,10 @@ public static class PptxDeckWriter
         ShapeTextBody(shape, fit));
 
     /// <summary>
-    /// What a shape says, in the shape: centred across the box and down it,
+    /// A shape's own text, in the shape: centred across the box and down it,
     /// wrapped, and inset so that the rectangle left for the words is the one
     /// the board writes them in - which for a triangle or a diamond is a good
-    /// deal smaller than the box. A shape that says nothing writes the one empty
+    /// deal smaller than the box. A shape without text gets the one empty
     /// paragraph a p:sp has to have.
     /// </summary>
     private static P.TextBody ShapeTextBody(SlideShapeElement shape, PageFit fit)
@@ -530,8 +530,8 @@ public static class PptxDeckWriter
         }
 
         // The two ends hold on to the shapes they were drawn on, so dragging one
-        // of those in PowerPoint drags the arrow with it. An end with no site to
-        // name says nothing and stays where it is.
+        // of those in PowerPoint drags the arrow with it. An end with no site
+        // gets no connection and stays where it is.
         var connections = new P.NonVisualConnectorShapeDrawingProperties();
         if (ConnectionOn(connector.StartConnection, shapeIds) is { } start)
         {
@@ -640,7 +640,7 @@ public static class PptxDeckWriter
     /// <summary>
     /// The rectangle a shape sits in, turned about its own centre - which is
     /// what a:xfrm rot does, and where the board turns it. An upright object
-    /// says nothing, so a deck written for one is the deck it always was.
+    /// gets no rotation, so its slide is written as it was before objects could turn.
     /// </summary>
     private static A.Transform2D TurnedFrame(PageFit fit, SlideRect bounds, double angleDegrees)
     {

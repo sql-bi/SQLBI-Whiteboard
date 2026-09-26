@@ -30,8 +30,8 @@ internal static class ClipboardMarkdown
         {
             string plainLanguage = TextLanguageRegistry.ResolveFromOrder(plain, order);
             // Keep established code-snippet detection, and the preference that
-            // explicitly asks to keep all pastes plain. An HTML <pre> beside SQL
-            // is not a reason to turn the SQL editor into a Markdown document.
+            // explicitly asks to keep all pastes plain, so an HTML <pre> beside
+            // SQL does not turn the SQL editor into a Markdown document.
             if (!rich || TextLanguageIds.NormalizeOrder(order)[0] == TextLanguageIds.Plain ||
                 plainLanguage is not (TextLanguageIds.Plain or TextLanguageIds.Markdown))
             {
@@ -71,7 +71,7 @@ internal static class ClipboardMarkdown
 
             // Prefer exact source when both representations retain the structure.
             // A plain-text table containing one code span is not the Markdown
-            // source of the response: in that case its HTML carries more.
+            // source of the response, and in that case its HTML carries more.
             if (hasMarkdown && (!hasHtml || MarkdownContent.StructureScore(plain!) >= MarkdownContent.StructureScore(converted)))
             {
                 text = plain!;

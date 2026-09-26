@@ -16,8 +16,8 @@ public sealed class LabelSettings
 
 /// <summary>
 /// The fonts and sizes a label can be written in. The list is curated rather
-/// than taken from the machine: a board is opened on other machines, and a
-/// font nobody else has would come back as something else there anyway.
+/// than taken from the machine, because a board is opened on other machines,
+/// and a font nobody else has would be replaced there anyway.
 /// </summary>
 public static class LabelStyles
 {
@@ -48,8 +48,8 @@ public static class LabelStyles
     ];
 
     /// <summary>
-    /// World pixels rather than points: a label is the size it is on the board,
-    /// and the zoom decides how big that looks.
+    /// World pixels rather than points, because a label has a fixed size on the
+    /// board and the zoom decides how big it looks.
     /// </summary>
     public static IReadOnlyList<double> FontSizes { get; } = [12, 16, 20, 24, 32, 40, 48, 64, 96];
 

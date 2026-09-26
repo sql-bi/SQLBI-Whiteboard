@@ -39,7 +39,7 @@ way.
 
 **Implemented** (pipeline exists; triggers are still manual, see decision 10).
 
-The repository is public, which makes Actions free — but also makes **Actions logs public**.
+The repository is public, so Actions is free and **Actions logs are public**.
 Signing diagnostics, vault URLs, certificate subject, and service principal identifiers
 would all be world-readable, including from failed runs. Keeping the certificate out of
 GitHub entirely also removes a class of risk around fork pull requests.
@@ -70,7 +70,7 @@ WiX v7 refuses to run without accepting the Open Source Maintenance Fee EULA. v6
 without that gate but belongs to the same fee model. v5.0.2 predates the model entirely and
 is pinned in `.config/dotnet-tools.json`.
 
-This is a licensing decision for a commercial vendor, not a technical one — v6 and v7 are
+The reason is licensing, because SQLBI is a commercial vendor; v6 and v7 are technically
 fine tools. Revisit if SQLBI decides to pay the fee.
 
 Even v5 is a large step from Bravo's v3 authoring: `heat` harvesting and its XSLT filter
@@ -101,7 +101,7 @@ Three consequences were chosen deliberately:
 - **Settings are separated** through a `channel.txt` placed beside the executable by the dev
   installer, and carried inside the dev portable ZIP. Without this the two copies silently
   overwrite each other's settings on every save — the settings parser ignores the `Version`
-  field, so this fails quietly rather than loudly. The portable ZIP originally shipped
+  field, so the collision produces no error. The portable ZIP originally shipped
   without the marker in both channels, which reintroduced exactly this collision for anyone
   running a portable pre-release (issue 17).
 - **The channel is detected at run time, not compiled in.** One set of binaries therefore
@@ -139,8 +139,8 @@ installers already exist when promotion happens.
 **Implemented.** `GitHubRelease@1` publishes both channels; the `AzureFileCopy` step and the
 `publishToStorage` parameter are gone, and no storage account is needed.
 
-The repository is public, so release assets are downloadable without authentication — this
-was the deciding factor, not cost. GitHub serves them from a CDN at no bandwidth cost, the
+The repository is public, so release assets are downloadable without authentication, and this
+decided the choice ahead of cost. GitHub serves them from a CDN at no bandwidth cost, the
 prerelease flag distinguishes the two channels natively, `/releases/latest/download/...` is
 a permanent link the download page can hard-code, and winget reads the same source.
 
@@ -155,7 +155,7 @@ from the one used to read source. It is named `sql-bi write assets`.
 protection until development had settled.
 
 The original objection was that requiring pull requests would slow early development. It
-does not: both maintainers work through coding agents, so creating a short-lived branch and
+does not, because both maintainers work through coding agents, so creating a short-lived branch and
 opening a pull request is a line of instruction rather than a change of habit. The cost was
 overestimated, and `main` is about to start feeding a public download channel on every
 merge.
@@ -163,15 +163,16 @@ merge.
 Configuration, in two stages because the second has a prerequisite:
 
 - **Done** — a pull request is required before merging, and the bypass list is empty.
-  Protection that can be silently sidestepped tends to be.
+  The list is empty because protection with a bypass is often sidestepped without anyone
+  noticing.
 - **Remaining** — require the pull request validation checks to pass. GitHub only offers
   checks it has already seen, so select them once the workflow has run.
 
-Approvals are deliberately **not** required. A two-person core team should not be blocked by
-one member's travel; review is welcome, waiting is not. Add required review only if
+Approvals are deliberately **not** required, because a two-person core team should not be
+blocked when one member travels. Review is welcome but optional. Add required review only if
 something slips through.
 
-There is no `develop` branch and none is planned: `main` is the pre-release channel, and a
+There is no `develop` branch and none is planned, because `main` is the pre-release channel, and a
 release is a tag plus a GitHub Release, so no branch needs to represent "released". Cut a
 `release/x.y` branch only when a shipped version genuinely needs patching while `main` has
 moved on.
@@ -204,14 +205,14 @@ Three constraints shape it:
 - Store version numbers must end in `.0`. The MSIX Identity Version is `VersionPrefix.0`,
   not the four-part assembly stamp the MSI uses.
 - Submission must never gate the web release. Certification took hours to days when this
-  was decided and now runs in under an hour unattended, which changes how long the Store
-  lags the download rather than the reasoning: it is still someone else's queue, it can
-  still stall or reject, and none of that should be able to hold up a release that is
-  already built and signed. The Store stage runs after Release rather than beside it, so
+  was decided and now runs in under an hour unattended. That shortens how long the Store
+  lags the download, and the reasoning still holds, because it is still someone else's
+  queue, it can still stall or reject, and none of that should be able to hold up a
+  release that is already built and signed. The Store stage runs after Release rather than beside it, so
   the GitHub release already exists by the time it starts, a failed or slow submission
   changes nothing that shipped, and a build that was never promoted is never submitted.
 
-The first submission was manual, and was made on 20 August 2026 for 0.9.2: listing,
+The first submission was manual, and was made on 20 August 2026 for 0.9.2, because listing,
 screenshots, and age rating are one-time work no pipeline performs.
 `installer/msix/STORE-LISTING.md` records every field that was entered, which is what the
 automated submission reproduces. Automating the upload was deliberately held until that
@@ -221,14 +222,14 @@ incomplete listing.
 Everything after it is the Store stage's job. It submits packages only — listing text,
 screenshots, and **What's new** carry over from the last published submission untouched.
 Changing them stays a deliberate act in Partner Center, recorded in `STORE-LISTING.md`.
-The stage is equally careful with submissions it did not create: it deletes only one left
-`PendingCommit` by its own failed upload, because any other pending submission may be a
-person's listing edit and a pipeline must not discard it.
+Of the submissions it did not create, the stage deletes only one left `PendingCommit` by its
+own failed upload, because any other pending submission may be a person's listing edit
+that the pipeline must not discard.
 
 The submission identity is not the signing one. The Partner Center account is associated
 with a different Microsoft Entra tenant than the one the pipeline signs in, so the two
-cannot be the same principal even if sharing one were desirable — which it is not, since a
-single leaked secret would then both sign as SQLBI and publish as SQLBI.
+cannot be the same principal. Sharing one is not wanted anyway, because a single leaked
+secret would then both sign as SQLBI and publish as SQLBI.
 
 ## 14. Bravo's telemetry was not ported
 
@@ -244,19 +245,19 @@ considerably simpler for it. Port it only if the data is actually wanted.
 
 Each release carries three assets: the per-machine installer, the per-user installer, and
 the portable ZIP, all self-contained. Publishing both flavours meant six assets with names
-like `SQLBI.Whiteboard.0.1.0.x64-frameworkdependent-dev-userinstaller.msi`, which asks a
-visitor to decode four dimensions before downloading anything.
+like `SQLBI.Whiteboard.0.1.0.x64-frameworkdependent-dev-userinstaller.msi`, where a visitor
+has to decode four dimensions before downloading anything.
 
 The self-contained installer is roughly 73 MB against 11 MB, and needs no .NET runtime
-installed. That trade favors the visitor. The framework-dependent build is still produced
-and kept as a pipeline artifact.
+installed. The larger download was accepted because the visitor installs nothing else.
+The framework-dependent build is still produced and kept as a pipeline artifact.
 
 ## 16. SQLBI Whiteboard is MIT-licensed open source
 
 **Implemented.**
 
 The repository is public and carries the MIT license, the same as Bravo, and the installer
-presents the same terms. This was confirmed deliberately rather than inherited: the license
+presents the same terms. This was confirmed deliberately, because the license
 text was copied from Bravo early on, and shipping it unexamined would have granted rights
 nobody had decided to grant.
 
@@ -282,12 +283,12 @@ so a plain `dotnet build` is unaffected and local iteration does not slow down.
 build and only two of the four channel-scope variants. It took 6m 17s building everything;
 the reduced job runs in well under two minutes.
 
-Almost all of that time was CAB compression, and compression is not what the job validates —
-the WiX authoring is. The framework-dependent payload is roughly 15 MB against 252 MB, and
+Almost all of that time was CAB compression, and the job exists to validate the WiX
+authoring, which compression does not exercise. The framework-dependent payload is roughly 15 MB against 252 MB, and
 runs through the same authoring and the same `<Files Include>` harvesting.
 
-The two variants are the diagonal pair, `stable/perMachine` and `dev/perUser`. The four are
-not repetition: they are four paths through the `<?if?>` branches in
+The two variants are the diagonal pair, `stable/perMachine` and `dev/perUser`. The four
+variants are four different paths through the `<?if?>` branches in
 `installer/wix/SQLBI.Whiteboard.wxs`, so building only one would miss a typo in the dev
 branch or a broken per-user directory. The diagonal pair still takes both sides of every
 conditional.
@@ -297,7 +298,7 @@ untested channel-scope combinations. Azure Pipelines builds all four variants se
 on every merge to `main`, so both are caught before anything is signed or published.
 
 `scripts/build-installer.ps1` defaults to all four variants and to self-contained. The
-reduction is expressed in the workflow that wants it, not in the script, so nothing that
+reduction is set in the workflow and the script keeps those defaults, so nothing that
 ships can inherit it by accident.
 
 ## 19. The teaser video is a file on the site, not an embed
@@ -310,9 +311,9 @@ existed, for three reasons:
 
 - Vimeo is blocked or unreliable in several regions; an embed shows those visitors a dead
   frame. A file served with the page plays wherever the page loads.
-- The embed was the only third party on the privacy page. Removing it makes "static HTML,
-  no third parties" true without a footnote.
-- The bandwidth argument for an embed did not survive the numbers. The clip is 42 seconds
+- The embed was the only third party on the privacy page. Without it, the page can say
+  "static HTML, no third parties" with no exception.
+- The numbers do not support the bandwidth argument for an embed. The clip is 42 seconds
   of mostly still screen content: 3.3 MB as 1440p60 AV1 and 2.7 MB as 1080p60 H.264,
   around 0.6 Mbit/s — fluent on connections far below any embed's minimum. GitHub Pages
   serves through a CDN with range-request support, and both files carry `faststart`, so
@@ -334,8 +335,9 @@ The 4K Camtasia master is kept outside the repository; re-encoding is two ffmpeg
 commands recorded in `docs/teaser/shot-script.md`. Autoplay means every home-page visit
 downloads a rendition (about 3 MB), so GitHub Pages' ~100 GB/month soft bandwidth limit
 maps to roughly 30,000 visits a month — far beyond this site's traffic, and GitHub has
-no bandwidth meter to watch anyway. If a launch ever approaches that, the escape hatch
-is a lighter loop rendition or a caching proxy in front of the domain, not an embed.
+no bandwidth meter to watch anyway. If a launch ever approaches that, the options are
+a lighter loop rendition or a caching proxy in front of the domain, and an embed stays
+ruled out.
 
 ---
 
@@ -343,15 +345,15 @@ is a lighter loop rendition or a caching proxy in front of the domain, not an em
 
 **Implemented.**
 
-The open question was never the number, it was what had to be true before it stopped
-being 0.x. That turned out to be product rather than pipeline: Preferences, `.wimport`,
-the Explorer and VS Code previews, the documentation site, and Finger drawing. All of
-them shipped during 0.9.x, and no numbered work was left behind them.
+The open question was what had to be true before the version stopped being 0.x. The
+answer was a set of product features: Preferences, `.wimport`, the Explorer and VS Code
+previews, the documentation site, and Finger drawing. All of them shipped during 0.9.x,
+and no numbered work was left behind them.
 
-Nothing about delivery changes with it. A merge still publishes a pre-release, promotion
-is still an approval on that same run, and the Store still takes the MSIX from it — so
-1.0.0 reaches people by the path 0.9.5 already proved, which is the reason the number
-could be treated as a statement about the product rather than an event in the pipeline.
+Delivery does not change with it. A merge still publishes a pre-release, promotion is
+still an approval on that same run, and the Store still takes the MSIX from it, so 1.0.0
+reaches people by the path 0.9.5 already proved. Because the pipeline did not change, the
+number could be treated as a statement about the product.
 
 The Store carries `1.0.0.0` as its identity version. winget starts at 1.2.2, the version its
 first submission settled on.
@@ -363,16 +365,17 @@ first submission settled on.
 **Implemented.**
 
 WPF has no SVG decoder, so supporting SVG at all meant taking a rendering library —
-including the option of rasterizing on arrival, which needs one just the same. That made
-the choice about which library, not whether to have one.
+including the option of rasterizing on arrival, which needs one just the same. The choice
+was therefore which library to take.
 
 `SharpVectors.Wpf` produces a `DrawingGroup`, so an SVG container is redrawn at whatever
-size it is displayed at rather than stretched from pixels. That is the point of accepting
-SVG on a canvas whose zoom is unbounded. It is BSD-3, managed-only, and ships no native
+size it is displayed at rather than stretched from pixels. This is why SVG is accepted on
+a canvas whose zoom is unbounded. It is BSD-3, managed-only, and ships no native
 binary, which keeps it out of the signing step and out of the per-architecture question
-the installer would otherwise have to answer. Direct2D was the tempting alternative, since
-`Vortice` is already referenced and would have cost nothing: it implements a restricted
-SVG subset with no `<text>` element, which is most of what a DAX SVG measure emits.
+the installer would otherwise have to answer. Direct2D was considered, since
+`Vortice` is already referenced and would have cost nothing, and rejected because it
+implements a restricted SVG subset with no `<text>` element, which is most of what a DAX
+SVG measure emits.
 
 Assets are stored as the bytes that arrived, and `BoardArchive` has always treated them as
 opaque, so the format version did not move. A board holding an SVG opened in 1.0.3 draws
@@ -395,7 +398,7 @@ the renderer changes.
   the pen advances half a glyph; with `end` it does not advance at all. A centred label
   piles up in half its width. `SvgMarkup.Rewrite` removes the spacing from text that is
   not anchored at its start, so the whole string is measured and placed at once. The
-  label is set a little tighter than the author asked, and where they asked. A tracked
+  label is placed where the author asked, a little tighter than they asked. A tracked
   heading anchored at its start is left as written, since that path draws correctly.
 - An embedded bitmap is fitted into its `<image>` by the WPF `Width` and `Height` of the
   decoded picture, which are device-independent units and scale with the DPI the file
@@ -444,7 +447,7 @@ hosts the laser sampler and the hover tracker. It collects no pen ink; strokes t
 InkCanvas still opens for a pen are discarded on arrival.
 
 The cost is that pen wet ink is drawn on the UI thread rather than WPF's dedicated
-dynamic-rendering thread. Reverting is not attractive: the machinery this replaced —
+dynamic-rendering thread. Reverting is not planned, because the machinery this replaced —
 a stylus plug-in for the constraint, recovery of ink from in-air packets, splitting a
 collected stroke back into contacts, and a second stroke lifecycle inside the renderer —
 was several hundred lines and never converged.
@@ -457,28 +460,28 @@ was several hundred lines and never converged.
 weighed and rejected, is [mouse-mode.md](mouse-mode.md).
 
 The application was built so that no input device imitates another: the pen inks, touch
-navigates, and the mouse moves things. That was not a gap. It is why the pen path is as
-direct as it is, and it stays the rule for the pen.
+navigates, and the mouse moves things. This was deliberate, because it keeps the pen path
+direct, and it stays the rule for the pen.
 
-What it cost was people who downloaded a whiteboard onto a laptop with no pen and no
-touchscreen and found the toolbar did nothing. 1.1 conceded the point at startup and
+The cost was that people who downloaded a whiteboard onto a laptop with no pen and no
+touchscreen found the toolbar did nothing. 1.1 conceded the point at startup and
 collected votes in
 [discussion 78](https://github.com/sql-bi/SQLBI-Whiteboard/discussions/78). So there is now
 a **Mouse drawing** setting, on by default when Windows reports neither a stylus nor a
 touchscreen, under which the left button does what the selected tool does.
 
-One sentence governs it, and any later change to it: **a mouse gets the tools, not the
+The rule for it, and for any later change to it, is **a mouse gets the tools, not the
 gestures.** Everything on the toolbar becomes reachable with a mouse. Nothing that exists
 because of what a hand and a pen can do — pressure, hover, the reverse end, the barrel
 button, palm rejection, two fingers — is simulated with modifiers and timers. Where a
 gesture has no honest mouse equivalent the mouse does without it, and the documentation
-says so. That is what stops mouse support becoming a tax on every future input feature.
+says so. The rule keeps mouse support from adding work to every future input feature.
 
 Four consequences are worth recording, because each was a choice with a live alternative:
 
-- **`Ctrl` is the old mouse.** Letting the left button draw takes away the one genuinely
-  good thing about mouse input — moving an image without leaving the Pen — so it is handed
-  straight back on a modifier rather than lost. Giving it to the right button instead was
+- **`Ctrl` is the old mouse.** Letting the left button draw takes away the most useful
+  thing about mouse input, moving an image without leaving the Pen, so it is kept on a
+  modifier. Giving it to the right button instead was
   rejected: right-drag pan is the only pan that needs no keyboard.
 - **Framing moves behind `Ctrl` too, but only where it has to.** Double-click is tested
   before the tool branch, so two quick dabs with the Pen would otherwise reframe the board.
@@ -492,14 +495,14 @@ Four consequences are worth recording, because each was a choice with a live alt
   `Ctrl` borrow — including a right-button pan, which would otherwise take someone who chose
   the Eraser and quietly leave them holding a pen.
 
-The reason this was a few hundred lines rather than a subsystem is decision 22. Because pen
+This was a few hundred lines rather than a subsystem because of decision 22. Because pen
 ink is collected from raw points rather than from the InkCanvas, `AppendInkPoint` takes a
-screen point and a pressure and has no idea what device it is serving; the mouse calls it,
+screen point and a pressure and does not depend on the device; the mouse calls it,
 and gets the straight-line constraint and the calligraphy dynamics without a second
 implementation. The erase, pan and container paths already existed on the mouse handlers —
 `PointerAction.Erase` was written and unreachable.
 
-Not one line of the pen path changed, and that was the condition for building it at all.
+The pen path did not change, which was the condition for building mouse drawing.
 Every mouse handler already returned early on a non-null `StylusDevice`, so pen-promoted
 mouse events never enter the mouse path. Mouse drawing can therefore be left on beside a
 pen, which is why **On** is offered and not only the automatic default.
@@ -511,17 +514,17 @@ pen, which is why **On** is offered and not only the automatic default.
 **Implemented** in 1.2.1.
 
 Decision 23 left Mouse drawing discoverable only in Preferences, which is the one place
-someone who does not know the feature exists will not look. The signal that they might want
-it is unambiguous and already in the application: **picking a tool from the toolbar with the
-mouse.** A pen user reaches for the palette with the pen, so a mouse arriving there is
-someone whose next stroke is going to disappoint them. That is when the offer appears.
+someone who does not know the feature exists will not look. **Picking a tool from the toolbar
+with the mouse** is a clear signal that they might want it, and the application already
+sees it. A pen user reaches for the palette with the pen, so a mouse there means the next
+stroke will not draw, and the offer appears at that point.
 
 Three properties of it were chosen rather than inherited, and each is the kind a later
 change would quietly undo:
 
-- **Neither button is `IsDefault`, and Enter is swallowed.** This is a question about how
-  the application behaves, not a confirmation, and the two answers are not
-  interchangeable — one changes what the left button means. A default button would let
+- **Neither button is `IsDefault`, and Enter is swallowed.** The dialog asks how the
+  application should behave, and the two answers differ, because one changes what the left
+  button means. A default button would let
   Enter answer it for someone who was typing, and whichever button we picked would be the
   wrong one half the time. `Window_PreviewKeyDown` therefore marks every Enter handled
   before it can reach a button, and invokes one only when the person has deliberately moved
@@ -549,26 +552,26 @@ the consequences — that appears only when the row's chevron is pressed. A sett
 summary is the whole story leaves `Description` empty and gets no chevron at all.
 
 The dialog had grown to where the longest description ran to six wrapped lines, and a
-category was a wall of prose that had to be read to be skipped. The reasoning is worth
-keeping — it is the difference between a setting someone can decide about and one they
-guess at — so the answer was to stop showing it unasked rather than to delete it.
+category was so much prose that finding a setting meant reading all of it. The reasoning
+is kept, because it lets someone decide about a setting instead of guessing, so it is
+shown only on request rather than deleted.
 
 Two parts of this are choices a later change could quietly undo:
 
-- **Not a tooltip.** A tooltip is the obvious way to hide text and the wrong one here. This
-  application is used with a pen and a finger, and neither hovers: on a Cintiq the
-  reasoning would simply be gone. The chevron is a real button because pressing is the one
+- **Not a tooltip.** A tooltip is the usual way to hide text, and it was not used because
+  this application is used with a pen and a finger, and neither hovers, so on a Cintiq the
+  reasoning could not be read. The chevron is a real button because pressing is the one
   gesture every input this application supports can perform.
 - **Search marks what it matched.** Every hit is highlighted where it lies — in the title,
   in the summary, in the prose once that is open. A hit lying only in the prose has nothing
-  on the row to mark, so the chevron is marked instead: it says the answer is in here
-  without opening a row under the hands of someone still typing. Expanding those rows
+  on the row to mark, so the chevron is marked instead, which shows that the match is
+  in the prose without opening a row under the hands of someone still typing. Expanding those rows
   automatically was built first and then removed, because the list jumps on every
-  keystroke. A row matched only by a keyword marks nothing, deliberately — the word is not
-  in the prose either, and a marked chevron would promise text that is not there.
+  keystroke. A row matched only by a keyword marks nothing, because the word is not in
+  the prose either, and a marked chevron would point to text that is not there.
 
 The chevron sits under the title and in front of the summary. The right-hand edge of the
-row was tried first and cannot have it: editors range from a switch to a wide combo, so the
+row was tried first and rejected, because editors range from a switch to a wide combo, so the
 chevron landed somewhere different on every row; it took the width the summary needed to
 stay on one line; and on **Snippet format order** it came to rest in the same column as
 that editor's own reordering chevrons, where it read as one of them.
@@ -611,10 +614,10 @@ full HD, so calligraphy, the highlighter, and SVG come out as they are seen. The
 containers go in the speaker notes so DAX and SQL can still be copied. **Editable** is the
 other slide content: images as pictures, text containers as text boxes carrying the
 syntax colors the screen shows, and all the ink as one transparent picture on top, placed
-through the same camera the picture would have used. It is best effort where the picture
-is exact, and it is nonetheless the default for a new setup, because a deck is exported to
+through the same camera the picture would have used. It is less exact than the picture, and
+it is the default for a new setup because a deck is exported to
 be reworked more often than to be shown as is; the picture is one choice away. Slides are
-in reading order by default, for the same reason it is the order a reader would guess.
+in reading order by default, because it is the order a reader would guess.
 Ink as freeform shapes was left out: it would be a second stroke renderer to keep in step
 with the first.
 
@@ -623,8 +626,8 @@ a long-lived MIT library, both managed-only, so they pass the tests decision 21 
 dependency. The writers live in a new assembly, `SQLBI.Whiteboard.Export`, with no WPF
 dependency, which the signing step lists.
 
-A PDF page is a picture by default. PDF has one freedom a slide lacks, a page of any
-size, and the export uses it: the whole board can go on one page the shape of the board,
+A PDF page is a picture by default. Unlike a slide, a PDF page can be any size, so the
+whole board can go on one page the shape of the board,
 rendered at up to six thousand pixels on the longer edge, for a reader who zooms. Pages get
 a bookmark each and a footer with the board name, date, and page number. **Vector** is the
 other page content: ink as paths that sweep the nib WPF uses along each stroke, text as
@@ -651,8 +654,8 @@ first, and the rest of the board is cut automatically.
 A frame is deliberately not a container. The one rule the board has about containers is
 that a stroke touching exactly one of them is linked to it, and a frame around a picture
 would break that rule for every stroke on the picture. So a frame links nothing, is
-selected only by its edge or its title tab, and moving it moves nothing inside it: it is
-a label over content, read at export time.
+selected only by its edge or its title tab, and moving it moves nothing inside it. Export
+reads it as a label over the content.
 
 Frames are the first object to change the file format since 1.0, and the change is kept
 as small as it can be: a board is written as version 6 only when it holds a frame, so a
@@ -670,7 +673,7 @@ since 1.0, every paste was a note until someone found the setting; a language ad
 update (KQL in 1.3.0) joined the end of the list, behind plain text, and so never applied.
 The goal is that a new language works on the day it ships, with no visit to Preferences.
 
-Two things were changed together, and the second is what makes the first safe:
+Two things were changed together, because the first is safe only with the second:
 
 - **Plain text comes last** in the default order: DAX, SQL, KQL, Plain text. A saved order
   equal to a default the application ever shipped was never chosen by anyone, so an
@@ -678,15 +681,15 @@ Two things were changed together, and the second is what makes the first safe:
   is kept, and a language it does not know joins it in front of plain text wherever plain
   text sits, unless plain text is first, which is the one order that means "keep my pastes
   plain"; there the new language goes last. The order itself carries the intent, so the
-  checkbox that was considered, "new languages go before plain text", was not added: it
+  checkbox that was considered, "new languages go before plain text", was not added, because it
   would say the same thing twice and allow the contradictory state of plain text first with
   languages jumping ahead of it.
 - **A language claims a snippet only when it carries a signal** of its own. Every parser
   accepts a bare name or a number: `Sales` is a DAX table expression and a KQL query. With
   plain text last that would have turned a one-word note into code. So DAX needs a
   function, operator, keyword, column reference, or variable; T-SQL a keyword or function;
-  KQL a pipe, query operator, keyword, command, or function. The parser still has the last
-  word after the signal.
+  KQL a pipe, query operator, keyword, command, or function. The parser still decides
+  once the signal is found.
 
 Both rules are about the languages that can read a snippet. Choosing a language by hand
 and recognizing one automatically are now two separate lists: a text container can be set
@@ -705,7 +708,7 @@ as plain text, with its source intact.
 
 The DAX formatter wraps to a maximum line length; the SQL and KQL formatters break by
 structure and have no width at all. A "line width" setting shared by the three languages
-was therefore not added: it would be honoured by one of them. What every snippet already
+was therefore not added, because only one of them would honour it. What every snippet already
 has is a width, and a text container wraps its lines at that width on screen, so the
 container's width in columns is the line width the reader sees. Two things were changed
 to make it the line width the formatter uses too:
@@ -718,7 +721,7 @@ to make it the line width the formatter uses too:
 - **Shift while dragging the handle changes the width in columns** and reflows the text,
   keeping the font size; the handle shows the count while dragging. A plain drag keeps
   scaling the container like a picture. Replacing scaling with reflow was considered and
-  rejected: making a snippet bigger for the room is the resize a presenter needs, it is
+  rejected, because making a snippet bigger for the room is the resize a presenter needs, it is
   what every other container does with the same gesture, and reflowing on a drag would
   change line breaks while someone is only making space. Shift already means "constrain"
   for strokes, so it reads as the narrower version of the gesture. The right edge of a text
@@ -742,19 +745,18 @@ saved on their behalf would eventually overwrite something they meant to keep. E
 below follows from that.
 
 - **A board with a name is asked about; a board without one is not.** An untitled board has
-  no file to disagree with, so interrupting someone on the way out to protect it would be
-  asking a question with no stakes. It goes into the session and comes back. A named board
+  no file its changes could overwrite, so nobody is interrupted on the way out to protect
+  it. It goes into the session and comes back. A named board
   has somewhere its changes belong, and only the person can say whether they belong there.
 
 - **The exit question has four answers and a default, where decision 24 refused one.**
   Save, **Keep for next time**, Discard changes, Cancel. Keep is `IsDefault` because it is
   the one answer that decides nothing: the file is untouched, the board returns at the next
-  start, and Enter landing on it can never be the wrong outcome. That is exactly what the
-  mouse mode offer did not have — there, both answers changed something, so neither could
-  be primed. A default is a property of the answers, not a habit to apply or refuse
-  everywhere.
+  start, and Enter landing on it can never be the wrong outcome. The mouse mode offer
+  had no such answer, because both of its answers changed something, so neither could be
+  the default. Whether a dialog has a default depends on its answers.
 
-- **Cancel stays, and LiveView is why.** Keep and Cancel look interchangeable — both end
+- **Cancel stays because of LiveView.** Keep and Cancel look interchangeable — both end
   with the board in front of you — but a restored LiveView container comes back as its last
   frame and has to be reconnected by hand, because Windows cannot save the capture
   permission. Cancel is the only answer that keeps a feed live, which matters most in the
@@ -773,9 +775,9 @@ below follows from that.
 
 - **One slot per running copy, not one file.** Each copy takes a slot named by a GUID and
   holds a lock file open for as long as it runs. Two windows therefore never write to the
-  same files, which is what makes running two of them safe without the application having
-  to forbid it — and forbidding it was considered and rejected, because two boards side by
-  side is a real thing to want. A slot whose lock can be taken belonged to a copy that has
+  same files, so running two of them is safe without the application having to forbid it.
+  Forbidding it was considered and rejected, because two boards side by side is a real
+  thing to want. A slot whose lock can be taken belonged to a copy that has
   gone; its sidecar says whether it went on purpose. One start restores one slot, the most
   recent; the others keep their slots and are offered again rather than being discarded,
   and anything abandoned for thirty days is pruned.
@@ -785,26 +787,26 @@ below follows from that.
   for anyone who wants a blank board every time. Recovering after a crash is not ordinary,
   so it is offered rather than done — and it is offered whatever that setting says, because
   the setting is about how the application starts, not about whether work lost to a crash
-  should be retrievable. Declining discards that slot, and the question says so: the only
-  alternative is putting the same question in front of the same person at every start for
-  thirty days, which is how a safety net turns into a nuisance people learn to dismiss.
+  should be retrievable. Declining discards that slot, and the question says so. Keeping the
+  slot would put the same question in front of the same person at every start for thirty
+  days, and people learn to dismiss a question they see that often.
 
 - **An unmodified session keeps the file name and not the board.** The file is the better
   copy — it may have been edited elsewhere since — so a slot that matched its file reopens
   the file. Only a board that never matched one carries its own copy.
 
 - **Opening a board asks the slots whether anything newer is waiting for it**
-  ([issue 122](https://github.com/sql-bi/SQLBI-Whiteboard/issues/122)). Without this, the
-  moment somebody is most likely to want their recovered work — opening the very board they
-  lost — is the moment the application says nothing, because the recovery offer only appears
-  at startup and only for the newest slot. The sidecar already records the path, so it is a
+  ([issue 122](https://github.com/sql-bi/SQLBI-Whiteboard/issues/122)). Without this,
+  opening the board they lost, when somebody is most likely to want their recovered work,
+  offered nothing, because the recovery offer only appears at startup and only for the
+  newest slot. The sidecar already records the path, so it is a
   lookup. Three calls inside it:
   - **Every route into a board goes through one place.** The Open dialog, a drop, and a
     double-click in Explorer all arrive at `OpenPathAsync`, so the question is asked there
     rather than three times over.
-  - **The answer is Yes, No, or Cancel, and No discards.** Opening the saved file by name is
-    an answer about those changes, not a postponement of the question; leaving the slot would
-    bring the same prompt back on the next open of the same file. Cancel opens neither and
+  - **The answer is Yes, No, or Cancel, and No discards.** Opening the saved file by name
+    answers the question about those changes, and leaving the slot would bring the same
+    prompt back on the next open of the same file. Cancel opens neither and
     keeps the slot, which is what an accidental Yes-or-No needs to be recoverable from.
   - **Only a slot left by a crash is offered.** One that exited cleanly is either restored at
     startup or dropped there, and offering it here as well would ask twice about one board.
@@ -819,16 +821,17 @@ below follows from that.
 calls behind it are [design-objects.md](design-objects.md).
 
 Shapes, text labels, and connectors are records in `BoardObjects.cs` beside pictures, text
-containers, LiveViews, and frames, drawn by the same surface in the same z-order. Nothing
-about them is a second canvas: they save in the board, undo, export, and appear in the
-Explorer thumbnail and the VS Code preview because the one surface already does all of
+containers, LiveViews, and frames, drawn by the same surface in the same z-order. They are
+not a second canvas. They save in the board, undo, export, and appear in the Explorer
+thumbnail and the VS Code preview because the one surface already does all of
 that. The alternative — a design layer of its own — would have needed every one of those
 paths written twice.
 
-- **The file asks for version 7 only when it has to.** A board holding a shape, a label, or
-  a connector is written as 7; a board with only frames is still 6, and one with neither is
-  still 5. That is decision 27's rule kept going, so a board keeps opening in the release
-  that can read it, and a person who never draws a shape never loses a reader.
+- **A board is written as version 7 only when it holds a design object.** A board holding a
+  shape, a label, or a connector is written as 7; a board with only frames is still 6, and
+  one with neither is still 5. That is decision 27's rule applied again, so a board keeps
+  opening in every release that can read it, and a board without a shape opens in the
+  same releases as before.
 
 - **Shapes and labels are containers; connectors are not.** Ink that touches only a shape
   links to it and travels with it, which is what makes a shape worth drawing round a
@@ -878,26 +881,25 @@ object. Decision 32 says which of those first use brought back.
 list, the four palette designs, and the order the work ran in are in
 [design-objects.md](design-objects.md), under "Toward a solid 1.6.0".
 
-The first cut was right about what to build and wrong about where to put it. Everything
-below came from drawing one diagram with it, not from a review of the code.
+Most of the changes below move features of the first cut to other places. All of them
+came from drawing one diagram with it, not from a review of the code.
 
 - **One shape, then Select.** **After inserting an object** now defaults to Return to
-  Select, and the new object arrives selected. Decision 3 had the tool stay, which is right
-  for a row of shapes and wrong for the common case: the tap that would have moved the shape
-  just drawn started another one instead. The preference is still there for whoever wants
+  Select, and the new object arrives selected. Decision 3 had the tool stay, which suits a
+  row of shapes. In the common case, the tap that would have moved the shape just drawn
+  started another one instead. The preference is still there for whoever wants
   the old behaviour. The Insert row also stopped being a sticky tab, so it closes on the
   first press on the canvas rather than lying over the board while the shape is drawn.
 
-- **Lasso moved from the Edit row onto the Select button.** A mode that changes what a tool
-  does belongs on that tool, not in a command strip two rows away, where nobody looked for
-  it. Holding Select for 600 ms — the Windows long press — switches Rectangle and Lasso, and
+- **Lasso moved from the Edit row onto the Select button.** Nobody looked for it in a command
+  strip two rows away, so a mode that changes what a tool does is now on that tool. Holding Select for 600 ms — the Windows long press — switches Rectangle and Lasso, and
   a tap on Select while Select is already in hand does the same, so a mouse reaches it
   without waiting. The button's glyph says which is armed. The alternative was a chevron on
   Select, which is what **Insert and Lasso on the toolbar** already offers; it stays a
   preference, because decision 2 says the compact toolbar does not grow by default.
 
 - **A connector binds anywhere on a shape.** Aiming at one of eight points within 16 pixels
-  was a game. The whole of a target now takes the end, the eight dots appear while the
+  was too hard. The whole of a target now takes the end, the eight dots appear while the
   pointer is over it, the one that would be taken grows, and the preview snaps to it. Ctrl
   at release still means the nearest point anywhere on the border, as decision 31 says.
   **Anchors → Auto** then lets a bound end move to the side facing the other end, so an
@@ -905,8 +907,8 @@ below came from drawing one diagram with it, not from a review of the code.
   for an end dropped on a point on purpose. The deck carries the same tie, so a shape
   dragged in PowerPoint keeps its straight arrows.
 
-- **A shape carries its own text, and turns freely.** Both were out of scope, and both are
-  the first thing a diagram asks for: a box with a word in it, pointing the way the arrow
+- **A shape carries its own text, and turns freely.** Both were out of scope, and a diagram
+  needs both first: a box with a word in it, pointing the way the arrow
   goes. A shape takes the seven text properties a label already had, laid out inside its
   outline, opened with F2, the bar's Text button, or simply by typing, as PowerPoint does.
   An angle is any angle, set by a handle above the object with Shift snapping to 15°; the
@@ -916,8 +918,8 @@ below came from drawing one diagram with it, not from a review of the code.
 - **The selection carries its own commands.** A **…** at the end of the property bar holds
   Delete, Copy, Duplicate (Ctrl+D), and four depth commands rather than two, and the bar now
   appears for a picture, a LiveView, or a frame, which had no property row and so had no bar
-  at all. Bring forward and Send backward join the View row as W and K. No Lock, no Alt
-  text, no Comment: they are PowerPoint's answers to a slide, not a board's.
+  at all. Bring forward and Send backward join the View row as W and K. Lock, Alt text,
+  and Comment were left out, because they serve a slide in PowerPoint and not a board.
 
 - **The Insert row pins into a palette.** Design A of four. B was the toolbar Insert button,
   already built and already ruled out as a default by decision 2; C was a bubble beside the
@@ -969,13 +971,12 @@ application to annotate a demo needs none of them, and every one of them is in t
   be a second Preferences dialog nobody could hold in their head, and one switch would have
   made trying a change impossible.
 
-- **Design is the default, and the default does not follow the channel.** A release is
-  judged on what it does, and an upgrade that quietly took the 1.6.0 tools away from
-  somebody who had them would be a bug report rather than a preference. Tying the default to
-  the Dev or the released channel was considered and dropped: the channel says which build
-  this is, not who is using it, the same copy is promoted from one to the other without
-  being rebuilt (decision 9), and a mode that changed under someone when their build was
-  promoted would be the worst of both.
+- **Design is the default, and the default does not follow the channel.** An upgrade
+  that quietly took the 1.6.0 tools away from somebody who had them would be reported as a
+  bug. Tying the default to the Dev or the released channel was considered and dropped,
+  because the channel identifies the build and says nothing about who uses it, the same
+  copy is promoted from one to the other without being rebuilt (decision 9), and a mode
+  that changed when a build was promoted would surprise the person using it.
 
 - **Custom exists to try a Teaching change one group at a time.** Teaching is a claim about
   what a person who only annotates needs, and the way to test a claim like that is to put

@@ -130,10 +130,10 @@ The adapter must:
 
 A throwaway spike ran the pinned AvalonEdit 6.3.1.120 over fixtures for the constructs
 named above, converting `DocumentHighlighter` line output into flat spans by painting each
-line's sections in order and grouping the result. The engine is approved; the bundled
-grammars are not.
+line's sections in order and grouping the result. The engine is approved, and the bundled
+grammars are not used, for the reasons below.
 
-What the adapter shape delivers, measured rather than assumed:
+What the adapter shape delivers, as measured by the spike:
 
 - Spans came back ordered, nonoverlapping and in bounds on every fixture, including
   unterminated strings and comments.
@@ -147,15 +147,15 @@ What the adapter shape delivers, measured rather than assumed:
   definition and a hand-written one, so a definition can be shared and the document and
   highlighter kept local to the operation.
 - Runtime is linear in the ordinary cases — 380 KB over 20,000 lines with an unterminated
-  block comment took 79 ms — but one 429 KB line of 80,000 tokens took 837 ms. The adapter
-  needs a size guard rather than trust.
+  block comment took 79 ms — but one 429 KB line of 80,000 tokens took 837 ms, so the
+  adapter needs a size guard.
 
 What the bundled definitions do not cover. Seven of the eleven languages have one (Python,
 C++, Java, C#, JavaScript, VB, PHP); C has to borrow C++, and R, Rust and TypeScript have
 none at all. The seven that exist predate the syntax people write now: C# raw strings and
 Java text blocks are read as an empty string followed by loose code, JavaScript template
 literals are not recognized at all, Python decorators and Java annotations are uncolored,
-and `1_000` colors as `1`. They are not a shortcut worth taking.
+and `1_000` colors as `1`. For these reasons the bundled definitions are not reused.
 
 What our own XSHD can and cannot express, tested by writing three definitions:
 
@@ -166,23 +166,24 @@ What our own XSHD can and cannot express, tested by writing three definitions:
   the character rule separates `&'static` from `'a'`. Nested rule sets buy string escapes,
   and a span that re-enters the code rule set buys interpolation — `` `sum ${a + b} end` ``
   and a template nested inside its own hole both came out right.
-- XSHD cannot count. Bounded rules cover C# raw strings at three, four and five quotes and
+- XSHD cannot match a delimiter of arbitrary length. Bounded rules cover C# raw strings at three, four and five quotes and
   Rust `r#"` and `r##"`, which is most real code, but a longer delimiter is beyond it.
 - A rule regex cannot see far enough left to settle regex versus division: `/ab+c/gi` and
   `foo(/lit/, 1 / 2)` are right, while `let x = a / b, re2 = /x\/y/` misses the second
   literal, because the lookbehind window starts where the previous rule stopped.
 
-So: reuse the AvalonEdit engine and the flattening adapter, and ship our own definitions
+The decision is to reuse the AvalonEdit engine and the flattening adapter, and ship our own definitions
 under `Highlighting/` rather than the bundled ones.
 
 Writing the eleven definitions retired the stateful scanner the spike had expected to
 need. C# raw strings take three rules, longest delimiter first, covering three, four and
 five quotes; a snippet with six is not one anyone writes, and the same bounded trick
-serves C++ raw string delimiters and Rust hashes. Regular expression versus division in
-JavaScript was a bad rule rather than a limit of the engine: it is decided by the token
-before the slash, and a lookbehind that names the operators, keywords and line starts a
-value cannot follow settles every case in the corpus. A regular expression somewhere else
-is left as operators and names, which is the harmless half of being wrong.
+serves C++ raw string delimiters and Rust hashes. The spike's miss on regular expression
+versus division in JavaScript came from a bad rule, not from a limit of the engine. The
+choice depends on the token before the slash, and a lookbehind that names the operators,
+keywords and line starts a value cannot follow settles every case in the corpus. A regular
+expression somewhere else is left as operators and names, which is the less harmful error,
+because the code after it is not colored as a regular expression.
 
 Three lexical hazards showed up that the spike had not, all recorded in the definitions
 themselves: an apostrophe is a digit separator in C and C++, so the character literal has
@@ -195,7 +196,7 @@ attribute is matched first.
 
 Associate an optional immutable `FormattingRequestUri` with each service (or its
 descriptor), using the exact issue links above. Plain text has no voting URI. Keep
-`CanFormat` false: showing a request dialog is not formatting support.
+`CanFormat` false, because showing a request dialog does not format the text.
 
 In `MainWindow.xaml.cs`, route both `FormatTextEdit` and `FormatSelectedText` through
 one shared unsupported-format check before their current `!language.CanFormat` early

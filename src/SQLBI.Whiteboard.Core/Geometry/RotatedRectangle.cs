@@ -10,15 +10,15 @@ namespace SQLBI.Whiteboard.Core.Geometry;
 public static class RotatedRectangle
 {
     /// <summary>
-    /// The step the property bar's two buttons take. An angle itself is free -
-    /// the rotation handle turns an object to anything - so the step is only
-    /// what a press is worth.
+    /// The step the property bar's two buttons take. An angle can have any
+    /// value, because the rotation handle turns an object freely, so the step
+    /// applies only to a press of those buttons.
     /// </summary>
     public const double AngleStep = 45;
 
     /// <summary>
-    /// The angle in [0, 360). Any angle is allowed; what is rejected is an
-    /// angle that is not a number, which a hand-edited file can carry and which
+    /// The angle in [0, 360). Any angle is allowed except one that is not a
+    /// number, which a hand-edited file can carry and which
     /// would otherwise spread through every box computed from it.
     /// </summary>
     public static double NormalizeAngle(double angleDegrees)
@@ -83,7 +83,7 @@ public static class RotatedRectangle
 
     /// <summary>
     /// Whether the point is on the rectangle: the point is turned back by the
-    /// angle about the centre, and the upright rectangle answers.
+    /// angle about the centre and tested against the upright rectangle.
     /// </summary>
     public static bool Contains(
         PointD center,

@@ -13,8 +13,8 @@ namespace SQLBI.Whiteboard.SmokeTests;
 /// element per shape, label, and connector, with the colors, the angle, the style,
 /// and the curve the screen shows, and a picture over the page only for what is
 /// left, which is the ink and only where it cannot go as strokes. The writers
-/// are checked in the Core harness, which can open what they produce; what only
-/// this side can answer is what the board hands them.
+/// are checked in the Core harness, which can open what they produce; this side
+/// checks what the board hands them.
 /// </summary>
 internal static class DesignExportSmokeTests
 {
@@ -175,8 +175,8 @@ internal static class DesignExportSmokeTests
             straight.End.X < straight.Start.X && straight.End.Y < straight.Start.Y,
             "A line that runs right to left and bottom to top keeps that direction, for the flips.");
 
-        // The turn is the angle and nothing else: the same words upright measure the
-        // same rectangle, and the writers are the ones that turn it.
+        // The turn is carried only by the angle, because the same words upright
+        // measure the same rectangle and the writers apply the turn.
         SlideLabelElement upright = elements.OfType<SlideLabelElement>().Last();
         Assert(
             upright.AngleDegrees == 0 &&

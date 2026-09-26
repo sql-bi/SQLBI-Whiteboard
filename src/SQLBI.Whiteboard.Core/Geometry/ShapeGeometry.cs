@@ -183,8 +183,8 @@ public static class ShapeGeometry
 
     /// <summary>
     /// The outline as a closed polygon, with the curved kinds walked finely
-    /// enough that a point on the curve and a point on the polygon are the same
-    /// answer. The last point joins back to the first, as
+    /// enough that the polygon and the curve give the same result for any
+    /// point. The last point joins back to the first, as
     /// <see cref="Polygon"/> expects.
     /// </summary>
     public static IReadOnlyList<PointD> Outline(ShapeKind kind, RectD bounds)
@@ -215,8 +215,8 @@ public static class ShapeGeometry
 
     /// <summary>
     /// Whether the point lies within <paramref name="band"/> of the outline
-    /// itself. The interior is deliberately not an answer: what is drawn inside
-    /// a shape has to stay reachable.
+    /// itself. The interior deliberately does not count, because what is drawn
+    /// inside a shape has to stay reachable.
     /// </summary>
     public static bool IsOnOutline(ShapeKind kind, RectD bounds, PointD point, double band)
     {
@@ -335,8 +335,8 @@ public static class ShapeGeometry
 
     /// <summary>
     /// The regular pentagon with a vertex at the top, stretched to fill the box
-    /// rather than inscribed in a circle inside it: a shape drawn by dragging a
-    /// rectangle should occupy the rectangle it was dragged out of.
+    /// rather than inscribed in a circle inside it, because a shape drawn by
+    /// dragging a rectangle should occupy the rectangle it was dragged out of.
     /// </summary>
     private static IReadOnlyList<PointD> Pentagon(RectD bounds)
     {

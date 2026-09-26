@@ -23,8 +23,8 @@ public static class BoardPartitioner
         var units = BuildUnits(document.Objects);
         var areas = new List<ExportArea>();
 
-        // Frames win: whatever sits inside one belongs to it, and frames come
-        // first, in the order they were drawn or in reading order.
+        // Frames take precedence, so whatever sits inside one belongs to it.
+        // Frames come first, in the order they were drawn or in reading order.
         IEnumerable<FrameBoardObject> frames = options.Order == AreaOrder.Reading
             ? document.Frames.OrderBy(frame => frame.Bounds.Top).ThenBy(frame => frame.Bounds.Left)
             : document.Frames;
@@ -103,7 +103,7 @@ public static class BoardPartitioner
         // A label has no title of its own, so its first line is the nearest
         // thing to one: a label big enough to name an area is usually a heading.
         FreeTextBoardObject label when FirstLine(label.Text) is { Length: > 0 } line => line,
-        // A shape names itself the same way, by what is written in it.
+        // A shape is named the same way, by the text written in it.
         ShapeBoardObject shape when FirstLine(shape.Text) is { Length: > 0 } line => line,
         _ => null,
     };

@@ -34,7 +34,8 @@ Everything the recording needs is in this folder:
    so the paste in beat 2 lands already highlighted. (Restore afterwards if you prefer
    plain-first day to day.)
 2. Copy the contents of `paste-me.dax` to the clipboard **as text** (open it in a text
-   editor and Ctrl+A, Ctrl+C — do not copy the file in Explorer, paste prefers a file).
+   editor and Ctrl+A, Ctrl+C — do not copy the file in Explorer, because a copied file is
+   pasted as a file rather than as text).
 3. Open a File Explorer window showing this folder, positioned on a second monitor or
    off-canvas, ready to drag `demo-board.wimport`.
 4. Start the LiveView target for beat 5: **Power BI Desktop** with a report page visible
@@ -62,7 +63,8 @@ Notes that keep beats honest:
 - The tab strip appears on camera in beat 5 (View tab) — that covers the tab-strip
   requirement without its own beat.
 - Optional touch: one short two-finger pan somewhere between beats 3 and 4 shows touch
-  navigation. Finger drawing gets its Store screenshot instead; 30 s cannot carry it.
+  navigation. Finger drawing is shown in a Store screenshot instead, because 30 s is too
+  short to include it.
 - Optional end card: before the take, handwrite **whiteboard.sqlbi.com** small near the
   board's edge; beat 6's fit reveals it without an overlay.
 

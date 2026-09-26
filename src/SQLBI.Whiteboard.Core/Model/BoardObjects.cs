@@ -4,10 +4,10 @@ using SQLBI.Whiteboard.Core.Settings;
 namespace SQLBI.Whiteboard.Core.Model;
 
 /// <summary>
-/// Everything the board retains. The four questions a gesture asks of an
-/// object - move it there, put it at that depth, are you under this point, does
-/// this area take you - are answered by the object rather than by a switch in
-/// the window, so a new kind of object is a new record and nothing else.
+/// Everything the board retains. The four operations a gesture needs from an
+/// object - move it, set its depth, test a point, test an area - are
+/// implemented by the object rather than by a switch in the window, so adding
+/// a kind of object only means adding a record.
 /// </summary>
 public abstract record BoardObject(Guid Id, int ZIndex, RectD Bounds)
 {
@@ -29,7 +29,7 @@ public abstract record BoardObject(Guid Id, int ZIndex, RectD Bounds)
     /// <summary>
     /// The rectangle a connector's anchors are fractions of. For everything
     /// upright it is the box the document indexes; an object that has been
-    /// turned hands over the rectangle before the turn and its angle, so an
+    /// turned returns the rectangle before the turn and its angle, so an
     /// endpoint bound to one of its corners stays on that corner.
     /// </summary>
     public virtual AnchorFrame AnchorFrame => new(Bounds, 0);
@@ -43,8 +43,8 @@ public abstract record BoardObject(Guid Id, int ZIndex, RectD Bounds)
 
     /// <summary>
     /// Whether the area takes this object under <paramref name="rule"/>. The
-    /// box is the whole answer for everything the area sees as a rectangle;
-    /// a stroke has its own, because its box is mostly empty.
+    /// box alone decides for everything the area treats as a rectangle. A
+    /// stroke has its own test, because its box is mostly empty.
     /// </summary>
     public virtual bool IsTakenBy(SelectionArea area, AreaSelection rule)
     {
@@ -176,7 +176,7 @@ public sealed record InkStrokeObject(
         HitTestWithin(worldPoint, HitBand / Math.Max(zoom, 0.000001));
 
     /// <summary>
-    /// A stroke is a line through a mostly empty box, so an area asks its
+    /// A stroke is a line through a mostly empty box, so an area tests its
     /// points and the segments between them rather than the box.
     /// </summary>
     public override bool IsTakenBy(SelectionArea area, AreaSelection rule)
@@ -258,8 +258,8 @@ public sealed record InkStrokeObject(
 
     /// <summary>
     /// Whether the stroke passes within <paramref name="radius"/> of the point.
-    /// The eraser's reach and a select tap are the same question at two
-    /// different radii.
+    /// The eraser and a select tap both use this test, with different
+    /// radii.
     /// </summary>
     public bool HitTestWithin(PointD point, double radius)
     {
@@ -346,9 +346,9 @@ public static class TextLanguageIds
 
     /// <summary>
     /// Every language a text container can be set to, in the order the selector
-    /// offers them. Choosing a language is not the same as recognizing one: all
-    /// of these are saved and restored, and only <see cref="DetectionOrder"/>
-    /// ever claims a paste of its own.
+    /// offers them. All of these can be chosen, saved, and restored, and only
+    /// the languages in <see cref="DetectionOrder"/> recognize a paste on
+    /// their own.
     /// </summary>
     public static IReadOnlyList<string> All { get; } =
     [
@@ -359,8 +359,8 @@ public static class TextLanguageIds
     /// <summary>
     /// The languages that can recognize a snippet, in the default snippet
     /// format order, which is also the order a language missing from a saved
-    /// order joins it in. Plain text accepts everything, so it comes last: a
-    /// paste is code if any language says it is, and text otherwise, with no
+    /// order joins it in. Plain text accepts everything, so it comes last, and a
+    /// paste is code when any language recognizes it and text otherwise, with no
     /// setting to change.
     /// </summary>
     public static IReadOnlyList<string> DetectionOrder { get; } = [Dax, SqlServer, Kql, Markdown, Plain];
@@ -443,7 +443,7 @@ public static class TextLanguageIds
     /// <summary>
     /// The issue collecting votes for formatting and automatic detection of a
     /// language Whiteboard only colors. The languages that already format have
-    /// none, and neither has plain text: F6 answers those itself.
+    /// none, and neither has plain text, because F6 already handles those.
     /// </summary>
     public static string? FormattingRequestUrl(string? languageId) => Normalize(languageId) switch
     {
@@ -567,7 +567,8 @@ public sealed record FrameBoardObject(
     public override BoardObject WithZIndex(int zIndex) => this with { ZIndex = zIndex };
 
     /// <summary>
-    /// A band drawn over a slide means the things on it, not the slide.
+    /// A band drawn over a slide is meant to select the things on it, so a
+    /// frame is never taken by an area.
     /// </summary>
     public override bool IsAreaSelectable => false;
 }
@@ -601,7 +602,7 @@ public enum ShapeKind
 /// has and starting empty. The text has no size of its own: it is laid out
 /// inside <see cref="ShapeGeometry.TextBox"/> of the box the shape was drawn in
 /// and turned with the shape, so nothing here has to be measured and a shape
-/// that says nothing costs nothing.
+/// without text stores no text layout.
 /// </summary>
 public sealed record ShapeBoardObject(
     Guid Id,
@@ -687,9 +688,9 @@ public sealed record ShapeBoardObject(
     /// when the handle is pulled sideways. A shape standing on a corner cannot
     /// tell its two axes apart - either of them widens the box by the same
     /// amount - so it takes the two factors as one. The text goes up and down
-    /// with the shape only when both axes take the same factor: a shape pulled
-    /// wider is a shape with more room, and its words reflow at the size they
-    /// were written in.
+    /// with the shape only when both axes take the same factor. A shape pulled
+    /// wider gives its text more room, and the text reflows at the size it was
+    /// written in.
     /// </summary>
     public override BoardObject WithBounds(RectD bounds)
     {
@@ -796,7 +797,7 @@ public sealed record ShapeBoardObject(
     }
 
     /// <summary>
-    /// The outline answers the area too, so a band that crosses a circle's
+    /// The area is tested against the outline too, so a band that crosses a circle's
     /// corner of empty box does not take it while one that crosses the curve
     /// does.
     /// </summary>
@@ -931,8 +932,8 @@ public sealed record FreeTextBoardObject(
         RotatedRectangle.Corners(Bounds.Center, LayoutWidth, LayoutHeight, AngleDegrees);
 
     /// <summary>
-    /// A label answers for its anchors the way a shape does: on the rectangle
-    /// it is drawn in rather than on the box around it, so an arrow dropped on
+    /// A label's anchors work the way a shape's do, on the rectangle it is
+    /// drawn in rather than on the box around it, so an arrow dropped on
     /// the corner of a turned label lands on the corner a reader sees.
     /// </summary>
     public override AnchorFrame AnchorFrame => new(
@@ -947,7 +948,7 @@ public sealed record FreeTextBoardObject(
 
     /// <summary>
     /// The corner handle scales the text rather than the box: the font and the
-    /// layout take the same factor, and the box is what they come to. A move
+    /// layout take the same factor, and the box follows from them. A move
     /// leaves the size alone, since the factor is then one.
     /// </summary>
     public override BoardObject WithBounds(RectD bounds)
@@ -1005,8 +1006,8 @@ public sealed record FreeTextBoardObject(
             }
         }
 
-        // An area drawn entirely within the label still takes it, which the
-        // edges alone cannot say.
+        // An area drawn entirely within the label still takes it, which a test
+        // of the edges alone would miss.
         return Polygon.Contains(corners, area.Bounds.Center);
     }
 }
@@ -1072,16 +1073,16 @@ public sealed record ConnectorBoardObject(
     /// <summary>
     /// How near the pointer has to be to a binding point, in screen pixels, for
     /// the eight to be offered and the nearest one taken on release. Twice the
-    /// band a tap uses, because this is a drop rather than a tap: the endpoint
-    /// is already where the hand put it, and the question is only whether it
-    /// meant the object.
+    /// band a tap uses, because this is a drop rather than a tap. The endpoint
+    /// is already where the hand put it, and the reach only decides whether it
+    /// was meant for the object.
     /// </summary>
     public const double BindingReach = 16;
 
     /// <summary>
     /// Whether an endpoint can bind to this object. A shape or a container, and
-    /// never a frame, a stroke, or another connector: those are not things an
-    /// arrow points at.
+    /// never a frame, a stroke, or another connector, because an arrow does not
+    /// point at those.
     /// </summary>
     public static bool CanBind(BoardObject item) => item is IBoardContainer;
 
@@ -1182,9 +1183,9 @@ public sealed record ConnectorBoardObject(
 
     /// <summary>
     /// The anchors chosen again for the sides that now face each other, and the
-    /// bound ends moved onto them. A Fixed connector - the default - is handed
-    /// back as it is; only one that routes itself is asked where its ends
-    /// belong. Each end is aimed at the other object's centre rather than at the
+    /// bound ends moved onto them. A Fixed connector - the default - is
+    /// returned as it is, and only an AutoRoute connector has its ends placed
+    /// again. Each end is aimed at the other object's centre rather than at the
     /// other endpoint when both are bound, so the pair settles on one answer
     /// whichever end is worked out first.
     /// </summary>
@@ -1228,16 +1229,16 @@ public sealed record ConnectorBoardObject(
     }
 
     /// <summary>
-    /// Freed from everything, which is what dragging a connector by its body
-    /// means: it was taken away from what it joined.
+    /// Freed from everything, because dragging a connector by its body takes
+    /// it away from what it joined.
     /// </summary>
     public ConnectorBoardObject Detach() =>
         StartAnchor is null && EndAnchor is null ? this : WithEndpoints(Start, End, null, null);
 
     /// <summary>
     /// The ends carried with the box, which is what a move or a group scale
-    /// does to a connector. The anchors stay: what a gesture moved is the
-    /// object the connector is bound to as well.
+    /// does to a connector. The anchors stay, because the gesture also moved
+    /// the object the connector is bound to.
     /// </summary>
     public override BoardObject WithBounds(RectD bounds) => WithEndpoints(
         MapPoint(Start, Bounds, bounds),
@@ -1250,9 +1251,9 @@ public sealed record ConnectorBoardObject(
     public override bool HitTest(PointD worldPoint, double zoom) => HitTest(worldPoint, zoom, null, null);
 
     /// <summary>
-    /// The same tap against the curve as it is drawn. The board asks with the
-    /// frames its ends are bound to, so what the eye sees and what the hand
-    /// takes are one line rather than two.
+    /// The same tap against the curve as it is drawn. The board passes the
+    /// frames its ends are bound to, so the line a tap is tested against is
+    /// the line that is drawn.
     /// </summary>
     public bool HitTest(PointD worldPoint, double zoom, AnchorFrame? startFrame, AnchorFrame? endFrame) =>
         ConnectorGeometry.IsOnPath(
@@ -1261,14 +1262,14 @@ public sealed record ConnectorBoardObject(
             HitBand / Math.Max(zoom, 0.000001));
 
     /// <summary>
-    /// The path answers the area, as a stroke's points do: the box of a curve
-    /// or a diagonal is mostly empty.
+    /// The area is tested against the path, as it is against a stroke's points,
+    /// because the box of a curve or a diagonal is mostly empty.
     /// </summary>
     public override bool IsTakenBy(SelectionArea area, AreaSelection rule) =>
         IsTakenBy(area, rule, null, null);
 
     /// <summary>
-    /// The same question against the curve as it is drawn, for the same reason
+    /// The same test against the curve as it is drawn, for the same reason
     /// the tap is.
     /// </summary>
     public bool IsTakenBy(

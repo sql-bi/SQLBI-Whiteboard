@@ -22,8 +22,8 @@ public static class GridGeometry
 
     /// <summary>
     /// The spacing is multiplied rather than scaled continuously, so zooming out
-    /// shows the lines spreading and then snapping coarser. That step is the cue:
-    /// it is what makes a zoom level visible on an otherwise blank board.
+    /// shows the lines spreading and then snapping coarser. The step makes the
+    /// zoom level visible on an otherwise blank board.
     /// </summary>
     private const double CoarseningFactor = 4;
 

@@ -1,6 +1,6 @@
 namespace SQLBI.Whiteboard.Core.Model;
 
-// A view of the source, not a rewrite: the board and clipboard always keep the original text.
+// This changes only how the source is shown. The board and clipboard always keep the original text.
 public readonly record struct PromptLine(string Text, int MarkerOffset, int ContentOffset)
 {
     public bool IsBullet => MarkerOffset >= 0;

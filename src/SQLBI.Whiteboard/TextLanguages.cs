@@ -224,7 +224,7 @@ internal static class TextLanguageRegistry
                 Math.Clamp(columns, TextContainerVisual.MinimumColumns, TextContainerVisual.MaximumColumns),
                 out formatted);
 
-        // The parser alone is too welcoming: a bare name or a number parses in
+        // The parser alone accepts too much: a bare name or a number parses in
         // more than one language. The engine says whether there is a real signal.
         public bool TryAccept(string source)
         {
@@ -328,7 +328,7 @@ internal static class TextLanguageRegistry
         public bool TryFormat(string source, int columns, out string formatted) =>
             SqlServerLanguageEngine.TryFormat(source, out formatted);
 
-        // The parser alone is too welcoming: a bare name or a number parses in
+        // The parser alone accepts too much: a bare name or a number parses in
         // more than one language. The engine says whether there is a real signal.
         public bool TryAccept(string source)
         {
@@ -439,7 +439,7 @@ internal static class TextLanguageRegistry
         public bool TryFormat(string source, int columns, out string formatted) =>
             KqlLanguageEngine.TryFormat(source, out formatted);
 
-        // The parser alone is too welcoming: a bare name or a number parses in
+        // The parser alone accepts too much: a bare name or a number parses in
         // more than one language. The engine says whether there is a real signal.
         public bool TryAccept(string source)
         {

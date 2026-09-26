@@ -143,10 +143,10 @@ It has three readers, and none of them can be satisfied by the other two:
 
 - The **Release notes** check on every pull request fails when `Directory.Build.props`
   changes `VersionPrefix` and no section exists for the new version. This is the gate that
-  matters: the notes get written while the change is fresh, by the person who made it.
+  matters, because the notes get written while the change is fresh, by the person who made it.
 - **Azure Pipelines** writes that section into the GitHub release body. It used to be the
   single line `SQLBI Whiteboard <version>.`, which told a reader nothing; `addChangeLog`
-  would have told them a list of commit subjects, which is not the same as what they get.
+  would have listed commit subjects, which do not say what a person gets.
   The step runs before the release is created, so an unwritten changelog stops the release
   instead of being noticed afterwards.
 - **Publish site** renders every section into `site/changelog.html`, between its
@@ -161,8 +161,8 @@ them.
 
 The renderer handles the subset the changelog is allowed to use — `###` headings,
 paragraphs, lists, links, `code`, and **bold**. Anything outside that subset appears as
-plain text rather than as broken markup, which for a file we write ourselves is a style
-rule rather than a limitation.
+plain text rather than as broken markup. Because we write the file ourselves, the subset
+is treated as a style rule.
 
 Two settings outside the repository have to be right, and each fails in its own quiet way:
 
@@ -175,7 +175,7 @@ Two settings outside the repository have to be right, and each fails in its own 
   download page keeps offering an old version. That is precisely what happened between
   0.9.3 and 0.9.4.
 
-A third failure is not a setting at all, and looks like nothing: **a deployment can report
+A third failure has no setting behind it and shows no error. **A deployment can report
 success and still not be what the site serves.** For 1.0.0 the release-triggered run waited
 for the release, wrote the correct manifests, uploaded them, and deployed them; GitHub
 recorded that deployment as successful and marked the previous one inactive; and
@@ -190,7 +190,7 @@ from the live domain after deploying and fails if they are not the ones it just 
 release, because a pre-release deployment leaves `stable.json` untouched and that is
 correct.
 
-**Why that kept happening on releases: the ref, not the repetition.** A Pages deployment
+**It kept happening on releases because of the ref they deployed from.** A Pages deployment
 made from a **tag** is not served unless it is the first deployment of that commit. A
 deployment from a **branch** supersedes whatever is live, first or not. By the time a
 release is published, its commit has usually been deployed from `main` already — the tag,
@@ -317,12 +317,12 @@ both:
   write a manifest describing the *previous* version — while reporting success. The
   workflow passes the tag being published as `-ExpectTag`, and the script waits for it to
   appear rather than trusting the first answer. It fails after ten attempts instead of
-  writing a stale manifest, because a loud failure is recoverable and a quiet wrong answer
-  is not. 0.9.5 shipped with `stable.json` still on 0.9.4 for this reason.
+  writing a stale manifest, because a failed run is noticed and can be re-run, and a stale
+  manifest would go unnoticed. 0.9.5 shipped with `stable.json` still on 0.9.4 for this reason.
 - **It does not order by publication.** The list is ordered by `created_at`, which for a
   release is the date of the commit its tag points at, not the moment it was published — so
   a pre-release built from a later commit sorts above a release promoted from an earlier
-  one. The script sorts on `published_at`, which is what "newest" has to mean here.
+  one. The script sorts on `published_at`, because "newest" here means most recently published.
 
 The download page reads `stable.json` first and falls back to the API, so it makes no API
 call at all on an ordinary visit.
@@ -333,7 +333,7 @@ second half is the reason these are published beside the site rather than attach
 release - `releases/latest/download/` resolves only to the newest full release, so a
 manifest published that way cannot describe the pre-release channel at all. If the site
 cannot be reached the check falls back to reading the newest release tag from GitHub,
-which is a floor rather than an answer but never reports a stale "up to date".
+which gives less information than a manifest but never reports a stale "up to date".
 
 Versions in the manifest are compared on `major.minor.patch` only; the `-dev.<build>`
 suffix is deliberately ignored, so a pre-release copy is told about the next version
@@ -343,7 +343,7 @@ rather than about every rebuild of its own.
 
 `.github/workflows/publish-winget.yml` submits a released version to
 microsoft/winget-pkgs when a release is published, and can be re-run by hand for a release
-whose first attempt failed. Pre-releases are skipped: the Dev channel is a separate product
+whose first attempt failed. Pre-releases are skipped, because the Dev channel is a separate product
 so it can sit beside a released copy (decision 7), and a package manager that installed it
 on `winget install SQLBI.Whiteboard` would defeat that.
 
@@ -352,13 +352,13 @@ on `winget install SQLBI.Whiteboard` would defeat that.
 rather than copied. `installer/winget/` holds the seed manifests for the first submission
 and stays as the reviewable record of what was sent.
 
-It runs beside the release rather than inside it, for the reason the Store submission does
-(decision 13): a submission is a pull request against someone else's repository, reviewed
+It runs beside the release rather than inside it, for the same reason as the Store
+submission (decision 13), because a submission is a pull request against someone else's repository, reviewed
 by people, and it can sit for days. Nothing about the download being available depends on
 it.
 
-The first submission had to be made by hand, and nothing else worked until it had merged:
-`wingetcreate update` reads the previous version's manifests out of winget-pkgs, so while the
+The first submission had to be made by hand, and nothing else worked until it had merged,
+because `wingetcreate update` reads the previous version's manifests out of winget-pkgs, so while the
 identifier is absent every run of this workflow fails with
 `manifests/s/SQLBI/Whiteboard was not found`.
 
@@ -421,7 +421,7 @@ starts and the publish fails with `Retry failed after 6 tries` and a configured 
 not mention the option; `msstore publish --help` does. It is per attempt, so
 `storeUploadTimeoutSeconds` is set generously rather than tightly. Credentials are passed through
 the environment rather than the command line, because the agent echoes a native command
-line and log masking is a safety net rather than a guarantee.
+line and log masking does not catch every case.
 
 [msstore]: https://learn.microsoft.com/windows/apps/publish/msstore-dev-cli/overview
 
@@ -445,9 +445,9 @@ Three things about it are deliberate:
   in-flight submission may be a person's listing edit and a pipeline must not discard it.
 
 The first submission was manual, on 20 August 2026 for 0.9.2, because the listing,
-screenshots, and age rating are one-time work no API performs — and holding the automation
-until it had succeeded meant an API failure could never be confused with an incomplete
-listing. The same reasoning as winget, arrived at independently.
+screenshots, and age rating are one-time work no API performs. The automation was held
+until it had succeeded, so an API failure could never be confused with an incomplete
+listing. The winget submission followed the same reasoning, reached independently.
 
 Clearing **Submit the released MSIX to the Microsoft Store** in **Run pipeline** promotes a
 release without touching the Store.

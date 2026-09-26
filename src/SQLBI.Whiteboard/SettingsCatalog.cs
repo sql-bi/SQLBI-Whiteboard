@@ -389,7 +389,7 @@ internal static class SettingsCatalog
             Category = Input,
             Title = "Snippet format order",
             Summary = "Which format pasted text is tried as first",
-            Description = "Paste tries formats from top to bottom and uses the first that accepts the text. Plain text always accepts and comes last, so code and Markdown are recognized and a note stays a note; put it first to keep every paste plain. Recognized file extensions (.dax, .sql, .kql, .txt) keep their language. Languages you choose by hand on a container are not in this list.",
+            Description = "Paste tries formats from top to bottom and uses the first that accepts the text. Plain text accepts any text and comes last, so code and Markdown are recognized before it. Put it first to keep every paste plain. Recognized file extensions (.dax, .sql, .kql, .txt) keep their language. Languages you choose by hand on a container are not in this list.",
             Keywords =
                 ["snippet", "language", "dax", "sql", "kql", "paste", "format", "text", "order"],
             Editor = SettingEditorKind.OrderedList,
@@ -400,7 +400,7 @@ internal static class SettingsCatalog
             Category = Selection,
             Title = "Area selects",
             Summary = "Whether an object has to be wholly inside the area",
-            Description = "Objects partly inside takes anything the area meets, which is how a quick sweep picks up a diagram. Only objects fully inside asks for the whole of a stroke or an object to be inside, which is what you want when the thing you are after sits among others.",
+            Description = "Objects partly inside selects anything the area touches, so a quick sweep picks up a whole diagram. Only objects fully inside selects a stroke or an object only when all of it is inside, so you can pick one thing out from among others.",
             Keywords = ["select", "selection", "area", "rubber", "band", "lasso", "marquee", "inside", "partly", "fully"],
             Editor = SettingEditorKind.DrawnChoice,
             Choices =
@@ -416,7 +416,7 @@ internal static class SettingsCatalog
             Category = Selection,
             Title = "Extend to touching",
             Summary = "Whether the selection grows to what it touches",
-            Description = "Ignore takes the area at its word. Single adds one round, so a label beside a picture comes along with it. Recursive keeps going until nothing more is added, which takes a whole connected diagram from one stroke in it.",
+            Description = "Ignore keeps the selection the area made. Single also adds what touches the selection once, so a label beside a picture is included. Recursive repeats until nothing more is added, so one stroke selects the whole connected diagram.",
             Keywords = ["select", "selection", "extend", "touching", "grow", "recursive", "connected", "neighbour", "neighbor"],
             Editor = SettingEditorKind.DrawnChoice,
             Choices =
@@ -528,7 +528,7 @@ internal static class SettingsCatalog
             Category = Laser,
             Title = "Trail weight",
             Summary = "How much a light touch is thinned out",
-            Description = "A pen reports little pressure on a quick tap. Each option shows that tap above a firm stroke: the firm stroke never changes, only how much the light one is thinned out.",
+            Description = "A pen reports little pressure on a quick tap. Each option shows that tap above a firm stroke. The options thin the light tap by different amounts and leave the firm stroke unchanged.",
             Keywords = ["laser", "weight", "thickness", "width", "pressure", "trail"],
             Editor = SettingEditorKind.LaserWeightChoice,
             Choices =
@@ -578,7 +578,7 @@ internal static class SettingsCatalog
             Category = Toolbar,
             Title = "Always show the Eraser",
             Summary = "Keep it on the toolbar for a pen without one",
-            Description = "Off, the Eraser is on the toolbar only when finger or mouse drawing puts it there, because the pen's reverse end already erases. On, it stays there for the pen too, which is the only way to reach the Eraser with a pen that has no reverse end. It joins the row of tools in the compact layouts and sits under the palette in Dual palette. Pan is unaffected: it stays on the toolbar only when something else needs it.",
+            Description = "Off, the Eraser is on the toolbar only when finger or mouse drawing puts it there, because the pen's reverse end already erases. On, it stays there for the pen too, which is the only way to reach the Eraser with a pen that has no reverse end. It joins the row of tools in the compact layouts and sits under the palette in Dual palette. Pan is not affected, and stays on the toolbar only when something else puts it there.",
             Keywords = ["eraser", "toolbar", "button", "pen", "rubber", "erase", "no eraser"],
             Editor = SettingEditorKind.EraserButtonChoice,
             Choices =

@@ -40,8 +40,8 @@ Assert(
     "https://github.com/sql-bi/SQLBI-Whiteboard/issues/117",
     "A service hands back the issue its identifier is registered with.");
 
-// F6 never reaches a formatter for these, and neither does anything else: the
-// source that comes back is the source that went in.
+// Neither F6 nor anything else runs a formatter for these, so the source comes
+// back unchanged.
 foreach (ITextLanguageService language in registry.Where(language => !language.CanDetect && language.Id != TextLanguageIds.Prompt))
 {
     Assert(
@@ -375,8 +375,8 @@ Colors(Astral, TextLanguageIds.CSharp, "String", "\"gr\U0001F389ok\"");
 Colors(Astral, TextLanguageIds.CSharp, "Comment", "// ok");
 
 // The same questions asked of every language, over the snippet written for it
-// above, rather than a case each: what a reader is owed does not vary by
-// language, and neither should the coverage.
+// above, rather than a case each, because a reader expects the same from every
+// language and so the coverage is the same for each.
 (string LanguageId, string Source)[] corpus =
 [
     (TextLanguageIds.C, CSource),
@@ -412,7 +412,7 @@ foreach ((string languageId, string source) in corpus)
         Spans(source, languageId).Count > 8,
         $"The snippet for {languageId} should be colored.");
 
-    // A snippet cut anywhere is still a snippet: an unterminated string or
+    // A snippet cut anywhere is still colored: an unterminated string or
     // comment colors to where the language ends it, and nothing is refused.
     for (int cut = 1; cut < source.Length; cut += Math.Max(1, source.Length / 12))
     {

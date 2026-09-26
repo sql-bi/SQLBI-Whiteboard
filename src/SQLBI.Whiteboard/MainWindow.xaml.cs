@@ -74,12 +74,12 @@ public partial class MainWindow : Window
     private BoardDocument _document = new();
     private string? _currentBoardPath;
 
-    // The history save point answers for everything that arrives as a command, undo
-    // included. It cannot answer for the dozen places that change the document directly -
-    // a container gesture settling, an asset arriving with a pasted image - so those say so
-    // here. The LiveView paths deliberately do not: a frame turning up on its own is not
-    // somebody changing the board, and would otherwise put an unasked question on the way
-    // out of an application left running beside a feed.
+    // The history save point tracks every change that arrives as a command, undo
+    // included. It does not see the dozen places that change the document directly -
+    // a container gesture settling, an asset arriving with a pasted image - so those set
+    // this flag. The LiveView paths deliberately do not, because a frame arriving from a
+    // feed is not a change somebody made, and setting it would ask about unsaved changes
+    // when closing an application left running beside a feed.
     private bool _dirtyOutsideHistory;
 
     /// <summary>
@@ -174,8 +174,8 @@ public partial class MainWindow : Window
     private PointD _shapeStartWorld;
 
     // A press with a connector tool drags the line out from where it started.
-    // A press that never moves makes nothing: a connector with no length says
-    // nothing about what it joins.
+    // A press that never moves makes nothing, because a connector with no
+    // length does not show what it joins.
     private ConnectorKind _connectorKind = ConnectorKind.Arrow;
     private bool _connectorActive;
     private bool _connectorDragged;
@@ -430,9 +430,9 @@ public partial class MainWindow : Window
         }
         else if (!ConfirmRecovery(abandoned))
         {
-            // Declined, so it goes. Keeping it would put the same question in front of the
-            // same person at every start until the thirty days ran out, and the question
-            // says plainly what No means.
+            // Declined, so the slot is removed. Keeping it would put the same question in
+            // front of the same person at every start until the thirty days ran out, and the
+            // question already states what No does.
             SessionStore.Forget(candidate.SlotId);
             return;
         }
@@ -535,8 +535,8 @@ public partial class MainWindow : Window
             return;
         }
 
-        // Not while anything is in contact with the glass. The zip runs on a worker, but
-        // the snapshot does not, and a stroke is the one thing that must never stutter.
+        // Not while anything is in contact with the glass, because the snapshot runs on
+        // this thread (only the zip runs on a worker) and would make a stroke stutter.
         if (_penInContact ||
             _stylusAction != PointerAction.None ||
             _mouseAction != PointerAction.None ||
@@ -557,9 +557,9 @@ public partial class MainWindow : Window
         }
     }
 
-    // Which pointing device this session is drawing with is worth saying out
-    // loud, rather than leaving someone to work out from the toolbar that the
-    // left button has taken on a job it does not have on a pen machine.
+    // The session says which pointing device it is drawing with, because
+    // otherwise only the toolbar shows that the left button draws, which it
+    // does not do on a pen machine.
     private void WarnWhenNothingToDrawWith()
     {
         if (!_settings.WarnWhenNoDigitizer || NoDigitizerWindow.HasDrawingDevice())
@@ -662,8 +662,8 @@ public partial class MainWindow : Window
     }
 
     // Every packet the pen reports, in contact or not. This is the whole of the
-    // pen ink path: nothing here depends on WPF believing the pen is down. It
-    // does not believe it for as long as a barrel button is held.
+    // pen ink path, and nothing here depends on WPF reporting the pen as down,
+    // because WPF reports it as up for as long as a barrel button is held.
     private void AppendPenInk(StylusEventArgs e)
     {
         if (!IsInkTool || _stylusAction != PointerAction.None || e.StylusDevice.Inverted)
@@ -729,8 +729,8 @@ public partial class MainWindow : Window
 
         if (constrained && _penInkAnchor is PointD anchor)
         {
-            // The axis is chosen once and kept. A hand that drifts off it is
-            // still drawing the line it asked for, however far away it gets.
+            // The axis is chosen once and kept, so a hand that drifts off it
+            // still draws along it, however far it drifts.
             if (_penInkDirection == StraightLineDirection.None)
             {
                 _penInkDirection = StraightLineSnap.DetectDirection(anchor, screen);
@@ -740,7 +740,7 @@ public partial class MainWindow : Window
                 ? anchor
                 : StraightLineSnap.Apply(screen, anchor, _penInkDirection);
 
-            // A straight line is drawn, not written: uniform width.
+            // A straight line has a uniform width, whatever the pressure.
             pressure = StraightLinePressure;
             _penInkPrevious = screen;
             _penInkSpeed = 0;
@@ -1038,10 +1038,10 @@ public partial class MainWindow : Window
             // A stylus up still carrying tip pressure is a barrel transition,
             // not a lift, so the contact state here is left alone - but the
             // event goes on to the InkCanvas, which ends the stroke with it.
-            // That is the truth of what follows: Windows reports the pen in the
-            // air from here until the next stylus down, so the stroke really
-            // does stop, and joining it to whatever comes next draws a line
-            // through everywhere the pen was not.
+            // Ending it is correct, because Windows reports the pen in the air
+            // from here until the next stylus down, and joining the stroke to
+            // whatever comes next would draw a line through everywhere the pen
+            // was not.
             return;
         }
 
@@ -1272,8 +1272,8 @@ public partial class MainWindow : Window
     private bool TryActivatePaletteFromStylus(StylusDownEventArgs e)
     {
         // The Insert palette can be dragged over the toolbar and is drawn on top
-        // of it. This hit test asks the toolbar alone, which would answer for a
-        // press that never reached it.
+        // of it. Hit testing the toolbar alone would report a hit for a press
+        // that landed on the palette.
         if (InsertPalette.Visibility == Visibility.Visible &&
             InsertPalette.InputHitTest(e.GetPosition(InsertPalette)) is not null)
         {
@@ -1301,8 +1301,8 @@ public partial class MainWindow : Window
         LaserTrail.Lift();
         if (FindToggleButton(hit) is { } button)
         {
-            // Before the click, which is what makes Select the active tool: the
-            // hold is only offered by a press that was not already on Select.
+            // Before the click, because the click makes Select the active tool,
+            // and the hold is only offered by a press that was not already on Select.
             BeginSelectHold(button);
             button.RaiseEvent(new RoutedEventArgs(ButtonBase.ClickEvent));
         }
@@ -1581,8 +1581,8 @@ public partial class MainWindow : Window
 
     /// <summary>
     /// Whether the left button does what the active tool does. A mouse gets the
-    /// tools, not the gestures: nothing here simulates pressure, hover, the
-    /// reverse end or the barrel button, and the pen path is untouched.
+    /// tools only. Nothing here simulates pressure, hover, the reverse end or
+    /// the barrel button, and the pen path is untouched.
     /// </summary>
     private bool IsMouseModeEffective =>
         _settings.MouseMode switch
@@ -1607,9 +1607,9 @@ public partial class MainWindow : Window
     }
 
     // A click that never moves is a dot, and a dot still has to be a stroke with
-    // some length: points in the same place enclose nothing to render. A pen tap
-    // does not have this problem - it reports a burst of packets, and no hand is
-    // that still. The nudge is a hundredth of a screen pixel at the current
+    // some length, because points in the same place enclose nothing to render. A
+    // pen tap does not need this, because it reports a burst of packets that are
+    // never all in one place. The nudge is a hundredth of a screen pixel at the current
     // zoom, so what appears is the nib and nothing wider.
     private void EndMouseInk()
     {
@@ -1647,10 +1647,10 @@ public partial class MainWindow : Window
         var screen = ToPointD(e.GetPosition(InkSurface));
         var mouseDraws = IsMouseModeEffective;
 
-        // Ctrl is the old mouse. Letting the left button draw takes away the one
-        // genuinely good thing about mouse input - moving an image without
-        // leaving the Pen - so it is handed straight back on a modifier rather
-        // than lost. With mouse drawing off, every left gesture is this one.
+        // Ctrl gives the mouse its old behavior. Letting the left button draw
+        // would otherwise take away moving an image without leaving the Pen,
+        // the main use of the mouse, so Ctrl brings it back. With mouse drawing
+        // off, every left gesture is this one.
         var borrowSelect = !mouseDraws || Keyboard.Modifiers.HasFlag(ModifierKeys.Control);
 
         if (e.ChangedButton is MouseButton.Middle or MouseButton.Right)
@@ -1717,8 +1717,8 @@ public partial class MainWindow : Window
     }
 
     // The left button under mouse drawing, branching on the tool exactly as
-    // InkSurface_PreviewStylusDown does for the pen. The tool is sticky here:
-    // there is nothing to hand it back to.
+    // InkSurface_PreviewStylusDown does for the pen. The tool is sticky here,
+    // because there is no other tool to hand it back to.
     private void BeginMouseAction(PointD screen)
     {
         _mouseToolBorrowed = false;
@@ -1760,11 +1760,11 @@ public partial class MainWindow : Window
         }
     }
 
-    // Picking a tool from the toolbar with the mouse is the one moment the
-    // application can be sure the question is worth asking: a pen user reaches
-    // for the palette with the pen. The offer is queued rather than shown from
-    // here, so the click first does what it came to do - the tool is chosen,
-    // and the dialog then explains why it may not behave as expected.
+    // The question is asked when a tool is picked from the toolbar with the
+    // mouse, because a pen user picks tools with the pen, so this is the one
+    // moment it certainly applies. The offer is queued rather than shown from
+    // here, so the click first chooses the tool, and the dialog then explains
+    // why the tool may not behave as expected.
     private void ToolPalette_PreviewMouseLeftButtonDown(object sender, MouseButtonEventArgs e)
     {
         if (e.StylusDevice is not null ||
@@ -1776,7 +1776,7 @@ public partial class MainWindow : Window
         }
 
         // Asked once a session however many tools are picked afterwards. The
-        // checkbox on the offer is what answers it for every session after
+        // checkbox on the offer records the answer for every session after
         // this one.
         _mouseModeOffered = true;
         Dispatcher.BeginInvoke(DispatcherPriority.Background, new Action(OfferMouseMode));
@@ -1873,7 +1873,7 @@ public partial class MainWindow : Window
         else if (mouseDraws && EffectiveTool == BoardTool.Eraser)
         {
             // What a click would erase is a patch of board rather than a point,
-            // and the patch has nothing to do with the shape of an arrow.
+            // so the patch is shown in place of the arrow.
             PointerDot.Visibility = Visibility.Collapsed;
             ShowEraserHint(e.GetPosition(RootGrid));
             InkSurface.Cursor = Cursors.None;
@@ -2165,11 +2165,10 @@ public partial class MainWindow : Window
         }
     }
 
-    // Where the Eraser sits is a question about the layout, not about why it is
-    // there. The dual palette is stacked groups already, so a row beneath it
-    // reads as one more group; the compact bar is a single line of tools, and a
-    // second line holding one button doubles the toolbar's height to say very
-    // little.
+    // Where the Eraser sits depends on the layout alone, whatever the reason it
+    // is shown. The dual palette is stacked groups already, so a row beneath it
+    // reads as one more group. The compact bar is a single line of tools, and a
+    // second line holding one button would double the toolbar's height.
     private void PlaceEraserButton(bool dual)
     {
         if (EraserToolButton is null || ToolButtonsRow is null || ExtraToolsRow is null)
@@ -2749,8 +2748,8 @@ public partial class MainWindow : Window
     /// <summary>
     /// The gesture's own objects, and behind them every connector bound to one
     /// of them brought to where its anchors now are. A connector is recomputed
-    /// rather than transformed: the anchor says where on the object the line
-    /// ends, and that is true whatever the gesture did to the object.
+    /// rather than transformed, because the anchor records where on the object
+    /// the line ends, whatever the gesture did to the object.
     /// </summary>
     private BoardObject[] WithFollowingConnectors(BoardObject[] transformed)
     {
@@ -2771,9 +2770,9 @@ public partial class MainWindow : Window
     /// One connector brought to where what it points at now is: each bound end
     /// recomputed from its anchor, and then, for one that routes itself, the
     /// anchors chosen again for the sides that now face each other. The
-    /// gesture's own objects answer for themselves, since the board is a move
-    /// behind them while the hand is still down; anything else is where the
-    /// board has it.
+    /// gesture's own objects are taken from the gesture, since the board is a
+    /// move behind them while the hand is still down, and anything else is
+    /// taken from the board.
     /// </summary>
     private ConnectorBoardObject FollowAndReroute(
         ConnectorBoardObject connector,
@@ -2867,8 +2866,8 @@ public partial class MainWindow : Window
     private const double RotationHandleReach = 16;
     private const double RotationSnapDegrees = 15;
 
-    // Windows offers no rotation cursor, so the hand says what it says
-    // everywhere else: this is something to take hold of.
+    // Windows offers no rotation cursor, so the hand is used, which marks
+    // something to take hold of everywhere else too.
     private static readonly Cursor RotationCursor = Cursors.Hand;
 
     /// <summary>
@@ -2884,8 +2883,8 @@ public partial class MainWindow : Window
     /// <summary>
     /// Whether the pointer has hold of the rotation handle. A shape's top
     /// connector handle stands on the same line out of the same edge, closer
-    /// in, and the two reaches meet: whichever of them the pointer is nearer
-    /// takes it, so neither can bury the other.
+    /// in, and the two reaches meet. The pointer takes whichever of them it is
+    /// nearer, so neither handle hides the other.
     /// </summary>
     private bool IsOverRotationHandle(PointD screen)
     {
@@ -2915,9 +2914,9 @@ public partial class MainWindow : Window
             return false;
         }
 
-        // Taken once, at the press: every move turns these from where they
-        // started rather than from where the last move left them, which is what
-        // keeps a turn a turn rather than a turn on a turn.
+        // Taken once, at the press, so every move turns these from where they
+        // started rather than from where the last move left them, and the
+        // turns of successive moves do not add up.
         _rotationBefore = target;
         _rotationStrokes = _document.LinkedStrokes(target.Id).ToArray();
         _rotationConnectors = _document.ConnectorsAttachedTo(target.Id).ToArray();
@@ -3615,9 +3614,9 @@ public partial class MainWindow : Window
 
     /// <summary>
     /// The connector the drag drew, bound at whichever ends were let go near
-    /// something. A press that never moved makes nothing: a connector with no
-    /// length says nothing about what it joins, and a tap is how somebody finds
-    /// out what the tool does.
+    /// something. A press that never moved makes nothing, because a connector
+    /// with no length does not show what it joins, and a tap is how somebody
+    /// finds out what the tool does.
     /// </summary>
     private void CompleteConnectorGesture(PointD screen)
     {
@@ -3751,8 +3750,8 @@ public partial class MainWindow : Window
     /// <summary>
     /// What the surface draws while an end is being dragged: the eight points of
     /// the target under the pointer, which of them would be taken, and the
-    /// target itself. They are shown rather than described because where an
-    /// arrow will land is the whole question while it is in the air.
+    /// target itself. They are drawn because the person dragging the end needs
+    /// to see where the arrow will land before letting go.
     /// </summary>
     private void ShowBindingFeedback(PointD worldPoint)
     {
@@ -3870,7 +3869,7 @@ public partial class MainWindow : Window
     /// <summary>
     /// Fixed or Auto for every selected connector, as one step, and what the
     /// next one is drawn with. Auto takes hold at once rather than waiting for
-    /// the next time a shape moves, so the bar's answer is the one on the board.
+    /// the next time a shape moves, so the bar always matches the board.
     /// </summary>
     private void ApplySelectionAnchorMode(bool auto)
     {
@@ -3917,9 +3916,9 @@ public partial class MainWindow : Window
     }
 
     /// <summary>
-    /// The View row and the property bar's overflow, told what the selection can
-    /// still do with its depth. Both offer the same four commands, so they are
-    /// answered in one place rather than asking the same question twice.
+    /// The View row and the property bar's overflow, enabled for the depth moves
+    /// the selection still allows. Both offer the same four commands, so both are
+    /// updated from one place.
     /// </summary>
     private void UpdateZOrderCommands()
     {
@@ -4086,7 +4085,7 @@ public partial class MainWindow : Window
     /// A copy of the selection, 24 screen pixels down and to the right of it and
     /// above everything on the board, which becomes the selection: pressing the
     /// shortcut again therefore lays the next copy 24 pixels further on. The
-    /// assets are left alone, since a picture and its copy are the same picture.
+    /// assets are left alone, since a picture and its copy share the same image.
     /// </summary>
     private void DuplicateSelection()
     {
@@ -4168,8 +4167,8 @@ public partial class MainWindow : Window
             layout.Width,
             layout.Height);
 
-        // Added outside the history on purpose: a label that is thought better
-        // of leaves nothing behind, so the step is recorded on commit.
+        // Added outside the history on purpose, so that a label abandoned before
+        // commit leaves nothing behind. The step is recorded on commit.
         _document.AddObject(label);
         BeginLabelEdit(label, isNew: true);
     }
@@ -4252,9 +4251,9 @@ public partial class MainWindow : Window
     }
 
     /// <summary>
-    /// The label as it now stands, recorded as one step. A label with nothing
-    /// in it is not a label: a new one leaves no trace, and one that had text
-    /// before is removed as a step that can be undone.
+    /// The label as it now stands, recorded as one step. A label left empty is
+    /// removed. A new one leaves no trace, and one that had text before is
+    /// removed as a step that can be undone.
     /// </summary>
     private void CommitLabelEdit()
     {
@@ -4426,8 +4425,8 @@ public partial class MainWindow : Window
 
         // Room for the border, the box's own inset, and the caret at the end of
         // the longest line, none of which the measured text accounts for. The
-        // box is a little wider than the label it stands over; what matters is
-        // that the text is never clipped while it is being typed.
+        // box is a little wider than the label it stands over, so that the text
+        // is never clipped while it is being typed.
         LabelEditor.Width = (label.LayoutWidth * zoom) + 12;
         LabelEditor.Height = (label.LayoutHeight * zoom) + 6;
         LabelEditorRotation.Angle = label.AngleDegrees;
@@ -4627,9 +4626,9 @@ public partial class MainWindow : Window
     }
 
     /// <summary>
-    /// The shape as it now reads, recorded as one step. An empty text is an
-    /// answer like any other: the shape stays, saying nothing, which is where it
-    /// started from.
+    /// The shape as it now reads, recorded as one step. An empty text is
+    /// recorded like any other, and the shape stays with no words, as it
+    /// started.
     /// </summary>
     private void CommitShapeTextEdit()
     {
@@ -5346,8 +5345,8 @@ public partial class MainWindow : Window
         LeaveLaserIfActive();
 
         // The style clicks on press, so this is the press. A press while Select
-        // is already in hand switches the area tool, which is the mouse's way to
-        // it: nobody with a mouse will wait out a long press.
+        // is already in hand switches the area tool, which gives the mouse a way
+        // to it, because a long press is impractical with a mouse.
         var switchArea = _activeTool == BoardTool.Select && _features.ExtendedSelection;
         SetActiveTool(BoardTool.Select);
         if (switchArea)
@@ -5390,9 +5389,9 @@ public partial class MainWindow : Window
     }
 
     /// <summary>
-    /// A tool picked by hand. Reaching for something to draw with says the
-    /// selection is finished with, so it goes - unlike the tool handed back
-    /// after a borrowed mouse gesture, which is not a choice anybody made.
+    /// A tool picked by hand. Picking a tool means the selection is finished
+    /// with, so it is cleared. The tool handed back after a borrowed mouse
+    /// gesture does not clear it, because nobody chose that tool.
     /// </summary>
     private void ChooseTool(BoardTool tool)
     {
@@ -6111,8 +6110,8 @@ public partial class MainWindow : Window
     }
 
     /// <summary>
-    /// The connector handle the pointer is on, drawn filled so that the one an
-    /// arrow would come out of is the one that answers.
+    /// The connector handle the pointer is on, drawn filled so that it shows
+    /// which side an arrow would come out of.
     /// </summary>
     private void UpdateConnectorHandleHover(PointD screen)
     {
@@ -6133,8 +6132,8 @@ public partial class MainWindow : Window
             return RotationCursor;
         }
 
-        // Windows has no "start an arrow here" cursor either; the crosshair is
-        // what every drawing tool means by it.
+        // Windows has no "start an arrow here" cursor either, so the crosshair
+        // is used, as drawing tools commonly do.
         if (ConnectorHandleAt(screen) is not null)
         {
             return Cursors.Cross;
@@ -6196,8 +6195,8 @@ public partial class MainWindow : Window
         return null;
     }
 
-    // A lone connector has no corner handle: its box is a box around a line,
-    // and what it offers instead is its two ends.
+    // A lone connector has no corner handle, because its box is only a box
+    // around a line. Its two ends are its handles instead.
     private bool IsOverResizeHandle(PointD screen) =>
         SingleSelected<ConnectorBoardObject>() is null &&
         SelectionBounds() is RectD bounds &&
@@ -6352,9 +6351,9 @@ public partial class MainWindow : Window
     /// </summary>
     private void ApplyInsertOnToolbar()
     {
-        // Whatever the preference says: a button for tools that are not there
-        // is a button that does nothing, and the chevron offers a lasso the
-        // mode has taken away.
+        // Hidden whatever the preference says when the mode has no design
+        // tools, because the button would offer tools that are not there and
+        // the chevron a lasso the mode has taken away.
         var on = _settings.InsertOnToolbar && _features.DesignTools;
         Visibility visibility = on ? Visibility.Visible : Visibility.Collapsed;
         if (InsertToolButton is not null)
@@ -7087,7 +7086,7 @@ public partial class MainWindow : Window
         SceneSurface.ShowRotationHandle = _features.DesignTools;
         SceneSurface.ShowConnectorHandles = _features.DesignTools;
 
-        // A tool that has just stopped existing cannot stay in the hand.
+        // The active tool is replaced when the mode has just removed it.
         if (!_features.DesignTools &&
             _activeTool is BoardTool.Shape or BoardTool.Connector or BoardTool.Text)
         {
@@ -7731,8 +7730,8 @@ public partial class MainWindow : Window
                 return;
             }
 
-            // Ahead of the bitmap: an application that offers both is offering the same
-            // picture twice, and only one of the two survives being enlarged.
+            // Ahead of the bitmap, because an application that offers both is offering the
+            // same picture twice, and only the SVG stays sharp when it is enlarged.
             byte[]? svg = ClipboardImage.TryGetSvgBytes();
             if (svg is not null)
             {
@@ -8212,9 +8211,9 @@ public partial class MainWindow : Window
 
     /// <summary>
     /// The property bar, above the selection's rectangle and flipped below it
-    /// when there is no room. It stays away during a gesture and a text edit:
-    /// both are about where something is, and neither wants a bar moving under
-    /// the hand.
+    /// when there is no room. It is hidden during a gesture and a text edit,
+    /// because both change where something is, and a bar moving under the hand
+    /// would get in the way.
     /// </summary>
     private void UpdateSelectionPropertyBar()
     {
@@ -8833,9 +8832,9 @@ public partial class MainWindow : Window
             .ToHashSet();
         RectD bounds = UnionBounds(selected);
 
-        // Drawn at the zoom it is being looked at, within reason, so a copy of
-        // something small is not a poster and a copy of a wall is not a file
-        // nothing will paste.
+        // Drawn at the zoom it is being looked at, clamped, so a copy of
+        // something small is not enlarged out of proportion and a copy of a
+        // large area is not too big to paste.
         double scale = Math.Clamp(_camera.Zoom, 0.5, 2);
         var width = (int)Math.Clamp(Math.Round(bounds.Width * scale), 1, 4096);
         var height = (int)Math.Clamp(Math.Round(bounds.Height * scale), 1, 4096);
@@ -9179,7 +9178,7 @@ public partial class MainWindow : Window
         else
         {
             // The recipe built a board no file holds, and clearing the history has just
-            // said the opposite. Nothing else reaches the save point, so say it here.
+            // marked it saved. Nothing else reaches the save point, so it is marked unsaved here.
             command.Execute(_document);
             _history.Clear();
             MarkDirtyOutsideHistory();
@@ -9475,8 +9474,8 @@ public partial class MainWindow : Window
         }
         else
         {
-            // Last, so that every shortcut above keeps the key it has: what is
-            // left of the keyboard writes into the one selected shape.
+            // Last, so that every shortcut above keeps its key, and only the keys
+            // left over write into the one selected shape.
             StartShapeTextTyping(e);
         }
     }
@@ -9666,8 +9665,8 @@ public partial class MainWindow : Window
             }
             catch (Exception exception)
             {
-                // Whatever went wrong, it must not be what leaves somebody unable to close
-                // the window. The session is the thing being given up here, not the board.
+                // Whatever went wrong must not leave somebody unable to close the window,
+                // so the close goes ahead. What is given up here is the session slot.
                 Debug.WriteLine($"[Session] Could not prepare to close: {exception.Message}");
                 proceed = true;
             }
@@ -9785,8 +9784,8 @@ public partial class MainWindow : Window
         }
         catch (Exception exception)
         {
-            // Never in the way of closing, and never a dialog: this is the safety net
-            // rather than the save, and the file the person asked for is already written.
+            // It never blocks closing and never shows a dialog, because the slot is only
+            // a copy for a crash, and the file the person asked for is already written.
             Debug.WriteLine($"[Session] Could not write the session: {exception.Message}");
         }
     }
@@ -9815,7 +9814,7 @@ public partial class MainWindow : Window
 
     // The pen reports the same way in the air as in contact - and while a barrel
     // button is held it reports in the air the whole time, pressure and all. The
-    // packets are the same packets; only WPF's opinion of them differs.
+    // packets are identical, and only WPF's classification of them differs.
     private void Window_PreviewStylusInAirMove(object sender, StylusEventArgs e)
     {
         if (!IsTouchStylus(e))
@@ -9879,8 +9878,8 @@ public partial class MainWindow : Window
             return;
         }
 
-        // A reversed pen used to be dropped here. It erases on contact, so it
-        // has more to show while hovering than any other pose, not less.
+        // A reversed pen used to be dropped here. It erases on contact, so its
+        // hover feedback matters more than that of any other pose.
         _penInverted = e.StylusDevice.Inverted;
         if (_penInContact)
         {
@@ -9906,8 +9905,8 @@ public partial class MainWindow : Window
         UsePenCursor();
         if (IsErasing)
         {
-            // What a tap would erase is a patch of board, not a point, so the
-            // pointer shows the patch. A dot would say nothing about reach.
+            // What a tap would erase is a patch of board, so the pointer shows
+            // the patch, because a dot would not show how far the eraser reaches.
             PointerDot.Visibility = Visibility.Collapsed;
             LaserTrail.EndHover();
             ShowEraserHint(rootPosition);
@@ -9916,8 +9915,8 @@ public partial class MainWindow : Window
         {
             // The laser is the same instrument in the air as on the glass, so
             // hover drives the trail surface rather than the plain hover dot.
-            // HidePointerDot is not used here: it ends the hover it is about to
-            // be handed.
+            // HidePointerDot is not used here, because it would end the hover the
+            // trail surface is about to take over.
             PointerDot.Visibility = Visibility.Collapsed;
             LaserTrail.Hover(RootGrid.TranslatePoint(rootPosition, LaserTrail));
         }
@@ -9968,7 +9967,7 @@ public partial class MainWindow : Window
     }
 
     // Reversing the pen erases without changing the selected tool, so the tool
-    // alone does not answer what a tap would do here.
+    // alone does not determine what a tap would do here.
     private bool IsErasing => _penInverted || EffectiveTool == BoardTool.Eraser;
 
     private void ShowEraserHint(Point position)

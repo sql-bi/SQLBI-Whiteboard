@@ -49,7 +49,7 @@
     <section class="story">
       <h3>Pick up the pen</h3>
       <p>There is nothing to set up. A new board opens on the <span class="ui">Pen</span>, and a stroke lands wherever you put it: on the canvas, or over a chart, a screenshot, or a block of code already sitting there. The stroke records pressure, so it keeps the weight you gave it.</p>
-      <p>The <span class="ui">Highlighter</span> is translucent. It marks the one line you are about to talk about without covering it, which a solid stroke cannot do. Each tool remembers its own color and thickness, so moving between them never costs you a setting. While the pen is down, touch is suspended, and a hand resting on the glass does not pan the board.</p>
+      <p>The <span class="ui">Highlighter</span> is translucent. It marks the one line you are about to talk about, and the line stays readable under it. Each tool remembers its own color and thickness when you move between them. While the pen is down, touch is suspended, and a hand resting on the glass does not pan the board.</p>
       <p><a href="#ink">Ink and tools</a> has the rest of the palette.</p>
 
       <figure class="fig">
@@ -101,7 +101,7 @@
         </div>
         <figcaption>
           <p>The pen loop is an ordinary stroke on the board, drawn straight over the code.</p>
-          <p>The highlighter band is translucent, so the line it marks is still the line everyone reads.</p>
+          <p>The highlighter band is translucent, so the line it marks stays readable.</p>
         </figcaption>
       </figure>
     </section>
@@ -187,7 +187,7 @@
           </svg>
         </div>
         <figcaption>
-          <p>The LiveView keeps following its window, so its numbers move on without you.</p>
+          <p>The LiveView keeps following its window, so its numbers keep changing.</p>
           <p>The paste is a bitmap of the frame you copied. It holds that result still, and takes ink like any other picture.</p>
         </figcaption>
       </figure>
@@ -252,7 +252,7 @@
 
     <section class="story">
       <h3>Explain code</h3>
-      <p>Paste DAX, SQL, or KQL, or drop a <code>.dax</code>, <code>.sql</code>, or <code>.kql</code> file. Use the title-bar chip to set the language — fifteen are highlighted — press <kbd>F6</kbd> to format DAX, SQL, or KQL locally, then draw on the container. Formatting no longer needs edit mode: <kbd>F6</kbd> works on the container as soon as it is selected.</p>
+      <p>Paste DAX, SQL, or KQL, or drop a <code>.dax</code>, <code>.sql</code>, or <code>.kql</code> file. Use the title-bar chip to set the language — fifteen are highlighted — press <kbd>F6</kbd> to format DAX, SQL, or KQL locally, then draw on the container. <kbd>F6</kbd> works on the container as soon as it is selected, without entering edit mode.</p>
       <p><kbd>F2</kbd> moves the container into edit mode. <kbd>Ctrl</kbd><span class="plus">+</span><kbd>Enter</kbd> goes back to display mode and keeps the changes. <kbd>Escape</kbd> also goes back to display mode, but cancels the changes and restores the text, language, and size the container had before.</p>
       <p>The two modes resize differently. In edit mode the text reflows as you change the width, so a long line wraps onto more lines at the same size. In display mode a resize scales the whole visual, like a picture of the code, so the room still sees the layout you just formatted.</p>
 
@@ -354,7 +354,7 @@
 
     <section class="story">
       <h3>Talk to the room</h3>
-      <p>The laser pointer is for the projector, not for the file. <span class="ui">Preferences</span> control how long the trail stays fully visible after you lift, how long it then takes to fade away, and how much a light touch is thinned out — a pen reports very little pressure on a quick tap, and the heavier trail weights keep that tap as readable as a firm stroke. A pen in the air shows a small high-contrast hover dot; the dot disappears on contact so it never sits under the nib. With the laser selected that hover dot is the laser itself, halo and all, and it draws a short comet as you move: the faster you sweep, the longer the comet, so the room can follow the pointer before you have touched anything. A physical mouse keeps a normal arrow.</p>
+      <p>The laser pointer shows on the screen and is not saved in the file. <span class="ui">Preferences</span> control how long the trail stays fully visible after you lift, how long it then takes to fade away, and how much a light touch is thinned out — a pen reports very little pressure on a quick tap, and the heavier trail weights keep that tap as readable as a firm stroke. A pen in the air shows a small high-contrast hover dot; the dot disappears on contact so it never sits under the nib. With the laser selected that hover dot is the laser itself, halo and all, and it draws a short comet as you move: the faster you sweep, the longer the comet, so the room can follow the pointer before you have touched anything. A physical mouse keeps a normal arrow.</p>
 
       <figure class="fig">
         <div class="figbox">
@@ -402,7 +402,7 @@
           </svg>
         </div>
         <figcaption>
-          <p>The laser fades behind the pointer and never touches the file.</p>
+          <p>The laser trail fades behind the pointer and is not saved in the file.</p>
           <p>The pen carries a hover dot only while it is off the glass, so the marker never sits under the nib.</p>
         </figcaption>
       </figure>
@@ -541,7 +541,7 @@
     <section class="story">
       <h3>Pick up where you left off</h3>
       <p>Close SQLBI Whiteboard and the board you had open is there again the next time you start, at the zoom and position you left it. Turn that off under <span class="ui">Preferences → Startup</span> if you would rather begin on a blank board every time.</p>
-      <p>Closing a saved board that has changed asks first: <span class="ui">Keep for next time</span> leaves the file alone and brings the board back as it stands, and <span class="ui">Cancel</span> is the answer that keeps a LiveView feed connected. The board is also copied aside every thirty seconds, so one lost to a crash is offered back — at the next start, or when you next open that board. Only <span class="ui">Save</span> writes to your <code>.wboard</code>.</p>
+      <p>Closing a saved board that has changed asks first: <span class="ui">Keep for next time</span> leaves the file alone and brings the board back as it stands, and <span class="ui">Cancel</span> leaves the board open with its LiveView feeds connected. The board is also copied aside every thirty seconds, so one lost to a crash is offered back — at the next start, or when you next open that board. Only <span class="ui">Save</span> writes to your <code>.wboard</code>.</p>
 
       <figure class="fig">
         <div class="figbox">
@@ -596,7 +596,7 @@
             </g>
           </svg>
         </div>
-        <figcaption>The same ink in the same place, and the same zoom. A board you chose to keep rather than save comes back unsaved, so the asterisk in the title comes back with it.</figcaption>
+        <figcaption>The same ink in the same place, and the same zoom. A board you chose to keep rather than save comes back unsaved, with the asterisk in the title.</figcaption>
       </figure>
     </section>
 
@@ -685,7 +685,7 @@
             </g>
           </svg>
         </div>
-        <figcaption>A folder of boards reads like a contact sheet: the tile is the board, so you pick the right one without opening it.</figcaption>
+        <figcaption>Each board's tile is a picture of the board, so you can pick the right one without opening it.</figcaption>
       </figure>
     </section>
 
@@ -727,11 +727,11 @@
       </div>
     </div>
 
-    <p>Palm rejection suspends touch while the pen is down, so a resting hand does not pan the board. Without a pen, Finger drawing or Mouse drawing brings <span class="ui">Eraser</span> and <span class="ui">Pan</span> to the palette. The toolbar stays small on purpose; <span class="ui">Preferences</span> control whether it sits in a corner or follows a layout you prefer, and right-clicking it hides it altogether.</p>
+    <p>Palm rejection suspends touch while the pen is down, so a resting hand does not pan the board. Without a pen, Finger drawing or Mouse drawing brings <span class="ui">Eraser</span> and <span class="ui">Pan</span> to the palette. The toolbar is small. <span class="ui">Preferences</span> control whether it sits in a corner or follows a layout you prefer, and right-clicking it hides it altogether.</p>
 
     <h3>Navigation</h3>
     <p>The canvas is unbounded. Finger drawing changes what a single finger does; Mouse drawing moves double-click framing onto <kbd>Ctrl</kbd>. Nothing else changes.</p>
-    <p><span class="ui">Preferences → Board</span> draws a faint grid behind the board, in Lines or Dots, whose spacing is fixed in board pixels and steps coarser as you zoom out, so the zoom level is something you can see; <span class="ui">View → Grid</span> turns it on and off, and it never appears in an export.</p>
+    <p><span class="ui">Preferences → Board</span> draws a faint grid behind the board, in Lines or Dots, whose spacing is fixed in board pixels and steps coarser as you zoom out, so the grid shows the zoom level; <span class="ui">View → Grid</span> turns it on and off, and it never appears in an export.</p>
 
     <table class="navtable">
       <thead>
@@ -753,7 +753,7 @@
     <p><span class="ui">Preferences → Mouse drawing</span> turns the left button into the selected tool, and defaults to on where Windows reports neither a pen tablet nor a touchscreen. The tool then stays selected instead of being handed back, and <kbd>Ctrl</kbd> with the left button is how you move and resize a container. A mouse reports no pressure, so ink is drawn at an even width; Calligraphy still varies, because its width comes from speed. Nothing about the pen changes, so this can be left on beside one. With it off, picking a tool from the toolbar with the mouse offers to turn it on, once a session.</p>
 
     <h3>Containers</h3>
-    <p>Images, LiveViews, text blocks, shapes, and labels are containers. With a mouse, click to move, drag the circular handle to resize while keeping aspect ratio — hold <kbd>Ctrl</kbd> too with <span class="ui">Mouse drawing</span> on. Releasing the mouse returns to the drawing tool you had. Imported images accept PNG, JPEG, BMP, GIF, and SVG, including clipboard paste and Explorer drag-and-drop. An SVG is kept as its markup and redrawn at every size, so enlarging one costs it nothing.</p>
+    <p>Images, LiveViews, text blocks, shapes, and labels are containers. With a mouse, click to move, drag the circular handle to resize while keeping aspect ratio — hold <kbd>Ctrl</kbd> too with <span class="ui">Mouse drawing</span> on. Releasing the mouse returns to the drawing tool you had. Imported images accept PNG, JPEG, BMP, GIF, and SVG, including clipboard paste and Explorer drag-and-drop. An SVG is kept as its markup and redrawn at every size, so it stays sharp when you enlarge it.</p>
     <p>Drag with <span class="ui">Select</span> on empty canvas to take everything inside a rectangle, or hold <span class="ui">Select</span> — a second tap does the same — and draw the outline by hand. <kbd>Ctrl</kbd><span class="plus">+</span><kbd>A</kbd> takes everything at once and <kbd>Ctrl</kbd><span class="plus">+</span><kbd>Shift</kbd><span class="plus">+</span><kbd>A</kbd> the ink alone; <kbd>Ctrl</kbd> adds to the selection instead of replacing it. Ink is taken with the rest, and the selection moves, resizes, recolors, reorders, and deletes as one. <span class="ui">Preferences → Selection</span> says whether an object has to be wholly inside the area, and whether the selection grows to what it touches.</p>
     <p>The <span class="ui">…</span> at the end of the property bar holds the commands for whatever is selected: Delete, Copy, Duplicate (<kbd>Ctrl</kbd><span class="plus">+</span><kbd>D</kbd>), and the four depth commands, which are also on the View row. They reorder the selection and its linked strokes as one block; strokes cannot be reordered on their own.</p>
     <p><span class="ui">View → Frame</span> adds a frame the size of the screen: a slide drawn on the board. Select it by its dashed edge or its title tab, drag to move or resize it, and press <kbd>F2</kbd> to rename it. <span class="ui">Export</span> uses frames as they are, first, and cuts the rest of the board automatically. Frames never appear in an export. <span class="ui">View → Show frames</span> hides them while you present. Hidden frames still define the slides, and the board saves the choice.</p>
@@ -766,12 +766,12 @@
     <p>Choose <span class="ui">Markdown</span> from the title-bar chip for a formatted answer or a note, and headings, lists, tables, quotations, and code blocks keep their layout on the board. Pasting Markdown, or an answer copied from a chat with its formatting, creates one on its own. <kbd>F2</kbd> edits the Markdown source and <kbd>Ctrl</kbd><span class="plus">+</span><kbd>Enter</kbd> renders it again; the corner handle scales the result and the right edge reflows it. An export carries the container as a picture, with the source in the deck's notes.</p>
     <p>A text container's width is its line width. Drag its right edge to change the width in columns and reflow the text; the handle shows the count. <kbd>Shift</kbd> on the corner handle does the same, and a plain drag of the corner scales the container like a picture. A new container is 65 columns wide, which is where the DAX formatter wraps.</p>
     <p><kbd>F6</kbd> formats DAX, SQL, or KQL on the selected container, without entering edit mode, and wraps DAX to the container's columns. <kbd>F2</kbd> edits the container, and double-click still centers it and fits it to the canvas; inside an edit <kbd>F6</kbd> formats in place and <kbd>Ctrl</kbd><span class="plus">+</span><kbd>Enter</kbd> commits that format with the rest of the edit. SQL Server mode targets SQL Server 2025 T-SQL, keeps <code>GO</code> batch separators, and leaves an invalid script unchanged; KQL reads Kusto through Microsoft's own parser and likewise leaves an invalid query alone. <kbd>Escape</kbd> restores the previous text, language, and size.</p>
-    <p>The chip also offers Python, C, C++, Java, C#, JavaScript, TypeScript, Visual Basic .NET, R, Rust, and PHP. These are highlighted but not formatted, and paste never picks one for you. <kbd>F6</kbd> on one of them opens a link to that language's issue on GitHub, where a thumbs-up decides which formatter comes next.</p>
+    <p>The chip also offers Python, C, C++, Java, C#, JavaScript, TypeScript, Visual Basic .NET, R, Rust, and PHP. These are highlighted but not formatted, and paste never picks one for you. <kbd>F6</kbd> on one of them opens a link to that language's issue on GitHub, where thumbs-up votes set the order in which formatters are added.</p>
 
     <h3>Shapes, connectors, and text</h3>
     <p>The <span class="ui">Insert</span> tab holds eight shapes, three connectors, and <span class="ui">Text</span>. Drag on the board to draw a shape — hold <kbd>Shift</kbd> for a square — and choose its outline color, fill, and thickness with it selected. Type into it, or press <kbd>F2</kbd>, and the words sit inside the shape, in a font, a size, a color, bold, italic, and underline; the circle above it turns it to any angle, with <kbd>Shift</kbd> for 15° steps. Click with <span class="ui">Text</span> for a label on its own, which takes the same font and the same handle.</p>
-    <p>Drop a connector's end anywhere on a shape and it binds there and follows, so moving the shape takes the arrow with it; hold <kbd>Ctrl</kbd> at release to bind to the nearest point on the border instead, or choose <span class="ui">Anchors → Auto</span> to let a bound end move to the side facing the other end. A selected shape also carries four small arrows, one to a side: drag one out and you have a bound arrow without leaving <span class="ui">Select</span>.</p>
-    <p>The tool hands back to <span class="ui">Select</span> once one object is drawn, and <kbd>Escape</kbd> puts it down. <span class="ui">Preferences → Toolbar</span> keeps it for the next one instead, adds <span class="ui">Insert</span> to the floating palette, or pins the Insert row into a second palette you can drag anywhere. Shapes, connectors, and labels are saved in the board, undone with everything else, and exported to a deck or a PDF as objects you can select and change — in PowerPoint the straight arrows are still attached to their shapes.</p>
+    <p>Drop a connector's end anywhere on a shape and it binds there and follows, so moving the shape takes the arrow with it; hold <kbd>Ctrl</kbd> at release to bind to the nearest point on the border instead, or choose <span class="ui">Anchors → Auto</span> to let a bound end move to the side facing the other end. A selected shape also carries four small arrows, one to a side, and dragging one out draws a bound arrow without leaving <span class="ui">Select</span>.</p>
+    <p><span class="ui">Select</span> comes back once one object is drawn, and <kbd>Escape</kbd> returns to <span class="ui">Select</span> at any time. <span class="ui">Preferences → Toolbar</span> keeps it for the next one instead, adds <span class="ui">Insert</span> to the floating palette, or pins the Insert row into a second palette you can drag anywhere. Shapes, connectors, and labels are saved in the board, undone with everything else, and exported to a deck or a PDF as objects you can select and change — in PowerPoint the straight arrows are still attached to their shapes.</p>
 
     <h3 id="liveview">LiveView</h3>
     <p><span class="ui">View → LiveView</span> captures a window or a display. The container behaves like an image: move, resize, frame, delete, undo.</p>
@@ -834,7 +834,7 @@
           </g>
         </svg>
       </div>
-      <figcaption><span class="ui">Freeze</span> stops capture on the last frame and can resume the same target. <span class="ui">Disconnect</span> releases the target, keeps the last frame, and hides the on-frame controls. <span class="ui">Reconnect</span> is then the only way back to a live feed. Copying a LiveView and pasting gives a still bitmap that was never connected to anything.</figcaption>
+      <figcaption><span class="ui">Freeze</span> stops capture on the last frame and can resume the same target. <span class="ui">Disconnect</span> releases the target, keeps the last frame, and hides the on-frame controls. <span class="ui">Reconnect</span> is then the only way back to a live feed. Copying a LiveView and pasting gives a still bitmap with no link to the captured window.</figcaption>
     </figure>
 
     <h3>Files</h3>
@@ -842,7 +842,7 @@
     <p><span class="ui">Export</span> (<kbd>Ctrl</kbd><span class="plus">+</span><kbd>E</kbd>) writes the board as a PowerPoint deck or a PDF. The board is cut into areas where it is empty, one slide or page per area, with an overview first. The dialog shows the areas numbered on the board; the gap and text-size settings change the cut as you move them, and the order can follow the drawing or the reading direction.</p>
     <p><span class="ui">Slide content → Editable</span>, the default, puts images and text containers on the slide as objects with the ink over them; <span class="ui">Picture</span> is one exact picture of the area. Text containers also go in the speaker notes.</p>
     <p><span class="ui">PDF</span> writes one A4 or Letter page per area, each with a bookmark and a footer, or the whole board on one page. <span class="ui">Vector</span> pages keep the ink as paths and the text selectable.</p>
-    <p>The released installer registers that type and <code>.wimport</code>. The pre-release (Dev) channel does not, so it can sit beside a released copy without stealing the file association.</p>
+    <p>The released installer registers that type and <code>.wimport</code>. The pre-release (Dev) channel does not, so it can be installed beside a released copy and the file association stays with the released one.</p>
 
     <figure class="fig">
       <div class="figbox">
@@ -899,7 +899,7 @@
     </figure>
 
     <h3>The command strip</h3>
-    <p>File, Edit, View, Insert, and Help sit on a thin tab strip. Click a tab for a one-row command strip over the canvas; click the canvas to hide it. Edit and Help stay open after a command so you can run several; File, View, and Insert close on the first press on the board, so the Insert row is out of the way as the shape is drawn. Its pin turns that row into a palette you can drag anywhere and leave there. Drawing tools stay on the floating palette, which never moves out from under your hand.</p>
+    <p>File, Edit, View, Insert, and Help sit on a thin tab strip. Click a tab for a one-row command strip over the canvas; click the canvas to hide it. Edit and Help stay open after a command so you can run several; File, View, and Insert close on the first press on the board, so the Insert row is out of the way as the shape is drawn. Its pin turns that row into a palette you can drag anywhere and leave there. Drawing tools stay on the floating palette, which does not move.</p>
 
     <figure class="fig">
       <div class="figbox">
@@ -984,7 +984,7 @@
     </figure>
 
     <h3>Preferences</h3>
-    <p><span class="ui">Help → Preferences</span> is a searchable list: which monitor to open on, start full screen or go full screen when idle, whether to warn when there is nothing to draw with, finger drawing, what the pen's barrel button does, snippet format order, laser trail timing and weight, toolbar placement and layout, the Insert palette, what happens after inserting an object, and the daily new-version check. <span class="ui">Mode</span> comes first: Design has everything, Teaching keeps the lasso and leaves out the Insert tab, the shape, connector, and text tools, the bar above a selection, and Duplicate, and <span class="ui">View → Design</span> switches between them — a board keeps everything that is drawn on it either way. Settings about how something looks — the trail weight, the barrel button, where the toolbar sits and how it is laid out — draw their options rather than naming them, so the choice is made by looking. <span class="ui">Help → About</span> shows the version. New settings are more rows in Preferences, not a new dialog.</p>
+    <p><span class="ui">Help → Preferences</span> is a searchable list: which monitor to open on, start full screen or go full screen when idle, whether to warn when there is nothing to draw with, finger drawing, what the pen's barrel button does, snippet format order, laser trail timing and weight, toolbar placement and layout, the Insert palette, what happens after inserting an object, and the daily new-version check. <span class="ui">Mode</span> comes first: Design has everything, Teaching keeps the lasso and leaves out the Insert tab, the shape, connector, and text tools, the bar above a selection, and Duplicate, and <span class="ui">View → Design</span> switches between them — a board keeps everything that is drawn on it either way. Settings about how something looks — the trail weight, the barrel button, where the toolbar sits and how it is laid out — show each option as a small picture instead of a name. <span class="ui">Help → About</span> shows the version. New settings are added as rows in Preferences.</p>
 
     <figure class="fig">
       <div class="figbox">
@@ -1045,7 +1045,7 @@
           </g>
         </svg>
       </div>
-      <figcaption>One list, searched by name. A new setting is another row in a category here, never a second dialog.</figcaption>
+      <figcaption>Every setting is a row in one list, grouped by category and searched by name.</figcaption>
     </figure>
   </article>
 
@@ -1091,8 +1091,8 @@
     var figures = document.querySelectorAll('.fig');
     var i;
 
-    // Without an observer every figure simply shows its resting state, which is
-    // the whole point of the figure. Nothing is lost by never animating.
+    // Without an observer every figure shows its resting state, which holds
+    // everything the figure has to show, so the animation is not needed.
     if (!('IntersectionObserver' in window)) {
       for (i = 0; i < figures.length; i++) figures[i].classList.add('is-visible');
       return;

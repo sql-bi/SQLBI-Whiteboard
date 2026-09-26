@@ -452,7 +452,7 @@ public static class PdfDocumentWriter
     }
 
     /// <summary>
-    /// What a shape says, inside it: wrapped to the rectangle the board writes
+    /// A shape's own text, inside it: wrapped to the rectangle the board writes
     /// it in, centred across that rectangle and down it, and already turned with
     /// the shape, since this is drawn inside the shape's own rotation. Lines the
     /// rectangle cannot hold run on below it rather than being cut, as they do

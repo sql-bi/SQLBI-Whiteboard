@@ -3,10 +3,9 @@ using SQLBI.Whiteboard.Core.Geometry;
 namespace SQLBI.Whiteboard.Core.Model;
 
 /// <summary>
-/// A copy of a selection, offset and ready to be added. What makes this more
-/// than a loop is what a copy points at: a stroke linked to a duplicated
-/// container has to follow the copy rather than the original, and so does a
-/// connector bound to one. Anything pointing outside the set is let go, since
+/// A copy of a selection, offset and ready to be added. A copy has to point at
+/// other copies: a stroke linked to a duplicated container follows the copy
+/// rather than the original, and so does a connector bound to one. Anything pointing outside the set is let go, since
 /// the copy would otherwise be tied to something that was not copied with it.
 /// </summary>
 public static class SelectionDuplicator
@@ -61,7 +60,7 @@ public static class SelectionDuplicator
         if (item is ConnectorBoardObject connector)
         {
             // Rebuilt rather than moved, because the box of a curve depends on
-            // which sides its ends are bound to, and an end that lets go here
+            // which sides its ends are bound to, and an end that is unbound here
             // changes it.
             return ConnectorBoardObject.Create(
                 id,

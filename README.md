@@ -20,7 +20,7 @@ How the project is developed and shipped is documented separately:
 - Whole-stroke erasing
 - PNG, JPEG, BMP, GIF, and SVG import, clipboard bitmap paste, and Explorer drag-and-drop of images, text files, `.wimport` recipes, and PowerPoint decks
 - PowerPoint decks imported as one picture per slide through PowerPoint from Microsoft 365: SVG, or PNG for a slide whose fonts are not installed, placed in one row per section, with an optional frame around each slide. **File → Open** creates a new board from the deck; **File → Import** and drag-and-drop add it below the board's content
-- SVG stays vector: it is stored as its markup and redrawn at every zoom and resize rather than rasterized on arrival. Pasting SVG markup that was copied as text — the output of a DAX SVG measure, for instance — creates a picture, and copying an SVG container puts both the markup and a bitmap on the clipboard. Text set in a Microsoft 365 font such as Aptos is drawn in that font when Office has it on the machine
+- SVG is stored as its markup and redrawn as vectors at every zoom and resize. Pasting SVG markup that was copied as text — the output of a DAX SVG measure, for instance — creates a picture, and copying an SVG container puts both the markup and a bitmap on the clipboard. Text set in a Microsoft 365 font such as Aptos is drawn in that font when Office has it on the machine
 - Image selection, movement, resizing, and deletion
 - Text containers created by pasting plain text, with display and in-place edit modes
 - Seventeen text-container types: fifteen languages with live syntax highlighting, plus Prompt and Markdown, and local F6 formatting for DAX, SQL Server, and KQL
@@ -191,7 +191,7 @@ Use **Copy settings** after finding a useful combination so the exact values can
 | Ctrl + left mouse | Select/move/resize a container and return to the previous drawing tool — what the left button does on its own when Mouse drawing is off |
 | Double-click container | Center and fit the image, text, or LiveView to the canvas. With Mouse drawing on and an ink or eraser tool selected, hold Ctrl: two plain clicks are two strokes |
 | Double-click empty canvas | Center and fit all board content, or reset an empty board |
-| Pen eraser | Erase complete strokes. The upper side button erases too: Windows reports it the same way as a pen turned round. A pen with neither reaches the Eraser through **Help → Preferences → Toolbar → Always show the Eraser** |
+| Pen eraser | Erase complete strokes. The upper side button erases too, because Windows reports it the same way as a pen turned round. A pen with neither reaches the Eraser through **Help → Preferences → Toolbar → Always show the Eraser** |
 | Pen barrel | Hold for Laser, or hold before starting a stroke for Straight line, as assigned in Preferences. Releasing ends the action; a mid-stroke press cannot start Straight line |
 | One finger | Pan. With Finger drawing on, uses the current tool instead |
 | Two fingers | Pan and pinch zoom. Cancels an in-progress finger stroke when Finger drawing is on |

@@ -23,8 +23,8 @@ internal sealed class BoardSurface : FrameworkElement
     private static readonly Brush GridDotBrush = CreateFrozenBrush(0x14000000);
 
     // A dot reaches 1.5 pixels out from its intersection rather than measuring
-    // 1.5 across: at the grid's own faint gray, a dot narrower than this covers
-    // so little of a pixel that antialiasing thins it away to nothing.
+    // 1.5 across, because at the grid's own faint gray a narrower dot covers so
+    // little of a pixel that antialiasing removes it.
     private const double GridDotRadius = 1.5;
 
     // The object a connector endpoint is over: the selection blue at an alpha
@@ -93,8 +93,8 @@ internal sealed class BoardSurface : FrameworkElement
 
     /// <summary>
     /// The background grid, under everything and on screen only. Off by default
-    /// for the same reason as <see cref="DrawFrames"/> is turned off by an
-    /// export: it is a guide for the person drawing, not part of the board.
+    /// for the same reason an export turns off <see cref="DrawFrames"/>, because
+    /// it is a guide for the person drawing and is left out of the board.
     /// </summary>
     public GridStyle GridStyle { get; set; } = GridStyle.Off;
 
@@ -133,39 +133,39 @@ internal sealed class BoardSurface : FrameworkElement
 
     /// <summary>
     /// Which of <see cref="BindingDots"/> would be taken if the endpoint were
-    /// let go now. It is drawn larger and filled: the eight say where an arrow
-    /// can land, and this one says where it will.
+    /// let go now. It is drawn larger and filled, because it marks the one of
+    /// the eight places an arrow can land that it will land on.
     /// </summary>
     public int? BindingDotIndex { get; set; }
 
     /// <summary>
     /// The object those dots belong to, outlined faintly in the selection blue
-    /// while the endpoint is over it. Over the middle of a shape there is no
-    /// other sign of which object answered.
+    /// while the endpoint is over it, because over the middle of a shape
+    /// nothing else shows which object the endpoint would bind to.
     /// </summary>
     public Guid? BindingTargetId { get; set; }
 
     /// <summary>
     /// Which of a lone shape's four connector handles the pointer is on, so the
-    /// one that would be taken hold of says so before it is pressed.
+    /// one that would be taken hold of is marked before it is pressed.
     /// </summary>
     public FrameSide? HoveredConnectorHandle { get; set; }
 
     /// <summary>
     /// Whether a lone shape or label offers the circle that turns it, and
     /// whether a lone shape offers the four arrows an arrow is drawn out of.
-    /// Both belong to the design tools, so a mode without them draws neither -
-    /// and the gestures ask the same question, so nothing answers where nothing
-    /// is drawn.
+    /// Both belong to the design tools, so a mode without them draws neither,
+    /// and the gestures check the same flags, so a handle that is not drawn
+    /// cannot be used.
     /// </summary>
     public bool ShowRotationHandle { get; set; } = true;
 
     public bool ShowConnectorHandles { get; set; } = true;
 
     /// <summary>
-    /// True while something is being dragged. The connector handles are an
-    /// invitation to start a gesture, so they stand aside while one is under
-    /// way rather than following the object about.
+    /// True while something is being dragged. The connector handles start a
+    /// gesture, so they are hidden while one is under way instead of moving
+    /// with the object.
     /// </summary>
     public bool GestureInProgress { get; set; }
 
@@ -251,8 +251,8 @@ internal sealed class BoardSurface : FrameworkElement
             }
         }
 
-        // Over the containers, not under them: the stroke is committed with the
-        // topmost z-index, so drawing it first made the wet ink disappear behind
+        // Drawn over the containers because the stroke is committed with the
+        // topmost z-index, and drawing it first made the wet ink disappear behind
         // whatever it crossed and reappear only once the pen lifted.
         if (PendingStroke is { Count: > 1 } pending)
         {
@@ -309,7 +309,7 @@ internal sealed class BoardSurface : FrameworkElement
     /// The object a connector endpoint is over, traced where it is drawn - a
     /// shape along its own outline, anything else around the rectangle its
     /// anchors belong to - so that an end let go in the middle of a turned
-    /// shape says which shape took it.
+    /// shape shows which shape it binds to.
     /// </summary>
     private static void DrawBindingTarget(
         DrawingContext drawingContext,
@@ -380,10 +380,10 @@ internal sealed class BoardSurface : FrameworkElement
         DrawRotationHandle(drawingContext, selected, camera);
         DrawConnectorHandles(drawingContext, selected, camera);
 
-        // A label or a shape on its own is outlined where it is, turned: the box
-        // around a turned object says nothing about which of its corners is
-        // which. The handle stays on the box, which is where the gesture looks
-        // for it.
+        // A label or a shape on its own is outlined along its turned corners,
+        // because the box around a turned object does not show which corner is
+        // which. The handle stays on the box, because that is where the gesture
+        // looks for it.
         if (selected is [{ } lone] && TurnedOutline(lone) is { } loneOutline)
         {
             DrawTurnedOutline(drawingContext, loneOutline, camera, SelectionPen);
@@ -391,8 +391,8 @@ internal sealed class BoardSurface : FrameworkElement
             return;
         }
 
-        // A connector has no corner to take hold of: what a lone one offers is
-        // its two ends, which is what re-routes it and what re-binds it.
+        // A connector has no corner handle. A lone one shows its two ends, which
+        // are what re-route it and re-bind it.
         if (selected is [ConnectorBoardObject connector])
         {
             DrawSelection(drawingContext, bounds, camera, includeHandle: false);
@@ -431,10 +431,10 @@ internal sealed class BoardSurface : FrameworkElement
     }
 
     /// <summary>
-    /// What a shape says, inside it: wrapped to its text box, centred both ways,
+    /// A shape's own text, inside it: wrapped to its text box, centred both ways,
     /// and turned with the shape. Text with more lines than the box has room for
-    /// runs on below it rather than being cut, as it does in PowerPoint, so a
-    /// shape never silently swallows a word.
+    /// runs on below it rather than being cut, as it does in PowerPoint, so no
+    /// word of it is hidden.
     /// </summary>
     private void DrawShapeText(DrawingContext drawingContext, ShapeBoardObject shape, Camera2D camera)
     {
@@ -503,12 +503,11 @@ internal sealed class BoardSurface : FrameworkElement
     /// The four arrows a lone selected shape offers, one outside the middle of
     /// each of its sides, pointing the way that side faces. Dragging one out
     /// draws an arrow already bound where it started, which is the common case
-    /// the Insert row would otherwise be needed for. Only a shape has them:
-    /// everything else is either not what a diagram joins up or is selected
-    /// with something else, and a gesture under way takes them away, since by
-    /// then they have been answered. So does a shape whose own text is being
-    /// typed: the editor's box stands over the shape, and what the hand is
-    /// doing there is writing rather than joining.
+    /// the Insert row would otherwise be needed for. Only a shape has them,
+    /// because everything else is either not what a diagram joins up or is
+    /// selected with something else. They are hidden while a gesture is under
+    /// way, because by then one of them has been used, and while the shape's
+    /// own text is being typed, because the editor's box covers the shape.
     /// </summary>
     private void DrawConnectorHandles(
         DrawingContext drawingContext,
@@ -560,8 +559,8 @@ internal sealed class BoardSurface : FrameworkElement
 
     /// <summary>
     /// The four corners a selection outline follows instead of the box, for the
-    /// objects that are drawn turned. An upright one has nothing to say here and
-    /// takes the rectangle.
+    /// objects that are drawn turned. For an upright one this is null, and the
+    /// outline follows the rectangle.
     /// </summary>
     private static IReadOnlyList<PointD>? TurnedOutline(BoardObject item) => item switch
     {
