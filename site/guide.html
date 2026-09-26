@@ -473,7 +473,6 @@
       <h3>Bring a workshop in</h3>
       <p>A <code>.wimport</code> file is Markdown that builds image and text containers. Drop it on an open board to add them under the pointer. <span class="ui">File → Open</span>, or a double-click in the released install, starts a new untitled board from the recipe. Save always writes a <code>.wboard</code>.</p>
       <p>Missing pictures or scripts are skipped and listed in a dialog you can copy.<br>The <a href="wimport.html">import format</a> is the contract for that file.</p>
-      <p>A PowerPoint deck is imported the same ways, as one picture per slide. <span class="ui">File → Open</span> creates a new board from it, and <span class="ui">File → Import</span> or a drop adds it below the board's content. It needs PowerPoint from Microsoft 365 and takes a few seconds for a typical deck. With <span class="ui">Auto</span>, each slide is an SVG picture, sharp at any zoom, or a PNG picture if its fonts are not installed on your PC. A switch in the import dialog adds a frame around each slide.</p>
 
       <figure class="fig">
         <div class="figbox">
@@ -534,6 +533,113 @@
         <figcaption>
           <p>Each heading, picture, and paragraph in the recipe becomes a container.</p>
           <p>Drop the file on an open board and they arrive under the pointer.</p>
+        </figcaption>
+      </figure>
+    </section>
+
+    <section class="story">
+      <h3>Bring a PowerPoint deck in</h3>
+      <p>A PowerPoint deck becomes one picture per slide, so you can draw over the slides of a talk. A deck can start a new board or join an existing one, below its content. The import uses PowerPoint from Microsoft 365.</p>
+
+      <figure class="fig">
+        <div class="figbox">
+          <svg viewBox="0 0 700 290" role="img" aria-label="A PowerPoint deck on the left becomes one picture per slide on the board to the right, with one row for each of its two sections.">
+            <title>A PowerPoint deck imported as one picture per slide</title>
+            <defs>
+              <radialGradient id="f14fade" cx="0.66" cy="0.45" r="0.7"><stop offset="0.3" stop-color="#fff"/><stop offset="1" stop-color="#000"/></radialGradient>
+              <mask id="f14mask"><rect width="700" height="290" fill="url(#f14fade)"/></mask>
+              <pattern id="f14grid" width="34" height="34" patternUnits="userSpaceOnUse"><path d="M34 0H0v34" fill="none" stroke="var(--fig-grid)" stroke-width="1"/></pattern>
+            </defs>
+            <rect width="700" height="290" rx="10" fill="var(--fig-ground)"/>
+            <rect width="700" height="290" fill="url(#f14grid)" mask="url(#f14mask)"/>
+            <g transform="translate(14 44)">
+              <rect width="224" height="200" rx="12" fill="var(--fig-surface)" stroke="var(--fig-line)"/>
+              <path d="M0 12A12 12 0 0 1 12 0h200a12 12 0 0 1 12 12v20H0Z" fill="var(--fig-surface-2)"/>
+              <text x="15" y="22" font-size="12.5" font-weight="620" fill="var(--fig-ink)">vertipaq.pptx</text>
+              <text x="15" y="54" font-size="10.5" font-weight="620" fill="var(--fig-muted)">Introduction</text>
+                <g>
+                  <rect x="15" y="62" width="60" height="34" rx="4" fill="var(--fig-surface)" stroke="var(--fig-line)"/>
+                  <rect x="21" y="68" width="30" height="4" rx="2" fill="var(--brand)" opacity=".85"/>
+                  <rect x="21" y="77" width="44" height="3" rx="1.5" fill="var(--fig-muted)" opacity=".3"/>
+                  <rect x="21" y="84" width="34" height="3" rx="1.5" fill="var(--fig-muted)" opacity=".3"/>
+                </g>
+                <g>
+                  <rect x="82" y="62" width="60" height="34" rx="4" fill="var(--fig-surface)" stroke="var(--fig-line)"/>
+                  <rect x="88" y="68" width="38" height="4" rx="2" fill="var(--brand)" opacity=".85"/>
+                  <rect x="88" y="77" width="44" height="3" rx="1.5" fill="var(--fig-muted)" opacity=".3"/>
+                  <rect x="88" y="84" width="34" height="3" rx="1.5" fill="var(--fig-muted)" opacity=".3"/>
+                </g>
+                <g>
+                  <rect x="149" y="62" width="60" height="34" rx="4" fill="var(--fig-surface)" stroke="var(--fig-line)"/>
+                  <rect x="155" y="68" width="26" height="4" rx="2" fill="var(--brand)" opacity=".85"/>
+                  <rect x="155" y="77" width="44" height="3" rx="1.5" fill="var(--fig-muted)" opacity=".3"/>
+                  <rect x="155" y="84" width="34" height="3" rx="1.5" fill="var(--fig-muted)" opacity=".3"/>
+                </g>
+              <text x="15" y="124" font-size="10.5" font-weight="620" fill="var(--fig-muted)">Storage engine</text>
+                <g>
+                  <rect x="15" y="132" width="60" height="34" rx="4" fill="var(--fig-surface)" stroke="var(--fig-line)"/>
+                  <rect x="21" y="138" width="34" height="4" rx="2" fill="var(--brand)" opacity=".85"/>
+                  <rect x="21" y="147" width="44" height="3" rx="1.5" fill="var(--fig-muted)" opacity=".3"/>
+                  <rect x="21" y="154" width="34" height="3" rx="1.5" fill="var(--fig-muted)" opacity=".3"/>
+                </g>
+                <g>
+                  <rect x="82" y="132" width="60" height="34" rx="4" fill="var(--fig-surface)" stroke="var(--fig-line)"/>
+                  <rect x="88" y="138" width="24" height="4" rx="2" fill="var(--brand)" opacity=".85"/>
+                  <rect x="88" y="147" width="44" height="3" rx="1.5" fill="var(--fig-muted)" opacity=".3"/>
+                  <rect x="88" y="154" width="34" height="3" rx="1.5" fill="var(--fig-muted)" opacity=".3"/>
+                </g>
+            </g>
+            <g stroke="var(--fig-muted)" stroke-width="2.2" fill="none" stroke-linecap="round" stroke-linejoin="round" opacity=".7">
+              <path d="M250 145h20"/>
+              <path d="M264 139l7 6-7 6"/>
+            </g>
+            <text x="288" y="44" font-size="10.5" font-weight="620" fill="var(--fig-muted)">Introduction</text>
+            <text x="288" y="164" font-size="10.5" font-weight="620" fill="var(--fig-muted)">Storage engine</text>
+            <g class="f14-1">
+              <rect x="288" y="54" width="118" height="66" rx="6" fill="var(--fig-surface)" stroke="var(--fig-line)"/>
+              <rect x="298" y="65" width="58" height="7" rx="3.5" fill="var(--brand)" opacity=".85"/>
+              <rect x="298" y="80" width="86" height="5" rx="2.5" fill="var(--fig-muted)" opacity=".3"/>
+              <rect x="298" y="90" width="66" height="5" rx="2.5" fill="var(--fig-muted)" opacity=".3"/>
+              <rect x="368" y="102" width="30" height="12" rx="6" fill="var(--fig-surface-2)"/>
+              <text x="383" y="111" font-size="8" font-weight="620" text-anchor="middle" fill="var(--fig-muted)">SVG</text>
+            </g>
+            <g class="f14-2">
+              <rect x="418" y="54" width="118" height="66" rx="6" fill="var(--fig-surface)" stroke="var(--fig-line)"/>
+              <rect x="428" y="65" width="72" height="7" rx="3.5" fill="var(--brand)" opacity=".85"/>
+              <rect x="428" y="80" width="86" height="5" rx="2.5" fill="var(--fig-muted)" opacity=".3"/>
+              <rect x="428" y="90" width="66" height="5" rx="2.5" fill="var(--fig-muted)" opacity=".3"/>
+              <rect x="498" y="102" width="30" height="12" rx="6" fill="var(--fig-surface-2)"/>
+              <text x="513" y="111" font-size="8" font-weight="620" text-anchor="middle" fill="var(--fig-muted)">SVG</text>
+            </g>
+            <g class="f14-3">
+              <rect x="548" y="54" width="118" height="66" rx="6" fill="var(--fig-surface)" stroke="var(--fig-line)"/>
+              <rect x="558" y="65" width="50" height="7" rx="3.5" fill="var(--brand)" opacity=".85"/>
+              <rect x="558" y="80" width="86" height="5" rx="2.5" fill="var(--fig-muted)" opacity=".3"/>
+              <rect x="558" y="90" width="66" height="5" rx="2.5" fill="var(--fig-muted)" opacity=".3"/>
+              <rect x="628" y="102" width="30" height="12" rx="6" fill="var(--fig-surface-2)"/>
+              <text x="643" y="111" font-size="8" font-weight="620" text-anchor="middle" fill="var(--fig-muted)">SVG</text>
+            </g>
+            <g class="f14-4">
+              <rect x="288" y="174" width="118" height="66" rx="6" fill="var(--fig-surface)" stroke="var(--fig-line)"/>
+              <rect x="298" y="185" width="64" height="7" rx="3.5" fill="var(--brand)" opacity=".85"/>
+              <rect x="298" y="200" width="86" height="5" rx="2.5" fill="var(--fig-muted)" opacity=".3"/>
+              <rect x="298" y="210" width="66" height="5" rx="2.5" fill="var(--fig-muted)" opacity=".3"/>
+              <rect x="368" y="222" width="30" height="12" rx="6" fill="var(--fig-surface-2)"/>
+              <text x="383" y="231" font-size="8" font-weight="620" text-anchor="middle" fill="var(--fig-muted)">SVG</text>
+            </g>
+            <g class="f14-5">
+              <rect x="418" y="174" width="118" height="66" rx="6" fill="var(--fig-surface)" stroke="var(--fig-line)"/>
+              <rect x="428" y="185" width="46" height="7" rx="3.5" fill="var(--brand)" opacity=".85"/>
+              <rect x="428" y="200" width="86" height="5" rx="2.5" fill="var(--fig-muted)" opacity=".3"/>
+              <rect x="428" y="210" width="66" height="5" rx="2.5" fill="var(--fig-muted)" opacity=".3"/>
+              <rect x="498" y="222" width="30" height="12" rx="6" fill="var(--fig-surface-2)"/>
+              <text x="513" y="231" font-size="8" font-weight="620" text-anchor="middle" fill="var(--fig-muted)">PNG</text>
+            </g>
+          </svg>
+        </div>
+        <figcaption>
+          <p>Each slide becomes a picture on the board, with one row for each section of the deck.</p>
+          <p>To keep the highest quality, the import uses SVG whenever possible and PNG as a fallback.</p>
         </figcaption>
       </figure>
     </section>
