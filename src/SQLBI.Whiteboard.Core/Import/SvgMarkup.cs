@@ -74,7 +74,14 @@ public static class SvgMarkup
     /// Markup with nothing to change comes back as the same bytes; markup that does
     /// not parse is left for the renderer to reject in its own words.
     /// </summary>
-    public static byte[] Rewrite(byte[] bytes)
+    public static byte[] Rewrite(byte[] bytes) => Rewrite(bytes, metrics: null);
+
+    /// <summary>
+    /// The same, and with <paramref name="metrics"/> also the rewrites that need to
+    /// know about fonts: a family that names a weight, and text the renderer would set
+    /// wider than kerning does.
+    /// </summary>
+    public static byte[] Rewrite(byte[] bytes, ISvgFontMetrics? metrics)
     {
         ArgumentNullException.ThrowIfNull(bytes);
 
@@ -89,6 +96,13 @@ public static class SvgMarkup
             var document = XDocument.Load(reader, LoadOptions.PreserveWhitespace);
             var changed = HoistImageClips(document);
             changed |= DropAnchoredLetterSpacing(document);
+            if (metrics is not null)
+            {
+                // Weights first, so the runs are measured in the face that will draw them.
+                changed |= SvgText.SplitWeightNames(document, metrics);
+                changed |= SvgText.KernRuns(document, metrics);
+            }
+
             if (!changed)
             {
                 return bytes;
@@ -175,23 +189,24 @@ public static class SvgMarkup
     /// The <c>text-anchor</c> in force on an element: its own, or the nearest ancestor's,
     /// whether written as an attribute or inside <c>style</c>.
     /// </summary>
-    private static string TextAnchor(XElement element)
+    private static string TextAnchor(XElement element) => Inherited(element, "text-anchor") ?? "start";
+
+    /// <summary>
+    /// A presentation property as it applies to an element: from its own <c>style</c>, then
+    /// its own attribute, then the same on each ancestor in turn, or null when nothing sets
+    /// it. A <c>style</c> declaration wins over the attribute beside it, as in CSS.
+    /// </summary>
+    internal static string? Inherited(XElement element, string property)
     {
         for (var current = element; current is not null; current = current.Parent)
         {
-            if (current.Attribute("text-anchor")?.Value.Trim() is { Length: > 0 } attribute &&
-                attribute != "inherit")
-            {
-                return attribute;
-            }
-
             if (current.Attribute("style")?.Value is { } style)
             {
                 foreach (var declaration in style.Split(';'))
                 {
                     var colon = declaration.IndexOf(':');
                     if (colon > 0 &&
-                        declaration[..colon].Trim() == "text-anchor" &&
+                        declaration[..colon].Trim() == property &&
                         declaration[(colon + 1)..].Trim() is { Length: > 0 } value &&
                         value != "inherit")
                     {
@@ -199,8 +214,14 @@ public static class SvgMarkup
                     }
                 }
             }
+
+            if (current.Attribute(property)?.Value.Trim() is { Length: > 0 } attribute &&
+                attribute != "inherit")
+            {
+                return attribute;
+            }
         }
 
-        return "start";
+        return null;
     }
 }

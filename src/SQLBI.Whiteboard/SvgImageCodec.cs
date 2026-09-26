@@ -1,4 +1,7 @@
+using System.Collections.Concurrent;
+using System.Globalization;
 using System.IO;
+using System.Windows;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using SharpVectors.Converters;
@@ -14,7 +17,11 @@ internal static class SvgImageCodec
     public static DrawingImage Decode(byte[] bytes)
     {
         ArgumentNullException.ThrowIfNull(bytes);
+        return Draw(SvgMarkup.Rewrite(bytes, WpfFontMetrics.Instance));
+    }
 
+    private static DrawingImage Draw(byte[] markup)
+    {
         var settings = new WpfDrawingSettings
         {
             // Nothing here needs the SharpVectors runtime types; a plain drawing draws faster.
@@ -33,13 +40,13 @@ internal static class SvgImageCodec
             ExternalResourcesAccessMode = ExternalResourcesAccessModes.Ignore,
         };
         settings.Visitors.ImageVisitor = PixelSizedBitmapVisitor.Instance;
-        foreach (var folder in OfficeCloudFonts.FoldersFor(SvgMarkup.FontFamilies(bytes)))
+        foreach (var folder in OfficeCloudFonts.FoldersFor(SvgMarkup.FontFamilies(markup)))
         {
             settings.AddFontLocation(folder);
         }
 
         using var reader = new FileSvgReader(settings);
-        using var stream = new MemoryStream(SvgMarkup.Rewrite(bytes), writable: false);
+        using var stream = new MemoryStream(markup, writable: false);
         var drawing = reader.Read(stream)
             ?? throw new InvalidDataException("The SVG has nothing to draw.");
 
@@ -62,11 +69,11 @@ internal static class SvgImageCodec
     {
         ArgumentNullException.ThrowIfNull(bytes);
 
-        var fontsFound = SvgMarkup.FontFamilyLists(bytes).All(list =>
-            list.Count == 0 ||
-            list.Any(family =>
-                OfficeCloudFonts.Has(family) ||
-                new Typeface(family).TryGetGlyphTypeface(out _)));
+        // Judged on the markup as it will be drawn, after a weight written into a family
+        // name has become a weight.
+        var markup = SvgMarkup.Rewrite(bytes, WpfFontMetrics.Instance);
+        var fontsFound = SvgMarkup.FontFamilyLists(markup).All(list =>
+            list.Count == 0 || list.Any(WpfFontMetrics.Instance.IsAvailable));
         if (!fontsFound)
         {
             return false;
@@ -74,13 +81,80 @@ internal static class SvgImageCodec
 
         try
         {
-            Decode(bytes);
+            Draw(markup);
             return true;
         }
         catch (Exception exception) when (exception is not OutOfMemoryException)
         {
             return false;
         }
+    }
+
+    /// <summary>
+    /// Fonts as WPF finds them, installed in Windows or in Office's cache, for the
+    /// rewrites that need to know which families exist and how wide a run is set.
+    /// Typefaces are kept per family, weight, and style: a slide asks for the same few
+    /// hundreds of times.
+    /// </summary>
+    private sealed class WpfFontMetrics : ISvgFontMetrics
+    {
+        public static WpfFontMetrics Instance { get; } = new();
+
+        private readonly ConcurrentDictionary<(string Family, int Weight, bool Italic), Typeface?> _typefaces = new();
+
+        public bool IsAvailable(string family) =>
+            OfficeCloudFonts.Has(family) || new Typeface(family).TryGetGlyphTypeface(out _);
+
+        public double? KernedOverPlain(SvgTextRun run)
+        {
+            if (run.Families.FirstOrDefault(IsAvailable) is not { } family ||
+                TypefaceFor(family, run.Weight, run.Italic) is not { } typeface ||
+                !typeface.TryGetGlyphTypeface(out var glyphs) ||
+                run.Text.Any(char.IsSurrogate))
+            {
+                return null;
+            }
+
+            // Plain is what the renderer draws: each glyph's advance, end to end.
+            double plain = 0;
+            foreach (var character in run.Text)
+            {
+                if (!glyphs.CharacterToGlyphMap.TryGetValue(character, out var glyph))
+                {
+                    return null;
+                }
+
+                plain += glyphs.AdvanceWidths[glyph];
+            }
+
+            if (plain <= 0)
+            {
+                return null;
+            }
+
+            var kerned = new FormattedText(
+                run.Text,
+                CultureInfo.InvariantCulture,
+                FlowDirection.LeftToRight,
+                typeface,
+                1,
+                Brushes.Black,
+                1).WidthIncludingTrailingWhitespace;
+            return kerned / plain;
+        }
+
+        private Typeface? TypefaceFor(string family, int weight, bool italic) =>
+            _typefaces.GetOrAdd((family, weight, italic), key =>
+            {
+                var fontFamily = OfficeCloudFonts.Folder(key.Family) is { } folder
+                    ? new FontFamily(new Uri(folder + Path.DirectorySeparatorChar), "./#" + key.Family)
+                    : new FontFamily(key.Family);
+                return new Typeface(
+                    fontFamily,
+                    key.Italic ? FontStyles.Italic : FontStyles.Normal,
+                    FontWeight.FromOpenTypeWeight(key.Weight),
+                    FontStretches.Normal);
+            });
     }
 
     /// <summary>
@@ -97,6 +171,8 @@ internal static class SvgImageCodec
         private static readonly Lazy<IReadOnlyDictionary<string, string>> Folders = new(FindFolders);
 
         public static bool Has(string family) => Folders.Value.ContainsKey(family);
+
+        public static string? Folder(string family) => Folders.Value.GetValueOrDefault(family);
 
         public static IEnumerable<string> FoldersFor(IEnumerable<string> families) =>
             families

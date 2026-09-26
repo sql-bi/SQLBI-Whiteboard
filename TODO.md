@@ -58,27 +58,6 @@ per-frame visibility the board does not have, or to leave the frames hidden and 
 The PPTX import can add a frame per slide, off by default; see
 [docs/pptx-import.md](docs/pptx-import.md).
 
-## PowerPoint SVG: words that touch at run boundaries
-
-PowerPoint writes each run of a paragraph as its own `<text>`, placed at an absolute
-position, and drops the space that ended the previous run. It lays text out about 1%
-narrower than WPF does, even with kerning, so a long run can end where the next one
-begins: on slide 1 of *Inside the VertiPaq Engine* the subtitle reads "thecore". The
-font is right since 1.6.3, which reads Microsoft 365 cloud fonts from Office's cache
-(`SvgImageCodec.OfficeCloudFonts`); this is what remains.
-
-SharpVectors ignores `textLength`, so the fix would be a measuring pass of our own in
-`SvgImageCodec`: for consecutive runs on one baseline in the same style, measure each
-with the font the renderer will use, and when it would reach the next run's start less
-a space, compress it horizontally to fit. The squeeze is about 1%, which does not show.
-Decide whether it is worth it once the PPTX import is in use.
-
-A second, smaller gap: PowerPoint sometimes names a weight as a family, *Segoe Sans Small
-Semilight* for *Segoe Sans Small* at weight 350. SharpVectors finds the family in Office's
-folder but not that name, so Auto imports those slides as PNG. `SvgMarkup.Rewrite` could
-turn a family that ends in a weight word into the family and a `font-weight`, when the
-shorter name is one Office has, and those slides would stay SVG.
-
 ## Pen buttons: what was settled, and what is left
 
 The barrel button is the only assignable one, and it takes Laser or Straight line. Adding

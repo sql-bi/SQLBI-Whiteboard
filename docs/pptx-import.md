@@ -121,9 +121,16 @@ those draw correctly. A font found in neither place is drawn with a substitute, 
 because PowerPoint places each run of text at an absolute position, a wider substitute
 runs words together. That is the case Auto sends to PNG.
 
-One smaller defect remains with the right font: PowerPoint lays text out about 1% narrower
-than WPF, and a long run can close the space before the next one. [TODO.md](../TODO.md)
-records it and the fix it would take.
+Two more rewrites, in `SvgText`, make the right font land where PowerPoint put it:
+
+- **Kerning.** SharpVectors draws a run as wide as its glyphs laid end to end; PowerPoint
+  kerns, and places each run of a line where its kerned layout reached, having dropped the
+  space that ended the run before. Unkerned, a long run reached into the next ("thecore").
+  Each run is now squeezed horizontally, from where it starts, to the width WPF gives it
+  with kerning: under 1% for ordinary text, and never more than 5%.
+- **Weights written into a family.** PowerPoint names some weights as families, such as
+  *Segoe Sans Small Semilight*. When that name cannot be found and the shorter one can, it
+  becomes the family and a `font-weight` (350 here), which the renderer resolves.
 
 ## Without PowerPoint
 
@@ -153,11 +160,9 @@ commands would leave nothing to find.
   slides.
 - **The summary names the reason.** A slide that falls back because PowerPoint did not hand
   over its SVG is counted apart from one whose fonts are missing.
-- **Face names are not found.** PowerPoint sometimes names a weight as a family:
-  *Segoe Sans Small Semilight* rather than *Segoe Sans Small* at weight 350. The renderer
-  finds the family in Office's folder but not the face name, so Auto sends those slides to
-  PNG, which is the right result. Rewriting such names to a family and a weight would keep
-  them as SVG; [TODO.md](../TODO.md) records it.
+- **Face names and kerning are rewritten** (see *Fonts*). Before the rewrite, Auto sent 8
+  slides of the 47-slide test deck to PNG over *Segoe Sans Small Semilight*; afterwards all
+  38 imported slides of it, and all 39 of the other deck, draw as SVG.
 - **File → Import is new.** Before it, importing a file had no command on the File row; it
   now takes decks, images, and `.wimport` recipes, as a drop does.
 - **Tried** on three decks: 13, 38 of 47, and 39 slides, with and without sections, hidden

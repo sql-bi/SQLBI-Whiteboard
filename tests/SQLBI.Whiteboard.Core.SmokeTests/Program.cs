@@ -1814,6 +1814,38 @@ Assert(
         fontLists[1].Count == 0,
         "Each declaration keeps its own list, and one naming only generic families asks for nothing.");
 
+    // The font rewrites, with fixed metrics standing in for WPF.
+    var metrics = new FixedFontMetrics();
+    string Fonted(string svg) => Encoding.UTF8.GetString(SvgMarkup.Rewrite(
+        Encoding.UTF8.GetBytes($"<svg xmlns=\"http://www.w3.org/2000/svg\">{svg}</svg>"), metrics));
+    Assert(
+        Fonted("<text font-family=\"Segoe Sans Small Semilight,sans-serif\" font-weight=\"400\">a</text>")
+            .Contains("font-family=\"Segoe Sans Small,sans-serif\" font-weight=\"350\""),
+        "A family that names a weight becomes the family and that weight.");
+    Assert(
+        Fonted("<text font-family=\"Segoe UI Semibold\">a</text>").Contains("font-family=\"Segoe UI Semibold\"") &&
+        Fonted("<text font-family=\"Nowhere Semilight\">a</text>").Contains("font-family=\"Nowhere Semilight\""),
+        "A face name that can be found, or whose family cannot, is left as written.");
+    Assert(
+        Fonted("<text font-family=\"Aptos\" font-size=\"25\" transform=\"matrix(1 0 0 1 106.5 228)\">Deep dive</text>")
+            .Contains("transform=\"matrix(1 0 0 1 106.5 228) scale(0.99 1)\"") &&
+        Fonted("<text font-family=\"Aptos\" font-size=\"25px\" x=\"10\" y=\"20\">Deep dive</text>")
+            .Contains("transform=\"translate(10 20) scale(0.99 1) translate(-10 -20)\""),
+        "A run is squeezed to its kerned width, from where it starts.");
+    Assert(
+        Fonted("<text font-family=\"Aptos\" font-size=\"25\">AVAVAV</text>").Contains("scale(0.95 1)"),
+        "Kerning tighter than five percent is capped, so glyphs do not visibly narrow.");
+    Assert(
+        !Fonted("<text font-family=\"Aptos\" font-size=\"25\" text-anchor=\"middle\">Deep dive</text>").Contains("scale(") &&
+        !Fonted("<text font-family=\"Aptos\" font-size=\"25\" letter-spacing=\"2\">Deep dive</text>").Contains("scale(") &&
+        !Fonted("<text font-family=\"Aptos\" font-size=\"25\" x=\"1 2 3\">Deep dive</text>").Contains("scale(") &&
+        !Fonted("<text font-family=\"Aptos\" font-size=\"25\">Deep <tspan>dive</tspan></text>").Contains("scale(") &&
+        !Fonted("<text font-family=\"Unmeasured\" font-size=\"25\">Deep dive</text>").Contains("scale("),
+        "Anchored, spaced, glyph-placed, nested, or unmeasurable text is left alone.");
+    Assert(
+        Fonted("<g style=\"font-family: Aptos; font-size: 25px\"><text>Deep dive</text></g>").Contains("scale(0.99 1)"),
+        "The font is found on an ancestor, in its style.");
+
     // PowerPoint import: where the slides go, and what their frames are called.
     Assert(
         DroppedFileImport.Classify(@"C:\Talks\Deck.PPTX") == DroppedFileKind.Deck &&
