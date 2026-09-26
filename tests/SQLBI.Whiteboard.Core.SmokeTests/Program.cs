@@ -1797,6 +1797,15 @@ Assert(
     Assert(ReferenceEquals(SvgMarkup.Rewrite(plainSvg), plainSvg), "Markup with no clipped image is the same bytes.");
     byte[] brokenSvg = Encoding.UTF8.GetBytes("<svg><image clip-path='u'");
     Assert(ReferenceEquals(SvgMarkup.Rewrite(brokenSvg), brokenSvg), "Markup that does not parse is left for the renderer.");
+    byte[] powerPointSvg = Encoding.UTF8.GetBytes(
+        "<svg xmlns=\"http://www.w3.org/2000/svg\">" +
+        "<text font-family=\"Aptos,Aptos_MSFontService,sans-serif\">a</text>" +
+        "<text font-family='Segoe Sans Text'>b</text>" +
+        "<text style=\"fill:red; font-family: 'Aptos', 'Segoe UI', serif\">c</text></svg>");
+    Assert(
+        SvgMarkup.FontFamilies(powerPointSvg).SequenceEqual(["Aptos", "Aptos_MSFontService", "Segoe Sans Text", "Segoe UI"]),
+        "Font families come from attributes and styles, once each, without quotes or generic families.");
+    Assert(SvgMarkup.FontFamilies(brokenSvg).Count == 0, "Markup naming no font names no family.");
 
     byte[] spacedSvg = Encoding.UTF8.GetBytes(
         "<svg xmlns=\"http://www.w3.org/2000/svg\">" +

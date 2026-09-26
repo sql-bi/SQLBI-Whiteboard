@@ -33,6 +33,10 @@ internal static class SvgImageCodec
             ExternalResourcesAccessMode = ExternalResourcesAccessModes.Ignore,
         };
         settings.Visitors.ImageVisitor = PixelSizedBitmapVisitor.Instance;
+        foreach (var folder in OfficeCloudFonts.FoldersFor(SvgMarkup.FontFamilies(bytes)))
+        {
+            settings.AddFontLocation(folder);
+        }
 
         using var reader = new FileSvgReader(settings);
         using var stream = new MemoryStream(SvgMarkup.Rewrite(bytes), writable: false);
@@ -46,6 +50,59 @@ internal static class SvgImageCodec
         }
 
         return image;
+    }
+
+    /// <summary>
+    /// The fonts Microsoft 365 downloads on demand, such as Aptos, its default since 2023.
+    /// Office keeps them in its own cache rather than installing them in Windows, so an
+    /// SVG that PowerPoint wrote names a font no other application can find, and the
+    /// substitute is wide enough to run each positioned piece of text into the next.
+    /// Office names each folder after the family inside it. Only the folders an SVG
+    /// names are handed to the renderer, because it reads every file in every location
+    /// on each decode. Without Microsoft 365 there are no folders and nothing changes.
+    /// </summary>
+    private static class OfficeCloudFonts
+    {
+        private static readonly Lazy<IReadOnlyDictionary<string, string>> Folders = new(FindFolders);
+
+        public static IEnumerable<string> FoldersFor(IEnumerable<string> families) =>
+            families
+                .Select(family => Folders.Value.TryGetValue(family, out var folder) ? folder : null)
+                .OfType<string>();
+
+        private static IReadOnlyDictionary<string, string> FindFolders()
+        {
+            var found = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+            try
+            {
+                var cache = Path.Combine(
+                    Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+                    "Microsoft",
+                    "FontCache");
+                if (!Directory.Exists(cache))
+                {
+                    return found;
+                }
+
+                // The cache is versioned (FontCache\4 today); the newest wins a name.
+                foreach (var cloudFonts in Directory.EnumerateDirectories(cache)
+                             .OrderByDescending(version => Path.GetFileName(version), StringComparer.Ordinal)
+                             .Select(version => Path.Combine(version, "CloudFonts"))
+                             .Where(Directory.Exists))
+                {
+                    foreach (var folder in Directory.EnumerateDirectories(cloudFonts))
+                    {
+                        found.TryAdd(Path.GetFileName(folder), folder);
+                    }
+                }
+            }
+            catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
+            {
+                // A cache that cannot be read is the same as no cache: the text falls back.
+            }
+
+            return found;
+        }
     }
 
     /// <summary>

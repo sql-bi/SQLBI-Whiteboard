@@ -19,7 +19,7 @@ How the project is developed and shipped is documented separately:
 - Mouse-wheel zoom and middle-button or temporary Space-key panning
 - Whole-stroke erasing
 - PNG, JPEG, BMP, GIF, and SVG import, clipboard bitmap paste, and Explorer drag-and-drop of images, text files, and `.wimport` recipes
-- SVG stays vector: it is stored as its markup and redrawn at every zoom and resize rather than rasterized on arrival. Pasting SVG markup that was copied as text — the output of a DAX SVG measure, for instance — creates a picture, and copying an SVG container puts both the markup and a bitmap on the clipboard
+- SVG stays vector: it is stored as its markup and redrawn at every zoom and resize rather than rasterized on arrival. Pasting SVG markup that was copied as text — the output of a DAX SVG measure, for instance — creates a picture, and copying an SVG container puts both the markup and a bitmap on the clipboard. Text set in a Microsoft 365 font such as Aptos is drawn in that font when Office has it on the machine
 - Image selection, movement, resizing, and deletion
 - Text containers created by pasting plain text, with display and in-place edit modes
 - Seventeen text-container types: fifteen languages with live syntax highlighting, plus Prompt and Markdown, and local F6 formatting for DAX, SQL Server, and KQL

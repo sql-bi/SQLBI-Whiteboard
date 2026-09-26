@@ -1,4 +1,6 @@
 using System.Globalization;
+using System.Text;
+using System.Text.RegularExpressions;
 using System.Xml;
 using System.Xml.Linq;
 
@@ -11,6 +13,38 @@ namespace SQLBI.Whiteboard.Core.Import;
 public static class SvgMarkup
 {
     private static readonly XNamespace Svg = "http://www.w3.org/2000/svg";
+
+    private static readonly Regex FontFamilyDeclaration = new(
+        @"font-family\s*(?:=\s*(?:""(?<list>[^""]*)""|'(?<list>[^']*)')|:\s*(?<list>[^;"">}]*))",
+        RegexOptions.CultureInvariant);
+
+    /// <summary>
+    /// Every font family the markup names, from <c>font-family</c> attributes and style
+    /// declarations, in the order they first appear. Generic families and quotes are
+    /// dropped. It reads the text rather than the document, so markup that does not
+    /// parse still answers.
+    /// </summary>
+    public static IReadOnlyList<string> FontFamilies(byte[] bytes)
+    {
+        ArgumentNullException.ThrowIfNull(bytes);
+
+        var families = new List<string>();
+        foreach (Match match in FontFamilyDeclaration.Matches(Encoding.UTF8.GetString(bytes)))
+        {
+            foreach (var entry in match.Groups["list"].Value.Split(','))
+            {
+                var family = entry.Trim().Trim('"', '\'').Trim();
+                if (family.Length > 0 &&
+                    family is not ("serif" or "sans-serif" or "monospace" or "cursive" or "fantasy" or "system-ui" or "inherit") &&
+                    !families.Contains(family, StringComparer.OrdinalIgnoreCase))
+                {
+                    families.Add(family);
+                }
+            }
+        }
+
+        return families;
+    }
 
     /// <summary>
     /// Applies every rewrite the renderer needs and returns the markup to hand it.
