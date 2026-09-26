@@ -17,6 +17,13 @@ broke. The heading is parsed by `scripts/release-notes.ps1`, so keep its shape; 
 under it is ordinary Markdown, and the renderer handles paragraphs, lists, links, `code`
 and **bold**.
 
+## 1.6.3 - 26 September 2026
+
+### Hide the frames while you present
+**View → Show frames** hides every frame and its title, and the board remembers the choice.
+Hidden frames still mark out the slides for **Export**, and **View → Frame** shows them
+again.
+
 ## 1.6.2 - 23 September 2026
 
 ### Straight line only when you ask for it first
