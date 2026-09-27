@@ -1,6 +1,6 @@
 # Microsoft Whiteboard import
 
-**Implemented, not yet released.** This document records what a Microsoft Whiteboard
+**Implemented in 1.7.0.** This document records what a Microsoft Whiteboard
 export contains, how the importer maps it onto a board, and what it cannot carry over.
 Microsoft retires its standalone Whiteboard apps on 16 October 2026 (see
 [retirement](retirement/README.md)), and the export is the only way to take a board out of

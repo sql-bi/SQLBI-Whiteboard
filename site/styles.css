@@ -324,6 +324,7 @@ footer .ico-inline { vertical-align: -2px; margin-right: 5px; }
   box-shadow: var(--shadow-sm);
 }
 .notice strong { color: var(--ink); font-weight: 600; }
+.notice a { color: var(--brand-link); font-weight: 600; text-underline-offset: 3px; }
 
 /* The launch artwork. Replace the file, not the markup: the frame adapts to any
    aspect ratio and the caption below carries the claim. */
