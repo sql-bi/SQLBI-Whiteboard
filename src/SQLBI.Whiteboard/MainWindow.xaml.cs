@@ -84,7 +84,7 @@ public partial class MainWindow : Window
 
     /// <summary>
     /// The name Save offers for a board no file holds yet, when it came from something
-    /// that had one: a PowerPoint deck opened as a board.
+    /// that had one: a PowerPoint deck or a Microsoft Whiteboard export opened as a board.
     /// </summary>
     private string? _untitledBoardName;
 
@@ -7681,7 +7681,7 @@ public partial class MainWindow : Window
         {
             Title = "Import",
             Filter =
-                "Importable files|*.pptx;*.wimport;*.png;*.jpg;*.jpeg;*.bmp;*.gif;*.svg|PowerPoint deck|*.pptx|Whiteboard import|*.wimport|Images|*.png;*.jpg;*.jpeg;*.bmp;*.gif;*.svg",
+                "Importable files|*.pptx;*.zip;*.wimport;*.png;*.jpg;*.jpeg;*.bmp;*.gif;*.svg|PowerPoint deck|*.pptx|Microsoft Whiteboard export|*.zip|Whiteboard import|*.wimport|Images|*.png;*.jpg;*.jpeg;*.bmp;*.gif;*.svg",
             Multiselect = false,
         };
         if (dialog.ShowDialog(this) != true)
@@ -7696,6 +7696,17 @@ public partial class MainWindow : Window
                 return;
             case DroppedFileKind.Deck:
                 ImportDeck(dialog.FileName, newBoard: false);
+                return;
+            case DroppedFileKind.MicrosoftWhiteboard:
+                await ImportMicrosoftWhiteboardAsync(dialog.FileName, newBoard: false);
+                return;
+            case DroppedFileKind.Unsupported when string.Equals(
+                Path.GetExtension(dialog.FileName),
+                MicrosoftWhiteboardExport.ArchiveExtension,
+                StringComparison.OrdinalIgnoreCase):
+                ShowError(
+                    "Could not import",
+                    new InvalidDataException($"{Path.GetFileName(dialog.FileName)} is not a Microsoft Whiteboard export."));
                 return;
         }
 
@@ -8545,7 +8556,7 @@ public partial class MainWindow : Window
         {
             Title = "Open",
             Filter =
-                "Whiteboard|*.wboard;*.wimport;*.pptx|Whiteboard document|*.wboard|Whiteboard import|*.wimport|PowerPoint deck|*.pptx",
+                "Whiteboard|*.wboard;*.wimport;*.pptx;*.zip|Whiteboard document|*.wboard|Whiteboard import|*.wimport|PowerPoint deck|*.pptx|Microsoft Whiteboard export|*.zip",
             Multiselect = false,
         };
         if (dialog.ShowDialog(this) != true)
@@ -8569,6 +8580,26 @@ public partial class MainWindow : Window
             }
 
             ImportDeck(filePath, newBoard: true);
+            return;
+        }
+
+        if (string.Equals(Path.GetExtension(filePath), MicrosoftWhiteboardExport.ArchiveExtension, StringComparison.OrdinalIgnoreCase))
+        {
+            if (DroppedFileImport.Classify(filePath) != DroppedFileKind.MicrosoftWhiteboard)
+            {
+                ShowError(
+                    "Could not open",
+                    new InvalidDataException($"{Path.GetFileName(filePath)} is not a Microsoft Whiteboard export."));
+                return;
+            }
+
+            if (confirmDiscard &&
+                !ConfirmDiscardUnsaved("Open this Microsoft Whiteboard export as a new board? Any unsaved changes will be lost."))
+            {
+                return;
+            }
+
+            await ImportMicrosoftWhiteboardAsync(filePath, newBoard: true);
             return;
         }
 
@@ -8897,6 +8928,13 @@ public partial class MainWindow : Window
                     continue;
                 }
 
+                if (kind == DroppedFileKind.MicrosoftWhiteboard)
+                {
+                    await ImportMicrosoftWhiteboardAsync(path, newBoard: false);
+                    imported++;
+                    continue;
+                }
+
                 var center = worldPoint + new PointD(imported * 24, imported * 24);
                 switch (kind)
                 {
@@ -9034,6 +9072,90 @@ public partial class MainWindow : Window
         CameraChanged();
         UpdateLiveViewActionOverlay();
         UpdateWindowTitle();
+    }
+
+    /// <summary>
+    /// Brings a board exported from Microsoft Whiteboard in as strokes and pictures. A
+    /// new board keeps the export's layout and takes its name as the one Save offers; an
+    /// existing board gets it below what it holds, as one step to undo.
+    /// </summary>
+    private async Task ImportMicrosoftWhiteboardAsync(string filePath, bool newBoard)
+    {
+        CommitTextEdit();
+        MicrosoftWhiteboardExport board;
+        var previousCursor = Mouse.OverrideCursor;
+        Mouse.OverrideCursor = Cursors.Wait;
+        try
+        {
+            board = await Task.Run(() => MicrosoftWhiteboardExport.Read(filePath));
+        }
+        catch (Exception exception)
+        {
+            ShowError("Could not import Microsoft Whiteboard", exception);
+            return;
+        }
+        finally
+        {
+            Mouse.OverrideCursor = previousCursor;
+        }
+
+        if (board.Items.Count == 0)
+        {
+            MessageBox.Show(
+                this,
+                $"{Path.GetFileName(filePath)} has nothing to import.",
+                "Import Microsoft Whiteboard",
+                MessageBoxButton.OK,
+                MessageBoxImage.Information);
+            return;
+        }
+
+        if (newBoard)
+        {
+            ReplaceDocument(new BoardDocument());
+            _currentBoardPath = null;
+            ResetBoardView();
+            _untitledBoardName = Path.GetFileNameWithoutExtension(filePath);
+        }
+
+        var placed = board.Place(
+            _document.ContentBounds,
+            _document.NextZIndex,
+            new WpfBoardTextMeasure(SurfacePixelsPerDip));
+        var command = new AddImportCommand(placed.Objects, placed.Assets);
+        if (newBoard)
+        {
+            // Same as a deck opened as a board: the history starts empty, and the
+            // board is marked unsaved because no file holds it yet.
+            command.Execute(_document);
+            _history.Clear();
+            MarkDirtyOutsideHistory();
+        }
+        else
+        {
+            _history.Execute(command, _document);
+        }
+
+        SceneSurface.InvalidateAssets();
+        SelectOnly(null);
+        SetActiveTool(BoardTool.Select);
+        _camera.Frame(placed.Bounds);
+        CameraChanged();
+        UpdateLiveViewActionOverlay();
+        UpdateWindowTitle();
+
+        if (board.Skipped.Count > 0)
+        {
+            var list = string.Join(
+                "\n",
+                board.Skipped.Select(pair => $"{pair.Key}: {pair.Value}"));
+            MessageBox.Show(
+                this,
+                $"These objects have no counterpart in SQLBI Whiteboard and were not imported:\n\n{list}",
+                "Import Microsoft Whiteboard",
+                MessageBoxButton.OK,
+                MessageBoxImage.Information);
+        }
     }
 
     private async Task ImportRecipeAsync(

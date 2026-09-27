@@ -17,6 +17,7 @@ using SQLBI.Whiteboard.SqlServer;
 
 ImportLayoutSmokeTests.Run();
 PenStraightLineSmokeTests.Run();
+MicrosoftWhiteboardSmokeTests.Run();
 
 Assert(!new AppSettings().PauseLiveViewsWhenUnfocused &&
     !AppSettingsSerializer.Parse("{}").PauseLiveViewsWhenUnfocused &&
