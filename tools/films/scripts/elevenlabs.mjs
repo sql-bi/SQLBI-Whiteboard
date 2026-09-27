@@ -75,15 +75,18 @@ async function voice() {
   const voiceId = option('voice');
   if (!voiceId) throw new Error('--voice <voice_id> is required; "status" lists your voices');
   const model = option('model', 'eleven_multilingual_v2');
+  // 1.0 is the voice's own pace; the API accepts 0.7 to 1.2. A read that runs past the
+  // film's length is brought back with a value above 1 before any pause is shortened.
+  const speed = Number(option('speed', '1'));
   const text = await scriptText();
-  console.log(`${text.split(/\s+/).length} words → ${model}, voice ${voiceId}`);
+  console.log(`${text.split(/\s+/).length} words → ${model}, voice ${voiceId}, speed ${speed}`);
   const response = await call(`/text-to-speech/${voiceId}?output_format=mp3_44100_128`, {
     method: 'POST',
     headers: { 'content-type': 'application/json' },
     body: JSON.stringify({
       text,
       model_id: model,
-      voice_settings: { stability: 0.55, similarity_boost: 0.8, style: 0.1, use_speaker_boost: true },
+      voice_settings: { stability: 0.55, similarity_boost: 0.8, style: 0.1, use_speaker_boost: true, speed },
     }),
   });
   const out = path.join(audioDir, `${film}-vo.mp3`);
