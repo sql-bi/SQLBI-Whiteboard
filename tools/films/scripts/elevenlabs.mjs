@@ -57,10 +57,16 @@ async function status() {
   for (const x of own) console.log(`voice: ${x.name} | id: ${x.voice_id} | ${x.category}`);
 }
 
-// The script section of audio/<film>-vo.txt: the paragraph between "Script" and "Beats".
+// The text to read is the last paragraph of the "Read" section of audio/<film>-vo.txt when
+// that section exists (the script with <break> tags), and otherwise the "Script" section.
 async function scriptText() {
   const text = await readFile(path.join(audioDir, `${film}-vo.txt`), 'utf8');
-  const match = text.match(/Script\r?\n-+\r?\n\r?\n([\s\S]*?)\r?\n\r?\nBeats/);
+  const read = text.match(/\nRead\r?\n-+\r?\n([\s\S]*?)\r?\n\r?\nBeats/);
+  if (read) {
+    const paragraphs = read[1].trim().split(/\r?\n\r?\n/);
+    return paragraphs[paragraphs.length - 1].trim();
+  }
+  const match = text.match(/Script\r?\n-+\r?\n\r?\n([\s\S]*?)\r?\n\r?\n(Read|Beats)/);
   if (!match) throw new Error(`could not find the Script section in ${film}-vo.txt`);
   return match[1].trim();
 }

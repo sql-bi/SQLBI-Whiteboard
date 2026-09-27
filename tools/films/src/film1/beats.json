@@ -2,11 +2,11 @@
   "durationSeconds": 30,
   "beats": [
     {"id": "board", "start": 0},
-    {"id": "retire", "start": 4},
-    {"id": "rewind", "start": 8},
-    {"id": "export", "start": 11},
-    {"id": "open", "start": 17},
-    {"id": "saved", "start": 23},
-    {"id": "end", "start": 27}
+    {"id": "retire", "start": 3.3},
+    {"id": "rewind", "start": 6.4},
+    {"id": "export", "start": 9.3},
+    {"id": "open", "start": 13.0},
+    {"id": "saved", "start": 21.8},
+    {"id": "end", "start": 26.4}
   ]
 }
