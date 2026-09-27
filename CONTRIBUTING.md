@@ -161,7 +161,10 @@ apply to all of them.
   and what they get. A feature is one paragraph of two to four sentences, in the voice and
   at the length of the paragraphs around it. A setting is a phrase in the Preferences
   paragraph of the guide and, at most, one sentence in the paragraph about the thing it
-  changes.
+  changes. The guide says what is possible and what the result looks like. It is not the
+  instruction manual, so it does not walk through commands step by step, and a figure
+  caption describes what the figure shows. Steps belong on a page of their own, such as
+  `export-microsoft-whiteboard.html`, and the guide links to it.
 - **`CHANGELOG.md`**, which becomes the GitHub release body and the What's new page, is
   plain and technically accurate: one `###` per thing a person notices, two to four lines
   each, saying what changed and what it is for. A bug entry names the symptom and the fix,
