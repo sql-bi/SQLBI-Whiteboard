@@ -1,0 +1,12 @@
+{
+  "durationSeconds": 30,
+  "beats": [
+    {"id": "board", "start": 0},
+    {"id": "retire", "start": 4},
+    {"id": "rewind", "start": 8},
+    {"id": "export", "start": 11},
+    {"id": "open", "start": 17},
+    {"id": "saved", "start": 23},
+    {"id": "end", "start": 27}
+  ]
+}
