@@ -18,8 +18,9 @@ How the project is developed and shipped is documented separately:
 - Basic palm rejection: touch navigation is suspended when the pen makes contact
 - Mouse-wheel zoom and middle-button or temporary Space-key panning
 - Whole-stroke erasing
-- PNG, JPEG, BMP, GIF, and SVG import, clipboard bitmap paste, and Explorer drag-and-drop of images, text files, `.wimport` recipes, and PowerPoint decks
+- PNG, JPEG, BMP, GIF, and SVG import, clipboard bitmap paste, and Explorer drag-and-drop of images, text files, `.wimport` recipes, PowerPoint decks, and Microsoft Whiteboard exports
 - PowerPoint decks imported as one picture per slide through PowerPoint from Microsoft 365: SVG, or PNG for a slide whose fonts are not installed, placed in one row per section, with an optional frame around each slide. **File → Open** creates a new board from the deck; **File → Import** and drag-and-drop add it below the board's content
+- Boards exported from Microsoft Whiteboard as a `.zip` imported with their ink, pictures, shapes, sticky notes, text, connectors, links, and comments, and the pen's varying width kept. **File → Open** creates a new board from the export; **File → Import** and drag-and-drop add it below the board's content. [docs/microsoft-whiteboard-import.md](docs/microsoft-whiteboard-import.md) lists what is not carried over
 - SVG is stored as its markup and redrawn as vectors at every zoom and resize. Pasting SVG markup that was copied as text — the output of a DAX SVG measure, for instance — creates a picture, and copying an SVG container puts both the markup and a bitmap on the clipboard. Text set in a Microsoft 365 font such as Aptos is drawn in that font when Office has it on the machine
 - Image selection, movement, resizing, and deletion
 - Text containers created by pasting plain text, with display and in-place edit modes
@@ -212,7 +213,7 @@ Use **Copy settings** after finding a useful combination so the exact values can
 | Ctrl+Enter | Commit the F2 edit, including an F6 format done in that session, and return to display mode |
 | Escape | Cancel the active text edit, clear the selection, put down an Insert tool, close the command strip, or leave full screen or canvas only |
 | Ctrl+S / Ctrl+O | Save / open a board |
-| File > Import | Add a PowerPoint deck, an image, or a `.wimport` recipe to the board. Letter I while the File strip is open |
+| File > Import | Add a PowerPoint deck, a Microsoft Whiteboard export, an image, or a `.wimport` recipe to the board. Letter I while the File strip is open |
 | Shift+F12 | Save As |
 | Ctrl+E | Export the board to PowerPoint or PDF |
 | Delete | Delete the selected container and its linked strokes |

@@ -13,6 +13,11 @@ public enum DroppedFileKind
     /// A PowerPoint deck, brought in one picture per slide through PowerPoint.
     /// </summary>
     Deck = 4,
+
+    /// <summary>
+    /// A board exported from Microsoft Whiteboard as a ZIP, brought in as ink and pictures.
+    /// </summary>
+    MicrosoftWhiteboard = 5,
 }
 
 public static class DroppedFileImport
@@ -48,6 +53,15 @@ public static class DroppedFileImport
         if (string.Equals(extension, DeckExtension, StringComparison.OrdinalIgnoreCase))
         {
             return DroppedFileKind.Deck;
+        }
+
+        // Only the archive's directory is read, so this is cheap enough for a drag.
+        // Any other ZIP is refused rather than being tried as text.
+        if (string.Equals(extension, MicrosoftWhiteboardExport.ArchiveExtension, StringComparison.OrdinalIgnoreCase))
+        {
+            return MicrosoftWhiteboardExport.IsExport(path)
+                ? DroppedFileKind.MicrosoftWhiteboard
+                : DroppedFileKind.Unsupported;
         }
 
         if (string.Equals(extension, ".wboard", StringComparison.OrdinalIgnoreCase))

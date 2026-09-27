@@ -17,6 +17,14 @@ broke. The heading is parsed by `scripts/release-notes.ps1`, so keep its shape; 
 under it is ordinary Markdown, and the renderer handles paragraphs, lists, links, `code`
 and **bold**.
 
+## 1.7.0 - 27 September 2026
+
+### Bring a Microsoft Whiteboard board across
+**File → Open** the `.zip` that Microsoft Whiteboard exports to create a board from it, or
+use **File → Import** or drag the file onto a board to add it below its content. Ink keeps
+its pen widths, and pictures, shapes, sticky notes, text, connectors, links, and comments
+come across. Anything left out is listed after the import.
+
 ## 1.6.3 - 26 September 2026
 
 ### Bring a PowerPoint deck onto the board
