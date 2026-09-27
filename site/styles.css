@@ -1003,6 +1003,12 @@ footer a:hover { color: var(--ink); text-decoration: underline; }
   .fig.is-visible .f14-3 { animation: fig-pop 6.5s ease .5s infinite both; }
   .fig.is-visible .f14-4 { animation: fig-pop 6.5s ease .75s infinite both; }
   .fig.is-visible .f14-5 { animation: fig-pop 6.5s ease 1s infinite both; }
+
+  .fig.is-visible .f15-1 { animation: fig-pop 6.5s ease infinite both; }
+  .fig.is-visible .f15-2 { animation: fig-pop 6.5s ease .25s infinite both; }
+  .fig.is-visible .f15-3 { animation: fig-pop 6.5s ease .5s infinite both; }
+  .fig.is-visible .f15-4 { animation: fig-pop 6.5s ease .75s infinite both; }
+  .fig.is-visible .f15-5 { animation: fig-pop 6.5s ease 1s infinite both; }
 }
 
 /* The container carries its ink out, holds, and is put back. */
@@ -1113,7 +1119,8 @@ footer a:hover { color: var(--ink); text-decoration: underline; }
 .fig .f8-a, .fig .f8-b, .fig .f8-c,
 .fig .f10-q, .fig .f10-a, .fig .f10-b, .fig .f10-c,
 .fig .f13-before, .fig .f13-restart, .fig .f13-after,
-.fig .f14-1, .fig .f14-2, .fig .f14-3, .fig .f14-4, .fig .f14-5 {
+.fig .f14-1, .fig .f14-2, .fig .f14-3, .fig .f14-4, .fig .f14-5,
+.fig .f15-1, .fig .f15-2, .fig .f15-3, .fig .f15-4, .fig .f15-5 {
   transform-box: fill-box;
   transform-origin: center;
 }
