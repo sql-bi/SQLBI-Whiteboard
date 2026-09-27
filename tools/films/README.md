@@ -81,15 +81,27 @@ check them against the real captures in `npm run studio` and correct them there.
 ## Voice and music
 
 The voice is `audio\film1-vo.mp3`. [audio/film1-vo.txt](audio/film1-vo.txt) holds the
-script to paste into ElevenLabs and the phrase each beat covers. Until the file exists the
-film carries a silent audio track of the same length.
+script and the phrase each beat covers. Until the file exists the film carries a silent
+audio track of the same length.
 
-The start of each beat is in `src/film1/beats.json`. Once the voice exists, find where each
-phrase starts and move the beats there. The pauses between phrases are listed by:
+`scripts/elevenlabs.mjs` generates both audio files with the ElevenLabs API. It reads the
+key from the `ELEVENLABS_API_KEY` environment variable and writes it nowhere. A key made in
+the ElevenLabs account page needs the Text to Speech, Voices (read), Models (read), User
+(read), and Music permissions. Set the variable in the user profile once, then run from a
+new terminal:
 
 ```powershell
-ffmpeg -i audio\film1-vo.mp3 -af silencedetect=noise=-35dB:d=0.25 -f null -
+node scripts\elevenlabs.mjs status                       # plan, credits, and your cloned voices with their ids
+node scripts\elevenlabs.mjs voice --voice <voice_id>     # the script in film1-vo.txt → audio\film1-vo.mp3
+node scripts\elevenlabs.mjs music --seconds 30           # an instrumental bed → audio\film1-bed.mp3
+node scripts\elevenlabs.mjs timings                      # where each phrase starts in the voice track
+node scripts\elevenlabs.mjs timings --write              # and move the beats in beats.json there
 ```
+
+`voice` uses `eleven_multilingual_v2`; pass `--model eleven_v3` for the newer model.
+`music` takes `--prompt` to replace the default calm instrumental brief. `timings` finds
+the pauses with ffmpeg's silencedetect, so a read with a pause inside a phrase, or none
+between two phrases, gives the wrong count; then set `src/film1/beats.json` by hand.
 
 The music bed, when there is one, is `audio\film1-bed.mp3`. It plays 22 dB below the voice
 and fades out under the end card. Without it the film has no music. The MP3 files are not
