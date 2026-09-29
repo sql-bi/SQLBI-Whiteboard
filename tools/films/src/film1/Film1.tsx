@@ -24,7 +24,7 @@ const beat = (id: BeatId): {start: number; end: number} => {
 
 // The on-screen text of each beat. It is final copy, and the captions of the film.
 const captions: [BeatId, string][] = [
-  ['board', 'A board in the Microsoft Whiteboard app.'],
+  ['board', 'A board in the Microsoft Whiteboard app, on a personal account.'],
   ['retire', 'On 16 October 2026 the app stops opening.'],
   ['rewind', 'Before then, export each board.'],
   ['export', 'Settings, Export, Zip (HTML+JSON).'],
