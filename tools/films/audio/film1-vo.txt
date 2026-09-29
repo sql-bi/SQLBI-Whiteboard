@@ -1,0 +1,38 @@
+Film 1, "Export before 16 October": voiceover
+==============================================
+
+Paste the script below into ElevenLabs as one unhurried read, and save the result as
+audio/film1-vo.mp3. The film is 30 seconds long and the read must fit inside it.
+
+Script
+------
+
+If you use Microsoft Whiteboard with a personal account, the app stops opening on the sixteenth of October. Before then, export each board: Settings, Export, Zip. SQLBI Whiteboard opens that ZIP as a board on your PC — ink, shapes, sticky notes, pictures, and comments. It is free and open source, and it keeps your boards after the deadline. The guide is at whiteboard dot sqlbi dot com.
+
+Read
+----
+
+The same words with pauses for the generator, because the three export steps need time
+on screen for the capture's three clicks, and with SQLBI spelled the way it is said:
+"Sequel BI" in the sentence, because "Sequel B I" put a pause between the two parts there,
+and "Sequel B I" in the address, where the same voice said it without one.
+`scripts/elevenlabs.mjs voice` reads this section when it exists and the Script section
+otherwise.
+
+If you use Microsoft Whiteboard with a personal account, the app stops opening on the sixteenth of October. Before then, export each board: <break time="0.5s" /> Settings, <break time="0.5s" /> Export, <break time="0.5s" /> Zip. <break time="0.4s" /> Sequel BI Whiteboard opens that ZIP as a board on your PC — ink, shapes, sticky notes, pictures, and comments. It is free and open source, and it keeps your boards after the deadline. The guide is at whiteboard dot Sequel B I dot com.
+
+Beats
+-----
+
+The start times are the ones in src/film1/beats.json. Once the voice track exists, read
+where each phrase starts in it and move the beat starts there.
+
+| Beat   | Starts | On screen                                   | The voice covers                                                  |
+| ------ | ------ | ------------------------------------------- | ----------------------------------------------------------------- |
+| board  | 0.0 s  | The Microsoft Whiteboard app (C1)           | If you use Microsoft Whiteboard with a personal account,          |
+| retire | 4.0 s  | The calendar turns to 16 October 2026       | the app stops opening on the sixteenth of October.                |
+| rewind | 8.0 s  | The calendar turns back                     | Before then, export each board:                                   |
+| export | 11.0 s | Settings, Export, Zip (C2)                  | Settings, Export, Zip.                                            |
+| open   | 17.0 s | The ZIP moves to SQLBI Whiteboard (C3)      | SQLBI Whiteboard opens that ZIP as a board on your PC — ink, shapes, sticky notes, pictures, and comments. |
+| saved  | 23.0 s | The saved board, Workshop.wboard (C4)       | It is free and open source, and it keeps your boards after the deadline. |
+| end    | 27.0 s | End card                                    | The guide is at whiteboard dot sqlbi dot com.                     |

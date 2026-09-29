@@ -1,0 +1,6 @@
+node_modules/
+out/
+captures/
+audio/*.mp3
+# Filled from captures/ and audio/ by scripts/prepare-media.mjs before each preview or render.
+public/

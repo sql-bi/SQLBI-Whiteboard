@@ -1,0 +1,30 @@
+{
+  "name": "sqlbi-whiteboard-films",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "studio": "node scripts/prepare-media.mjs && remotion studio src/index.ts",
+    "typecheck": "tsc -p .",
+    "stills": "node scripts/stills.mjs",
+    "render:16x9": "node scripts/render.mjs 16x9",
+    "render:1x1": "node scripts/render.mjs 1x1",
+    "render:4x5": "node scripts/render.mjs 4x5",
+    "render:9x16": "node scripts/render.mjs 9x16",
+    "render:poster": "node scripts/render.mjs poster",
+    "render:all": "node scripts/render.mjs all"
+  },
+  "dependencies": {
+    "@remotion/bundler": "4.0.529",
+    "@remotion/cli": "4.0.529",
+    "@remotion/renderer": "4.0.529",
+    "react": "19.3.0",
+    "react-dom": "19.3.0",
+    "remotion": "4.0.529"
+  },
+  "devDependencies": {
+    "@types/node": "26.6.3",
+    "@types/react": "19.3.0",
+    "typescript": "7.0.2"
+  }
+}
