@@ -17,6 +17,12 @@ broke. The heading is parsed by `scripts/release-notes.ps1`, so keep its shape; 
 under it is ordinary Markdown, and the renderer handles paragraphs, lists, links, `code`
 and **bold**.
 
+## 1.7.1 - 29 September 2026
+
+### Import boards made with older versions of Microsoft Whiteboard
+Ovals, rectangles, and pictures from boards made with older versions of Microsoft
+Whiteboard now come across. The import used to list them as left out.
+
 ## 1.7.0 - 27 September 2026
 
 ### Bring a Microsoft Whiteboard board across
