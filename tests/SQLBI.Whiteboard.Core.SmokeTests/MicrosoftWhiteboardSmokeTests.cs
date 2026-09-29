@@ -131,6 +131,7 @@ internal static class MicrosoftWhiteboardSmokeTests
 
         RunArchive();
         RunObjects();
+        RunOlderObjects();
     }
 
     /// <summary>
@@ -287,6 +288,53 @@ internal static class MicrosoftWhiteboardSmokeTests
         var comment = placed.Objects.OfType<TextBoardObject>().Single(text => text.Title == "Comment");
         Assert(comment.Bounds.Left > placed.Objects.Where(item => item != comment).Max(item => item.Bounds.Right),
             "A comment goes in a column to the right of everything else.");
+    }
+
+    /// <summary>
+    /// Objects written by older versions of the app, as found on boards made years ago.
+    /// </summary>
+    private static readonly string OlderObjectsPage = $$"""
+        <html><body><div id="canvasContent" class="contentOrigin">
+        <div class="anchor align center" data-whiteboard-type="LegacyEllipse" style="left: 400px; top: 300px;">
+          <div class="canvasChild"><svg class="shape ellipse" height="120" width="140">
+            <ellipse class="interactive" cx="70" cy="60" rx="60" ry="70" stroke="rgba(231,18,36,1)" style="fill: transparent; stroke-width: 4; padding: 0px;"></ellipse></svg></div>
+        </div>
+        <div class="anchor align topLeft" data-whiteboard-type="LegacyPolygon" style="left: 100px; top: 50px; transform: matrix(2, 0, 0, 2, 0, 0);">
+          <div class="canvasChild"><svg class="shape polygon" height="100" width="200">
+            <polygon class="interactive" points="200, 0, 0, 4.5e-13, 3.4e-13, 100, 200, 100" stroke="rgba(0,105,191,1)" style="fill: transparent; stroke-width: 4; padding: 0px;"></polygon></svg></div>
+        </div>
+        <div class="anchor align topLeft" data-whiteboard-type="LegacyPolygon" style="left: 0px; top: 0px;">
+          <div class="canvasChild"><svg class="shape polygon" height="100" width="100">
+            <polygon class="interactive" points="50, 0, 100, 100, 0, 100" stroke="rgba(0,0,0,1)" style="fill: rgba(255,0,0,1); stroke-width: 2; padding: 0px;"></polygon></svg></div>
+        </div>
+        <div class="anchor align center" data-whiteboard-type="AzureImage" style="left: 500px; top: 500px; transform: matrix(4, 0, 0, 4, 0, 0);">
+          <div class="content imageComponent" style="height: 50px; width: 100px;"><img src="data:image/*;base64,{{OnePixelPng}}"></div>
+        </div>
+        </div></body></html>
+        """;
+
+    private static void RunOlderObjects()
+    {
+        var board = MicrosoftWhiteboardExport.Parse(OlderObjectsPage, "Older");
+        Assert(board.Skipped.Count == 0 && board.Items.Count == 4,
+            "Ellipses, polygons, and pictures from older versions of the app are all read.");
+
+        var ellipse = (MicrosoftWhiteboardShape)board.Items[0];
+        Assert(ellipse is { Kind: ShapeKind.Ellipse, Width: 120, Height: 140, OutlineArgb: 0xFFE71224, FillArgb: null, Thickness: 4 } &&
+               ellipse.Center == new PointD(400, 300),
+            "An ellipse is centered on its anchor and has the radii the page draws, not the size of its box.");
+
+        var rectangle = (MicrosoftWhiteboardShape)board.Items[1];
+        Assert(rectangle is { Kind: ShapeKind.RoundedRectangle, Width: 400, Height: 200, Thickness: 8 } &&
+               rectangle.Center == new PointD(300, 150),
+            "A polygon's corners start at its anchor, and the anchor's scale applies to them.");
+
+        Assert(board.Items[2] is MicrosoftWhiteboardShape { Kind: ShapeKind.Triangle, FillArgb: 0xFFFF0000 },
+            "A polygon's kind comes from its corners, and its fill from its style.");
+
+        Assert(board.Items[3] is MicrosoftWhiteboardImage { ContentType: "image/png" } picture &&
+               picture.Bounds == new RectD(300, 400, 400, 200),
+            "A picture from the older image service is read as any other picture.");
     }
 
     private static void RunArchive()

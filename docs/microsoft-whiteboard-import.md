@@ -1,12 +1,13 @@
 # Microsoft Whiteboard import
 
-**Implemented in 1.7.0.** This document records what a Microsoft Whiteboard
-export contains, how the importer maps it onto a board, and what it cannot carry over.
-Microsoft retires its standalone Whiteboard apps on 16 October 2026 (see
-[retirement](retirement/README.md)), and the export is the only way to take a board out of
-it. The format is undocumented. Everything below was established from eight exports of
+**Implemented in 1.7.0**, with the objects of older versions of the app in 1.7.1. This
+document records what a Microsoft Whiteboard export contains, how the importer maps it
+onto a board, and what it cannot carry over. Microsoft retires its standalone Whiteboard
+apps on 16 October 2026 (see [retirement](retirement/README.md)), and the export is the
+only way to take a board out of it. The format is undocumented. Everything below was established from eight exports of
 real teaching boards and one test board holding every kind of object the Windows client
-offers, made between 20 and 27 September 2026.
+offers, made between 20 and 27 September 2026. Six more teaching boards, exported on 29
+September, added the objects that older versions of the app wrote, which 1.7.1 reads.
 
 ## Where it starts
 
@@ -35,8 +36,9 @@ no model of the board beyond what it draws.
 - An anchor is a box of no size at `left` and `top`, in canvas pixels. Its inline
   `transform: matrix(a, b, c, d, e, f)` scales, turns, and moves the object around that
   point, because the transform origin of a zero-size box is its position. Ink, text,
-  notes, grids, and connectors start at the point; shapes and pictures are centered on
-  it. The inline transform overrides the `translate(-50%, -50%)` of the `center` class.
+  notes, grids, connectors, and older polygons start at the point; shapes, older
+  ellipses, and pictures are centered on it. The inline transform overrides the
+  `translate(-50%, -50%)` of the `center` class.
 - Text is a Draft.js editor: one `div[data-block]` per line, with the characters in
   `span[data-text]`. The editor's `textBoxCore` style carries color, family, weight,
   italic, and underline for the whole object; no board in the samples styles a run.
@@ -50,9 +52,12 @@ no model of the board beyond what it draws.
 | --- | --- |
 | `InkGroup` | An SVG with a view box whose origin sits at the anchor, class `PenStroke`, `Highlighter`, or `Mixed`. One `g.inkStroke` per stroke with `transform="matrix(0.0078125, …)"`: 1/128 of a pixel. Inside it, a filled `path` outline and a `polyline.inkHitTestOverlay` centerline. |
 | `FluidImage` | `div.imageComponent` with the size, and an `img` with a base64 data URI labelled `text/plain` whatever the picture is. |
+| `AzureImage` | A picture on a board made with an older version of the app, written as a `FluidImage` is, with the data URI labelled `image/*`. |
 | `DocumentPage` | A page of an inserted PDF, written as a `FluidImage` is. |
 | `ReactionStickers` | A sticker, written as a 64 × 64 `FluidImage` with an SVG data URI. |
 | `Shape` | An SVG whose `g` has `fill`, `stroke`, and `stroke-width` (in `pt`), and whose `path` draws the outline around the middle of the box. The shape's text sits in `div.textBoxContainer`. |
+| `LegacyEllipse` | A shape from an older version of the app: an SVG `ellipse` with the outline in its `stroke` attribute and the width and fill in its style. The radii can differ from the SVG's box, in proportion as well as in size, and the page draws the radii. |
+| `LegacyPolygon` | A shape from an older version of the app: an SVG `polygon` whose points start at the anchor, styled as a `LegacyEllipse` is. Every sample is a rectangle. |
 | `Note` | A sticky note: `div.textBoxBackground` with a color class such as `softBlueGradient`, a 40-pixel author bar, and `div.stickyNote` with the text area's size and font size. |
 | `GridList` | A note grid: a title editor, then `div.listChild` notes in a CSS grid of `repeat(n, auto)` columns. |
 | `PlainText` | A text box: `div.textbox.plainText` with `max-width` and `font-size`, inside a wrapper whose `justify-content` centers the text in a wider box when the text is centered. |
@@ -104,6 +109,7 @@ Windows client offers, from `paleYellowGradient` (#FEE15A) to `grayGradient` (#C
 | Picture, document page, sticker | `BoardAsset` with the sniffed type, and an `ImageBoardObject` |
 | Turned picture | An SVG asset that draws the picture turned, in the box it covers |
 | Shape | `ShapeBoardObject` of the kind its outline has, with fill, outline, angle, and text |
+| Older ellipse or polygon | `ShapeBoardObject`, an oval with the ellipse's radii or the kind the polygon's corners have, without text |
 | Sticky note | `ShapeBoardObject`, rounded rectangle in the note's color, with the note's text |
 | Note grid | A white rounded rectangle for the panel, a label for the title, and one note per cell |
 | Text box | `FreeTextBoardObject`, wrapped into the lines the box showed |
@@ -201,11 +207,14 @@ rotated in the Windows client, with the mouse, the pen, or touch.
 
 Each sample was opened in the application and compared with the same page rendered by
 Edge, fitted to the same content. Positions, picture sizes, scaled ink groups, and colors
-matched on all eight teaching boards. Regions with pressure-drawn handwriting and with
-highlighters were compared at 150% against a WPF rendering that uses the application's own
-drawing attributes. The test board was compared region by region in the application:
+matched on all eight teaching boards. The six later boards were opened in the
+application, where the older ellipses, rectangles, and pictures sit in place against the
+ink drawn around them. Regions with pressure-drawn handwriting and with highlighters were
+compared at 150% against a WPF rendering that uses the application's own drawing
+attributes. The test board was compared region by region in the application:
 ink, text boxes, notes, the note grid, shapes, connectors, pictures, the template, and the
 comments. The Core smoke tests cover the transforms, width recovery, highlighter
 classification, shape kinds and quarter turns, notes, grids, wrapping and centering,
 connector binding, links, comments, turned pictures, Galaxy ink, placement, container
-binding, and recognizing the ZIP, on two synthetic pages built like an export.
+binding, the objects of older versions, and recognizing the ZIP, on three synthetic pages
+built like an export.

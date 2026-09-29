@@ -160,6 +160,7 @@ public sealed partial class MicrosoftWhiteboardExport
                     items.AddRange(ReadInkGroup(anchor, tags));
                     break;
                 case "FluidImage":
+                case "AzureImage":
                 case "DocumentPage":
                 case "ReactionStickers":
                     if (ReadImage(anchor, tags) is { } image)
@@ -172,6 +173,14 @@ public sealed partial class MicrosoftWhiteboardExport
                     if (ReadShape(anchor, tags) is { } shape)
                     {
                         items.Add(shape);
+                    }
+
+                    break;
+                case "LegacyEllipse":
+                case "LegacyPolygon":
+                    if (ReadLegacyShape(anchor, tags) is { } legacy)
+                    {
+                        items.Add(legacy);
                     }
 
                     break;
@@ -385,6 +394,82 @@ public sealed partial class MicrosoftWhiteboardExport
             CssLength(group.Attribute("stroke-width"), 2) * anchor.Scale,
             ReadText(tags, 0, tags.Count),
             ReadFont(core?.Attribute("style"), fontSize * anchor.Scale, defaultBold: true));
+    }
+
+    /// <summary>
+    /// A shape from an older version of the app, drawn by a plain SVG ellipse or polygon
+    /// with its outline in the element's style. An ellipse is centered on its anchor and
+    /// its radii can disagree with the SVG's box, so the radii are what the page draws.
+    /// A polygon's corners start at its anchor.
+    /// </summary>
+    private static MicrosoftWhiteboardShape? ReadLegacyShape(Anchor anchor, List<HtmlTag> tags)
+    {
+        var svg = tags.FirstOrDefault(tag => tag.Name == "svg" && tag.HasClass("shape"));
+        var element = tags.FirstOrDefault(tag => tag.Name is "ellipse" or "polygon");
+        if (svg is null || element is null)
+        {
+            return null;
+        }
+
+        PointD center;
+        double width;
+        double height;
+        ShapeKind kind;
+        if (element.Name == "ellipse")
+        {
+            var boxWidth = Numbers(svg.Attribute("width")).FirstOrDefault();
+            var boxHeight = Numbers(svg.Attribute("height")).FirstOrDefault();
+            var cx = Numbers(element.Attribute("cx")).FirstOrDefault();
+            var cy = Numbers(element.Attribute("cy")).FirstOrDefault();
+            center = new PointD(cx - (boxWidth / 2), cy - (boxHeight / 2));
+            width = 2 * Numbers(element.Attribute("rx")).FirstOrDefault();
+            height = 2 * Numbers(element.Attribute("ry")).FirstOrDefault();
+            kind = ShapeKind.Ellipse;
+        }
+        else
+        {
+            var numbers = Numbers(element.Attribute("points"));
+            var corners = new List<PointD>();
+            for (var index = 0; index + 1 < numbers.Count; index += 2)
+            {
+                corners.Add(new PointD(numbers[index], numbers[index + 1]));
+            }
+
+            if (corners.Count < 3)
+            {
+                return null;
+            }
+
+            var left = corners.Min(point => point.X);
+            var top = corners.Min(point => point.Y);
+            width = corners.Max(point => point.X) - left;
+            height = corners.Max(point => point.Y) - top;
+            center = new PointD(left + (width / 2), top + (height / 2));
+            var outline = "M" + string.Join(
+                " L",
+                corners.Select(point => string.Create(
+                    CultureInfo.InvariantCulture,
+                    $"{point.X - center.X},{point.Y - center.Y}")));
+            kind = ClassifyShape(outline, width, height);
+        }
+
+        if (width <= 0 || height <= 0)
+        {
+            return null;
+        }
+
+        var style = element.Attribute("style");
+        return new MicrosoftWhiteboardShape(
+            anchor.ToCanvas(center),
+            width * anchor.Scale,
+            height * anchor.Scale,
+            anchor.AngleDegrees,
+            kind,
+            PaintOrNull(StyleValue(style, "stroke") ?? element.Attribute("stroke")) ?? Transparent,
+            PaintOrNull(StyleValue(style, "fill") ?? element.Attribute("fill")),
+            CssLength(StyleValue(style, "stroke-width") ?? element.Attribute("stroke-width"), 2) * anchor.Scale,
+            string.Empty,
+            new MicrosoftWhiteboardFont(LabelStyles.DefaultFontFamily, 20, Black, false, false, false));
     }
 
     /// <summary>
