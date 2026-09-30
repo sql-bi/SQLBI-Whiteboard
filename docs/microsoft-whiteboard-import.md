@@ -71,6 +71,8 @@ no model of the board beyond what it draws.
 | `Hyperlink` | A preview card with the page's picture, an `a` with the link and its title, and the description. |
 | `LoopObject`, `HostedFluidObject`, `GroupFluidObject` | Live content that the export does not keep. A Loop component is a `div.loopParentDiv` with the component's address in `data-loop-url`; the export replaces its content with an `a` to that address around the picture `LoopExportThumbnail.svg`, which it does not embed. Not seen in a sample; read from the web client's `LoopComponentConnected` and export code. |
 | `AppIframeHost` | An app that Copilot made, running in a sandboxed `iframe`. The export replaces the frame with a `#faf9f8` panel and keeps the `div.appFrameContainer` with its `width` and `height` and its header, whose `span.appFrameHeaderTitle` says *App* in the board's language. The app's name, code, and state are not in the export. Not seen in a sample; read from the web client's app frame component and export code. |
+| `WorkItem` | An Azure DevOps work item: a `div.WorkItem` card, 220 × 145 pixels in the stylesheet, white with a 4-pixel gold border on its left. A `span.WorkItemTextField` holds a `strong` with the type's `img.WorkItemIcon` (its `alt` names the type) and the ID, followed by the title; then come who it is assigned to and, in `span.WorkItemText`, the word *State* in the board's language and the state. The web client draws a placeholder instead when its `EnableWorkItems` flag is off. Not seen in a sample; read from the web client's `WorkItemConnected`. |
+| `Frame` | A frame Copilot drew around objects it grouped: a `section.whiteboardFrame` with its `width` and `height` and a theme class, `whiteboardFrame--blue`, `--green`, `--purple`, `--orange`, or neutral without one. The stylesheet gives it a 3-pixel border, a translucent fill, 14-pixel corners, and a 44-pixel title bar with bold 15-pixel text in `span.whiteboardFrame__titleText`, padded 14 pixels in. A pill names the first source and counts the rest; the full list is in a popover that is drawn only when open. The web client draws nothing when its `EnableFrames` flag is off. Not seen in a sample; read from the web client's frame component. |
 | `CommentThread` | A pin, described above. |
 
 ### Ink
@@ -135,6 +137,8 @@ Windows client offers, from `paleYellowGradient` (#FEE15A) to `grayGradient` (#C
 | Legacy template | The title's bar as a filled rectangle and its text as a bold label, then each child read by the reader for what it holds: ink, a note, a note grid, a list, a text box, a picture, or a shape. A picture or a shape moves by half its size, because a child is placed from its corner and those are centered on their anchor at the top level. A child of any other kind is counted as a template item |
 | Loop component | Markdown `TextBoardObject` titled *Loop*, linking to the component, as wide as it was |
 | App made by Copilot | `ShapeBoardObject` rectangle of the frame's size in the panel's color, with the header's title as its text |
+| Work item | Markdown `TextBoardObject` titled *Work item*: the type and ID in bold before the title, then who it is assigned to and its state, as wide as the card |
+| Copilot frame | `ShapeBoardObject` rectangle with the theme's border and translucent fill, and its title as a bold label in the theme's text color. Its sources are left out |
 | Link card | Markdown `TextBoardObject` titled *Link* |
 | List | Markdown `TextBoardObject` titled *List*: the list's title in bold, then a Markdown list of bullets, or one line per item with ☒ for a done task and ☐ for an open one |
 | Comment thread | Markdown `TextBoardObject` titled *Comment*, in a column to the right of the board |
@@ -238,14 +242,17 @@ parses in about 160 ms.
 - PowerPoint pages, which the Windows client cannot insert, videos, and Loop components
 - SVG pictures, which the Windows client refuses to insert
 - Groups, which the Windows client does not offer
-- GIFs, lists, ink tables, legacy stickers, legacy templates, Loop components, and apps,
-  which are read from the web client's code, not from a sample
+- GIFs, lists, ink tables, legacy stickers, legacy templates, Loop components, apps, work
+  items, and Copilot frames, which are read from the web client's code, not from a sample
 
 The web client's code names every type an export can hold. Its `data-whiteboard-type`
 values, as of version 26.10910.101 in September 2026, are the types above and these,
-which the importer reports and leaves out: `WorkItem`, `Frame`, and `CustomElement`,
-an `Unknown` that holds no table, live content without a Loop element, and an app frame
-without its box.
+which the importer reports and leaves out: `CustomElement`, an `Unknown` that holds no
+table, live content without a Loop element, an app frame without its box, and a work item
+or a frame drawn as a placeholder.
+
+The tokenizer yields text that follows an end tag as a tag named `#text`, because a work
+item's title comes after the bold ID.
 
 Each is reported by type after the import. Sticky notes cannot be
 rotated in the Windows client, with the mouse, the pen, or touch.

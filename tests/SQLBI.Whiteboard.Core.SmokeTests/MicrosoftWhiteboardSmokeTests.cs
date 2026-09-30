@@ -142,6 +142,7 @@ internal static class MicrosoftWhiteboardSmokeTests
         RunTables();
         RunTemplate();
         RunLive();
+        RunCards();
     }
 
     /// <summary>
@@ -609,6 +610,51 @@ internal static class MicrosoftWhiteboardSmokeTests
         Assert(board.Items[2] is MicrosoftWhiteboardShape { Kind: ShapeKind.Rectangle, Width: 480, Height: 320, FillArgb: 0xFFFAF9F8, Text: "App" } app &&
                app.Center == new PointD(240, 660),
             "An app is a panel of its size with its header's title.");
+    }
+
+    /// <summary>
+    /// A work item card and a Copilot frame as the web client draws them, and both of
+    /// them drawn as placeholders when their flags are off.
+    /// </summary>
+    private const string CardsPage = """
+        <html><body><div id="canvasContent" class="contentOrigin">
+        <div class="anchor align topLeft" data-whiteboard-type="WorkItem" style="left: 100px; top: 100px;">
+          <div class="canvasChild"><div tabindex="0" class="WorkItem interactive"><div class="ms-Stack">
+            <div class="ms-StackItem"><span class="WorkItemTextField"><strong><img src="/blueboard/assets/bug.svg" alt="bug" class="WorkItemIcon">4521 </strong>Crash when *saving*</span></div>
+            <div class="ms-StackItem"><div class="ms-Persona"><div class="ms-Persona-primaryText WorkItemText"><div class="ms-TooltipHost">Ana Lopez</div></div></div></div>
+            <div class="ms-StackItem"><div class="ms-Stack"><div class="ms-StackItem"><span class="WorkItemText"> State </span></div>
+              <div class="ms-StackItem"><span class="WorkItemText">Active</span></div><div class="ms-StackItem"><svg width="18" height="18"></svg></div></div></div>
+          </div></div></div>
+        </div>
+        <div class="anchor align topLeft" data-whiteboard-type="Frame" style="left: 1000px; top: 0px;">
+          <div class="canvasChild"><section class="whiteboardFrame whiteboardFrame--blue" style="width: 800px; height: 600px;" aria-label="Ideas" role="group">
+            <div class="whiteboardFrame__title"><span class="whiteboardFrame__icon" aria-hidden="true"><span></span><span></span></span><span class="whiteboardFrame__titleText">Ideas</span></div>
+            <div class="whiteboardFrame__sourceBar"><button type="button" class="whiteboardFrame__sourcePill"><svg width="14" height="14"></svg><span class="whiteboardFrame__sourcePillLabel">Notes</span><span class="whiteboardFrame__sourcePillMore">+2</span></button></div>
+          </section></div>
+        </div>
+        <div class="anchor align topLeft" data-whiteboard-type="WorkItem" style="left: 0px; top: 0px;"><div class="canvasChild"></div></div>
+        <div class="anchor align topLeft" data-whiteboard-type="Frame" style="left: 0px; top: 0px;"><div class="canvasChild"></div></div>
+        </div></body></html>
+        """;
+
+    private static void RunCards()
+    {
+        var board = MicrosoftWhiteboardExport.Parse(CardsPage, "Cards");
+        Assert(board.Skipped.Count == 2 && board.Skipped["WorkItem"] == 1 && board.Skipped["Frame"] == 1,
+            "A work item and a frame drawn as placeholders are still reported.");
+
+        Assert(board.Items[0] is MicrosoftWhiteboardTextContainer { Title: "Work item", Width: 220 } item &&
+               item.TopLeft == new PointD(100, 100) &&
+               item.Markdown == "**Bug 4521** Crash when \\*saving\\*\n\nAna Lopez  \nState Active",
+            "A work item is Markdown with its type, ID, and title, then who it is assigned to and its state.");
+
+        Assert(board.Items[1] is MicrosoftWhiteboardShape { Kind: ShapeKind.Rectangle, Width: 800, Height: 600, OutlineArgb: 0xFF314AB2, FillArgb: 0xD1EFF3FF, Thickness: 3 } frame &&
+               frame.Center == new PointD(1400, 300),
+            "A Copilot frame is a translucent panel in its theme's colors.");
+        Assert(board.Items[2] is MicrosoftWhiteboardLabel { Text: "Ideas", WrapWidth: 766, Font: { Bold: true, Size: 15, Argb: 0xFF314AB2 } } title &&
+               title.Origin == new PointD(1000, 0) && title.Inset == new PointD(17, 14),
+            "A Copilot frame's title is bold in its theme's color, inside the title bar.");
+        Assert(board.Items.Count == 3, "A frame's sources are left out.");
     }
 
     private static void RunArchive()
