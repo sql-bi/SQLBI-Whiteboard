@@ -1,14 +1,14 @@
 # Microsoft Whiteboard import
 
-**Implemented in 1.7.0**, with the objects of older versions of the app in 1.7.1,
-1.7.2, 1.7.3, and 1.7.4. This document records what a Microsoft Whiteboard export contains, how the
-importer maps it onto a board, and what it cannot carry over. Microsoft retires its
+**Implemented in 1.7.0**, with the objects of older versions of the app in 1.7.1, 1.7.2,
+1.7.3, and 1.7.4. This document records what a Microsoft Whiteboard export contains, how
+the importer maps it onto a board, and what it cannot carry over. Microsoft retires its
 standalone Whiteboard apps on 16 October 2026 (see [retirement](retirement/README.md)),
 and the export is the only way to take a board out of it. The format is undocumented.
 Everything below was established from eight exports of real teaching boards and one test
 board holding every kind of object the Windows client offers, made between 20 and 27
-September 2026. Six more teaching boards, exported on 29 September, added the objects
-that older versions of the app wrote.
+September 2026. Six more teaching boards, exported on 29 September, added the objects that
+older versions of the app wrote.
 
 ## Where it starts
 
@@ -69,6 +69,8 @@ no model of the board beyond what it draws.
 | `Connector` | An SVG with the route as a path from the anchor, and the head as a small path moved to one end with `translate`. |
 | `Unknown` holding `div.inkTableContainer` | A table drawn with ink in the Windows 10 app, which the web client registers under no type of its own. The container is a CSS grid whose `grid-template-columns` and `grid-template-rows` give each column and row as `minmax(<size>px, auto)`. One `div.inkCellContainer` per cell, row by row, has a `4px solid` border in the table's color and a `-2px` margin, so the border sits over the grid line. Inside it, a `div` shifts the cell's ink by `left` and `top`, and each ink group sits in a `div` with its own `left`, `top`, and `transform`, holding the same SVG an `InkGroup` has. The web client draws a placeholder instead when its `EnableTables` flag is off. Not seen in a sample; read from the web client's `TableComponent`. |
 | `Hyperlink` | A preview card with the page's picture, an `a` with the link and its title, and the description. |
+| `LoopObject`, `HostedFluidObject`, `GroupFluidObject` | Live content that the export does not keep. A Loop component is a `div.loopParentDiv` with the component's address in `data-loop-url`; the export replaces its content with an `a` to that address around the picture `LoopExportThumbnail.svg`, which it does not embed. Not seen in a sample; read from the web client's `LoopComponentConnected` and export code. |
+| `AppIframeHost` | An app that Copilot made, running in a sandboxed `iframe`. The export replaces the frame with a `#faf9f8` panel and keeps the `div.appFrameContainer` with its `width` and `height` and its header, whose `span.appFrameHeaderTitle` says *App* in the board's language. The app's name, code, and state are not in the export. Not seen in a sample; read from the web client's app frame component and export code. |
 | `CommentThread` | A pin, described above. |
 
 ### Ink
@@ -131,6 +133,8 @@ Windows client offers, from `paleYellowGradient` (#FEE15A) to `grayGradient` (#C
 | Ink table | One `ShapeBoardObject` rectangle per cell with the border's color and 4-unit outline, then the cells' ink as strokes |
 | Legacy sticker | The picture, and its caption as a `FreeTextBoardObject` centered across the caption's box |
 | Legacy template | The title's bar as a filled rectangle and its text as a bold label, then each child read by the reader for what it holds: ink, a note, a note grid, a list, a text box, a picture, or a shape. A picture or a shape moves by half its size, because a child is placed from its corner and those are centered on their anchor at the top level. A child of any other kind is counted as a template item |
+| Loop component | Markdown `TextBoardObject` titled *Loop*, linking to the component, as wide as it was |
+| App made by Copilot | `ShapeBoardObject` rectangle of the frame's size in the panel's color, with the header's title as its text |
 | Link card | Markdown `TextBoardObject` titled *Link* |
 | List | Markdown `TextBoardObject` titled *List*: the list's title in bold, then a Markdown list of bullets, or one line per item with ☒ for a done task and ☐ for an open one |
 | Comment thread | Markdown `TextBoardObject` titled *Comment*, in a column to the right of the board |
@@ -234,15 +238,14 @@ parses in about 160 ms.
 - PowerPoint pages, which the Windows client cannot insert, videos, and Loop components
 - SVG pictures, which the Windows client refuses to insert
 - Groups, which the Windows client does not offer
-- GIFs, lists, ink tables, legacy stickers, and legacy templates, which are read from the
-  web client's code, not from a sample
+- GIFs, lists, ink tables, legacy stickers, legacy templates, Loop components, and apps,
+  which are read from the web client's code, not from a sample
 
 The web client's code names every type an export can hold. Its `data-whiteboard-type`
 values, as of version 26.10910.101 in September 2026, are the types above and these,
-which the importer reports and leaves out: `LoopObject`,
-`HostedFluidObject`, `GroupFluidObject`, `AppIframeHost`, `WorkItem`, `Frame`, and
-`CustomElement`, and an `Unknown` that holds no table. The export replaces a Loop component and an app frame with a
-placeholder picture.
+which the importer reports and leaves out: `WorkItem`, `Frame`, and `CustomElement`,
+an `Unknown` that holds no table, live content without a Loop element, and an app frame
+without its box.
 
 Each is reported by type after the import. Sticky notes cannot be
 rotated in the Windows client, with the mouse, the pen, or touch.

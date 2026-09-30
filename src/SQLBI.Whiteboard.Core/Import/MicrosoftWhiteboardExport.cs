@@ -28,6 +28,18 @@ public sealed partial class MicrosoftWhiteboardExport
     private const string CommentsSuffix = "-comments.json";
     private const string CommentTitle = "Comment";
     private const string ListTitle = "List";
+    private const string LoopTitle = "Loop";
+
+    /// <summary>
+    /// How wide a Loop component's container is when the page gives no size.
+    /// </summary>
+    private const double LoopWidth = 400;
+
+    /// <summary>
+    /// The panel the export leaves where an app ran, and a neutral outline around it.
+    /// </summary>
+    private const uint AppFramePanelArgb = 0xFFFAF9F8;
+    private const uint AppFrameOutlineArgb = 0xFFE1DFDD;
 
     /// <summary>
     /// A table cell's border, which the web client draws over the grid line.
@@ -247,6 +259,30 @@ public sealed partial class MicrosoftWhiteboardExport
                     if (ReadLink(anchor, tags) is { } link)
                     {
                         items.Add(link);
+                    }
+
+                    break;
+                case "LoopObject":
+                case "HostedFluidObject":
+                case "GroupFluidObject":
+                    if (ReadLoop(anchor, tags) is { } loop)
+                    {
+                        items.Add(loop);
+                    }
+                    else
+                    {
+                        Skip(anchor.Type);
+                    }
+
+                    break;
+                case "AppIframeHost":
+                    if (ReadAppFrame(anchor, tags) is { } app)
+                    {
+                        items.Add(app);
+                    }
+                    else
+                    {
+                        Skip(anchor.Type);
                     }
 
                     break;
@@ -1117,6 +1153,63 @@ public sealed partial class MicrosoftWhiteboardExport
     }
 
     /// <summary>
+    /// A Loop component is live content that the export does not keep. The export puts
+    /// a picture in its place, inside a link to the component when it has one, and the
+    /// component's element keeps the address in <c>data-loop-url</c>. It becomes
+    /// Markdown titled <c>Loop</c> with that link, as wide as the component.
+    /// </summary>
+    private static MicrosoftWhiteboardTextContainer? ReadLoop(Anchor anchor, List<HtmlTag> tags)
+    {
+        var loop = tags.FirstOrDefault(tag => tag.Name == "div" && tag.HasClass("loopParentDiv"));
+        if (loop is null)
+        {
+            return null;
+        }
+
+        var url = loop.Attribute("data-loop-url") ??
+            tags.FirstOrDefault(tag => tag.Name == "a" && tag.Attribute("href") is not null)?.Attribute("href");
+        var sized = tags.FirstOrDefault(tag =>
+            StyleLength(tag.Attribute("style"), "width") > 0 && StyleLength(tag.Attribute("style"), "height") > 0);
+        var width = StyleLength(sized?.Attribute("style"), "width") ?? LoopWidth;
+        var height = StyleLength(sized?.Attribute("style"), "height") ?? 0;
+        return new MicrosoftWhiteboardTextContainer(
+            anchor.ToCanvas(anchor.Centered ? new PointD(-width / 2, -height / 2) : default),
+            width * anchor.Scale,
+            LoopTitle,
+            string.IsNullOrWhiteSpace(url) ? "Loop component" : $"[Loop component]({url})");
+    }
+
+    /// <summary>
+    /// An app that Copilot made runs in a frame the export does not keep. The export
+    /// leaves the frame's box, its header with its title, and a plain panel where the
+    /// app ran. It becomes a rectangle of that size in the panel's color, with the
+    /// header's title as its text.
+    /// </summary>
+    private static MicrosoftWhiteboardShape? ReadAppFrame(Anchor anchor, List<HtmlTag> tags)
+    {
+        var box = tags.FirstOrDefault(tag => tag.Name == "div" && tag.HasClass("appFrameContainer"));
+        var width = StyleLength(box?.Attribute("style"), "width") ?? 0;
+        var height = StyleLength(box?.Attribute("style"), "height") ?? 0;
+        if (width <= 0 || height <= 0)
+        {
+            return null;
+        }
+
+        var title = tags.FirstOrDefault(tag => tag.HasClass("appFrameHeaderTitle"))?.Text.Trim();
+        return new MicrosoftWhiteboardShape(
+            anchor.ToCanvas(anchor.Centered ? default : new PointD(width / 2, height / 2)),
+            width * anchor.Scale,
+            height * anchor.Scale,
+            anchor.AngleDegrees,
+            ShapeKind.Rectangle,
+            AppFrameOutlineArgb,
+            AppFramePanelArgb,
+            anchor.Scale,
+            string.IsNullOrEmpty(title) ? "App" : title,
+            new MicrosoftWhiteboardFont(LabelStyles.DefaultFontFamily, 20 * anchor.Scale, Black, false, false, false));
+    }
+
+    /// <summary>
     /// A connector's SVG draws its route from the anchor, and its head as a small
     /// path moved to one end. A route with corners is kept as a straight line.
     /// </summary>
@@ -1572,7 +1665,11 @@ public sealed partial class MicrosoftWhiteboardExport
     /// size at left and top, and its transform scales, turns, and moves it around that
     /// point. Most objects start at the point, and pictures and shapes are centered on it.
     /// </summary>
-    private sealed record Anchor(string Type, PointD Origin, double A, double B, double C, double D, double E, double F)
+    /// <summary>
+    /// Centered is the <c>center</c> class, which puts a picture, a shape, and other
+    /// boxed content in the middle of the point rather than below and right of it.
+    /// </summary>
+    private sealed record Anchor(string Type, PointD Origin, double A, double B, double C, double D, double E, double F, bool Centered = false)
     {
         public double Scale => Math.Sqrt(Math.Abs((A * D) - (B * C)));
 
@@ -1586,7 +1683,7 @@ public sealed partial class MicrosoftWhiteboardExport
             var style = tag.Attribute("style");
             var origin = new PointD(StyleLength(style, "left") ?? 0, StyleLength(style, "top") ?? 0);
             var matrix = StyleMatrix(style);
-            return new Anchor(type, origin, matrix[0], matrix[1], matrix[2], matrix[3], matrix[4], matrix[5]);
+            return new Anchor(type, origin, matrix[0], matrix[1], matrix[2], matrix[3], matrix[4], matrix[5], tag.HasClass("center"));
         }
 
         public PointD ToCanvas(PointD local) => new(
