@@ -17,6 +17,13 @@ broke. The heading is parsed by `scripts/release-notes.ps1`, so keep its shape; 
 under it is ordinary Markdown, and the renderer handles paragraphs, lists, links, `code`
 and **bold**.
 
+## 1.7.4 - 30 September 2026
+
+### Templates from Microsoft Whiteboard
+Templates from boards made with the Windows 10 app of Microsoft Whiteboard now come across
+with their title and the notes, lists, text, pictures, shapes, and ink placed on them.
+They used to be listed as left out.
+
 ## 1.7.3 - 30 September 2026
 
 ### Microsoft Whiteboard imports closer to the original
