@@ -56,7 +56,8 @@ no model of the board beyond what it draws.
 | `AzureImage` | A picture on a board made with an older version of the app, written as a `FluidImage` is, with the data URI labelled `image/*`. |
 | `AzureGif` | An animated GIF, written as an `AzureImage` is. Not seen in a sample; the web client converts it with the same function as `AzureImage`. |
 | `LegacySticker` | A sticker from the Windows 10 app: a picture written as an `AzureImage` is, and a caption in a `div` moved from the picture's corner by its `transform`, with `font-size` 30 and the family and weight in its style. The text box inside has the caption's width, and a smaller `font-size` when the text shrank to fit. Not seen in a sample; read from the web client's `ImageUI` caption aspect. |
-| `LegacyTemplate` | A template from the Windows 10 app, drawn as a collection: one `div.topLeft` per child with its own `left`, `top`, and `transform`, holding the content of one object without the anchor around it. The first child is the title, a `textbox.templateTitle` that the stylesheet draws as a white panel 60 pixels tall with a 4-pixel `#0C34FA` bar on top, 6 and 8 pixels of padding, and bold 24-pixel text. The web client moves every child by the same offset, so that none sits left of or above the title. It draws a placeholder instead when its `EnableTemplates` flag is off. Not seen in a sample; read from the web client's template conversion and `CollectionComponent`. |
+| `GroupFluidObject` | A group of objects, despite its name. The web client draws it as a collection, as it draws a template, without a title: one child per member, named after the member's own origin, `topLeft` or `center`, holding the member's content. A member can be a group. Until 1.7.4 the importer took the name for live Fluid content, and a group and everything in it was reported as left out. Not seen in a sample; read from the web client's group conversion and `CollectionComponent`. |
+| `LegacyTemplate` | A template from the Windows 10 app, drawn as a collection: a `div` with the role `collection`, and for each child a wrapper `div` holding a `div.topLeft` with its own `left`, `top`, and `transform`, holding the content of one object without the anchor around it. The first child is the title, a `textbox.templateTitle` that the stylesheet draws as a white panel 60 pixels tall with a 4-pixel `#0C34FA` bar on top, 6 and 8 pixels of padding, and bold 24-pixel text. The web client moves every child by the same offset, so that none sits left of or above the title. It draws a placeholder instead when its `EnableTemplates` flag is off. Not seen in a sample; read from the web client's template conversion and `CollectionComponent`. |
 | `DocumentPage` | A page of an inserted PDF, written as a `FluidImage` is. |
 | `ReactionStickers` | A sticker, written as a 64 × 64 `FluidImage` with an SVG data URI. |
 | `Shape` | An SVG whose `g` has `fill`, `stroke`, and `stroke-width` (in `pt`), and whose `path` draws the outline around the middle of the box. The shape's text sits in `div.textBoxContainer`. |
@@ -69,7 +70,7 @@ no model of the board beyond what it draws.
 | `Connector` | An SVG with the route as a path from the anchor, and the head as a small path moved to one end with `translate`. |
 | `Unknown` holding `div.inkTableContainer` | A table drawn with ink in the Windows 10 app, which the web client registers under no type of its own. The container is a CSS grid whose `grid-template-columns` and `grid-template-rows` give each column and row as `minmax(<size>px, auto)`. One `div.inkCellContainer` per cell, row by row, has a `4px solid` border in the table's color and a `-2px` margin, so the border sits over the grid line. Inside it, a `div` shifts the cell's ink by `left` and `top`, and each ink group sits in a `div` with its own `left`, `top`, and `transform`, holding the same SVG an `InkGroup` has. The web client draws a placeholder instead when its `EnableTables` flag is off. Not seen in a sample; read from the web client's `TableComponent`. |
 | `Hyperlink` | A preview card with the page's picture, an `a` with the link and its title, and the description. |
-| `LoopObject`, `HostedFluidObject`, `GroupFluidObject` | Live content that the export does not keep. A Loop component is a `div.loopParentDiv` with the component's address in `data-loop-url`; the export replaces its content with an `a` to that address around the picture `LoopExportThumbnail.svg`, which it does not embed. Not seen in a sample; read from the web client's `LoopComponentConnected` and export code. |
+| `LoopObject`, `HostedFluidObject` | Live content that the export does not keep. A Loop component is a `div.loopParentDiv` with the component's address in `data-loop-url`; the export replaces its content with an `a` to that address around the picture `LoopExportThumbnail.svg`, which it does not embed. Not seen in a sample; read from the web client's `LoopComponentConnected` and export code. |
 | `AppIframeHost` | An app that Copilot made, running in a sandboxed `iframe`. The export replaces the frame with a `#faf9f8` panel and keeps the `div.appFrameContainer` with its `width` and `height` and its header, whose `span.appFrameHeaderTitle` says *App* in the board's language. The app's name, code, and state are not in the export. Not seen in a sample; read from the web client's app frame component and export code. |
 | `WorkItem` | An Azure DevOps work item: a `div.WorkItem` card, 220 × 145 pixels in the stylesheet, white with a 4-pixel gold border on its left. A `span.WorkItemTextField` holds a `strong` with the type's `img.WorkItemIcon` (its `alt` names the type) and the ID, followed by the title; then come who it is assigned to and, in `span.WorkItemText`, the word *State* in the board's language and the state. The web client draws a placeholder instead when its `EnableWorkItems` flag is off. Not seen in a sample; read from the web client's `WorkItemConnected`. |
 | `Frame` | A frame Copilot drew around objects it grouped: a `section.whiteboardFrame` with its `width` and `height` and a theme class, `whiteboardFrame--blue`, `--green`, `--purple`, `--orange`, or neutral without one. The stylesheet gives it a 3-pixel border, a translucent fill, 14-pixel corners, and a 44-pixel title bar with bold 15-pixel text in `span.whiteboardFrame__titleText`, padded 14 pixels in. A pill names the first source and counts the rest; the full list is in a popover that is drawn only when open. The web client draws nothing when its `EnableFrames` flag is off. Not seen in a sample; read from the web client's frame component. |
@@ -136,7 +137,7 @@ Windows client offers, from `paleYellowGradient` (#FEE15A) to `grayGradient` (#C
 | Connector | `ConnectorBoardObject`, straight, with its ends bound to shapes they sit on |
 | Ink table | One `ShapeBoardObject` rectangle per cell with the border's color and 4-unit outline, then the cells' ink as strokes |
 | Legacy sticker | The picture, and its caption as a `FreeTextBoardObject` centered across the caption's box |
-| Legacy template | The title's bar as a filled rectangle and its text as a bold label, then each child read by the reader for what it holds: ink, a note, a note grid, a list, a text box, a picture, or a shape. A picture or a shape moves by half its size, because a child is placed from its corner and those are centered on their anchor at the top level. A child of any other kind is counted as a template item |
+| Legacy template or group | For a template, the title's bar as a filled rectangle and its text as a bold label. Then each child is read by the reader for what it holds, as the same kind is read at the top level: ink, a note, a note grid, a list, a text box, a table, a picture or a sticker, a shape, a connector, a link card, Loop content, an app, a work item, a custom object, a placeholder, or a collection of its own. Only the collection's own children are read, so the tokenizer yields the end of each `div` as a tag named `/div` and the depth is counted. A child that is centered on its place is read as centered; one placed from its corner moves a picture, a shape, or a sticker by half its size, because those are centered at the top level. A child of any other kind is counted as a template item or a group item. A group itself becomes nothing: its members stand on the board as separate objects |
 | Loop component | Markdown `TextBoardObject` titled *Loop*, linking to the component, as wide as it was |
 | App made by Copilot | `ShapeBoardObject` rectangle of the frame's size in the panel's color, with the header's title as its text |
 | Work item | Markdown `TextBoardObject` titled *Work item*: the type and ID in bold before the title, then who it is assigned to and its state, as wide as the card |
@@ -209,6 +210,10 @@ parses in about 160 ms.
 
 ## What is lost
 
+- **Groups are flattened.** The board has no groups, so a group's members come across as
+  separate objects, each where it was and in its drawing order. What changes when the
+  board has groups is under *When the board has groups*.
+
 - **Pressure is approximated.** The export keeps the outline, not the pressure. The
   recovered widths match the original closely at 150% zoom, but not exactly.
 - **Highlighter shape.** The tip here is wider than tall, while Microsoft's is taller than
@@ -248,7 +253,7 @@ parses in about 160 ms.
 - The Professional font, and text boxes with more than one style in them
 - PowerPoint pages, which the Windows client cannot insert, videos, and Loop components
 - SVG pictures, which the Windows client refuses to insert
-- Groups, which the Windows client does not offer
+- Groups, which the Windows client does not offer and are read from the web client's code
 - GIFs, lists, ink tables, legacy stickers, legacy templates, Loop components, apps, work
   items, Copilot frames, and custom objects, which are read from the web client's code, not
   from a sample
@@ -264,6 +269,23 @@ item's title comes after the bold ID.
 
 Each is reported by type after the import. Sticky notes cannot be
 rotated in the Windows client, with the mouse, the pen, or touch.
+
+## When the board has groups
+
+Grouping as a saved object is out of scope for the board (see
+[design-objects](design-objects.md)). When it arrives, the import should change here:
+
+- `ReadCollection` reads a group's members already; a group would then become a group
+  object holding the objects it returned, rather than those objects on their own.
+- A group inside a group should stay nested if the board's groups can nest, and be
+  flattened into its parent otherwise.
+- A template is also a collection. Whether a template becomes a group, with its title
+  as a member, is a choice to make then; a template is not a group in Microsoft
+  Whiteboard.
+- A group's own transform is composed into each member's place today. With groups, it
+  might belong to the group, so turning or scaling the group turns or scales its members.
+- The smoke test `RunGroup` checks positions only; it would check the group and its
+  members then.
 
 ## Verification
 
