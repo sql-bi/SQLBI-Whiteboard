@@ -30,6 +30,10 @@ panel of its size, an Azure DevOps work item as a text container with its title,
 and state, a frame Copilot drew as a panel with its title, and a custom object as a gray
 box that names it. They used to be listed as left out.
 
+### Reactions on sticky notes from Microsoft Whiteboard
+Reactions on a sticky note now come across as a last line in the note, with each
+reaction's symbol and count.
+
 ## 1.7.3 - 30 September 2026
 
 ### Microsoft Whiteboard imports closer to the original
