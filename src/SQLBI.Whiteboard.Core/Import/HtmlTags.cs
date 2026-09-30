@@ -4,9 +4,10 @@ namespace SQLBI.Whiteboard.Core.Import;
 
 /// <summary>
 /// The start tags of an HTML page, in document order, with their attributes and the
-/// text that follows each one up to the next tag. The Microsoft Whiteboard export is
-/// generated markup, so quoting is regular, but it is HTML rather than XML: some
-/// elements are never closed.
+/// text that follows each one up to the next tag. Text that follows an end tag, such as
+/// a title after a bold ID, comes as a tag named <c>#text</c>. The Microsoft Whiteboard
+/// export is generated markup, so quoting is regular, but it is HTML rather than XML:
+/// some elements are never closed.
 /// </summary>
 internal static class HtmlTags
 {
@@ -15,6 +16,10 @@ internal static class HtmlTags
     /// typed, and the long runs are stylesheets and scripts.
     /// </summary>
     private const int MaximumText = 65536;
+
+    public const string TextName = "#text";
+
+    private static readonly Dictionary<string, string> NoAttributes = new(StringComparer.OrdinalIgnoreCase);
 
     public static IEnumerable<HtmlTag> StartTags(string html, int start)
     {
@@ -26,6 +31,25 @@ internal static class HtmlTags
             if (open < 0 || open + 1 >= html.Length)
             {
                 yield break;
+            }
+
+            if (html[open + 1] == '/')
+            {
+                var close = html.IndexOf('>', open);
+                if (close < 0)
+                {
+                    yield break;
+                }
+
+                var after = html.IndexOf('<', close);
+                var length = (after < 0 ? html.Length : after) - close - 1;
+                if (length is > 0 and < MaximumText && !html.AsSpan(close + 1, length).IsWhiteSpace())
+                {
+                    yield return new HtmlTag(TextName, NoAttributes, WebUtility.HtmlDecode(html.Substring(close + 1, length)));
+                }
+
+                index = close + 1;
+                continue;
             }
 
             if (!char.IsAsciiLetter(html[open + 1]))

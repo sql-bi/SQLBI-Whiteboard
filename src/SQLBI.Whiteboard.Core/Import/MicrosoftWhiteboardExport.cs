@@ -29,6 +29,33 @@ public sealed partial class MicrosoftWhiteboardExport
     private const string CommentTitle = "Comment";
     private const string ListTitle = "List";
     private const string LoopTitle = "Loop";
+    private const string WorkItemTitle = "Work item";
+
+    /// <summary>
+    /// A work item card in the web client's stylesheet.
+    /// </summary>
+    private const double WorkItemWidth = 220;
+    private const double WorkItemHeight = 145;
+
+    /// <summary>
+    /// A Copilot frame in the web client's stylesheet: a 3-pixel border, and a title
+    /// bar with bold 15-pixel text padded 14 pixels in, centered in its 44 pixels.
+    /// </summary>
+    private const double FrameBorder = 3;
+    private const double FrameTitleFontSize = 15;
+    private static readonly PointD FrameTitleInset = new(17, 14);
+
+    /// <summary>
+    /// A Copilot frame's border, translucent fill, and title color for each theme.
+    /// </summary>
+    private static readonly Dictionary<string, (uint Border, uint Fill, uint Text)> FrameThemes = new(StringComparer.Ordinal)
+    {
+        ["neutral"] = (0xFF6B6967, 0xC2FAF9F8, 0xFF323130),
+        ["blue"] = (0xFF314AB2, 0xD1EFF3FF, 0xFF314AB2),
+        ["green"] = (0xFF498205, 0xD1F1FAE8, 0xFF3B6A04),
+        ["purple"] = (0xFF8764B8, 0xD1F9F5FF, 0xFF5C2E91),
+        ["orange"] = (0xFFCA5010, 0xD1FFF4EC, 0xFFA4262C),
+    };
 
     /// <summary>
     /// How wide a Loop component's container is when the page gives no size.
@@ -259,6 +286,29 @@ public sealed partial class MicrosoftWhiteboardExport
                     if (ReadLink(anchor, tags) is { } link)
                     {
                         items.Add(link);
+                    }
+
+                    break;
+                case "WorkItem":
+                    if (ReadWorkItem(anchor, tags) is { } workItem)
+                    {
+                        items.Add(workItem);
+                    }
+                    else
+                    {
+                        Skip(anchor.Type);
+                    }
+
+                    break;
+                case "Frame":
+                    var frame = ReadFrame(anchor, tags).ToArray();
+                    if (frame.Length > 0)
+                    {
+                        items.AddRange(frame);
+                    }
+                    else
+                    {
+                        Skip(anchor.Type);
                     }
 
                     break;
@@ -1207,6 +1257,116 @@ public sealed partial class MicrosoftWhiteboardExport
             anchor.Scale,
             string.IsNullOrEmpty(title) ? "App" : title,
             new MicrosoftWhiteboardFont(LabelStyles.DefaultFontFamily, 20 * anchor.Scale, Black, false, false, false));
+    }
+
+    /// <summary>
+    /// An Azure DevOps work item, drawn as a card when the web client's
+    /// <c>EnableWorkItems</c> flag is on: a bold line with the type's icon and the ID,
+    /// then the title, who it is assigned to, and its state. It becomes Markdown titled
+    /// <c>Work item</c> with those lines, as wide as the card.
+    /// </summary>
+    private static MicrosoftWhiteboardTextContainer? ReadWorkItem(Anchor anchor, List<HtmlTag> tags)
+    {
+        var cardIndex = tags.FindIndex(tag => tag.Name == "div" && tag.HasClass("WorkItem"));
+        if (cardIndex < 0)
+        {
+            return null;
+        }
+
+        var fieldIndex = tags.FindIndex(cardIndex, tag => tag.HasClass("WorkItemTextField"));
+        var texts = new List<(int Index, string Text)>();
+        for (var index = cardIndex; index < tags.Count; index++)
+        {
+            if (!string.IsNullOrWhiteSpace(tags[index].Text))
+            {
+                texts.Add((index, tags[index].Text.Trim()));
+            }
+        }
+
+        // The field holds the ID after the icon and the title after the bold part. What
+        // follows it is who the item is assigned to, then its state.
+        var type = tags.Skip(cardIndex).FirstOrDefault(tag => tag.HasClass("WorkItemIcon"))?.Attribute("alt");
+        var field = fieldIndex < 0 ? [] : texts.Where(text => text.Index >= fieldIndex).Take(2).ToArray();
+        var id = field.Length > 1 && field[0].Text.All(char.IsAsciiDigit) ? field[0].Text : null;
+        var title = id is null ? field.FirstOrDefault().Text : field[1].Text;
+        var rest = texts.Where(text => field.All(item => item.Index != text.Index)).Select(text => text.Text).ToArray();
+        if (string.IsNullOrEmpty(title) && rest.Length == 0)
+        {
+            return null;
+        }
+
+        var heading = string.Join(' ', new[] { Capitalized(type), id }.Where(part => !string.IsNullOrEmpty(part)));
+        var lines = new List<string>
+        {
+            (heading.Length > 0 ? $"**{EscapeMarkdown(heading)}** " : string.Empty) + EscapeMarkdown(title ?? string.Empty),
+        };
+        if (rest.Length > 0)
+        {
+            lines.Add(string.Join("  \n", new[] { rest[0], string.Join(' ', rest.Skip(1)) }
+                .Where(line => line.Length > 0)
+                .Select(EscapeMarkdown)));
+        }
+
+        return new MicrosoftWhiteboardTextContainer(
+            anchor.ToCanvas(anchor.Centered ? new PointD(-WorkItemWidth / 2, -WorkItemHeight / 2) : default),
+            WorkItemWidth * anchor.Scale,
+            WorkItemTitle,
+            string.Join("\n\n", lines.Where(line => line.Trim().Length > 0)));
+    }
+
+    private static string? Capitalized(string? text) =>
+        string.IsNullOrEmpty(text) ? text : char.ToUpperInvariant(text[0]) + text[1..];
+
+    /// <summary>
+    /// A frame that Copilot drew around objects it grouped, when the web client's
+    /// <c>EnableFrames</c> flag is on: a rounded, translucent panel with a border and a
+    /// title bar in one of five themes. It becomes a rectangle in the theme's colors
+    /// with its title as a bold label in the bar: its corners are rounded by 14 pixels,
+    /// which on a frame is closer to square than to a rounded rectangle here. Its sources are left out,
+    /// because the export keeps only the first one's name.
+    /// </summary>
+    private static IEnumerable<MicrosoftWhiteboardItem> ReadFrame(Anchor anchor, List<HtmlTag> tags)
+    {
+        var frame = tags.FirstOrDefault(tag => tag.HasClass("whiteboardFrame"));
+        var width = StyleLength(frame?.Attribute("style"), "width") ?? 0;
+        var height = StyleLength(frame?.Attribute("style"), "height") ?? 0;
+        if (frame is null || width <= 0 || height <= 0)
+        {
+            yield break;
+        }
+
+        var theme = FrameThemes.Keys.FirstOrDefault(key => frame.HasClass($"whiteboardFrame--{key}")) ?? "neutral";
+        var (border, fill, text) = FrameThemes[theme];
+        yield return new MicrosoftWhiteboardShape(
+            anchor.ToCanvas(anchor.Centered ? default : new PointD(width / 2, height / 2)),
+            width * anchor.Scale,
+            height * anchor.Scale,
+            anchor.AngleDegrees,
+            ShapeKind.Rectangle,
+            border,
+            fill,
+            FrameBorder * anchor.Scale,
+            string.Empty,
+            new MicrosoftWhiteboardFont(LabelStyles.DefaultFontFamily, 20, Black, false, false, false));
+
+        var title = tags.FirstOrDefault(tag => tag.HasClass("whiteboardFrame__titleText"))?.Text.Trim();
+        if (string.IsNullOrEmpty(title))
+        {
+            title = frame.Attribute("aria-label")?.Trim();
+        }
+
+        if (!string.IsNullOrEmpty(title))
+        {
+            yield return new MicrosoftWhiteboardLabel(
+                anchor.ToCanvas(anchor.Centered ? new PointD(-width / 2, -height / 2) : default),
+                anchor.Scale,
+                anchor.AngleDegrees,
+                FrameTitleInset,
+                title,
+                new MicrosoftWhiteboardFont(LabelStyles.DefaultFontFamily, FrameTitleFontSize, text, true, false, false),
+                Math.Max(1, width - (2 * FrameTitleInset.X)),
+                null);
+        }
     }
 
     /// <summary>
