@@ -17,6 +17,17 @@ broke. The heading is parsed by `scripts/release-notes.ps1`, so keep its shape; 
 under it is ordinary Markdown, and the renderer handles paragraphs, lists, links, `code`
 and **bold**.
 
+## 1.7.2 - 30 September 2026
+
+### Draw a rectangle with square corners
+**Insert** now offers **Rectangle** before **Rounded**. Rectangles imported from Microsoft
+Whiteboard keep their square corners.
+
+### Older Microsoft Whiteboard boards look as they did
+Highlighter scribbles that filled frames and regions on boards made with older versions of
+Microsoft Whiteboard now come across, as pictures. Their handwritten text keeps its Ink Free
+font, now one of the label fonts, and the lines it had instead of wrapping onto two.
+
 ## 1.7.1 - 29 September 2026
 
 ### Import boards made with older versions of Microsoft Whiteboard

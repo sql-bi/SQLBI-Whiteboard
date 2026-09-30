@@ -933,6 +933,7 @@ public static class PdfDocumentWriter
             ["Times New Roman"] = new("TimesNewRoman", TimesFiles, TimesFiles),
             ["Comic Sans MS"] = new("ComicSansMS", ["comic.ttf", "comicbd.ttf", "comici.ttf", "comicz.ttf"], ArialFiles),
             ["Segoe Print"] = new("SegoePrint", ["segoepr.ttf", "segoeprb.ttf", "segoepr.ttf", "segoeprb.ttf"], ArialFiles),
+            ["Ink Free"] = new("InkFree", ["Inkfree.ttf", "Inkfree.ttf", "Inkfree.ttf", "Inkfree.ttf"], ArialFiles),
         };
 
         private static readonly Dictionary<string, Lazy<byte[]>> Faces = Families.Values

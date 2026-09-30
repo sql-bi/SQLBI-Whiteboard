@@ -574,8 +574,9 @@ public sealed record FrameBoardObject(
 }
 
 /// <summary>
-/// The eight shapes, in the order the Insert row and the toolbar flyout offer
-/// them. The first is a rectangle with rounded corners rather than a square.
+/// The nine shapes. A board stores a kind by its name, so a new kind goes at the
+/// end, and the Insert row offers them in its own order, with the square-cornered
+/// rectangle first.
 /// </summary>
 public enum ShapeKind
 {
@@ -587,6 +588,7 @@ public enum ShapeKind
     Parallelogram,
     Diamond,
     Stadium,
+    Rectangle,
 }
 
 /// <summary>

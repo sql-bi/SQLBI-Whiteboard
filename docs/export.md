@@ -189,6 +189,7 @@ way on the slide:
 
 | Shape | Preset |
 | --- | --- |
+| Rectangle | `rect` |
 | Rounded rectangle | `roundRect`, corner adjust 20000 |
 | Ellipse | `ellipse` |
 | Triangle | `triangle` |
@@ -223,7 +224,7 @@ shape and carries none.
 
 | Preset | Where the board binds, and the site it is |
 | --- | --- |
-| `rect`, `roundRect` — rounded rectangle, stadium, and a label's box | top 0, left 1, bottom 2, right 3 |
+| `rect`, `roundRect` — rectangle, rounded rectangle, stadium, and a label's box | top 0, left 1, bottom 2, right 3 |
 | `diamond` | top 0, left 1, bottom 2, right 3 |
 | `ellipse` | top 0, left 2, bottom 4, right 6 |
 | `triangle` | apex 0, bottom-left corner 2, bottom midpoint 3, bottom-right corner 4 |
@@ -296,8 +297,9 @@ The faces are read from the Windows fonts folder and embedded, so a label stays 
 and stays searchable. Segoe UI, Calibri, Arial, Georgia, Times New Roman, Consolas,
 Comic Sans MS, and Segoe Print each embed their own regular, bold, italic, and bold
 italic; Segoe Print has no italic file on Windows, so an italic Segoe Print label is
-upright on the page, and Cascadia Mono is written in Consolas, because Windows ships it
-only as a variable font whose bold and italic are axes rather than files. Any other
+upright on the page, Ink Free has only its regular face, which every style of it uses,
+and Cascadia Mono is written in Consolas, because Windows ships it only as a variable
+font whose bold and italic are axes rather than files. Any other
 family a board names falls back to Segoe UI, as the page furniture already does.
 
 ### Writing the file

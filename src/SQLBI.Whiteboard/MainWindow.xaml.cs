@@ -6468,15 +6468,26 @@ public partial class MainWindow : Window
         }
     }
 
-    // Four to a row, so the eight shapes are two rows no wider than the ink
+    // Three to a row, so the nine shapes are three rows no wider than the ink
     // options under the same toolbar.
-    private const int InsertOptionsColumns = 4;
+    private const int InsertOptionsColumns = 3;
 
     /// <summary>
     /// What the Insert flyout offers, in the order the Insert row offers it. The
     /// connectors and Text join this list, and the flyout follows from it.
     /// </summary>
-    private static IReadOnlyList<ShapeKind> InsertShapes { get; } = Enum.GetValues<ShapeKind>();
+    private static IReadOnlyList<ShapeKind> InsertShapes { get; } =
+    [
+        ShapeKind.Rectangle,
+        ShapeKind.RoundedRectangle,
+        ShapeKind.Ellipse,
+        ShapeKind.Triangle,
+        ShapeKind.Pentagon,
+        ShapeKind.BlockArrow,
+        ShapeKind.Parallelogram,
+        ShapeKind.Diamond,
+        ShapeKind.Stadium,
+    ];
 
     private void RebuildInsertOptions()
     {
@@ -6699,7 +6710,7 @@ public partial class MainWindow : Window
     }
 
     /// <summary>
-    /// The eight shapes, then the three connectors and Text: the Insert row in
+    /// The nine shapes, then the three connectors and Text: the Insert row in
     /// two short rows, from the one list the Insert flyout is built from. The
     /// buttons carry the active tool, so they are made again when it changes.
     /// </summary>

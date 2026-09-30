@@ -479,11 +479,29 @@
                                 Orientation="Horizontal"
                                 Visibility="Collapsed">
                         <Button Style="{StaticResource SessionCommandButton}"
+                                ToolTip="Drag on the board to draw a rectangle"
+                                Tag="Rectangle"
+                                Click="Shape_Click">
+                            <!-- Top rather than centred, so a label that
+                                 wraps does not lift its icon out of line. -->
+                            <StackPanel HorizontalAlignment="Center"
+                                        VerticalAlignment="Top">
+                                <Path Width="18"
+                                      Height="18"
+                                      Stretch="Uniform"
+                                      Fill="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"
+                                      Data="{StaticResource RectangleShapeGeometry}" />
+                                <TextBlock Margin="0,4,0,0"
+                                           HorizontalAlignment="Center"
+                                           TextAlignment="Center"
+                                           TextWrapping="Wrap"
+                                           Text="Rectangle" />
+                            </StackPanel>
+                        </Button>
+                        <Button Style="{StaticResource SessionCommandButton}"
                                 ToolTip="Drag on the board to draw a rounded rectangle"
                                 Tag="RoundedRectangle"
                                 Click="Shape_Click">
-                            <!-- Top rather than centred, so the one label that
-                                 wraps does not lift its icon out of line. -->
                             <StackPanel HorizontalAlignment="Center"
                                         VerticalAlignment="Top">
                                 <Path Width="18"

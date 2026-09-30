@@ -605,7 +605,7 @@ internal static class SettingsCatalog
             Category = Toolbar,
             Title = "Insert palette",
             Summary = "A movable palette with the shapes, connectors, and Text",
-            Description = "On, a panel holds the eight shapes, the three connectors, and Text where you can reach them while you draw. The grip along its left edge drags it anywhere in the window with a mouse, a pen, or a finger.",
+            Description = "On, a panel holds the nine shapes, the three connectors, and Text where you can reach them while you draw. The grip along its left edge drags it anywhere in the window with a mouse, a pen, or a finger.",
             Keywords = ["insert", "palette", "shape", "connector", "text", "pin", "float", "move", "drag"],
             Editor = SettingEditorKind.DrawnChoice,
             Choices = OffOn,

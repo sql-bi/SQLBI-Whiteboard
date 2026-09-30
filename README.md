@@ -25,7 +25,7 @@ How the project is developed and shipped is documented separately:
 - Image selection, movement, resizing, and deletion
 - Text containers created by pasting plain text, with display and in-place edit modes
 - Seventeen text-container types: fifteen languages with live syntax highlighting, plus Prompt and Markdown, and local F6 formatting for DAX, SQL Server, and KQL
-- An **Insert** tab with eight shapes drawn by dragging, with outline color, fill, line thickness, and text of their own in nine fonts; three connectors that bind wherever an end is dropped on a shape or a container, follow it, and can be drawn from the four arrows on a selected shape; and text labels typed on the board. A shape or a label turns to any angle by its handle, and the pin at the end of the row makes it a palette you can move
+- An **Insert** tab with nine shapes drawn by dragging, with outline color, fill, line thickness, and text of their own in ten fonts; three connectors that bind wherever an end is dropped on a shape or a container, follow it, and can be drawn from the four arrows on a selected shape; and text labels typed on the board. A shape or a label turns to any angle by its handle, and the pin at the end of the row makes it a palette you can move
 - Selection by area: drag with Select for a rectangle, or hold Select for a freehand outline. Ctrl+A takes everything and Ctrl+Shift+A the ink alone, and the **…** on the selection offers Delete, Copy, Duplicate, and the four depth commands. Ink is taken too, and everything the area takes moves, resizes, recolors, reorders, and deletes as one
 - An optional background grid, Lines or Dots, whose spacing is fixed in board pixels and coarsens as the zoom goes out. It is drawn on screen only and never appears in an export or a preview
 - Containers automatically carry strokes that touch only that container when moved or resized
@@ -222,7 +222,7 @@ Use **Copy settings** after finding a useful combination so the exact values can
 | … on the property bar | Delete, Copy, Duplicate, and the four depth commands for whatever is selected |
 | Alt+L | Laser pointer |
 | File / Edit / View / Insert / Help | Tab strip. Click a tab for a one-row command strip over the canvas. Click the canvas to hide it |
-| Insert tab | Alt+I: the eight shapes, the three connectors, and Text. The tool returns to Select after one object unless **After inserting an object** says to keep it |
+| Insert tab | Alt+I: the nine shapes, the three connectors, and Text. The tool returns to Select after one object unless **After inserting an object** says to keep it |
 | Insert > Palette | Pin the Insert row into a floating palette that drags anywhere in the window and comes back where it was left. Letter P while the Insert strip is open, or **Preferences → Toolbar → Insert palette** |
 | Hold Select, or tap it again | Switch what a drag on empty canvas takes, between a rectangle and a freehand lasso. The hold is 600 ms; the button's glyph and its tooltip say which one is armed |
 | Rotation handle | The circle above a selected shape or label turns it to any angle; Shift snaps to 15°, and the property bar's two buttons step by 45° |

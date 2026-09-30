@@ -257,7 +257,7 @@ public sealed partial class MicrosoftWhiteboardExport
             {
                 var candidate = line.Length == 0 ? word : $"{line} {word}";
                 if (line.Length > 0 &&
-                    measure.Label(candidate, font.Family, fontSize, font.Bold, font.Italic).Width > maximumWidth)
+                    measure.Label(candidate, font.PageFamily ?? font.Family, fontSize, font.Bold, font.Italic).Width > maximumWidth)
                 {
                     result.Append(line).Append('\n');
                     line.Clear().Append(word);

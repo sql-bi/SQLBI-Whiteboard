@@ -1,13 +1,14 @@
 # Microsoft Whiteboard import
 
-**Implemented in 1.7.0**, with the objects of older versions of the app in 1.7.1. This
-document records what a Microsoft Whiteboard export contains, how the importer maps it
-onto a board, and what it cannot carry over. Microsoft retires its standalone Whiteboard
-apps on 16 October 2026 (see [retirement](retirement/README.md)), and the export is the
-only way to take a board out of it. The format is undocumented. Everything below was established from eight exports of
-real teaching boards and one test board holding every kind of object the Windows client
-offers, made between 20 and 27 September 2026. Six more teaching boards, exported on 29
-September, added the objects that older versions of the app wrote, which 1.7.1 reads.
+**Implemented in 1.7.0**, with the objects of older versions of the app in 1.7.1 and
+1.7.2. This document records what a Microsoft Whiteboard export contains, how the
+importer maps it onto a board, and what it cannot carry over. Microsoft retires its
+standalone Whiteboard apps on 16 October 2026 (see [retirement](retirement/README.md)),
+and the export is the only way to take a board out of it. The format is undocumented.
+Everything below was established from eight exports of real teaching boards and one test
+board holding every kind of object the Windows client offers, made between 20 and 27
+September 2026. Six more teaching boards, exported on 29 September, added the objects
+that older versions of the app wrote.
 
 ## Where it starts
 
@@ -75,6 +76,12 @@ no model of the board beyond what it draws.
 - **Highlighter outline.** The tip is an axis-aligned rectangle twice as tall as it is
   wide, drawn once at the start and swept along the centerline. Its height follows
   pressure. The fill is the color at 0.4 alpha.
+- **Highlighter without a centerline.** Older versions of the app wrote some highlighter
+  strokes with an empty `polyline` and a scale other than 1/128. The outline is a square
+  tip followed by the sweep, as overlapping pieces, and the path cannot be recovered from
+  it reliably. Seven samples on three boards are scribbles that fill a frame, a region,
+  or a table, or mark a few words. `Whiteboard 1` had lost its three until 1.7.2, with no
+  message, because such a stroke was taken for an empty one.
 - **Arrowheads** on a pen are part of the centerline: it runs out to each barb's tip and
   back, so they need nothing of their own.
 - **Rainbow and Galaxy** ink fill the outline with a `url(#…)` pattern that uses
@@ -105,11 +112,13 @@ Windows client offers, from `paleYellowGradient` (#FEE15A) to `grayGradient` (#C
 | --- | --- |
 | Pen stroke | `InkStrokeObject`, `PenKind.Pen`, the fill as its color |
 | Highlighter stroke, or a translucent stroke in a `Mixed` group | `InkStrokeObject`, `PenKind.Highlighter`, the color made opaque |
+| Highlighter stroke without a centerline | An SVG asset of its outline, in its color and opacity, in the box it covers |
 | Rainbow or Galaxy stroke | A pen stroke in violet (#8B5CF6) or indigo (#312E81) |
 | Picture, document page, sticker | `BoardAsset` with the sniffed type, and an `ImageBoardObject` |
 | Turned picture | An SVG asset that draws the picture turned, in the box it covers |
 | Shape | `ShapeBoardObject` of the kind its outline has, with fill, outline, angle, and text |
 | Older ellipse or polygon | `ShapeBoardObject`, an oval with the ellipse's radii or the kind the polygon's corners have, without text |
+| Rectangle, in either form | `ShapeBoardObject`, `ShapeKind.Rectangle`, with square corners |
 | Sticky note | `ShapeBoardObject`, rounded rectangle in the note's color, with the note's text |
 | Note grid | A white rounded rectangle for the panel, a label for the title, and one note per cell |
 | Text box | `FreeTextBoardObject`, wrapped into the lines the box showed |
@@ -138,8 +147,12 @@ anchor's angle and swaps the box's sides.
 measure text, so the window passes in `IBoardTextMeasure`, backed by the same WPF layout
 that draws labels and containers. A label here keeps the lines it is given, so the importer
 wraps the text at the box's width first, word by word. A label's font is the nearest of
-the label fonts: Simple (Aptos) and anything unknown become Segoe UI, Handwritten
-(Segoe Print, Ink Free) becomes Segoe Print, and a serif family becomes Georgia.
+the label fonts: Simple (Aptos) and anything unknown become Segoe UI, Handwritten is
+Segoe Print or, on older boards, Ink Free, both of which are label fonts, and a serif
+family becomes Georgia. The lines are found by measuring in the family the page names,
+because that is where the text box broke them. Until 1.7.2 Ink Free became Segoe Print,
+which is wider, and measuring in it split single-line titles in two. A family that is
+not installed is measured in WPF's fallback.
 
 **Width.** WPF draws a point at the style's thickness × (0.25 + 1.5 × pressure), so
 pressure 0.5 is the thickness itself. Each centerline point takes twice the radius of the
@@ -173,8 +186,10 @@ parses in about 160 ms.
   further out. A vertical highlight comes out four times as wide as the original. A
   highlight has one width throughout.
 - **Rainbow and Galaxy** are one color each.
-- **Rectangles and notes have rounded corners**, because the board's rectangle has them.
-  The rounding shows most on large frames, such as a template's columns.
+- **Notes and note grids have rounded corners**, because they are rounded rectangles here.
+- **An old highlighter scribble is a picture**, not ink, because its path is not in the
+  export. It moves and deletes as a picture, and it keeps the few small gaps the page
+  shows where the outline's pieces overlap.
 - **Note text is centered** in the note, where Microsoft puts it at the top left, and
   text too large for its note overflows it rather than being cut off.
 - **Elbow connectors are straight.** Their ends stay where they were and stay bound.
@@ -209,7 +224,8 @@ Each sample was opened in the application and compared with the same page render
 Edge, fitted to the same content. Positions, picture sizes, scaled ink groups, and colors
 matched on all eight teaching boards. The six later boards were opened in the
 application, where the older ellipses, rectangles, and pictures sit in place against the
-ink drawn around them. Regions with pressure-drawn handwriting and with highlighters were
+ink drawn around them. The highlighter pictures, square frames, and one-line titles of
+FEvsSE, Venn diagrams, and Whiteboard 1 were compared with Edge at the same fit. Regions with pressure-drawn handwriting and with highlighters were
 compared at 150% against a WPF rendering that uses the application's own drawing
 attributes. The test board was compared region by region in the application:
 ink, text boxes, notes, the note grid, shapes, connectors, pictures, the template, and the
