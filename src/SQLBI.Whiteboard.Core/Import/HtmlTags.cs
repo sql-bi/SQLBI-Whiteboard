@@ -5,7 +5,9 @@ namespace SQLBI.Whiteboard.Core.Import;
 /// <summary>
 /// The start tags of an HTML page, in document order, with their attributes and the
 /// text that follows each one up to the next tag. Text that follows an end tag, such as
-/// a title after a bold ID, comes as a tag named <c>#text</c>. The Microsoft Whiteboard
+/// a title after a bold ID, comes as a tag named <c>#text</c>, and the end of each
+/// <c>div</c> as a tag named <c>/div</c>, so that a reader can tell which divs are
+/// inside which. The Microsoft Whiteboard
 /// export is generated markup, so quoting is regular, but it is HTML rather than XML:
 /// some elements are never closed.
 /// </summary>
@@ -18,6 +20,10 @@ internal static class HtmlTags
     private const int MaximumText = 65536;
 
     public const string TextName = "#text";
+
+    public const string EndDivName = "/div";
+
+    private static readonly HtmlTag EndDiv = new(EndDivName, new Dictionary<string, string>());
 
     private static readonly Dictionary<string, string> NoAttributes = new(StringComparer.OrdinalIgnoreCase);
 
@@ -39,6 +45,11 @@ internal static class HtmlTags
                 if (close < 0)
                 {
                     yield break;
+                }
+
+                if (close - open == 5 && string.CompareOrdinal(html, open + 2, "div", 0, 3) == 0)
+                {
+                    yield return EndDiv;
                 }
 
                 var after = html.IndexOf('<', close);

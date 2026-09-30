@@ -359,7 +359,6 @@ public sealed partial class MicrosoftWhiteboardExport
                     break;
                 case "LoopObject":
                 case "HostedFluidObject":
-                case "GroupFluidObject":
                     if (ReadLoop(anchor, tags) is { } loop)
                     {
                         items.Add(loop);
@@ -382,7 +381,10 @@ public sealed partial class MicrosoftWhiteboardExport
 
                     break;
                 case "LegacyTemplate":
-                    items.AddRange(ReadTemplate(anchor, tags, what => Skip(what)));
+                    items.AddRange(ReadCollection(anchor, tags, what => Skip(what), "Template items"));
+                    break;
+                case "GroupFluidObject":
+                    items.AddRange(ReadCollection(anchor, tags, what => Skip(what), "Group items"));
                     break;
                 case "LegacySticker":
                     items.AddRange(ReadSticker(anchor, tags));
@@ -411,9 +413,9 @@ public sealed partial class MicrosoftWhiteboardExport
                     break;
             }
 
-            // A note keeps its reactions in its text, and so does a note in a grid or a
-            // template. Reactions on anything else are counted.
-            if (anchor.Type is not ("Note" or "GridList" or "LegacyTemplate"))
+            // A note keeps its reactions in its text, and so does a note in a grid, a
+            // template, or a group. Reactions on anything else are counted.
+            if (anchor.Type is not ("Note" or "GridList" or "LegacyTemplate" or "GroupFluidObject"))
             {
                 Skip("Reactions", tags.Count(tag => tag.Name == "div" && tag.HasClass("ReactionPillContainer")));
             }
@@ -1114,56 +1116,111 @@ public sealed partial class MicrosoftWhiteboardExport
     }
 
     /// <summary>
-    /// A template from the Windows 10 app: a title and the items placed on it, which the
-    /// web client draws as a collection. Each child is a <c>div.topLeft</c> with its own
-    /// <c>left</c>, <c>top</c>, and <c>transform</c>, holding the same content a board
-    /// object holds without the anchor around it, so a child is recognized by what it
-    /// holds and read by the reader for that kind, placed from its corner. The title is
-    /// a white panel with a blue bar on top and bold 24-pixel text; the bar and the text
-    /// are what show on a white board. A child of any other kind is counted.
+    /// A template from the Windows 10 app and a group of objects are both drawn as a
+    /// collection: a <c>div</c> with the role <c>collection</c>, holding for each child
+    /// a <c>div</c> named after the child's origin, <c>topLeft</c> or <c>center</c>, with
+    /// its own <c>left</c>, <c>top</c>, and <c>transform</c>. The child holds the same
+    /// content a board object holds, without the anchor around it, so it is recognized
+    /// by what it holds and read by the reader for that kind. Only the collection's own
+    /// children are read here, and a child that is itself a collection is read the same
+    /// way, which is why the depth of each <c>div</c> is counted. A template's first
+    /// child is its title. A group becomes its members, because the board has no groups:
+    /// see docs/microsoft-whiteboard-import.md for what changes when it has. A child of
+    /// any other kind is counted.
     /// </summary>
-    private static IEnumerable<MicrosoftWhiteboardItem> ReadTemplate(Anchor anchor, List<HtmlTag> tags, Action<string> skip)
+    private static IEnumerable<MicrosoftWhiteboardItem> ReadCollection(Anchor anchor, List<HtmlTag> tags, Action<string> skip, string items)
     {
-        var children = new List<int>();
-        for (var index = 0; index < tags.Count; index++)
-        {
-            var tag = tags[index];
-            if (tag.Name == "div" && tag.HasClass("topLeft") &&
-                StyleValue(tag.Attribute("style"), "left") is not null)
-            {
-                children.Add(index);
-            }
-        }
-
-        if (children.Count == 0)
+        var root = tags.FindIndex(tag => tag.Name == "div" && tag.Attribute("role") == "collection");
+        if (root < 0)
         {
             skip(anchor.Type);
             yield break;
         }
 
-        for (var child = 0; child < children.Count; child++)
+        var rootEnd = EndOfDiv(tags, root);
+        var depth = 0;
+        for (var index = root; index < rootEnd; index++)
         {
-            var start = children[child];
-            var end = child + 1 < children.Count ? children[child + 1] : tags.Count;
-            var content = tags.GetRange(start + 1, end - start - 1);
-            var place = Anchor.From(tags[start], anchor.Type).Inside(anchor, default);
-            var items = ReadTemplateChild(place, tags[start], content).ToArray();
-            if (items.Length == 0 && ReadText(content, 0, content.Count).Length + content.Count(tag => tag.Name == "svg") > 0)
+            var tag = tags[index];
+            if (tag.Name == HtmlTags.EndDivName)
             {
-                skip("Template items");
+                depth--;
+                continue;
             }
 
-            foreach (var item in items)
+            if (tag.Name != "div")
+            {
+                continue;
+            }
+
+            depth++;
+
+            // The root is at depth 1, a wrapper for each child at 2, and the child at 3.
+            if (depth != 3 || StyleValue(tag.Attribute("style"), "left") is null)
+            {
+                continue;
+            }
+
+            var end = EndOfDiv(tags, index);
+            var content = tags.GetRange(index + 1, Math.Max(0, end - index - 1));
+            var place = Anchor.From(tag, anchor.Type).Inside(anchor, default);
+            var read = ReadCollectionChild(place, tag, content, skip, items).ToArray();
+            if (read.Length == 0 && ReadText(content, 0, content.Count).Length + content.Count(item => item.Name == "svg") > 0)
+            {
+                skip(items);
+            }
+
+            foreach (var item in read)
             {
                 yield return item;
             }
+
+            // The child's own divs are read with it.
+            index = end;
+            depth--;
         }
     }
 
-    private static IEnumerable<MicrosoftWhiteboardItem> ReadTemplateChild(Anchor place, HtmlTag child, List<HtmlTag> content)
+    /// <summary>
+    /// The index of the end tag that closes the <c>div</c> at <paramref name="start"/>.
+    /// </summary>
+    private static int EndOfDiv(List<HtmlTag> tags, int start)
+    {
+        var depth = 0;
+        for (var index = start; index < tags.Count; index++)
+        {
+            if (tags[index].Name == "div")
+            {
+                depth++;
+            }
+            else if (tags[index].Name == HtmlTags.EndDivName && --depth == 0)
+            {
+                return index;
+            }
+        }
+
+        return tags.Count;
+    }
+
+    private static IEnumerable<MicrosoftWhiteboardItem> ReadCollectionChild(Anchor place, HtmlTag child, List<HtmlTag> content, Action<string> skip, string items)
     {
         bool Has(Func<HtmlTag, bool> test) => content.Any(test);
         HtmlTag? First(Func<HtmlTag, bool> test) => content.FirstOrDefault(test);
+
+        // A picture, a shape, and a sticker are centered on their anchor at the top
+        // level. A child placed from its corner moves its anchor to the middle first.
+        Anchor Centered(double width, double height) =>
+            place.Centered ? place : place.Shifted(new PointD(width / 2, height / 2));
+
+        if (Has(tag => tag.Name == "div" && tag.Attribute("role") == "collection"))
+        {
+            foreach (var item in ReadCollection(place, content, skip, items))
+            {
+                yield return item;
+            }
+
+            yield break;
+        }
 
         if (ReadPlaceholder(place, content) is { } placeholder)
         {
@@ -1201,6 +1258,16 @@ public sealed partial class MicrosoftWhiteboardExport
                     new MicrosoftWhiteboardFont(LabelStyles.DefaultFontFamily, 24, Black, true, false, false),
                     double.MaxValue,
                     null);
+            }
+
+            yield break;
+        }
+
+        if (Has(tag => tag.Name == "div" && tag.HasClass("inkTableContainer")))
+        {
+            foreach (var item in ReadTable(place, content))
+            {
+                yield return item;
             }
 
             yield break;
@@ -1256,14 +1323,28 @@ public sealed partial class MicrosoftWhiteboardExport
             yield break;
         }
 
-        // A picture and a shape are centered on their anchor at the top level, and
-        // placed from their corner here, so their anchor moves to their middle.
+        MicrosoftWhiteboardItem? single =
+            Has(tag => tag.HasClass("loopParentDiv")) ? ReadLoop(place, content)
+            : Has(tag => tag.HasClass("appFrameContainer")) ? ReadAppFrame(place, content)
+            : Has(tag => tag.HasClass("WorkItem")) ? ReadWorkItem(place, content)
+            : Has(tag => tag.Attribute("data-custom-widget-kind") is not null) ? ReadCustomElement(place, content)
+            : Has(tag => tag.HasClass("previewCardTitleContainer")) ? ReadLink(place, content)
+            : Has(tag => tag.Name == "svg" && tag.HasClass("connector")) ? ReadConnector(place, content)
+            : null;
+        if (single is not null)
+        {
+            yield return single;
+            yield break;
+        }
+
         if (First(tag => tag.Name == "div" && tag.HasClass("imageComponent")) is { } box)
         {
-            var size = new PointD(StyleLength(box.Attribute("style"), "width") ?? 0, StyleLength(box.Attribute("style"), "height") ?? 0);
-            if (ReadImage(place.Shifted(new PointD(size.X / 2, size.Y / 2)), content) is { } picture)
+            var anchor = Centered(StyleLength(box.Attribute("style"), "width") ?? 0, StyleLength(box.Attribute("style"), "height") ?? 0);
+
+            // A picture with a caption is a sticker from the Windows 10 app.
+            foreach (var item in ReadSticker(anchor, content))
             {
-                yield return picture;
+                yield return item;
             }
 
             yield break;
@@ -1271,12 +1352,13 @@ public sealed partial class MicrosoftWhiteboardExport
 
         if (First(tag => tag.Name == "svg" && tag.HasClass("shape")) is { } svg)
         {
-            var size = new PointD(Numbers(svg.Attribute("width")).FirstOrDefault(), Numbers(svg.Attribute("height")).FirstOrDefault());
+            var width = Numbers(svg.Attribute("width")).FirstOrDefault();
+            var height = Numbers(svg.Attribute("height")).FirstOrDefault();
             var shape = Has(tag => tag.Name == "polygon")
                 ? ReadLegacyShape(place, content)
                 : Has(tag => tag.Name == "ellipse")
-                    ? ReadLegacyShape(place.Shifted(new PointD(size.X / 2, size.Y / 2)), content)
-                    : ReadShape(place.Shifted(new PointD(size.X / 2, size.Y / 2)), content);
+                    ? ReadLegacyShape(Centered(width, height), content)
+                    : ReadShape(Centered(width, height), content);
             if (shape is not null)
             {
                 yield return shape;
@@ -1496,14 +1578,14 @@ public sealed partial class MicrosoftWhiteboardExport
     /// holds a title and a description in the board's language and nothing of the
     /// content, and the stylesheet makes it at least 448 by 170 pixels, white, with a
     /// shadow. It becomes a white rectangle of that size with a light outline, because
-    /// a shadow does not carry over, and the two lines as its text. A template whose
-    /// children were drawn is read child by child, and a child can be a placeholder.
+    /// a shadow does not carry over, and the two lines as its text. A template or a
+    /// group whose children were drawn is read child by child, and a child can be a
+    /// placeholder.
     /// </summary>
     private static MicrosoftWhiteboardShape? ReadPlaceholder(Anchor anchor, List<HtmlTag> tags)
     {
         var index = tags.FindIndex(tag => tag.Name == "div" && tag.HasClass("unknownObject"));
-        if (index < 0 || tags.Any(tag => tag.Name == "div" && tag.HasClass("topLeft") &&
-                                         StyleValue(tag.Attribute("style"), "left") is not null))
+        if (index < 0 || tags.Any(tag => tag.Name == "div" && tag.Attribute("role") == "collection"))
         {
             return null;
         }
@@ -2025,7 +2107,8 @@ public sealed partial class MicrosoftWhiteboardExport
             (parent.A * C) + (parent.C * D),
             (parent.B * C) + (parent.D * D),
             0,
-            0);
+            0,
+            Centered);
 
         private static double[] StyleMatrix(string? style)
         {

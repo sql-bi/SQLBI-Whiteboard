@@ -21,8 +21,11 @@ and **bold**.
 
 ### Templates from Microsoft Whiteboard
 Templates from boards made with the Windows 10 app of Microsoft Whiteboard now come across
-with their title and the notes, lists, text, pictures, shapes, and ink placed on them.
-They used to be listed as left out.
+with their title and what is placed on them. They used to be listed as left out.
+
+### Groups from Microsoft Whiteboard
+A group of objects now comes across as the objects in it, each where it was. It used to
+be listed as left out, with everything in it.
 
 ### Loop components, apps, and other objects from Microsoft Whiteboard
 A Loop component now comes across as a link to it, an app made by Copilot as an empty

@@ -38,7 +38,9 @@ What a person gets by upgrading:
 
 Out of scope for 1.6.0, unless a decision below says otherwise: text inside a shape,
 rotating a shape, elbow connectors, connectors with an arrowhead at both ends, per-board
-grid settings, and grouping as a saved object.
+grid settings, and grouping as a saved object. The Microsoft Whiteboard import flattens
+groups today, and [its document](microsoft-whiteboard-import.md#when-the-board-has-groups) says what it
+should do once grouping exists.
 
 ## Decisions taken
 

@@ -145,6 +145,7 @@ internal static class MicrosoftWhiteboardSmokeTests
         RunCards();
         RunCustom();
         RunPlaceholders();
+        RunGroup();
     }
 
     /// <summary>
@@ -731,6 +732,55 @@ internal static class MicrosoftWhiteboardSmokeTests
         Assert(board.Items.OfType<MicrosoftWhiteboardLabel>().Single() is { Text: "Plan" } &&
                board.Items[^1] is MicrosoftWhiteboardShape { Text: Text } child && child.Center == new PointD(274, 1145),
             "In a template whose children were drawn, a child drawn as a placeholder is the box, placed from its corner.");
+    }
+
+    /// <summary>
+    /// A group as the web client draws it: a collection whose children keep their own
+    /// origin, one of them a group of its own.
+    /// </summary>
+    private static readonly string GroupPage = $$"""
+        <html><body><div id="canvasContent" class="contentOrigin">
+        <div class="anchor align topLeft" data-whiteboard-type="GroupFluidObject" style="left: 1000px; top: 1000px; transform: matrix(2, 0, 0, 2, 0, 0);">
+          <div class="canvasChild"><div class="collection" role="collection">
+            <div><div class="topLeft" style="left: 0px; top: 0px; position: absolute;">
+              <div class="textBoxBackground softBlueGradient"><div class="textbox stickyNote" style="width: 304px; height: 265px; font-size: 32px;">
+                <div class="textBoxCore"><div data-block="true"><span data-text="true">Grouped</span></div></div></div></div></div></div>
+            <div><div class="center" style="left: 500px; top: 100px; position: absolute;">
+              <div class="content imageComponent" style="height: 50px; width: 100px;"><img src="data:image/*;base64,{{OnePixelPng}}"></div></div></div>
+            <div><div class="topLeft" style="left: 0px; top: 400px; position: absolute;">
+              <div class="collection" role="collection">
+                <div><div class="center" style="left: 100px; top: 50px; position: absolute;">
+                  <svg class="shape ellipse" height="40" width="60"><ellipse cx="30" cy="20" rx="30" ry="20" stroke="rgba(0,0,0,1)" style="fill: transparent; stroke-width: 2;"></ellipse></svg></div></div>
+                <div><div class="topLeft" style="left: 0px; top: 0px; position: absolute;">
+                  <svg class="inkGroup ink PenStroke" viewBox="0 0 100 10" width="100" height="10"><g class="inkStroke" transform="matrix(0.0078125, 0, 0, 0.0078125, 0, 0)">
+                    <path d="M0,-256L2560,-256A256,256 0 0 0 2560,256L0,256A256,256 0 0 0 0,-256" fill="rgba(0,0,0,1)"></path>
+                    <polyline class="inkHitTestOverlay" points="0,0 2560,0 "></polyline></g></svg></div></div>
+              </div></div></div>
+            <div><div class="topLeft" style="left: 700px; top: 0px; position: absolute;"><div class="timer"><svg width="10" height="10"></svg></div></div></div>
+          </div></div>
+        </div>
+        </div></body></html>
+        """;
+
+    private static void RunGroup()
+    {
+        var board = MicrosoftWhiteboardExport.Parse(GroupPage, "Group");
+        Assert(board.Skipped.Count == 1 && board.Skipped["Group items"] == 1,
+            "A group's members are read, and a member of an unknown kind is counted.");
+
+        Assert(board.Items[0] is MicrosoftWhiteboardShape { Text: "Grouped", Width: 608, Height: 610 } note &&
+               note.Center == new PointD(1304, 1305),
+            "A member placed from its corner starts at its place in the group, scaled with the group.");
+        Assert(board.Items[1] is MicrosoftWhiteboardImage picture && picture.Bounds == new RectD(1900, 1150, 200, 100),
+            "A member centered on its place stays centered there.");
+        Assert(board.Items[2] is MicrosoftWhiteboardShape { Kind: ShapeKind.Ellipse, Width: 120, Height: 80 } ellipse &&
+               ellipse.Center == new PointD(1200, 1900),
+            "A group inside a group places its members through both.");
+        var stroke = (MicrosoftWhiteboardStroke)board.Items[3];
+        AssertNear(1000, stroke.Points[0].X, "Ink in an inner group starts at its place.");
+        AssertNear(1800, stroke.Points[0].Y, "Ink in an inner group starts at its place.");
+        AssertNear(1040, stroke.Points[^1].X, "Ink in an inner group takes both groups' scale.");
+        Assert(board.Items.Count == 4, "A group is its members; nothing stands for the group itself.");
     }
 
     private static void RunArchive()
