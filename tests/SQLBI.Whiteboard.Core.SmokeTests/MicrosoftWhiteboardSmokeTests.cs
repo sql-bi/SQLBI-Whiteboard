@@ -139,6 +139,7 @@ internal static class MicrosoftWhiteboardSmokeTests
         RunObjects();
         RunOlderObjects();
         RunLists();
+        RunTables();
     }
 
     /// <summary>
@@ -452,6 +453,65 @@ internal static class MicrosoftWhiteboardSmokeTests
         Assert(board.Items[3] is MicrosoftWhiteboardImage { ContentType: "image/gif" } gif &&
                gif.Bounds == new RectD(2970, 980, 60, 40),
             "A GIF is a picture like any other.");
+    }
+
+    /// <summary>
+    /// An ink table and a sticker from the Windows 10 app, as the web client draws them:
+    /// the table as a grid of bordered cells holding collections of ink groups, and the
+    /// sticker as a picture with a caption moved from its corner.
+    /// </summary>
+    private static readonly string TablesPage = $$"""
+        <html><body><div id="canvasContent" class="contentOrigin">
+        <div class="anchor align topLeft" data-whiteboard-type="Unknown" style="left: 100px; top: 200px;">
+          <div class="canvasChild"><div class="inkTableContainer" style="display: grid; grid-template-columns: minmax(200px, auto) minmax(100px, auto); grid-template-rows: minmax(50px, auto) minmax(60px, auto); grid-gap: 0px;">
+            <div class="inkCellContainer headerRow" style="position: relative; border: 4px solid rgb(0, 105, 191); margin: -2px;"><div style="position: absolute; left: 10px; top: 0px;">
+              <div style="position: absolute; top: 0px; left: 0px;"><div class="inkCollection" role="collection"><div><div class="topLeft" style="left: 5px; top: 6px; position: absolute;">
+                <svg class="inkGroup ink PenStroke" viewBox="0 0 100 10" width="100" height="10"><g class="inkStroke" transform="matrix(0.0078125, 0, 0, 0.0078125, 0, 0)">
+                  <path d="M0,-256L2560,-256A256,256 0 0 0 2560,256L0,256A256,256 0 0 0 0,-256" fill="rgba(0,0,0,1)"></path>
+                  <polyline class="inkHitTestOverlay" points="0,0 2560,0 "></polyline></g></svg>
+              </div></div></div></div></div></div>
+            <div class="inkCellContainer headerRow" style="position: relative; border: 4px solid rgb(0, 105, 191); margin: -2px;"><div style="position: absolute; left: 0px; top: 0px;"></div></div>
+            <div class="inkCellContainer" style="position: relative; border: 4px solid rgb(0, 105, 191); margin: -2px;"><div style="position: absolute; left: 0px; top: 0px;"></div></div>
+            <div class="inkCellContainer" style="position: relative; border: 4px solid rgb(0, 105, 191); margin: -2px;"><div style="position: absolute; left: 0px; top: 0px;"></div></div>
+          </div></div>
+        </div>
+        <div class="anchor align center" data-whiteboard-type="LegacySticker" style="left: 500px; top: 500px; transform: matrix(2, 0, 0, 2, 0, 0);">
+          <div class="canvasChild"><div class="content imageComponent" style="height: 100px; width: 200px;"><div class="ms-Image"><img src="data:image/*;base64,{{OnePixelPng}}"></div>
+            <div style="left: 0px; top: 0px; transform: matrix(1, 0, 0, 1, 20, 30); font-size: 30px; font-family: &quot;Segoe Print&quot;; font-weight: normal; position: absolute;">
+              <div class="textbox" style="width: 160px; height: 40px; font-size: 24px;"><div class="textBoxCore" style="color: rgb(193, 0, 81);"><div data-block="true"><span data-text="true">Great idea!</span></div></div></div>
+            </div></div></div>
+        </div>
+        <div class="anchor align topLeft" data-whiteboard-type="Unknown" style="left: 0px; top: 0px;"><div class="canvasChild"></div></div>
+        </div></body></html>
+        """;
+
+    private static void RunTables()
+    {
+        var board = MicrosoftWhiteboardExport.Parse(TablesPage, "Tables");
+        Assert(board.Skipped.Count == 1 && board.Skipped["Unknown"] == 1,
+            "An Unknown object without a table in it is still reported.");
+
+        var cells = board.Items.OfType<MicrosoftWhiteboardShape>().ToArray();
+        Assert(cells.Length == 4 && cells.All(cell => cell is { Kind: ShapeKind.Rectangle, OutlineArgb: 0xFF0069BF, FillArgb: null, Thickness: 4 }),
+            "Each cell of a table is a square-cornered rectangle outlined in the table's color.");
+        Assert(cells[0] is { Width: 200, Height: 50 } && cells[0].Center == new PointD(200, 225) &&
+               cells[3] is { Width: 100, Height: 60 } && cells[3].Center == new PointD(350, 280),
+            "Cells take their columns' widths and their rows' heights, row by row.");
+
+        var stroke = board.Strokes.Single();
+        AssertNear(117, stroke.Points[0].X, "A cell's ink starts at the cell's corner inside the border, moved by the cell's shift and its group's place.");
+        AssertNear(208, stroke.Points[0].Y, "A cell's ink starts at the cell's corner inside the border, moved by the cell's shift and its group's place.");
+        AssertNear(137, stroke.Points[^1].X, "A cell's ink keeps its length.");
+        var order = board.Items.ToList();
+        Assert(order.IndexOf(stroke) > order.IndexOf(cells[^1]),
+            "The ink is drawn over the table's cells.");
+
+        Assert(board.Items.OfType<MicrosoftWhiteboardImage>().Single().Bounds == new RectD(300, 400, 400, 200),
+            "A sticker's picture is read as any other picture.");
+        Assert(board.Items.OfType<MicrosoftWhiteboardLabel>().Single() is
+               { Text: "Great idea!", Scale: 2, WrapWidth: 160, CenteredWidth: 160, Font: { Family: "Segoe Print", Size: 24, Argb: 0xFFC10051 } } caption &&
+               caption.Origin == new PointD(340, 460),
+            "A sticker's caption is a label centered across its box, at the size it shrank to, moved from the picture's corner.");
     }
 
     private static void RunArchive()
