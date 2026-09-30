@@ -45,6 +45,7 @@ public static class LabelStyles
         "Cascadia Mono",
         "Comic Sans MS",
         "Segoe Print",
+        "Ink Free",
     ];
 
     /// <summary>

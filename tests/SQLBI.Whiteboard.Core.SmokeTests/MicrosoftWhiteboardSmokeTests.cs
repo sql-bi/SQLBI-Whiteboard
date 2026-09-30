@@ -234,7 +234,7 @@ internal static class MicrosoftWhiteboardSmokeTests
         AssertNear(8.0 / 3, arrow.Thickness, "Points are 4/3 of a pixel.");
 
         var frame = (MicrosoftWhiteboardShape)board.Items[1];
-        Assert(frame.Kind == ShapeKind.RoundedRectangle && frame.FillArgb is null && frame.OutlineArgb == 0,
+        Assert(frame.Kind == ShapeKind.Rectangle && frame.FillArgb is null && frame.OutlineArgb == 0,
             "No fill and a transparent outline stay without paint.");
 
         var note = (MicrosoftWhiteboardShape)board.Items[3];
@@ -310,13 +310,45 @@ internal static class MicrosoftWhiteboardSmokeTests
         <div class="anchor align center" data-whiteboard-type="AzureImage" style="left: 500px; top: 500px; transform: matrix(4, 0, 0, 4, 0, 0);">
           <div class="content imageComponent" style="height: 50px; width: 100px;"><img src="data:image/*;base64,{{OnePixelPng}}"></div>
         </div>
+        <div class="anchor align topLeft" data-whiteboard-type="InkGroup" style="left: 1000px; top: 0px;">
+          <svg class="inkGroup ink Highlighter" viewBox="0 0 100 100" width="100" height="100">
+            <g class="inkStroke" transform="matrix(0.5, 0, 0, 0.5, 0, 0)">
+              <path d="M-10,-10L10,-10L10,10L-10,10L-10,-10M-10,-10L10,10L110,50L90,70L-10,-10" fill="rgba(255,252,0,0.4)"></path>
+              <polyline class="inkHitTestOverlay" stroke-linecap="square" stroke-width="16"></polyline></g></svg>
+        </div>
+        <div class="anchor align topLeft" data-whiteboard-type="PlainText" style="left: 0px; top: 800px;">
+          <div style="width: 300px; display: flex; justify-content: left;"><div class="textbox plainText" style="max-width: 300px; font-size: 20px;">
+            <div class="textBoxCore textArea" style="font-family: Aptos, &quot;Segoe UI&quot;;">
+              <div data-block="true"><span data-text="true">Formula Engine Twenty</span></div></div></div></div>
+        </div>
+        <div class="anchor align topLeft" data-whiteboard-type="PlainText" style="left: 0px; top: 900px;">
+          <div style="width: 300px; display: flex; justify-content: left;"><div class="textbox plainText" style="max-width: 300px; font-size: 20px;">
+            <div class="textBoxCore textArea" style="font-family: &quot;ink free&quot;, InkFreeFont;">
+              <div data-block="true"><span data-text="true">Storage Engine</span></div></div></div></div>
+        </div>
         </div></body></html>
         """;
+
+    /// <summary>
+    /// Segoe UI is twice as wide as any other family, so the lines of a text box
+    /// written in Aptos come out different if they are measured in Segoe UI.
+    /// </summary>
+    private sealed class WidePrintMeasure : IBoardTextMeasure
+    {
+        public (double Width, double Height) Label(string text, string fontFamily, double fontSize, bool bold, bool italic)
+        {
+            var lines = text.Split('\n');
+            var factor = fontFamily == "Segoe UI" ? 1.0 : 0.5;
+            return (lines.Max(line => line.Length) * fontSize * factor, lines.Length * fontSize * 1.25);
+        }
+
+        public double TextContainerHeight(string text, string languageId, double width) => 100;
+    }
 
     private static void RunOlderObjects()
     {
         var board = MicrosoftWhiteboardExport.Parse(OlderObjectsPage, "Older");
-        Assert(board.Skipped.Count == 0 && board.Items.Count == 4,
+        Assert(board.Skipped.Count == 0 && board.Items.Count == 7,
             "Ellipses, polygons, and pictures from older versions of the app are all read.");
 
         var ellipse = (MicrosoftWhiteboardShape)board.Items[0];
@@ -325,7 +357,7 @@ internal static class MicrosoftWhiteboardSmokeTests
             "An ellipse is centered on its anchor and has the radii the page draws, not the size of its box.");
 
         var rectangle = (MicrosoftWhiteboardShape)board.Items[1];
-        Assert(rectangle is { Kind: ShapeKind.RoundedRectangle, Width: 400, Height: 200, Thickness: 8 } &&
+        Assert(rectangle is { Kind: ShapeKind.Rectangle, Width: 400, Height: 200, Thickness: 8 } &&
                rectangle.Center == new PointD(300, 150),
             "A polygon's corners start at its anchor, and the anchor's scale applies to them.");
 
@@ -335,6 +367,22 @@ internal static class MicrosoftWhiteboardSmokeTests
         Assert(board.Items[3] is MicrosoftWhiteboardImage { ContentType: "image/png" } picture &&
                picture.Bounds == new RectD(300, 400, 400, 200),
             "A picture from the older image service is read as any other picture.");
+
+        // Stroke units are half a pixel, and the outline reaches from (-10, -10) to (110, 70).
+        Assert(board.Items[4] is MicrosoftWhiteboardImage { ContentType: DroppedFileImport.SvgContentType } highlight &&
+               highlight.Bounds == new RectD(995, -5, 60, 40) &&
+               Encoding.UTF8.GetString(highlight.Bytes).Contains("fill=\"#FFFC00\" fill-opacity=\"0.4\"", StringComparison.Ordinal) &&
+               Encoding.UTF8.GetString(highlight.Bytes).Contains("M0,0L10,0 10,10 0,10 0,0ZM0,0L10,10 60,30 50,40 0,0Z", StringComparison.Ordinal),
+            "A highlighter with an outline and no centerline is a picture of the outline, in its color and opacity.");
+
+        Assert(board.Items[5] is MicrosoftWhiteboardLabel { Font: { Family: "Segoe UI", PageFamily: "Aptos" } },
+            "Aptos is written in Segoe UI, and the page's family is kept for where the lines break.");
+        Assert(board.Items[6] is MicrosoftWhiteboardLabel { Font: { Family: "Ink Free", PageFamily: null } },
+            "Ink Free is a label font, so the text keeps it.");
+        var label = board.Place(null, 0, new WidePrintMeasure()).Objects.OfType<FreeTextBoardObject>()
+            .Single(text => text.FontFamily == "Segoe UI");
+        Assert(label.Text == "Formula Engine Twenty",
+            "The text keeps the one line it had in Aptos, although Segoe UI measures wider here.");
     }
 
     private static void RunArchive()

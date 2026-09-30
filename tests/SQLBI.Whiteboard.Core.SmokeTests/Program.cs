@@ -2321,7 +2321,7 @@ Assert(
     }
 
     // One document per font, so that the face a label was written in is the only
-    // one the document could have got it from. A page holding all nine would embed
+    // one the document could have got it from. A page holding all ten would embed
     // Arial anyway, which would pass the check for every family that falls back to it.
     foreach (var font in LabelStyles.Fonts)
     {

@@ -59,7 +59,8 @@ a change to one is a change to this file first.
    an object** (Keep the tool / Return to Select), gives the one-shot behaviour.
 4. **The shape set** is the eight in the issue's screenshot: rounded rectangle, ellipse,
    triangle, pentagon, block arrow, parallelogram, diamond, stadium. The first is a
-   rectangle with rounded corners, not a square.
+   rectangle with rounded corners, not a square. 1.7.2 adds a rectangle with square
+   corners, first in the row, so that imported boards keep their frames square.
 5. **Colors.** The six pen swatches for shape outline, connector, and text, and the same
    six as a translucent tint plus **None** for a shape's fill. Default outline and
    connector color and thickness: the current pen's. Default fill: None. Default text:
@@ -72,7 +73,8 @@ a change to one is a change to this file first.
    drawing, Ctrl at mouse-down still borrows Select, so the gesture starts without it.
 7. **Fonts.** A curated list — Segoe UI, Calibri, Arial, Georgia, Times New Roman,
    Consolas, Cascadia Mono, Comic Sans MS, Segoe Print — with Segoe UI when a saved font
-   is not installed. Consolas and Cascadia Mono are the monospace entries.
+   is not installed. Consolas and Cascadia Mono are the monospace entries. 1.7.2 adds
+   Ink Free, the handwriting of boards imported from older Microsoft Whiteboard versions.
 8. **What an area picks up.** Two settings under **Preferences → Selection**. **Area
    selects**: objects partly inside (default) or only objects fully inside. **Extend to
    touching**: Ignore (default), Single, or Recursive. An object touches another when its
@@ -115,7 +117,8 @@ ConnectorAnchor(ObjectId, U, V)     // a point on that object's bounds, 0..1 eac
 ```
 
 - `ShapeKind`: RoundedRectangle, Ellipse, Triangle, Pentagon, BlockArrow, Parallelogram,
-  Diamond, Stadium, in the flyout's order. The outline geometry of each is a function of its
+  Diamond, Stadium, and Rectangle. A board stores the kind by name, so a new kind goes at
+  the end, and the flyout lists them in its own order with Rectangle first. The outline geometry of each is a function of its
   `Bounds` in `Core` (`ShapeGeometry`), returned as a polygon or a list of segments and
   arcs, so hit testing and the vector export share it with the renderer.
 - `ConnectorKind`: Line, Arrow, CurvedArrow. A curved connector is one cubic Bézier whose
@@ -206,7 +209,7 @@ and they persist in `AppSettings` (`Shape`, `Connector`, `Label`), settings vers
 ### The Insert tab, and the optional toolbar button
 
 An **Insert** tab joins the tab strip between View and Help (`SessionChrome`, with its
-own row and Alt mnemonic like the others). Its row holds the eight shapes, a separator,
+own row and Alt mnemonic like the others). Its row holds the shapes, a separator,
 the three connectors, a separator, and Text — the issue's screenshot, laid out as one
 row of the strip's buttons. Picking one selects that tool, which then behaves as
 decision 3 says: it stays until Escape or another tool, unless the **After inserting an
@@ -508,7 +511,7 @@ The Insert row opens like a menu, far from the pen, and it covers the toolbar. F
 designs for a palette were considered:
 
 - **A. Pin the Insert row into a floating palette.** A pin at the end of the Insert row
-  turns its content, the eight shapes, the three connectors, and Text in two short rows,
+  turns its content, the shapes, the three connectors, and Text in two short rows,
   into a second floating palette that is dragged by a grip, kept anywhere in the window,
   remembered in settings, shown or hidden from the pin, the View row, or Preferences. It
   reuses the shared button list the toolbar flyout is built from, never touches the main

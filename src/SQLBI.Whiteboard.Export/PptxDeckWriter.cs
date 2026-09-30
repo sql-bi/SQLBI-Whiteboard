@@ -604,6 +604,7 @@ public static class PptxDeckWriter
         var side = Math.Max(Epsilon, Math.Min(shape.Bounds.Width, shape.Bounds.Height));
         return shape.Kind switch
         {
+            ShapeKind.Rectangle => Geometry(A.ShapeTypeValues.Rectangle),
             ShapeKind.Ellipse => Geometry(A.ShapeTypeValues.Ellipse),
             ShapeKind.Triangle => Geometry(A.ShapeTypeValues.Triangle),
             ShapeKind.Pentagon => Geometry(A.ShapeTypeValues.Pentagon),

@@ -1,4 +1,5 @@
 using System.Globalization;
+using System.Text;
 using SQLBI.Whiteboard.Core.Geometry;
 using SQLBI.Whiteboard.Core.Model;
 
@@ -23,7 +24,7 @@ public sealed partial class MicrosoftWhiteboardExport
     /// An ink group holds one or more strokes. Each is a filled outline, which gives
     /// the width, and a centerline, which gives the points.
     /// </summary>
-    private static IEnumerable<MicrosoftWhiteboardStroke> ReadInkGroup(Anchor anchor, List<HtmlTag> tags)
+    private static IEnumerable<MicrosoftWhiteboardItem> ReadInkGroup(Anchor anchor, List<HtmlTag> tags)
     {
         InkGroup? group = null;
         StrokeTransform? transform = null;
@@ -71,7 +72,7 @@ public sealed partial class MicrosoftWhiteboardExport
         }
     }
 
-    private static IEnumerable<MicrosoftWhiteboardStroke> ReadStroke(
+    private static IEnumerable<MicrosoftWhiteboardItem> ReadStroke(
         Anchor anchor,
         InkGroup group,
         StrokeTransform transform,
@@ -80,9 +81,18 @@ public sealed partial class MicrosoftWhiteboardExport
         IReadOnlyDictionary<string, uint> patterns,
         string? points)
     {
+        PointD ToCanvas(PointD point) => anchor.ToCanvas(group.ToAnchor(transform.Apply(point)));
         var centerline = ParsePoints(points);
         if (centerline.Count == 0)
         {
+            // Older versions of the app wrote some highlighter strokes with an outline
+            // and no centerline. The outline is the shape the stroke covered.
+            if (TryParseColor(fill, out var color, out var opacity) &&
+                OutlinePicture(pathData, ToCanvas, color, opacity) is { } picture)
+            {
+                yield return picture;
+            }
+
             yield break;
         }
 
@@ -112,12 +122,72 @@ public sealed partial class MicrosoftWhiteboardExport
             : PenWidths(outline, centerline);
 
         var scale = transform.Scale * anchor.Scale * group.Scale;
-        PointD ToCanvas(PointD point) => anchor.ToCanvas(group.ToAnchor(transform.Apply(point)));
         yield return new MicrosoftWhiteboardStroke(
             centerline.Select(ToCanvas).ToArray(),
             widths.Select(width => width * scale).ToArray(),
             argb,
             kind);
+    }
+
+    /// <summary>
+    /// A picture of a filled outline, drawn in canvas pixels inside the box it covers.
+    /// The outline is copied as it is, subpath by subpath, so the picture is filled
+    /// as the page fills it. These outlines hold straight segments only, and one
+    /// with curves is left out rather than drawn with its curves as chords.
+    /// </summary>
+    private static MicrosoftWhiteboardImage? OutlinePicture(
+        string pathData,
+        Func<PointD, PointD> toCanvas,
+        uint argb,
+        double opacity)
+    {
+        var outline = PathOutline.Parse(pathData);
+        if (outline.HasCurves)
+        {
+            return null;
+        }
+
+        var canvas = outline.Subpaths
+            .Where(points => points.Count >= 3)
+            .Select(points => points.Select(toCanvas).ToArray())
+            .ToArray();
+        if (canvas.Length == 0)
+        {
+            return null;
+        }
+
+        var left = canvas.Min(points => points.Min(point => point.X));
+        var top = canvas.Min(points => points.Min(point => point.Y));
+        var width = Math.Max(1, canvas.Max(points => points.Max(point => point.X)) - left);
+        var height = Math.Max(1, canvas.Max(points => points.Max(point => point.Y)) - top);
+
+        static string N(double value) => value.ToString("0.##", CultureInfo.InvariantCulture);
+        var data = new StringBuilder();
+        foreach (var points in canvas)
+        {
+            data.Append('M');
+            for (var index = 0; index < points.Length; index++)
+            {
+                if (index > 0)
+                {
+                    data.Append(index == 1 ? "L" : " ");
+                }
+
+                data.Append(N(points[index].X - left)).Append(',').Append(N(points[index].Y - top));
+            }
+
+            data.Append('Z');
+        }
+
+        var markup =
+            $"<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"{N(width)}\" height=\"{N(height)}\" " +
+            $"viewBox=\"0 0 {N(width)} {N(height)}\"><path fill=\"#{argb & 0xFFFFFF:X6}\" " +
+            $"fill-opacity=\"{N(opacity)}\" d=\"{data}\"/></svg>";
+        return new MicrosoftWhiteboardImage(
+            new RectD(left, top, width, height),
+            Encoding.UTF8.GetBytes(markup),
+            DroppedFileImport.SvgContentType,
+            DroppedFileImport.SvgExtension);
     }
 
     /// <summary>
@@ -311,6 +381,16 @@ public sealed partial class MicrosoftWhiteboardExport
 
         public List<Arc> Arcs { get; } = [];
 
+        /// <summary>
+        /// The corners of each subpath in order, from its move to its last segment.
+        /// </summary>
+        public List<List<PointD>> Subpaths { get; } = [];
+
+        /// <summary>
+        /// True when an arc or a curve was replaced by its chord.
+        /// </summary>
+        public bool HasCurves { get; private set; }
+
         public static PathOutline Parse(string data)
         {
             var outline = new PathOutline();
@@ -348,6 +428,7 @@ public sealed partial class MicrosoftWhiteboardExport
                         var point = ReadPoint(data, ref index, relative ? current : default);
                         subpathStart = point;
                         current = point;
+                        outline.Subpaths.Add([point]);
 
                         // Pairs after the first are lines, as SVG defines it.
                         command = relative ? 'l' : 'L';
@@ -371,6 +452,7 @@ public sealed partial class MicrosoftWhiteboardExport
                         ReadNumber(data, ref index);
                         var point = ReadPoint(data, ref index, relative ? current : default);
                         outline.Arcs.Add(new Arc(current, point, (Math.Abs(radiusX) + Math.Abs(radiusY)) / 2));
+                        outline.HasCurves = true;
                         outline.Add(current, point);
                         current = point;
                         break;
@@ -392,6 +474,7 @@ public sealed partial class MicrosoftWhiteboardExport
                             }
                         }
 
+                        outline.HasCurves = true;
                         if (values.Count >= 2)
                         {
                             var end = new PointD(values[^2], values[^1]);
@@ -407,7 +490,14 @@ public sealed partial class MicrosoftWhiteboardExport
             return outline;
         }
 
-        private void Add(PointD start, PointD end) => Segments.Add(new Segment(start, end));
+        private void Add(PointD start, PointD end)
+        {
+            Segments.Add(new Segment(start, end));
+            if (Subpaths.Count > 0)
+            {
+                Subpaths[^1].Add(end);
+            }
+        }
 
         private static PointD ReadPoint(string data, ref int index, PointD origin)
         {

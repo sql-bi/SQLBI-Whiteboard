@@ -95,8 +95,8 @@ public static class ShapeGeometry
     /// <summary>
     /// Where a shape's own text is laid out, in the box the shape was drawn in
     /// and before it is turned: the largest upright rectangle that fits inside
-    /// the outline, less <paramref name="margin"/> on each side. A rounded
-    /// rectangle and a stadium take the whole box, as PowerPoint's rounded
+    /// the outline, less <paramref name="margin"/> on each side. A rectangle, a
+    /// rounded rectangle, and a stadium take the whole box, as PowerPoint's rounded
     /// rectangle does; a pentagon takes a fifth off each side
     /// (<see cref="PentagonTextFraction"/>); the rest are solved exactly, which
     /// is half of each side for a diamond, half the box standing on the base of
@@ -164,6 +164,7 @@ public static class ShapeGeometry
 
     public static ShapeOutline Describe(ShapeKind kind, RectD bounds) => kind switch
     {
+        ShapeKind.Rectangle => Closed(Polygon.Corners(bounds)),
         ShapeKind.Ellipse => Ellipse(bounds),
         ShapeKind.Triangle => Closed(
             new PointD(bounds.Center.X, bounds.Top),

@@ -27,7 +27,9 @@ public sealed record MicrosoftWhiteboardImage(
     string Extension) : MicrosoftWhiteboardItem;
 
 /// <summary>
-/// How text is written. The family is one of the fonts a label can use.
+/// How text is written. The family is one of the fonts a label can use. The page's
+/// own family, when it names a different one, is where the text box broke its lines,
+/// so the lines are found by measuring in it.
 /// </summary>
 public sealed record MicrosoftWhiteboardFont(
     string Family,
@@ -35,7 +37,8 @@ public sealed record MicrosoftWhiteboardFont(
     uint Argb,
     bool Bold,
     bool Italic,
-    bool Underline);
+    bool Underline,
+    string? PageFamily = null);
 
 /// <summary>
 /// A shape, a sticky note, or the frame of a note grid, all of which become shapes.

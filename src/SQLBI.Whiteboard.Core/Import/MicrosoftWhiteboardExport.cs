@@ -503,7 +503,7 @@ public sealed partial class MicrosoftWhiteboardExport
             5 => ShapeKind.Pentagon,
             7 => ShapeKind.BlockArrow,
             4 when corners.Count(point => Math.Abs(point.Y) < halfHeight * 0.05) >= 2 => ShapeKind.Diamond,
-            4 when corners.All(point => Math.Abs(Math.Abs(point.X) - halfWidth) < halfWidth * 0.02) => ShapeKind.RoundedRectangle,
+            4 when corners.All(point => Math.Abs(Math.Abs(point.X) - halfWidth) < halfWidth * 0.02) => ShapeKind.Rectangle,
             4 => ShapeKind.Parallelogram,
             _ => ShapeKind.RoundedRectangle,
         };
@@ -840,32 +840,42 @@ public sealed partial class MicrosoftWhiteboardExport
         var bold = weight is null
             ? defaultBold
             : weight is "bold" or "bolder" || (Numbers(weight).FirstOrDefault() is var number && number >= 600);
+        var families = StyleValue(style, "font-family");
+        var family = FontFamilyFor(families);
+        var pageFamily = families?.Split(',')[0].Trim().Trim('"', '\'').Trim();
         return new MicrosoftWhiteboardFont(
-            FontFamilyFor(StyleValue(style, "font-family")),
+            family,
             size,
             TryParseColor(StyleValue(style, "color"), out var argb, out _) ? argb : Black,
             bold,
             string.Equals(StyleValue(style, "font-style"), "italic", StringComparison.OrdinalIgnoreCase),
-            StyleValue(style, "text-decoration")?.Contains("underline", StringComparison.OrdinalIgnoreCase) == true);
+            StyleValue(style, "text-decoration")?.Contains("underline", StringComparison.OrdinalIgnoreCase) == true,
+            string.IsNullOrEmpty(pageFamily) || string.Equals(pageFamily, family, StringComparison.OrdinalIgnoreCase)
+                ? null
+                : pageFamily);
     }
 
     /// <summary>
     /// The label font nearest to what the page asks for. Microsoft Whiteboard offers
-    /// three: Simple (Aptos), Professional, and Handwritten (Segoe Print).
+    /// three: Simple (Aptos), Professional, and Handwritten (Segoe Print, or Ink Free
+    /// on older boards). A family the labels have is kept as it is.
     /// </summary>
     internal static string FontFamilyFor(string? families)
     {
         var first = families?.Split(',')[0].Trim().Trim('"', '\'').Trim() ?? string.Empty;
-        if (families is not null &&
-            (families.Contains("Print", StringComparison.OrdinalIgnoreCase) ||
-             families.Contains("ink free", StringComparison.OrdinalIgnoreCase)))
+        if (LabelStyles.Fonts.FirstOrDefault(font => string.Equals(font, first, StringComparison.OrdinalIgnoreCase)) is { } known)
+        {
+            return known;
+        }
+
+        if (families is not null && families.Contains("Print", StringComparison.OrdinalIgnoreCase))
         {
             return "Segoe Print";
         }
 
-        if (LabelStyles.Fonts.FirstOrDefault(font => string.Equals(font, first, StringComparison.OrdinalIgnoreCase)) is { } known)
+        if (families is not null && families.Contains("ink free", StringComparison.OrdinalIgnoreCase))
         {
-            return known;
+            return "Ink Free";
         }
 
         return first.ToLowerInvariant() switch
