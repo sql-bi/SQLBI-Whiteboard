@@ -1,7 +1,7 @@
 # Microsoft Whiteboard import
 
-**Implemented in 1.7.0**, with the objects of older versions of the app in 1.7.1 and
-1.7.2. This document records what a Microsoft Whiteboard export contains, how the
+**Implemented in 1.7.0**, with the objects of older versions of the app in 1.7.1,
+1.7.2, and 1.7.3. This document records what a Microsoft Whiteboard export contains, how the
 importer maps it onto a board, and what it cannot carry over. Microsoft retires its
 standalone Whiteboard apps on 16 October 2026 (see [retirement](retirement/README.md)),
 and the export is the only way to take a board out of it. The format is undocumented.
@@ -54,6 +54,7 @@ no model of the board beyond what it draws.
 | `InkGroup` | An SVG with a view box whose origin sits at the anchor, class `PenStroke`, `Highlighter`, or `Mixed`. One `g.inkStroke` per stroke with `transform="matrix(0.0078125, …)"`: 1/128 of a pixel. Inside it, a filled `path` outline and a `polyline.inkHitTestOverlay` centerline. |
 | `FluidImage` | `div.imageComponent` with the size, and an `img` with a base64 data URI labelled `text/plain` whatever the picture is. |
 | `AzureImage` | A picture on a board made with an older version of the app, written as a `FluidImage` is, with the data URI labelled `image/*`. |
+| `AzureGif` | An animated GIF, written as an `AzureImage` is. Not seen in a sample; the web client converts it with the same function as `AzureImage`. |
 | `DocumentPage` | A page of an inserted PDF, written as a `FluidImage` is. |
 | `ReactionStickers` | A sticker, written as a 64 × 64 `FluidImage` with an SVG data URI. |
 | `Shape` | An SVG whose `g` has `fill`, `stroke`, and `stroke-width` (in `pt`), and whose `path` draws the outline around the middle of the box. The shape's text sits in `div.textBoxContainer`. |
@@ -61,6 +62,7 @@ no model of the board beyond what it draws.
 | `LegacyPolygon` | A shape from an older version of the app: an SVG `polygon` whose points start at the anchor, styled as a `LegacyEllipse` is. Every sample is a rectangle. |
 | `Note` | A sticky note: `div.textBoxBackground` with a color class such as `softBlueGradient`, a 40-pixel author bar, and `div.stickyNote` with the text area's size and font size. |
 | `GridList` | A note grid: a title editor, then `div.listChild` notes in a CSS grid of `repeat(n, auto)` columns. |
+| `VerticalList`, `VerticalBulletList`, `VerticalCheckboxList`, `UnknownList` | A list of text, bullets, or tasks, in `div.legacyListContainer`: a title editor in `div.verticalListTitle`, a `div.listColumnHeading` with the column names, then one `div.listChild` per item with its icon, its text editor, who a task is assigned to (`div.assignedUserDisplayName`), and its likes. A done task's icon is `CheckmarkCircle` with the class `checkedListItemIcon`, an open one `StatusCircle` with `uncheckedListItemIcon`. The list is 44 + 284 + 76 pixels wide, or 44 + 364 + 76 when tasks have an Assigned to column. An `UnknownList` draws no items. Not seen in a sample; read from the web client's `ListContainerComponent`. |
 | `PlainText` | A text box: `div.textbox.plainText` with `max-width` and `font-size`, inside a wrapper whose `justify-content` centers the text in a wider box when the text is centered. |
 | `Connector` | An SVG with the route as a path from the anchor, and the head as a small path moved to one end with `translate`. |
 | `Hyperlink` | A preview card with the page's picture, an `a` with the link and its title, and the description. |
@@ -73,9 +75,9 @@ no model of the board beyond what it draws.
   centerline point with half the ink's width there as its radius. About 60% of the
   strokes in the samples have one width; the rest vary by up to 3.3 times, because the
   pen reported pressure.
-- **Highlighter outline.** The tip is an axis-aligned rectangle twice as tall as it is
-  wide, drawn once at the start and swept along the centerline. Its height follows
-  pressure. The fill is the color at 0.4 alpha.
+- **Highlighter outline.** The tip is an axis-aligned rectangle, twice as tall as it is
+  wide on most boards and nearly square on some, drawn once at the start and swept
+  along the centerline. Its height follows pressure. The fill is the color at 0.4 alpha.
 - **Highlighter without a centerline.** Older versions of the app wrote some highlighter
   strokes with an empty `polyline` and a scale other than 1/128. The outline is a square
   tip followed by the sweep, as overlapping pieces, and the path cannot be recovered from
@@ -119,11 +121,12 @@ Windows client offers, from `paleYellowGradient` (#FEE15A) to `grayGradient` (#C
 | Shape | `ShapeBoardObject` of the kind its outline has, with fill, outline, angle, and text |
 | Older ellipse or polygon | `ShapeBoardObject`, an oval with the ellipse's radii or the kind the polygon's corners have, without text |
 | Rectangle, in either form | `ShapeBoardObject`, `ShapeKind.Rectangle`, with square corners |
-| Sticky note | `ShapeBoardObject`, rounded rectangle in the note's color, with the note's text |
-| Note grid | A white rounded rectangle for the panel, a label for the title, and one note per cell |
+| Sticky note | `ShapeBoardObject`, rectangle in the note's color, with the note's text |
+| Note grid | A white rectangle for the panel, a label for the title, and one note per cell |
 | Text box | `FreeTextBoardObject`, wrapped into the lines the box showed |
 | Connector | `ConnectorBoardObject`, straight, with its ends bound to shapes they sit on |
 | Link card | Markdown `TextBoardObject` titled *Link* |
+| List | Markdown `TextBoardObject` titled *List*: the list's title in bold, then a Markdown list of bullets, or one line per item with ☒ for a done task and ☐ for an open one |
 | Comment thread | Markdown `TextBoardObject` titled *Comment*, in a column to the right of the board |
 | Anchor order | Z-order |
 | Anything else | Counted and reported, not imported |
@@ -163,10 +166,19 @@ An earlier version measured the distance from each point to the nearest edge of 
 outline. That made small handwriting too thin, because the outline of a small loop
 overlaps itself.
 
-**Highlighter width.** A highlighter here has one width per stroke, a tip twice as wide
-as tall, and a fixed opacity. Its thickness is half the upper quartile of the vertical
-edges in the outline, so the height of a horizontal highlight matches the body of the
-original stroke.
+**Highlighter width.** A highlighter here has one width per stroke, a tip 4t wide and 2t
+tall for a thickness t, and a fixed opacity. Microsoft's tip is measured from the
+outline. Its width is what the tip adds to the centerline's width. Its height is the
+mean of two measures that err in opposite directions: the upper quartile of the vertical
+edges, which come mostly from the lightly pressed ends, and what the tip adds to the
+centerline's height, which comes from the one point that reaches furthest. A band
+across a run at any angle is as wide as the tip reaches across it, so t is the value
+that makes the two bands agree best over the stroke's length, by least squares: half
+the height for a horizontal stroke, a quarter of the width for a vertical one, and a
+compromise for a scribble. Directions are taken over runs at least one tip long,
+because a hand-drawn line is made of tiny steps and some of them are steep. Until 1.7.3
+the thickness was half the quartile alone, which drew vertical highlights four times
+too wide.
 
 **Connectors** are bound at an end that lies within a few pixels of the edge of an
 upright shape, as a fraction of its box. A turned shape is not bound, because its
@@ -182,11 +194,13 @@ parses in about 160 ms.
 - **Pressure is approximated.** The export keeps the outline, not the pressure. The
   recovered widths match the original closely at 150% zoom, but not exactly.
 - **Highlighter shape.** The tip here is wider than tall, while Microsoft's is taller than
-  wide. A horizontal highlight has the same height and starts and ends a few pixels
-  further out. A vertical highlight comes out four times as wide as the original. A
-  highlight has one width throughout.
+  wide. A horizontal or a vertical highlight comes out about as wide as the original,
+  but a scribble that runs both ways gets one thickness between the two, and some of
+  its runs are wider or narrower than they were. A highlight has one width throughout,
+  and overlapping parts of one stroke do not darken as they do on the page.
 - **Rainbow and Galaxy** are one color each.
-- **Notes and note grids have rounded corners**, because they are rounded rectangles here.
+- **Notes and note grids have square corners**, where Microsoft rounds them slightly.
+  Until 1.7.3 they were rounded rectangles, whose corners are much rounder.
 - **An old highlighter scribble is a picture**, not ink, because its path is not in the
   export. It moves and deletes as a picture, and it keeps the few small gaps the page
   shows where the outline's pieces overlap.
@@ -214,8 +228,17 @@ parses in about 160 ms.
 - PowerPoint pages, which the Windows client cannot insert, videos, and Loop components
 - SVG pictures, which the Windows client refuses to insert
 - Groups, which the Windows client does not offer
+- GIFs and lists, which are read from the web client's code, not from a sample
 
-Each would be reported by type if it arrives as an unknown object. Sticky notes cannot be
+The web client's code names every type an export can hold. Its `data-whiteboard-type`
+values, as of version 26.10910.101 in September 2026, are the types above and these,
+which the importer reports and leaves out: `Table` (an ink-to-table grid from the
+Windows 10 app), `LegacyTemplate`, `LegacySticker`, `LoopObject`,
+`HostedFluidObject`, `GroupFluidObject`, `AppIframeHost`, `WorkItem`, `Frame`, and
+`CustomElement`. The export replaces a Loop component and an app frame with a
+placeholder picture.
+
+Each is reported by type after the import. Sticky notes cannot be
 rotated in the Windows client, with the mouse, the pen, or touch.
 
 ## Verification
@@ -234,3 +257,11 @@ classification, shape kinds and quarter turns, notes, grids, wrapping and center
 connector binding, links, comments, turned pictures, Galaxy ink, placement, container
 binding, the objects of older versions, and recognizing the ZIP, on three synthetic pages
 built like an export.
+
+For 1.7.3 every sample was compared tile by tile. A scratch tool imported each board
+and drew it through `BoardRasterizer`, in tiles of 1600 × 1000 canvas pixels, and
+headless Edge drew the same rectangles of the page by setting the canvas transform. A
+blurred color difference flagged the tiles that disagree. Across the 18 teaching boards,
+the pixels that differ fell from 1.33% of the ink to 0.41%, and the tiles scoring above
+3% from ten to three, all highlighter scribbles. The test board differs by its
+background and by the notes' corners and text, listed above.

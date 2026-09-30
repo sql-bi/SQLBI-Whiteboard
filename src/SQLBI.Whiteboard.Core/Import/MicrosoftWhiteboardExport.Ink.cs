@@ -117,16 +117,25 @@ public sealed partial class MicrosoftWhiteboardExport
         };
 
         // Widths are measured in stroke units, then scaled like the points.
-        IReadOnlyList<double> widths = kind == PenKind.Highlighter
-            ? HighlighterWidths(outline, centerline)
-            : PenWidths(outline, centerline);
+        IReadOnlyList<double> widths;
+        double tipWidth = 0;
+        if (kind == PenKind.Highlighter)
+        {
+            (var height, tipWidth) = HighlighterTip(outline, centerline);
+            widths = Enumerable.Repeat(height, centerline.Count).ToArray();
+        }
+        else
+        {
+            widths = PenWidths(outline, centerline);
+        }
 
         var scale = transform.Scale * anchor.Scale * group.Scale;
         yield return new MicrosoftWhiteboardStroke(
             centerline.Select(ToCanvas).ToArray(),
             widths.Select(width => width * scale).ToArray(),
             argb,
-            kind);
+            kind,
+            tipWidth * scale);
     }
 
     /// <summary>
@@ -191,23 +200,42 @@ public sealed partial class MicrosoftWhiteboardExport
     }
 
     /// <summary>
-    /// A highlighter's tip is a rectangle twice as tall as it is wide, and its outline
-    /// shows the tip's height as a vertical edge wherever the tip stops or turns. The
-    /// height follows pen pressure, so it is shorter where the stroke starts and ends;
-    /// the upper quartile is the height along the body of the stroke. It is the width
-    /// of a horizontal highlight, and a highlighter here has one width per stroke.
+    /// A highlighter's tip is an upright rectangle, twice as tall as it is wide on
+    /// most boards and nearly square on some. Its height shows twice in the outline:
+    /// as the vertical edges wherever the tip stops or turns, and as what the tip adds
+    /// to the centerline's height. The edges come mostly from the ends, where pressure
+    /// is light, so their upper quartile can be short; the extent comes from the one
+    /// point that reaches furthest, so it can be long. The height is the mean of the
+    /// two, and the width is what the tip adds to the centerline's width.
     /// </summary>
-    private static double[] HighlighterWidths(PathOutline outline, IReadOnlyList<PointD> centerline)
+    private static (double Height, double Width) HighlighterTip(PathOutline outline, IReadOnlyList<PointD> centerline)
     {
         var heights = outline.Segments
             .Where(segment => segment.Start.X == segment.End.X && segment.Start.Y != segment.End.Y)
             .Select(segment => Math.Abs(segment.End.Y - segment.Start.Y))
             .Order()
             .ToArray();
-        var width = heights.Length > 0
-            ? heights[heights.Length * 3 / 4]
-            : NearestEdgeWidth(outline, centerline);
-        return Enumerable.Repeat(width, centerline.Count).ToArray();
+        double? edges = heights.Length > 0 ? heights[heights.Length * 3 / 4] : null;
+
+        var points = outline.Segments.SelectMany(segment => new[] { segment.Start, segment.End }).ToArray();
+        double across = 0;
+        double down = 0;
+        if (points.Length > 0)
+        {
+            across = points.Max(point => point.X) - points.Min(point => point.X) -
+                     (centerline.Max(point => point.X) - centerline.Min(point => point.X));
+            down = points.Max(point => point.Y) - points.Min(point => point.Y) -
+                   (centerline.Max(point => point.Y) - centerline.Min(point => point.Y));
+        }
+
+        var height = (edges, down > 0) switch
+        {
+            ({ } edge, true) => (edge + down) / 2,
+            ({ } edge, false) => edge,
+            (null, true) => down,
+            _ => NearestEdgeWidth(outline, centerline),
+        };
+        return (height, Math.Max(0, across));
     }
 
     /// <summary>
