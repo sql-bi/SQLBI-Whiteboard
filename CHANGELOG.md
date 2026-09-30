@@ -24,11 +24,11 @@ Templates from boards made with the Windows 10 app of Microsoft Whiteboard now c
 with their title and the notes, lists, text, pictures, shapes, and ink placed on them.
 They used to be listed as left out.
 
-### Loop components, apps, work items, and frames from Microsoft Whiteboard
+### Loop components, apps, and other objects from Microsoft Whiteboard
 A Loop component now comes across as a link to it, an app made by Copilot as an empty
 panel of its size, an Azure DevOps work item as a text container with its title, owner,
-and state, and a frame Copilot drew as a panel with its title. They used to be listed as
-left out.
+and state, a frame Copilot drew as a panel with its title, and a custom object as a gray
+box that names it. They used to be listed as left out.
 
 ## 1.7.3 - 30 September 2026
 

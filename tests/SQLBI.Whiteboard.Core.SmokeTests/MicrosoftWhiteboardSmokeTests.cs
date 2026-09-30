@@ -143,6 +143,7 @@ internal static class MicrosoftWhiteboardSmokeTests
         RunTemplate();
         RunLive();
         RunCards();
+        RunCustom();
     }
 
     /// <summary>
@@ -655,6 +656,35 @@ internal static class MicrosoftWhiteboardSmokeTests
                title.Origin == new PointD(1000, 0) && title.Inset == new PointD(17, 14),
             "A Copilot frame's title is bold in its theme's color, inside the title bar.");
         Assert(board.Items.Count == 3, "A frame's sources are left out.");
+    }
+
+    /// <summary>
+    /// Custom objects as the web client draws them when it cannot show the widget: a
+    /// gray box that fills the object and names its kind.
+    /// </summary>
+    private const string CustomPage = """
+        <html><body><div id="canvasContent" class="contentOrigin">
+        <div class="anchor align topLeft" data-whiteboard-type="CustomElement" style="left: 100px; top: 100px;">
+          <div class="canvasChild" style="width: 240px; height: 160px;"><div class="interactive" style="width: 100%; height: 100%; min-width: 120px; min-height: 80px; background: rgb(243, 242, 241);" data-custom-widget-kind="example.counter" data-custom-widget-disabled="true">Widget "example.counter" is disabled</div></div>
+        </div>
+        <div class="anchor align center" data-whiteboard-type="CustomElement" style="left: 1000px; top: 1000px;">
+          <div class="canvasChild"><div class="interactive" style="width: 100%; height: 100%;" data-custom-widget-kind="contoso.poll" data-custom-widget-unregistered="true">Widget "contoso.poll" is not available</div></div>
+        </div>
+        <div class="anchor align topLeft" data-whiteboard-type="CustomElement" style="left: 0px; top: 0px;"><div class="canvasChild"></div></div>
+        </div></body></html>
+        """;
+
+    private static void RunCustom()
+    {
+        var board = MicrosoftWhiteboardExport.Parse(CustomPage, "Custom");
+        Assert(board.Skipped.Count == 1 && board.Skipped["CustomElement"] == 1,
+            "A custom object without a kind is still reported.");
+        Assert(board.Items[0] is MicrosoftWhiteboardShape { Kind: ShapeKind.Rectangle, Width: 240, Height: 160, FillArgb: 0xFFF3F2F1, Text: "Custom object\nexample.counter" } counter &&
+               counter.Center == new PointD(220, 180),
+            "A custom object is a gray box of its size that names its kind.");
+        Assert(board.Items[1] is MicrosoftWhiteboardShape { Width: 120, Height: 80, Text: "Custom object\ncontoso.poll" } poll &&
+               poll.Center == new PointD(1000, 1000),
+            "A custom object without a size in pixels takes the smallest box, and a percentage is not a size.");
     }
 
     private static void RunArchive()

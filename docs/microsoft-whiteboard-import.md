@@ -73,6 +73,7 @@ no model of the board beyond what it draws.
 | `AppIframeHost` | An app that Copilot made, running in a sandboxed `iframe`. The export replaces the frame with a `#faf9f8` panel and keeps the `div.appFrameContainer` with its `width` and `height` and its header, whose `span.appFrameHeaderTitle` says *App* in the board's language. The app's name, code, and state are not in the export. Not seen in a sample; read from the web client's app frame component and export code. |
 | `WorkItem` | An Azure DevOps work item: a `div.WorkItem` card, 220 × 145 pixels in the stylesheet, white with a 4-pixel gold border on its left. A `span.WorkItemTextField` holds a `strong` with the type's `img.WorkItemIcon` (its `alt` names the type) and the ID, followed by the title; then come who it is assigned to and, in `span.WorkItemText`, the word *State* in the board's language and the state. The web client draws a placeholder instead when its `EnableWorkItems` flag is off. Not seen in a sample; read from the web client's `WorkItemConnected`. |
 | `Frame` | A frame Copilot drew around objects it grouped: a `section.whiteboardFrame` with its `width` and `height` and a theme class, `whiteboardFrame--blue`, `--green`, `--purple`, `--orange`, or neutral without one. The stylesheet gives it a 3-pixel border, a translucent fill, 14-pixel corners, and a 44-pixel title bar with bold 15-pixel text in `span.whiteboardFrame__titleText`, padded 14 pixels in. A pill names the first source and counts the rest; the full list is in a popover that is drawn only when open. The web client draws nothing when its `EnableFrames` flag is off. Not seen in a sample; read from the web client's frame component. |
+| `CustomElement` | A widget from a plug-in, named by its kind in `data-custom-widget-kind`. The web client registers only two examples, `example.counter` and `example.embed`; for anything else, and for every kind when its `EnableCustomElement` flag is off, it draws a gray box that fills the object and says the widget is not available or disabled. The box is at least 120 × 80 pixels, and its own size is `100%`, so the object's size is the first one given in pixels. Not seen in a sample; read from the web client's custom widget component. |
 | `CommentThread` | A pin, described above. |
 
 ### Ink
@@ -139,6 +140,7 @@ Windows client offers, from `paleYellowGradient` (#FEE15A) to `grayGradient` (#C
 | App made by Copilot | `ShapeBoardObject` rectangle of the frame's size in the panel's color, with the header's title as its text |
 | Work item | Markdown `TextBoardObject` titled *Work item*: the type and ID in bold before the title, then who it is assigned to and its state, as wide as the card |
 | Copilot frame | `ShapeBoardObject` rectangle with the theme's border and translucent fill, and its title as a bold label in the theme's text color. Its sources are left out |
+| Custom object | `ShapeBoardObject` rectangle of its size in the gray the web client draws, with *Custom object* and the kind as its text |
 | Link card | Markdown `TextBoardObject` titled *Link* |
 | List | Markdown `TextBoardObject` titled *List*: the list's title in bold, then a Markdown list of bullets, or one line per item with ☒ for a done task and ☐ for an open one |
 | Comment thread | Markdown `TextBoardObject` titled *Comment*, in a column to the right of the board |
@@ -243,13 +245,14 @@ parses in about 160 ms.
 - SVG pictures, which the Windows client refuses to insert
 - Groups, which the Windows client does not offer
 - GIFs, lists, ink tables, legacy stickers, legacy templates, Loop components, apps, work
-  items, and Copilot frames, which are read from the web client's code, not from a sample
+  items, Copilot frames, and custom objects, which are read from the web client's code, not
+  from a sample
 
 The web client's code names every type an export can hold. Its `data-whiteboard-type`
 values, as of version 26.10910.101 in September 2026, are the types above and these,
-which the importer reports and leaves out: `CustomElement`, an `Unknown` that holds no
-table, live content without a Loop element, an app frame without its box, and a work item
-or a frame drawn as a placeholder.
+which the importer reports and leaves out: an `Unknown` that holds no table, live
+content without a Loop element, an app frame without its box, a work item or a frame
+drawn as a placeholder, and a custom object without a kind.
 
 The tokenizer yields text that follows an end tag as a tag named `#text`, because a work
 item's title comes after the bold ID.

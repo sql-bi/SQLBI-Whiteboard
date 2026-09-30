@@ -32,6 +32,15 @@ public sealed partial class MicrosoftWhiteboardExport
     private const string WorkItemTitle = "Work item";
 
     /// <summary>
+    /// The gray box the web client draws for a custom object it cannot show, and the
+    /// smallest size it gives one.
+    /// </summary>
+    private const uint CustomElementPanelArgb = 0xFFF3F2F1;
+    private const uint CustomElementOutlineArgb = 0xFFE1DFDD;
+    private const uint CustomElementTextArgb = 0xFF605E5C;
+    private static readonly PointD CustomElementMinimum = new(120, 80);
+
+    /// <summary>
     /// A work item card in the web client's stylesheet.
     /// </summary>
     private const double WorkItemWidth = 220;
@@ -286,6 +295,17 @@ public sealed partial class MicrosoftWhiteboardExport
                     if (ReadLink(anchor, tags) is { } link)
                     {
                         items.Add(link);
+                    }
+
+                    break;
+                case "CustomElement":
+                    if (ReadCustomElement(anchor, tags) is { } custom)
+                    {
+                        items.Add(custom);
+                    }
+                    else
+                    {
+                        Skip(anchor.Type);
                     }
 
                     break;
@@ -1368,6 +1388,45 @@ public sealed partial class MicrosoftWhiteboardExport
                 null);
         }
     }
+
+    /// <summary>
+    /// A custom object is a widget from a plug-in, named by its kind in
+    /// <c>data-custom-widget-kind</c>. The web client registers only examples, and
+    /// draws a gray box saying the widget is disabled or not available for anything
+    /// else, so the widget itself is not in the export. It becomes a rectangle of the
+    /// object's size in that gray, with the kind as its text.
+    /// </summary>
+    private static MicrosoftWhiteboardShape? ReadCustomElement(Anchor anchor, List<HtmlTag> tags)
+    {
+        var kind = tags.Select(tag => tag.Attribute("data-custom-widget-kind"))
+            .FirstOrDefault(value => !string.IsNullOrWhiteSpace(value));
+        if (kind is null)
+        {
+            return null;
+        }
+
+        // The widget fills its box, so the size is the first one given in pixels.
+        var sized = tags.FirstOrDefault(tag =>
+            PixelLength(tag.Attribute("style"), "width") > 0 && PixelLength(tag.Attribute("style"), "height") > 0);
+        var width = PixelLength(sized?.Attribute("style"), "width") ?? CustomElementMinimum.X;
+        var height = PixelLength(sized?.Attribute("style"), "height") ?? CustomElementMinimum.Y;
+        return new MicrosoftWhiteboardShape(
+            anchor.ToCanvas(anchor.Centered ? default : new PointD(width / 2, height / 2)),
+            width * anchor.Scale,
+            height * anchor.Scale,
+            anchor.AngleDegrees,
+            ShapeKind.Rectangle,
+            CustomElementOutlineArgb,
+            CustomElementPanelArgb,
+            anchor.Scale,
+            $"Custom object\n{kind.Trim()}",
+            new MicrosoftWhiteboardFont(LabelStyles.DefaultFontFamily, 14 * anchor.Scale, CustomElementTextArgb, false, false, false));
+    }
+
+    private static double? PixelLength(string? style, string property) =>
+        StyleValue(style, property) is { } value && value.EndsWith("px", StringComparison.OrdinalIgnoreCase)
+            ? StyleLength(style, property)
+            : null;
 
     /// <summary>
     /// A connector's SVG draws its route from the anchor, and its head as a small
