@@ -144,6 +144,7 @@ internal static class MicrosoftWhiteboardSmokeTests
         RunLive();
         RunCards();
         RunCustom();
+        RunPlaceholders();
     }
 
     /// <summary>
@@ -688,6 +689,48 @@ internal static class MicrosoftWhiteboardSmokeTests
         Assert(board.Items[1] is MicrosoftWhiteboardShape { Width: 120, Height: 80, Text: "Custom object\ncontoso.poll" } poll &&
                poll.Center == new PointD(1000, 1000),
             "A custom object without a size in pixels takes the smallest box, and a percentage is not a size.");
+    }
+
+    /// <summary>
+    /// Content the web client drew as a placeholder because a feature was off: a table,
+    /// a template, and a table inside a template whose other children were drawn.
+    /// </summary>
+    private const string PlaceholderPage = """
+        <html><body><div id="canvasContent" class="contentOrigin">
+        <div class="anchor align topLeft" data-whiteboard-type="Unknown" style="left: 100px; top: 100px;">
+          <div class="canvasChild"><div class="unknownObject interactive" tabindex="0" aria-label="Unknown object" role="figure"><div class="unknownObjectTextContainer">
+            <div id="unknownObjectHeaderText" class="unknownObjectText">This content can't be shown</div><div class="unknownObjectText">Update Microsoft Whiteboard to see it.</div></div></div></div>
+        </div>
+        <div class="anchor align center" data-whiteboard-type="LegacyTemplate" style="left: 1000px; top: 0px;">
+          <div class="canvasChild"><div class="unknownObject interactive" role="figure"><div class="unknownObjectTextContainer">
+            <div id="unknownObjectHeaderText" class="unknownObjectText">This content can't be shown</div><div class="unknownObjectText">Update Microsoft Whiteboard to see it.</div></div></div></div>
+        </div>
+        <div class="anchor align topLeft" data-whiteboard-type="LegacyTemplate" style="left: 0px; top: 1000px;">
+          <div class="canvasChild"><div class="collection" role="collection">
+            <div><div class="topLeft" style="left: 0px; top: 0px; width: 600px; height: 60px; position: absolute;">
+              <div class="textbox templateTitle"><div class="textBoxCore"><div data-block="true"><span data-text="true">Plan</span></div></div></div></div></div>
+            <div><div class="topLeft" style="left: 50px; top: 60px; position: absolute;">
+              <div class="unknownObject interactive" role="figure"><div class="unknownObjectTextContainer">
+                <div id="unknownObjectHeaderText" class="unknownObjectText">This content can't be shown</div><div class="unknownObjectText">Update Microsoft Whiteboard to see it.</div></div></div></div></div>
+          </div></div>
+        </div>
+        </div></body></html>
+        """;
+
+    private static void RunPlaceholders()
+    {
+        var board = MicrosoftWhiteboardExport.Parse(PlaceholderPage, "Placeholders");
+        Assert(board.Skipped.Count == 0, "A placeholder comes across as what the page shows, so nothing is left out.");
+
+        const string Text = "This content can't be shown\nUpdate Microsoft Whiteboard to see it.";
+        Assert(board.Items[0] is MicrosoftWhiteboardShape { Kind: ShapeKind.Rectangle, Width: 448, Height: 170, FillArgb: 0xFFFFFFFF, Text: Text } table &&
+               table.Center == new PointD(324, 185),
+            "A table drawn as a placeholder is a white box of the placeholder's size with its two lines.");
+        Assert(board.Items[1] is MicrosoftWhiteboardShape { Text: Text } template && template.Center == new PointD(1000, 0),
+            "A template drawn as a placeholder is the same box, centered when its anchor is.");
+        Assert(board.Items.OfType<MicrosoftWhiteboardLabel>().Single() is { Text: "Plan" } &&
+               board.Items[^1] is MicrosoftWhiteboardShape { Text: Text } child && child.Center == new PointD(274, 1145),
+            "In a template whose children were drawn, a child drawn as a placeholder is the box, placed from its corner.");
     }
 
     private static void RunArchive()

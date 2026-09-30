@@ -34,6 +34,11 @@ box that names it. They used to be listed as left out.
 Reactions on a sticky note now come across as a last line in the note, with each
 reaction's symbol and count.
 
+### Placeholders from Microsoft Whiteboard
+A table, template, or other object that Microsoft Whiteboard exported as a placeholder now
+comes across as a box with the placeholder's message, where it used to be listed as left
+out. The export does not hold what the placeholder stands for.
+
 ## 1.7.3 - 30 September 2026
 
 ### Microsoft Whiteboard imports closer to the original
