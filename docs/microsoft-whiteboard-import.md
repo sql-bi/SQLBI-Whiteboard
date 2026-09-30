@@ -74,6 +74,7 @@ no model of the board beyond what it draws.
 | `WorkItem` | An Azure DevOps work item: a `div.WorkItem` card, 220 × 145 pixels in the stylesheet, white with a 4-pixel gold border on its left. A `span.WorkItemTextField` holds a `strong` with the type's `img.WorkItemIcon` (its `alt` names the type) and the ID, followed by the title; then come who it is assigned to and, in `span.WorkItemText`, the word *State* in the board's language and the state. The web client draws a placeholder instead when its `EnableWorkItems` flag is off. Not seen in a sample; read from the web client's `WorkItemConnected`. |
 | `Frame` | A frame Copilot drew around objects it grouped: a `section.whiteboardFrame` with its `width` and `height` and a theme class, `whiteboardFrame--blue`, `--green`, `--purple`, `--orange`, or neutral without one. The stylesheet gives it a 3-pixel border, a translucent fill, 14-pixel corners, and a 44-pixel title bar with bold 15-pixel text in `span.whiteboardFrame__titleText`, padded 14 pixels in. A pill names the first source and counts the rest; the full list is in a popover that is drawn only when open. The web client draws nothing when its `EnableFrames` flag is off. Not seen in a sample; read from the web client's frame component. |
 | `CustomElement` | A widget from a plug-in, named by its kind in `data-custom-widget-kind`. The web client registers only two examples, `example.counter` and `example.embed`; for anything else, and for every kind when its `EnableCustomElement` flag is off, it draws a gray box that fills the object and says the widget is not available or disabled. The box is at least 120 × 80 pixels, and its own size is `100%`, so the object's size is the first one given in pixels. Not seen in a sample; read from the web client's custom widget component. |
+| Any type drawn as a placeholder | When a feature is off for whoever exports the board, the web client draws a `div.unknownObject` in place of a table, a template, a work item, or another kind: a title and a description in the board's language, in `div.unknownObjectText`, and nothing of the content. The stylesheet makes it at least 448 × 170 pixels, white, with a shadow and no border, and the title 20 pixels. Not seen in a sample; read from the web client's placeholder component and stylesheet. |
 | `CommentThread` | A pin, described above. |
 
 ### Ink
@@ -141,6 +142,7 @@ Windows client offers, from `paleYellowGradient` (#FEE15A) to `grayGradient` (#C
 | Work item | Markdown `TextBoardObject` titled *Work item*: the type and ID in bold before the title, then who it is assigned to and its state, as wide as the card |
 | Copilot frame | `ShapeBoardObject` rectangle with the theme's border and translucent fill, and its title as a bold label in the theme's text color. Its sources are left out |
 | Custom object | `ShapeBoardObject` rectangle of its size in the gray the web client draws, with *Custom object* and the kind as its text |
+| Placeholder | `ShapeBoardObject` white rectangle of the placeholder's size with a light outline, because a shadow does not carry over, and its two lines as its text. A template whose children were drawn is read child by child, and a child can be a placeholder |
 | Link card | Markdown `TextBoardObject` titled *Link* |
 | List | Markdown `TextBoardObject` titled *List*: the list's title in bold, then a Markdown list of bullets, or one line per item with ☒ for a done task and ☐ for an open one |
 | Comment thread | Markdown `TextBoardObject` titled *Comment*, in a column to the right of the board |
@@ -225,6 +227,8 @@ parses in about 160 ms.
 - **Elbow connectors are straight.** Their ends stay where they were and stay bound.
 - **A turned picture cannot be turned back**, because it is an SVG of the turned picture.
 - **A link card loses its preview picture.** The link and its description are kept.
+- **Content drawn as a placeholder** stays a placeholder. The export holds the box and its
+  message, not the table or template it stands for.
 - **Reactions** are a line of text in the note, not pills, and who reacted is left out.
   Reactions on anything other than a note are counted and left out.
 - **Comments** become text containers beside the board, not pins on their objects.
@@ -251,9 +255,9 @@ parses in about 160 ms.
 
 The web client's code names every type an export can hold. Its `data-whiteboard-type`
 values, as of version 26.10910.101 in September 2026, are the types above and these,
-which the importer reports and leaves out: an `Unknown` that holds no table, live
-content without a Loop element, an app frame without its box, a work item or a frame
-drawn as a placeholder, and a custom object without a kind.
+which the importer reports and leaves out: an `Unknown` that holds neither a table nor a
+placeholder, live content without a Loop element, an app frame without its box, a work
+item or a frame drawn as nothing at all, and a custom object without a kind.
 
 The tokenizer yields text that follows an end tag as a tag named `#text`, because a work
 item's title comes after the bold ID.

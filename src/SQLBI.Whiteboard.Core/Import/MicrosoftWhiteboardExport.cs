@@ -52,6 +52,11 @@ public sealed partial class MicrosoftWhiteboardExport
     private static readonly PointD CustomElementMinimum = new(120, 80);
 
     /// <summary>
+    /// The smallest box the web client's stylesheet gives content it cannot show.
+    /// </summary>
+    private static readonly PointD PlaceholderSize = new(448, 170);
+
+    /// <summary>
     /// A work item card in the web client's stylesheet.
     /// </summary>
     private const double WorkItemWidth = 220;
@@ -241,6 +246,15 @@ public sealed partial class MicrosoftWhiteboardExport
 
         foreach (var (anchor, tags) in SplitAnchors(HtmlTags.StartTags(html, start)))
         {
+            // What the web client could not draw, because a feature was off for whoever
+            // exported the board, is a placeholder box that says so. The box is what the
+            // page shows, so it is what comes across.
+            if (ReadPlaceholder(anchor, tags) is { } placeholder)
+            {
+                items.Add(placeholder);
+                continue;
+            }
+
             switch (anchor.Type)
             {
                 case "InkGroup":
@@ -1151,6 +1165,12 @@ public sealed partial class MicrosoftWhiteboardExport
         bool Has(Func<HtmlTag, bool> test) => content.Any(test);
         HtmlTag? First(Func<HtmlTag, bool> test) => content.FirstOrDefault(test);
 
+        if (ReadPlaceholder(place, content) is { } placeholder)
+        {
+            yield return placeholder;
+            yield break;
+        }
+
         if (Has(tag => tag.HasClass("templateTitle")))
         {
             var title = ReadText(content, 0, content.Count);
@@ -1469,6 +1489,43 @@ public sealed partial class MicrosoftWhiteboardExport
         StyleValue(style, property) is { } value && value.EndsWith("px", StringComparison.OrdinalIgnoreCase)
             ? StyleLength(style, property)
             : null;
+
+    /// <summary>
+    /// The box the web client draws for content it cannot show: a table or a template
+    /// when those features are off, and the same for work items and other kinds. It
+    /// holds a title and a description in the board's language and nothing of the
+    /// content, and the stylesheet makes it at least 448 by 170 pixels, white, with a
+    /// shadow. It becomes a white rectangle of that size with a light outline, because
+    /// a shadow does not carry over, and the two lines as its text. A template whose
+    /// children were drawn is read child by child, and a child can be a placeholder.
+    /// </summary>
+    private static MicrosoftWhiteboardShape? ReadPlaceholder(Anchor anchor, List<HtmlTag> tags)
+    {
+        var index = tags.FindIndex(tag => tag.Name == "div" && tag.HasClass("unknownObject"));
+        if (index < 0 || tags.Any(tag => tag.Name == "div" && tag.HasClass("topLeft") &&
+                                         StyleValue(tag.Attribute("style"), "left") is not null))
+        {
+            return null;
+        }
+
+        var text = string.Join('\n', tags.Skip(index)
+            .Where(tag => tag.HasClass("unknownObjectText"))
+            .Select(tag => tag.Text.Trim())
+            .Where(line => line.Length > 0));
+        var width = PlaceholderSize.X;
+        var height = PlaceholderSize.Y;
+        return new MicrosoftWhiteboardShape(
+            anchor.ToCanvas(anchor.Centered ? default : new PointD(width / 2, height / 2)),
+            width * anchor.Scale,
+            height * anchor.Scale,
+            anchor.AngleDegrees,
+            ShapeKind.Rectangle,
+            CustomElementOutlineArgb,
+            0xFFFFFFFF,
+            anchor.Scale,
+            text,
+            new MicrosoftWhiteboardFont(LabelStyles.DefaultFontFamily, 16 * anchor.Scale, Black, false, false, false));
+    }
 
     /// <summary>
     /// A connector's SVG draws its route from the anchor, and its head as a small
