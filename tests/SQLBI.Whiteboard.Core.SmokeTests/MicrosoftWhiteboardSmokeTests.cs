@@ -141,6 +141,7 @@ internal static class MicrosoftWhiteboardSmokeTests
         RunLists();
         RunTables();
         RunTemplate();
+        RunLive();
     }
 
     /// <summary>
@@ -568,6 +569,46 @@ internal static class MicrosoftWhiteboardSmokeTests
                frame.Center == new PointD(1700, 1550),
             "An older polygon in a template starts at its child's corner, as it does at the top level.");
         Assert(board.Items.Count == 6, "Nothing else is read from the template.");
+    }
+
+    /// <summary>
+    /// Loop components and an app as the export leaves them: a Loop element holding a
+    /// link around a placeholder picture, and an app frame whose frame became a panel.
+    /// </summary>
+    private const string LivePage = """
+        <html><body><div id="canvasContent" class="contentOrigin">
+        <div class="anchor align topLeft" data-whiteboard-type="LoopObject" style="left: 100px; top: 100px;">
+          <div class="canvasChild" style="width: 600px; height: 300px;"><div class="loopParentDiv" tabindex="0" data-loop-url="https://loop.cloud.microsoft/p/abc">
+            <a target="_blank" href="https://loop.cloud.microsoft/p/abc"><img src="/blueboard/assets/LoopExportThumbnail.svg"></a></div></div>
+        </div>
+        <div class="anchor align center" data-whiteboard-type="LoopObject" style="left: 1000px; top: 1000px;">
+          <div class="canvasChild"><div class="loopParentDiv"><div><img src="/blueboard/assets/LoopExportThumbnail.svg"></div></div></div>
+        </div>
+        <div class="anchor align topLeft" data-whiteboard-type="AppIframeHost" style="left: 0px; top: 500px;">
+          <div class="canvasChild"><div class="appFrameContainer appFrameLiveContainer" style="width: 480px; height: 320px;">
+            <div class="appFrameHeader" aria-hidden="true"><span class="appFrameHeaderTitle">App</span></div>
+            <div style="width: 100%; height: 100%; background: #faf9f8;"></div></div></div>
+        </div>
+        <div class="anchor align topLeft" data-whiteboard-type="HostedFluidObject" style="left: 0px; top: 0px;"><div class="canvasChild"></div></div>
+        </div></body></html>
+        """;
+
+    private static void RunLive()
+    {
+        var board = MicrosoftWhiteboardExport.Parse(LivePage, "Live");
+        Assert(board.Skipped.Count == 1 && board.Skipped["HostedFluidObject"] == 1,
+            "Live content without a Loop element in it is still reported.");
+
+        Assert(board.Items[0] is MicrosoftWhiteboardTextContainer { Title: "Loop", Width: 600 } linked &&
+               linked.TopLeft == new PointD(100, 100) &&
+               linked.Markdown == "[Loop component](https://loop.cloud.microsoft/p/abc)",
+            "A Loop component is Markdown linking to it, as wide as the component.");
+        Assert(board.Items[1] is MicrosoftWhiteboardTextContainer { Width: 400, Markdown: "Loop component" } unlinked &&
+               unlinked.TopLeft == new PointD(800, 1000),
+            "A Loop component without an address says what it was, and a centered one is centered on its anchor.");
+        Assert(board.Items[2] is MicrosoftWhiteboardShape { Kind: ShapeKind.Rectangle, Width: 480, Height: 320, FillArgb: 0xFFFAF9F8, Text: "App" } app &&
+               app.Center == new PointD(240, 660),
+            "An app is a panel of its size with its header's title.");
     }
 
     private static void RunArchive()
