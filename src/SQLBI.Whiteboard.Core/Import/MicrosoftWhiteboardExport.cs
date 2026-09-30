@@ -40,6 +40,14 @@ public sealed partial class MicrosoftWhiteboardExport
     private const double StickerCaptionFontSize = 30;
 
     /// <summary>
+    /// A template's title panel in the web client's light theme: a 4-pixel bar in
+    /// this blue on top of a white panel, with the text padded 8 and 6 pixels in.
+    /// </summary>
+    private const double TemplateTitleBar = 4;
+    private const uint TemplateTitleArgb = 0xFF0C34FA;
+    private static readonly PointD TemplateTitlePadding = new(8, 6);
+
+    /// <summary>
     /// A vertical list's columns in the web client: the icon, the text, the text
     /// beside an Assigned to column, that column, and the likes.
     /// </summary>
@@ -241,6 +249,9 @@ public sealed partial class MicrosoftWhiteboardExport
                         items.Add(link);
                     }
 
+                    break;
+                case "LegacyTemplate":
+                    items.AddRange(ReadTemplate(anchor, tags, what => Skip(what)));
                     break;
                 case "LegacySticker":
                     items.AddRange(ReadSticker(anchor, tags));
@@ -941,6 +952,171 @@ public sealed partial class MicrosoftWhiteboardExport
     }
 
     /// <summary>
+    /// A template from the Windows 10 app: a title and the items placed on it, which the
+    /// web client draws as a collection. Each child is a <c>div.topLeft</c> with its own
+    /// <c>left</c>, <c>top</c>, and <c>transform</c>, holding the same content a board
+    /// object holds without the anchor around it, so a child is recognized by what it
+    /// holds and read by the reader for that kind, placed from its corner. The title is
+    /// a white panel with a blue bar on top and bold 24-pixel text; the bar and the text
+    /// are what show on a white board. A child of any other kind is counted.
+    /// </summary>
+    private static IEnumerable<MicrosoftWhiteboardItem> ReadTemplate(Anchor anchor, List<HtmlTag> tags, Action<string> skip)
+    {
+        var children = new List<int>();
+        for (var index = 0; index < tags.Count; index++)
+        {
+            var tag = tags[index];
+            if (tag.Name == "div" && tag.HasClass("topLeft") &&
+                StyleValue(tag.Attribute("style"), "left") is not null)
+            {
+                children.Add(index);
+            }
+        }
+
+        if (children.Count == 0)
+        {
+            skip(anchor.Type);
+            yield break;
+        }
+
+        for (var child = 0; child < children.Count; child++)
+        {
+            var start = children[child];
+            var end = child + 1 < children.Count ? children[child + 1] : tags.Count;
+            var content = tags.GetRange(start + 1, end - start - 1);
+            var place = Anchor.From(tags[start], anchor.Type).Inside(anchor, default);
+            var items = ReadTemplateChild(place, tags[start], content).ToArray();
+            if (items.Length == 0 && ReadText(content, 0, content.Count).Length + content.Count(tag => tag.Name == "svg") > 0)
+            {
+                skip("Template items");
+            }
+
+            foreach (var item in items)
+            {
+                yield return item;
+            }
+        }
+    }
+
+    private static IEnumerable<MicrosoftWhiteboardItem> ReadTemplateChild(Anchor place, HtmlTag child, List<HtmlTag> content)
+    {
+        bool Has(Func<HtmlTag, bool> test) => content.Any(test);
+        HtmlTag? First(Func<HtmlTag, bool> test) => content.FirstOrDefault(test);
+
+        if (Has(tag => tag.HasClass("templateTitle")))
+        {
+            var title = ReadText(content, 0, content.Count);
+            var width = StyleLength(child.Attribute("style"), "width") ?? 0;
+            if (width > 0)
+            {
+                yield return new MicrosoftWhiteboardShape(
+                    place.ToCanvas(new PointD(width / 2, TemplateTitleBar / 2)),
+                    width * place.Scale,
+                    TemplateTitleBar * place.Scale,
+                    place.AngleDegrees,
+                    ShapeKind.Rectangle,
+                    TemplateTitleArgb,
+                    TemplateTitleArgb,
+                    place.Scale,
+                    string.Empty,
+                    new MicrosoftWhiteboardFont(LabelStyles.DefaultFontFamily, 20, Black, false, false, false));
+            }
+
+            if (title.Length > 0)
+            {
+                yield return new MicrosoftWhiteboardLabel(
+                    place.ToCanvas(default),
+                    place.Scale,
+                    place.AngleDegrees,
+                    new PointD(TemplateTitlePadding.X, TemplateTitleBar + TemplateTitlePadding.Y),
+                    title,
+                    new MicrosoftWhiteboardFont(LabelStyles.DefaultFontFamily, 24, Black, true, false, false),
+                    double.MaxValue,
+                    null);
+            }
+
+            yield break;
+        }
+
+        if (Has(tag => tag.Name == "svg" && tag.HasClass("inkGroup")))
+        {
+            var from = content.FindIndex(tag => tag.Name == "svg" && tag.HasClass("inkGroup"));
+            foreach (var item in ReadInkGroup(place, content.GetRange(from, content.Count - from)))
+            {
+                yield return item;
+            }
+
+            yield break;
+        }
+
+        if (Has(tag => tag.HasClass("stickyNote")))
+        {
+            yield return ReadNote(place, content, 0, content.Count, default);
+            yield break;
+        }
+
+        if (Has(tag => tag.HasClass("listChildren")))
+        {
+            foreach (var item in ReadGrid(place, content))
+            {
+                yield return item;
+            }
+
+            yield break;
+        }
+
+        if (Has(tag => tag.HasClass("legacyListContainer")))
+        {
+            var kind = Has(tag => tag.HasClass("checkedListItemIcon") || tag.HasClass("uncheckedListItemIcon"))
+                ? "VerticalCheckboxList"
+                : Has(tag => tag.Attribute("data-icon-name") == "RadioBullet") ? "VerticalBulletList" : "VerticalList";
+            if (ReadList(place with { Type = kind }, content) is { } list)
+            {
+                yield return list;
+            }
+
+            yield break;
+        }
+
+        if (Has(tag => tag.HasClass("plainText")))
+        {
+            if (ReadLabel(place, content) is { } label)
+            {
+                yield return label;
+            }
+
+            yield break;
+        }
+
+        // A picture and a shape are centered on their anchor at the top level, and
+        // placed from their corner here, so their anchor moves to their middle.
+        if (First(tag => tag.Name == "div" && tag.HasClass("imageComponent")) is { } box)
+        {
+            var size = new PointD(StyleLength(box.Attribute("style"), "width") ?? 0, StyleLength(box.Attribute("style"), "height") ?? 0);
+            if (ReadImage(place.Shifted(new PointD(size.X / 2, size.Y / 2)), content) is { } picture)
+            {
+                yield return picture;
+            }
+
+            yield break;
+        }
+
+        if (First(tag => tag.Name == "svg" && tag.HasClass("shape")) is { } svg)
+        {
+            var size = new PointD(Numbers(svg.Attribute("width")).FirstOrDefault(), Numbers(svg.Attribute("height")).FirstOrDefault());
+            var shape = Has(tag => tag.Name == "polygon")
+                ? ReadLegacyShape(place, content)
+                : Has(tag => tag.Name == "ellipse")
+                    ? ReadLegacyShape(place.Shifted(new PointD(size.X / 2, size.Y / 2)), content)
+                    : ReadShape(place.Shifted(new PointD(size.X / 2, size.Y / 2)), content);
+            if (shape is not null)
+            {
+                yield return shape;
+            }
+        }
+    }
+
+    /// <summary>
     /// A connector's SVG draws its route from the anchor, and its head as a small
     /// path moved to one end. A route with corners is kept as a straight line.
     /// </summary>
@@ -1421,6 +1597,11 @@ public sealed partial class MicrosoftWhiteboardExport
         /// This anchor placed at a point inside another, so that a point here reaches
         /// the canvas through both transforms.
         /// </summary>
+        /// <summary>
+        /// This anchor moved to a point of its own, keeping its scale and turn.
+        /// </summary>
+        public Anchor Shifted(PointD local) => new(Type, ToCanvas(local), A, B, C, D, 0, 0);
+
         public Anchor Inside(Anchor parent, PointD at) => new(
             Type,
             parent.ToCanvas(at + Origin + new PointD(E, F)),

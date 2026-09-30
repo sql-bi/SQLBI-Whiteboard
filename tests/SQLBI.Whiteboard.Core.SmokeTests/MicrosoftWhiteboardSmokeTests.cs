@@ -140,6 +140,7 @@ internal static class MicrosoftWhiteboardSmokeTests
         RunOlderObjects();
         RunLists();
         RunTables();
+        RunTemplate();
     }
 
     /// <summary>
@@ -512,6 +513,61 @@ internal static class MicrosoftWhiteboardSmokeTests
                { Text: "Great idea!", Scale: 2, WrapWidth: 160, CenteredWidth: 160, Font: { Family: "Segoe Print", Size: 24, Argb: 0xFFC10051 } } caption &&
                caption.Origin == new PointD(340, 460),
             "A sticker's caption is a label centered across its box, at the size it shrank to, moved from the picture's corner.");
+    }
+
+    /// <summary>
+    /// A template from the Windows 10 app as the web client draws it: a collection of
+    /// children placed from their corners, each holding the content of one object.
+    /// </summary>
+    private static readonly string TemplatePage = $$"""
+        <html><body><div id="canvasContent" class="contentOrigin">
+        <div class="anchor align topLeft" data-whiteboard-type="LegacyTemplate" style="left: 1000px; top: 1000px;">
+          <div class="canvasChild"><div class="collection" role="collection">
+            <div><div class="topLeft" style="left: 0px; top: 0px; width: 600px; height: 60px; position: absolute;">
+              <div class="textbox templateTitle"><div class="textBoxCore"><div data-block="true"><span data-text="true">Retrospective</span></div></div></div></div></div>
+            <div><div class="topLeft" style="left: 0px; top: 100px; position: absolute;">
+              <div class="textBoxBackground softBlueGradient"><div class="textbox stickyNote" style="width: 304px; height: 265px; font-size: 32px;">
+                <div class="textBoxCore"><div data-block="true"><span data-text="true">Went well</span></div></div></div></div></div></div>
+            <div><div class="topLeft" style="left: 400px; top: 100px; position: absolute;">
+              <div class="content imageComponent" style="height: 50px; width: 100px;"><img src="data:image/*;base64,{{OnePixelPng}}"></div></div></div>
+            <div><div class="topLeft" style="left: 0px; top: 500px; position: absolute; transform: matrix(2, 0, 0, 2, 0, 0);">
+              <svg class="inkGroup ink PenStroke" viewBox="0 0 100 10" width="100" height="10"><g class="inkStroke" transform="matrix(0.0078125, 0, 0, 0.0078125, 0, 0)">
+                <path d="M0,-256L2560,-256A256,256 0 0 0 2560,256L0,256A256,256 0 0 0 0,-256" fill="rgba(0,0,0,1)"></path>
+                <polyline class="inkHitTestOverlay" points="0,0 2560,0 "></polyline></g></svg></div></div>
+            <div><div class="topLeft" style="left: 600px; top: 500px; position: absolute;">
+              <svg class="shape polygon" height="100" width="200"><polygon points="0, 0, 200, 0, 200, 100, 0, 100" stroke="rgba(0,0,0,1)" style="fill: transparent; stroke-width: 4;"></polygon></svg></div></div>
+            <div><div class="topLeft" style="left: 900px; top: 500px; position: absolute;"><svg class="loopPlaceholder"></svg></div></div>
+          </div></div>
+        </div>
+        <div class="anchor align topLeft" data-whiteboard-type="LegacyTemplate" style="left: 0px; top: 0px;"><div class="canvasChild"></div></div>
+        </div></body></html>
+        """;
+
+    private static void RunTemplate()
+    {
+        var board = MicrosoftWhiteboardExport.Parse(TemplatePage, "Template");
+        Assert(board.Skipped.Count == 2 && board.Skipped["Template items"] == 1 && board.Skipped["LegacyTemplate"] == 1,
+            "A template child of an unknown kind is counted, and a template drawn without its children is reported.");
+
+        Assert(board.Items[0] is MicrosoftWhiteboardShape { Kind: ShapeKind.Rectangle, Width: 600, Height: 4, FillArgb: 0xFF0C34FA } bar &&
+               bar.Center == new PointD(1300, 1002),
+            "A template's title has the blue bar across the top of its panel.");
+        Assert(board.Items[1] is MicrosoftWhiteboardLabel { Text: "Retrospective", Font: { Bold: true, Size: 24 } } title &&
+               title.Origin == new PointD(1000, 1000) && title.Inset == new PointD(8, 10),
+            "A template's title is bold 24-pixel text inside the panel's padding, under the bar.");
+        Assert(board.Items[2] is MicrosoftWhiteboardShape { Text: "Went well", FillArgb: 0xFF99C9EF } note &&
+               note.Center == new PointD(1152, 1252.5),
+            "A note in a template is placed from its child's corner.");
+        Assert(board.Items[3] is MicrosoftWhiteboardImage picture && picture.Bounds == new RectD(1400, 1100, 100, 50),
+            "A picture in a template starts at its child's corner, where at the top level it is centered on its anchor.");
+        var stroke = (MicrosoftWhiteboardStroke)board.Items[4];
+        AssertNear(1000, stroke.Points[0].X, "Ink in a template starts at its child's corner.");
+        AssertNear(1500, stroke.Points[0].Y, "Ink in a template starts at its child's corner.");
+        AssertNear(1040, stroke.Points[^1].X, "Ink in a template takes its child's scale.");
+        Assert(board.Items[5] is MicrosoftWhiteboardShape { Kind: ShapeKind.Rectangle, Width: 200, Height: 100 } frame &&
+               frame.Center == new PointD(1700, 1550),
+            "An older polygon in a template starts at its child's corner, as it does at the top level.");
+        Assert(board.Items.Count == 6, "Nothing else is read from the template.");
     }
 
     private static void RunArchive()

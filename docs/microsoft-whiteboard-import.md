@@ -1,7 +1,7 @@
 # Microsoft Whiteboard import
 
 **Implemented in 1.7.0**, with the objects of older versions of the app in 1.7.1,
-1.7.2, and 1.7.3. This document records what a Microsoft Whiteboard export contains, how the
+1.7.2, 1.7.3, and 1.7.4. This document records what a Microsoft Whiteboard export contains, how the
 importer maps it onto a board, and what it cannot carry over. Microsoft retires its
 standalone Whiteboard apps on 16 October 2026 (see [retirement](retirement/README.md)),
 and the export is the only way to take a board out of it. The format is undocumented.
@@ -56,6 +56,7 @@ no model of the board beyond what it draws.
 | `AzureImage` | A picture on a board made with an older version of the app, written as a `FluidImage` is, with the data URI labelled `image/*`. |
 | `AzureGif` | An animated GIF, written as an `AzureImage` is. Not seen in a sample; the web client converts it with the same function as `AzureImage`. |
 | `LegacySticker` | A sticker from the Windows 10 app: a picture written as an `AzureImage` is, and a caption in a `div` moved from the picture's corner by its `transform`, with `font-size` 30 and the family and weight in its style. The text box inside has the caption's width, and a smaller `font-size` when the text shrank to fit. Not seen in a sample; read from the web client's `ImageUI` caption aspect. |
+| `LegacyTemplate` | A template from the Windows 10 app, drawn as a collection: one `div.topLeft` per child with its own `left`, `top`, and `transform`, holding the content of one object without the anchor around it. The first child is the title, a `textbox.templateTitle` that the stylesheet draws as a white panel 60 pixels tall with a 4-pixel `#0C34FA` bar on top, 6 and 8 pixels of padding, and bold 24-pixel text. The web client moves every child by the same offset, so that none sits left of or above the title. It draws a placeholder instead when its `EnableTemplates` flag is off. Not seen in a sample; read from the web client's template conversion and `CollectionComponent`. |
 | `DocumentPage` | A page of an inserted PDF, written as a `FluidImage` is. |
 | `ReactionStickers` | A sticker, written as a 64 × 64 `FluidImage` with an SVG data URI. |
 | `Shape` | An SVG whose `g` has `fill`, `stroke`, and `stroke-width` (in `pt`), and whose `path` draws the outline around the middle of the box. The shape's text sits in `div.textBoxContainer`. |
@@ -129,6 +130,7 @@ Windows client offers, from `paleYellowGradient` (#FEE15A) to `grayGradient` (#C
 | Connector | `ConnectorBoardObject`, straight, with its ends bound to shapes they sit on |
 | Ink table | One `ShapeBoardObject` rectangle per cell with the border's color and 4-unit outline, then the cells' ink as strokes |
 | Legacy sticker | The picture, and its caption as a `FreeTextBoardObject` centered across the caption's box |
+| Legacy template | The title's bar as a filled rectangle and its text as a bold label, then each child read by the reader for what it holds: ink, a note, a note grid, a list, a text box, a picture, or a shape. A picture or a shape moves by half its size, because a child is placed from its corner and those are centered on their anchor at the top level. A child of any other kind is counted as a template item |
 | Link card | Markdown `TextBoardObject` titled *Link* |
 | List | Markdown `TextBoardObject` titled *List*: the list's title in bold, then a Markdown list of bullets, or one line per item with ☒ for a done task and ☐ for an open one |
 | Comment thread | Markdown `TextBoardObject` titled *Comment*, in a column to the right of the board |
@@ -232,12 +234,12 @@ parses in about 160 ms.
 - PowerPoint pages, which the Windows client cannot insert, videos, and Loop components
 - SVG pictures, which the Windows client refuses to insert
 - Groups, which the Windows client does not offer
-- GIFs, lists, ink tables, and legacy stickers, which are read from the web client's code,
-  not from a sample
+- GIFs, lists, ink tables, legacy stickers, and legacy templates, which are read from the
+  web client's code, not from a sample
 
 The web client's code names every type an export can hold. Its `data-whiteboard-type`
 values, as of version 26.10910.101 in September 2026, are the types above and these,
-which the importer reports and leaves out: `LegacyTemplate`, `LoopObject`,
+which the importer reports and leaves out: `LoopObject`,
 `HostedFluidObject`, `GroupFluidObject`, `AppIframeHost`, `WorkItem`, `Frame`, and
 `CustomElement`, and an `Unknown` that holds no table. The export replaces a Loop component and an app frame with a
 placeholder picture.
