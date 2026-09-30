@@ -28,6 +28,17 @@ public sealed partial class MicrosoftWhiteboardExport
     private const string CommentsSuffix = "-comments.json";
     private const string CommentTitle = "Comment";
     private const string ListTitle = "List";
+
+    /// <summary>
+    /// The four reactions the web client offers on a note, by the name its pill carries.
+    /// </summary>
+    private static readonly Dictionary<string, string> ReactionSymbols = new(StringComparer.Ordinal)
+    {
+        ["Like"] = "\U0001F44D",
+        ["Heart"] = "\u2665",
+        ["Laugh"] = "\U0001F602",
+        ["Think"] = "\U0001F914",
+    };
     private const string LoopTitle = "Loop";
     private const string WorkItemTitle = "Work item";
 
@@ -386,7 +397,12 @@ public sealed partial class MicrosoftWhiteboardExport
                     break;
             }
 
-            Skip("Reactions on notes", tags.Count(tag => tag.Name == "button" && tag.HasClass("ReactionPill")));
+            // A note keeps its reactions in its text, and so does a note in a grid or a
+            // template. Reactions on anything else are counted.
+            if (anchor.Type is not ("Note" or "GridList" or "LegacyTemplate"))
+            {
+                Skip("Reactions", tags.Count(tag => tag.Name == "div" && tag.HasClass("ReactionPillContainer")));
+            }
         }
 
         return new MicrosoftWhiteboardExport(name, items, skipped);
@@ -722,8 +738,34 @@ public sealed partial class MicrosoftWhiteboardExport
             color,
             color,
             1,
-            ReadText(tags, from, to),
+            WithReactions(ReadText(tags, from, to), tags, from, to),
             ReadFont(coreStyle, fontSize * anchor.Scale, defaultBold: false));
+    }
+
+    /// <summary>
+    /// The reactions on a note as a last line of its text, one symbol and count each, in
+    /// the order the note shows them. A pill's <c>id</c> is the reaction's name and its
+    /// <c>span.reactionPillText</c> the count.
+    /// </summary>
+    private static string WithReactions(string text, List<HtmlTag> tags, int from, int to)
+    {
+        var reactions = new List<string>();
+        for (var index = from; index < to; index++)
+        {
+            if (tags[index].Name != "div" || !tags[index].HasClass("ReactionPillContainer"))
+            {
+                continue;
+            }
+
+            var name = tags[index].Attribute("id") ?? string.Empty;
+            var count = tags.Skip(index).Take(to - index)
+                .FirstOrDefault(tag => tag.HasClass("reactionPillText"))?.Text.Trim();
+            reactions.Add($"{(ReactionSymbols.TryGetValue(name, out var symbol) ? symbol : name)} {count}".Trim());
+        }
+
+        return reactions.Count == 0
+            ? text
+            : string.Join('\n', new[] { text, string.Join("  ", reactions) }.Where(line => line.Length > 0));
     }
 
     /// <summary>

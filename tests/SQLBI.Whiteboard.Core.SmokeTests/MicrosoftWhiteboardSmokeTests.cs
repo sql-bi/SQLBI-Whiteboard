@@ -187,7 +187,10 @@ internal static class MicrosoftWhiteboardSmokeTests
         <div class="anchor align topLeft" data-whiteboard-type="Note" style="left: 1000px; top: 0px;">
           <div class="textBoxBackground noteVisualUpdate softBlueGradient"><div class="textbox stickyNote" style="width: 304px; height: 265px; font-size: 32px;">
             <div class="textBoxCore textArea" style="font-weight: 400;"><div data-block="true"><span data-text="true">First line</span></div><div data-block="true"><span data-text="true">Second &amp; last</span></div></div></div></div>
-          <div class="ReactionTagContainer"><button type="button" class="ms-Button ReactionPill"></button></div>
+          <div class="ReactionTagContainer"><div class="ReactionPillsContainer">
+            <div id="Heart" class="ReactionPillContainer"><button type="button" class="ms-Button ReactionPill" aria-label="One Heart reaction tag"><i class="icon reactionTagIcon"><svg width="20" height="20"></svg></i><span class="reactionPillText" dir="ltr">1</span></button></div>
+            <div id="Like" class="ReactionPillContainer"><button type="button" class="ms-Button ReactionPill"><i class="icon reactionTagIcon"><svg width="20" height="20"></svg></i><span class="reactionPillText" dir="ltr">3</span></button></div>
+          </div></div>
         </div>
         <div class="anchor align topLeft" data-whiteboard-type="PlainText" style="left: 0px; top: 600px;">
           <div style="width: 400px; display: flex; justify-content: center;"><div class="textbox plainText" style="max-width: 400px; font-size: 20px;">
@@ -231,8 +234,8 @@ internal static class MicrosoftWhiteboardSmokeTests
     private static void RunObjects()
     {
         var board = MicrosoftWhiteboardExport.Parse(ObjectsPage, "Objects", ObjectsComments);
-        Assert(board.Skipped.Count == 2 && board.Skipped["Timer"] == 1 && board.Skipped["Reactions on notes"] == 1,
-            "An unknown object is counted by its type, and reactions on notes by what they are.");
+        Assert(board.Skipped.Count == 1 && board.Skipped["Timer"] == 1,
+            "An unknown object is counted by its type, and a note's reactions are not left out.");
 
         var arrow = (MicrosoftWhiteboardShape)board.Items[0];
         Assert(arrow.Kind == ShapeKind.BlockArrow && arrow.Text == "Arrow",
@@ -250,8 +253,8 @@ internal static class MicrosoftWhiteboardSmokeTests
             "No fill and a transparent outline stay without paint.");
 
         var note = (MicrosoftWhiteboardShape)board.Items[3];
-        Assert(note.FillArgb == 0xFF99C9EF && note.Text == "First line\nSecond & last" && !note.Font.Bold,
-            "A note is a shape in its color, one line per block, entities decoded.");
+        Assert(note.FillArgb == 0xFF99C9EF && note.Text == "First line\nSecond & last\n\u2665 1  \U0001F44D 3" && !note.Font.Bold,
+            "A note is a shape in its color, one line per block, entities decoded, and its reactions on a last line.");
         Assert(note.Center == new PointD(1152, 152.5) && note.Width == 304 && note.Height == 305,
             "A note covers its text and the author bar above it.");
 

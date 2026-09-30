@@ -62,7 +62,7 @@ no model of the board beyond what it draws.
 | `Shape` | An SVG whose `g` has `fill`, `stroke`, and `stroke-width` (in `pt`), and whose `path` draws the outline around the middle of the box. The shape's text sits in `div.textBoxContainer`. |
 | `LegacyEllipse` | A shape from an older version of the app: an SVG `ellipse` with the outline in its `stroke` attribute and the width and fill in its style. The radii can differ from the SVG's box, in proportion as well as in size, and the page draws the radii. |
 | `LegacyPolygon` | A shape from an older version of the app: an SVG `polygon` whose points start at the anchor, styled as a `LegacyEllipse` is. Every sample is a rectangle. |
-| `Note` | A sticky note: `div.textBoxBackground` with a color class such as `softBlueGradient`, a 40-pixel author bar, and `div.stickyNote` with the text area's size and font size. |
+| `Note` | A sticky note: `div.textBoxBackground` with a color class such as `softBlueGradient`, a 40-pixel author bar, and `div.stickyNote` with the text area's size and font size. Its reactions are pills in `div.ReactionTagContainer`: one `div.ReactionPillContainer` per reaction, whose `id` is `Like`, `Heart`, `Laugh`, or `Think`, with the count in `span.reactionPillText`. |
 | `GridList` | A note grid: a title editor, then `div.listChild` notes in a CSS grid of `repeat(n, auto)` columns. |
 | `VerticalList`, `VerticalBulletList`, `VerticalCheckboxList`, `UnknownList` | A list of text, bullets, or tasks, in `div.legacyListContainer`: a title editor in `div.verticalListTitle`, a `div.listColumnHeading` with the column names, then one `div.listChild` per item with its icon, its text editor, who a task is assigned to (`div.assignedUserDisplayName`), and its likes. A done task's icon is `CheckmarkCircle` with the class `checkedListItemIcon`, an open one `StatusCircle` with `uncheckedListItemIcon`. The list is 44 + 284 + 76 pixels wide, or 44 + 364 + 76 when tasks have an Assigned to column. An `UnknownList` draws no items. Not seen in a sample; read from the web client's `ListContainerComponent`. |
 | `PlainText` | A text box: `div.textbox.plainText` with `max-width` and `font-size`, inside a wrapper whose `justify-content` centers the text in a wider box when the text is centered. |
@@ -129,7 +129,7 @@ Windows client offers, from `paleYellowGradient` (#FEE15A) to `grayGradient` (#C
 | Shape | `ShapeBoardObject` of the kind its outline has, with fill, outline, angle, and text |
 | Older ellipse or polygon | `ShapeBoardObject`, an oval with the ellipse's radii or the kind the polygon's corners have, without text |
 | Rectangle, in either form | `ShapeBoardObject`, `ShapeKind.Rectangle`, with square corners |
-| Sticky note | `ShapeBoardObject`, rectangle in the note's color, with the note's text |
+| Sticky note | `ShapeBoardObject`, rectangle in the note's color, with the note's text and, on a last line, its reactions as 👍, ♥, 😂, or 🤔 with their counts. The heart is the suit symbol, because WPF draws the emoji heart hatched |
 | Note grid | A white rectangle for the panel, a label for the title, and one note per cell |
 | Text box | `FreeTextBoardObject`, wrapped into the lines the box showed |
 | Connector | `ConnectorBoardObject`, straight, with its ends bound to shapes they sit on |
@@ -225,7 +225,8 @@ parses in about 160 ms.
 - **Elbow connectors are straight.** Their ends stay where they were and stay bound.
 - **A turned picture cannot be turned back**, because it is an SVG of the turned picture.
 - **A link card loses its preview picture.** The link and its description are kept.
-- **Reactions on notes** are counted and left out. The board has no reactions.
+- **Reactions** are a line of text in the note, not pills, and who reacted is left out.
+  Reactions on anything other than a note are counted and left out.
 - **Comments** become text containers beside the board, not pins on their objects.
   Authors keep their names; their email addresses are left out.
 - **Author names on notes, locks, and alt text** are left out, because the board has no
