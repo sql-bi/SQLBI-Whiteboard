@@ -55,6 +55,7 @@ no model of the board beyond what it draws.
 | `FluidImage` | `div.imageComponent` with the size, and an `img` with a base64 data URI labelled `text/plain` whatever the picture is. |
 | `AzureImage` | A picture on a board made with an older version of the app, written as a `FluidImage` is, with the data URI labelled `image/*`. |
 | `AzureGif` | An animated GIF, written as an `AzureImage` is. Not seen in a sample; the web client converts it with the same function as `AzureImage`. |
+| `LegacySticker` | A sticker from the Windows 10 app: a picture written as an `AzureImage` is, and a caption in a `div` moved from the picture's corner by its `transform`, with `font-size` 30 and the family and weight in its style. The text box inside has the caption's width, and a smaller `font-size` when the text shrank to fit. Not seen in a sample; read from the web client's `ImageUI` caption aspect. |
 | `DocumentPage` | A page of an inserted PDF, written as a `FluidImage` is. |
 | `ReactionStickers` | A sticker, written as a 64 × 64 `FluidImage` with an SVG data URI. |
 | `Shape` | An SVG whose `g` has `fill`, `stroke`, and `stroke-width` (in `pt`), and whose `path` draws the outline around the middle of the box. The shape's text sits in `div.textBoxContainer`. |
@@ -65,6 +66,7 @@ no model of the board beyond what it draws.
 | `VerticalList`, `VerticalBulletList`, `VerticalCheckboxList`, `UnknownList` | A list of text, bullets, or tasks, in `div.legacyListContainer`: a title editor in `div.verticalListTitle`, a `div.listColumnHeading` with the column names, then one `div.listChild` per item with its icon, its text editor, who a task is assigned to (`div.assignedUserDisplayName`), and its likes. A done task's icon is `CheckmarkCircle` with the class `checkedListItemIcon`, an open one `StatusCircle` with `uncheckedListItemIcon`. The list is 44 + 284 + 76 pixels wide, or 44 + 364 + 76 when tasks have an Assigned to column. An `UnknownList` draws no items. Not seen in a sample; read from the web client's `ListContainerComponent`. |
 | `PlainText` | A text box: `div.textbox.plainText` with `max-width` and `font-size`, inside a wrapper whose `justify-content` centers the text in a wider box when the text is centered. |
 | `Connector` | An SVG with the route as a path from the anchor, and the head as a small path moved to one end with `translate`. |
+| `Unknown` holding `div.inkTableContainer` | A table drawn with ink in the Windows 10 app, which the web client registers under no type of its own. The container is a CSS grid whose `grid-template-columns` and `grid-template-rows` give each column and row as `minmax(<size>px, auto)`. One `div.inkCellContainer` per cell, row by row, has a `4px solid` border in the table's color and a `-2px` margin, so the border sits over the grid line. Inside it, a `div` shifts the cell's ink by `left` and `top`, and each ink group sits in a `div` with its own `left`, `top`, and `transform`, holding the same SVG an `InkGroup` has. The web client draws a placeholder instead when its `EnableTables` flag is off. Not seen in a sample; read from the web client's `TableComponent`. |
 | `Hyperlink` | A preview card with the page's picture, an `a` with the link and its title, and the description. |
 | `CommentThread` | A pin, described above. |
 
@@ -125,6 +127,8 @@ Windows client offers, from `paleYellowGradient` (#FEE15A) to `grayGradient` (#C
 | Note grid | A white rectangle for the panel, a label for the title, and one note per cell |
 | Text box | `FreeTextBoardObject`, wrapped into the lines the box showed |
 | Connector | `ConnectorBoardObject`, straight, with its ends bound to shapes they sit on |
+| Ink table | One `ShapeBoardObject` rectangle per cell with the border's color and 4-unit outline, then the cells' ink as strokes |
+| Legacy sticker | The picture, and its caption as a `FreeTextBoardObject` centered across the caption's box |
 | Link card | Markdown `TextBoardObject` titled *Link* |
 | List | Markdown `TextBoardObject` titled *List*: the list's title in bold, then a Markdown list of bullets, or one line per item with ☒ for a done task and ☐ for an open one |
 | Comment thread | Markdown `TextBoardObject` titled *Comment*, in a column to the right of the board |
@@ -228,14 +232,14 @@ parses in about 160 ms.
 - PowerPoint pages, which the Windows client cannot insert, videos, and Loop components
 - SVG pictures, which the Windows client refuses to insert
 - Groups, which the Windows client does not offer
-- GIFs and lists, which are read from the web client's code, not from a sample
+- GIFs, lists, ink tables, and legacy stickers, which are read from the web client's code,
+  not from a sample
 
 The web client's code names every type an export can hold. Its `data-whiteboard-type`
 values, as of version 26.10910.101 in September 2026, are the types above and these,
-which the importer reports and leaves out: `Table` (an ink-to-table grid from the
-Windows 10 app), `LegacyTemplate`, `LegacySticker`, `LoopObject`,
+which the importer reports and leaves out: `LegacyTemplate`, `LoopObject`,
 `HostedFluidObject`, `GroupFluidObject`, `AppIframeHost`, `WorkItem`, `Frame`, and
-`CustomElement`. The export replaces a Loop component and an app frame with a
+`CustomElement`, and an `Unknown` that holds no table. The export replaces a Loop component and an app frame with a
 placeholder picture.
 
 Each is reported by type after the import. Sticky notes cannot be

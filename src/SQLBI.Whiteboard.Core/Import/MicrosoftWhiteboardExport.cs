@@ -30,6 +30,16 @@ public sealed partial class MicrosoftWhiteboardExport
     private const string ListTitle = "List";
 
     /// <summary>
+    /// A table cell's border, which the web client draws over the grid line.
+    /// </summary>
+    private const double TableBorder = 4;
+
+    /// <summary>
+    /// The largest size a sticker's caption is drawn at before it shrinks to fit.
+    /// </summary>
+    private const double StickerCaptionFontSize = 30;
+
+    /// <summary>
     /// A vertical list's columns in the web client: the icon, the text, the text
     /// beside an Assigned to column, that column, and the likes.
     /// </summary>
@@ -229,6 +239,21 @@ public sealed partial class MicrosoftWhiteboardExport
                     if (ReadLink(anchor, tags) is { } link)
                     {
                         items.Add(link);
+                    }
+
+                    break;
+                case "LegacySticker":
+                    items.AddRange(ReadSticker(anchor, tags));
+                    break;
+                case "Unknown":
+                case "Table":
+                    if (tags.Any(tag => tag.Name == "div" && tag.HasClass("inkTableContainer")))
+                    {
+                        items.AddRange(ReadTable(anchor, tags));
+                    }
+                    else
+                    {
+                        Skip(anchor.Type);
                     }
 
                     break;
@@ -767,6 +792,155 @@ public sealed partial class MicrosoftWhiteboardExport
     }
 
     /// <summary>
+    /// A table drawn with ink in the Windows 10 app. The web client names its type
+    /// Unknown and draws it as a CSS grid: each column and row is as long as its
+    /// <c>minmax()</c> says, each cell has a 4-pixel border in the table's color that
+    /// sits over the grid line, and each cell's ink is a collection of ink groups
+    /// placed from the cell's corner, moved by the offset that keeps ink reaching left
+    /// of or above the cell inside it. The cells become rectangles, then the ink comes
+    /// on top of them.
+    /// </summary>
+    private static IEnumerable<MicrosoftWhiteboardItem> ReadTable(Anchor anchor, List<HtmlTag> tags)
+    {
+        var gridIndex = tags.FindIndex(tag => tag.Name == "div" && tag.HasClass("inkTableContainer"));
+        var gridStyle = tags[gridIndex].Attribute("style");
+        var columns = Numbers(StyleValue(gridStyle, "grid-template-columns"));
+        var rows = Numbers(StyleValue(gridStyle, "grid-template-rows"));
+        var cells = new List<int>();
+        for (var index = gridIndex + 1; index < tags.Count; index++)
+        {
+            if (tags[index].Name == "div" && tags[index].HasClass("inkCellContainer"))
+            {
+                cells.Add(index);
+            }
+        }
+
+        if (columns.Count == 0 || rows.Count == 0)
+        {
+            yield break;
+        }
+
+        var border = cells.Count > 0 ? StyleValue(tags[cells[0]].Attribute("style"), "border") : null;
+        var solid = border?.IndexOf("solid", StringComparison.OrdinalIgnoreCase) ?? -1;
+        var color = (solid >= 0 ? PaintOrNull(border![(solid + 5)..]) : null) ?? Black;
+        var lefts = Starts(columns);
+        var tops = Starts(rows);
+        for (var row = 0; row < rows.Count; row++)
+        {
+            for (var column = 0; column < columns.Count; column++)
+            {
+                yield return new MicrosoftWhiteboardShape(
+                    anchor.ToCanvas(new PointD(lefts[column] + (columns[column] / 2), tops[row] + (rows[row] / 2))),
+                    columns[column] * anchor.Scale,
+                    rows[row] * anchor.Scale,
+                    anchor.AngleDegrees,
+                    ShapeKind.Rectangle,
+                    color,
+                    null,
+                    TableBorder * anchor.Scale,
+                    string.Empty,
+                    new MicrosoftWhiteboardFont(LabelStyles.DefaultFontFamily, 20, Black, false, false, false));
+            }
+        }
+
+        for (var cell = 0; cell < cells.Count && cell / columns.Count < rows.Count; cell++)
+        {
+            var start = cells[cell];
+            var end = cell + 1 < cells.Count ? cells[cell + 1] : tags.Count;
+            var shiftStyle = start + 1 < end ? tags[start + 1].Attribute("style") : null;
+            var corner = new PointD(
+                lefts[cell % columns.Count] + (TableBorder / 2) + (StyleLength(shiftStyle, "left") ?? 0),
+                tops[cell / columns.Count] + (TableBorder / 2) + (StyleLength(shiftStyle, "top") ?? 0));
+            var groups = Enumerable.Range(start, end - start)
+                .Where(index => tags[index].Name == "svg" && tags[index].HasClass("inkGroup"))
+                .ToArray();
+            for (var group = 0; group < groups.Length; group++)
+            {
+                // The collection child that places the group is the nearest div before
+                // it with a position of its own, after the div that shifts the cell.
+                var place = Enumerable.Range(start + 2, Math.Max(0, groups[group] - start - 2))
+                    .Reverse()
+                    .Select(index => tags[index])
+                    .FirstOrDefault(tag => tag.Name == "div" && StyleValue(tag.Attribute("style"), "left") is not null);
+                var child = place is null
+                    ? new Anchor("InkGroup", default, 1, 0, 0, 1, 0, 0)
+                    : Anchor.From(place, "InkGroup");
+                var groupEnd = group + 1 < groups.Length ? groups[group + 1] : end;
+                foreach (var item in ReadInkGroup(child.Inside(anchor, corner), tags.GetRange(groups[group], groupEnd - groups[group])))
+                {
+                    yield return item;
+                }
+            }
+        }
+    }
+
+    private static double[] Starts(List<double> lengths)
+    {
+        var starts = new double[lengths.Count];
+        for (var index = 1; index < lengths.Count; index++)
+        {
+            starts[index] = starts[index - 1] + lengths[index - 1];
+        }
+
+        return starts;
+    }
+
+    /// <summary>
+    /// A sticker from the Windows 10 app is a picture with a caption over it. The web
+    /// client draws the picture as any other and the caption as a text editor in a box
+    /// moved from the picture's corner, at 30 pixels or smaller when it shrinks the text
+    /// to fit. The caption becomes a label centered across that box.
+    /// </summary>
+    private static IEnumerable<MicrosoftWhiteboardItem> ReadSticker(Anchor anchor, List<HtmlTag> tags)
+    {
+        if (ReadImage(anchor, tags) is { } picture)
+        {
+            yield return picture;
+        }
+
+        var captionIndex = tags.FindIndex(tag => tag.Name == "div" &&
+            StyleValue(tag.Attribute("style"), "font-size") is not null &&
+            string.Equals(StyleValue(tag.Attribute("style"), "position"), "absolute", StringComparison.OrdinalIgnoreCase));
+        var box = tags.FirstOrDefault(tag => tag.Name == "div" && tag.HasClass("imageComponent"));
+        if (captionIndex < 0 || box is null)
+        {
+            yield break;
+        }
+
+        var text = ReadText(tags, captionIndex, tags.Count);
+        if (text.Length == 0)
+        {
+            yield break;
+        }
+
+        var boxWidth = StyleLength(box.Attribute("style"), "width") ?? 0;
+        var boxHeight = StyleLength(box.Attribute("style"), "height") ?? 0;
+        var caption = Anchor.From(tags[captionIndex], "Caption");
+        var captionStyle = tags[captionIndex].Attribute("style");
+        var width = tags.Skip(captionIndex + 1)
+            .Select(tag => StyleLength(tag.Attribute("style"), "width"))
+            .FirstOrDefault(value => value > 0) ?? boxWidth;
+        var fontSize = tags.Skip(captionIndex)
+            .Select(tag => StyleLength(tag.Attribute("style"), "font-size"))
+            .OfType<double>()
+            .Where(value => value > 0)
+            .DefaultIfEmpty(StickerCaptionFontSize)
+            .Min();
+        var core = tags.Skip(captionIndex).FirstOrDefault(tag => tag.HasClass("textBoxCore"))?.Attribute("style");
+        yield return new MicrosoftWhiteboardLabel(
+            anchor.ToCanvas(new PointD(
+                (-boxWidth / 2) + caption.Origin.X + caption.E,
+                (-boxHeight / 2) + caption.Origin.Y + caption.F)),
+            anchor.Scale,
+            anchor.AngleDegrees,
+            default,
+            text,
+            ReadFont($"{core};{captionStyle}", fontSize, defaultBold: false),
+            Math.Max(1, width),
+            width);
+    }
+
+    /// <summary>
     /// A connector's SVG draws its route from the anchor, and its head as a small
     /// path moved to one end. A route with corners is kept as a straight line.
     /// </summary>
@@ -1242,6 +1416,20 @@ public sealed partial class MicrosoftWhiteboardExport
         public PointD ToCanvas(PointD local) => new(
             Origin.X + (A * local.X) + (C * local.Y) + E,
             Origin.Y + (B * local.X) + (D * local.Y) + F);
+
+        /// <summary>
+        /// This anchor placed at a point inside another, so that a point here reaches
+        /// the canvas through both transforms.
+        /// </summary>
+        public Anchor Inside(Anchor parent, PointD at) => new(
+            Type,
+            parent.ToCanvas(at + Origin + new PointD(E, F)),
+            (parent.A * A) + (parent.C * B),
+            (parent.B * A) + (parent.D * B),
+            (parent.A * C) + (parent.C * D),
+            (parent.B * C) + (parent.D * D),
+            0,
+            0);
 
         private static double[] StyleMatrix(string? style)
         {

@@ -23,10 +23,11 @@ and **bold**.
 Vertical and diagonal highlighter strokes now come out about as wide as they were,
 instead of up to four times wider. Sticky notes and note grids have square corners.
 
-### Lists and GIFs from Microsoft Whiteboard
+### Lists, tables, stickers, and GIFs from Microsoft Whiteboard
 Text, bulleted, and task lists now come across as text containers, with a box for each
-task that shows whether it is done, and GIFs come across as pictures. They used to be
-listed as left out.
+task that shows whether it is done. Tables drawn with ink come across as rectangles with
+their ink, stickers from the Windows 10 app as pictures with their captions, and GIFs as
+pictures. They used to be listed as left out.
 
 ## 1.7.2 - 30 September 2026
 
