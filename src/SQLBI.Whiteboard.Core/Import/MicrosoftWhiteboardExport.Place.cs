@@ -142,6 +142,49 @@ public sealed partial class MicrosoftWhiteboardExport
     }
 
     /// <summary>
+    /// Microsoft's highlighter tip is w wide and h tall, and the tip here is 4t wide
+    /// and 2t tall, so a horizontal run matches at t = h / 2 and a vertical one at
+    /// t = w / 4. A band across a run at any angle is as wide as the tip reaches
+    /// across it, and t is the value that makes the two bands agree best over the
+    /// stroke's length, by least squares. Directions are taken over runs at least one
+    /// tip wide, because a hand-drawn horizontal line is made of tiny steps and some
+    /// of them are steep. A tip whose width is not known is taken as half its height.
+    /// </summary>
+    private static double HighlighterThickness(MicrosoftWhiteboardStroke stroke)
+    {
+        var h = Median(stroke.Widths);
+        var w = stroke.TipWidth > 0 ? stroke.TipWidth : h / 2;
+        double product = 0;
+        double square = 0;
+        var start = stroke.Points.Count > 0 ? stroke.Points[0] : default;
+        for (var index = 1; index < stroke.Points.Count; index++)
+        {
+            var dx = stroke.Points[index].X - start.X;
+            var dy = stroke.Points[index].Y - start.Y;
+            var length = Math.Sqrt((dx * dx) + (dy * dy));
+            if (length < Math.Min(w, h) && index < stroke.Points.Count - 1)
+            {
+                continue;
+            }
+
+            start = stroke.Points[index];
+            if (length <= 0)
+            {
+                continue;
+            }
+
+            var across = Math.Abs(dy) / length;
+            var along = Math.Abs(dx) / length;
+            var here = (4 * across) + (2 * along);
+            var there = (w * across) + (h * along);
+            product += length * here * there;
+            square += length * here * here;
+        }
+
+        return square > 0 ? product / square : h / 2;
+    }
+
+    /// <summary>
     /// The width of the ink as a pen style and a pressure per point. WPF draws a point
     /// at the style's thickness times 0.25 + 1.5 × pressure, so pressure 0.5 is the
     /// thickness itself. The thickness is the stroke's typical width, raised when the
@@ -152,11 +195,8 @@ public sealed partial class MicrosoftWhiteboardExport
         ArgumentNullException.ThrowIfNull(stroke);
         if (stroke.Kind == PenKind.Highlighter)
         {
-            // A highlighter is drawn with a tip twice as wide as it is tall and at a
-            // fixed opacity, so the tip's height carries the width and the color is
-            // made opaque.
-            var width = Median(stroke.Widths);
-            var style = new PenStyle(stroke.Argb | 0xFF000000, Math.Max(0.5, width / 2), PenKind.Highlighter);
+            // A highlighter is drawn at a fixed opacity, so the color is made opaque.
+            var style = new PenStyle(stroke.Argb | 0xFF000000, Math.Max(0.5, HighlighterThickness(stroke)), PenKind.Highlighter);
             return InkStrokeObject.Create(
                 stroke.Points.Select((point, index) => new InkPoint(point + offset, 0.5f, index)),
                 style,

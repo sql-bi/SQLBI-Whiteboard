@@ -10,12 +10,15 @@ public abstract record MicrosoftWhiteboardItem;
 
 /// <summary>
 /// A stroke. Widths has one entry per point: the full width of the ink at that point.
+/// For a highlighter that is the height of its tip, and TipWidth is how wide the tip
+/// is, or 0 when only the height is known.
 /// </summary>
 public sealed record MicrosoftWhiteboardStroke(
     IReadOnlyList<PointD> Points,
     IReadOnlyList<double> Widths,
     uint Argb,
-    PenKind Kind) : MicrosoftWhiteboardItem;
+    PenKind Kind,
+    double TipWidth = 0) : MicrosoftWhiteboardItem;
 
 /// <summary>
 /// A picture: an image, a page of an inserted document, or a sticker.

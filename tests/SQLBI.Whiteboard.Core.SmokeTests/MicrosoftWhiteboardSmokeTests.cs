@@ -99,7 +99,13 @@ internal static class MicrosoftWhiteboardSmokeTests
             "A highlighter's width is the upper quartile of its outline's vertical edges.");
         var highlight = MicrosoftWhiteboardExport.ToInk(strokes[3], new PointD(0, 0), 0);
         Assert(highlight.Style.Argb == 0xFF28F62D && Math.Abs(highlight.Style.Thickness - 16) < 0.000001,
-            "A highlighter is drawn opaque at half the height, because its tip is twice as wide as tall.");
+            "A horizontal highlighter is drawn opaque at half the height of Microsoft's tip.");
+        var upright = MicrosoftWhiteboardExport.ToInk(
+            new MicrosoftWhiteboardStroke([new PointD(0, 0), new PointD(0, 100)], [32, 32], 0x6628F62D, PenKind.Highlighter),
+            new PointD(0, 0),
+            0);
+        AssertNear(4, upright.Style.Thickness,
+            "A vertical highlighter is as wide as Microsoft's tip, which is a quarter of the tip here.");
 
         Assert(image.ContentType == "image/png" && image.Extension == ".png",
             "Pictures are labelled text/plain, so their bytes decide the type.");

@@ -17,6 +17,12 @@ broke. The heading is parsed by `scripts/release-notes.ps1`, so keep its shape; 
 under it is ordinary Markdown, and the renderer handles paragraphs, lists, links, `code`
 and **bold**.
 
+## 1.7.3 - 30 September 2026
+
+### Microsoft Whiteboard imports closer to the original
+Vertical and diagonal highlighter strokes now come out about as wide as they were,
+instead of up to four times wider. Sticky notes and note grids have square corners.
+
 ## 1.7.2 - 30 September 2026
 
 ### Draw a rectangle with square corners

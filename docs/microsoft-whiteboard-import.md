@@ -73,9 +73,9 @@ no model of the board beyond what it draws.
   centerline point with half the ink's width there as its radius. About 60% of the
   strokes in the samples have one width; the rest vary by up to 3.3 times, because the
   pen reported pressure.
-- **Highlighter outline.** The tip is an axis-aligned rectangle twice as tall as it is
-  wide, drawn once at the start and swept along the centerline. Its height follows
-  pressure. The fill is the color at 0.4 alpha.
+- **Highlighter outline.** The tip is an axis-aligned rectangle, twice as tall as it is
+  wide on most boards and nearly square on some, drawn once at the start and swept
+  along the centerline. Its height follows pressure. The fill is the color at 0.4 alpha.
 - **Highlighter without a centerline.** Older versions of the app wrote some highlighter
   strokes with an empty `polyline` and a scale other than 1/128. The outline is a square
   tip followed by the sweep, as overlapping pieces, and the path cannot be recovered from
@@ -119,8 +119,8 @@ Windows client offers, from `paleYellowGradient` (#FEE15A) to `grayGradient` (#C
 | Shape | `ShapeBoardObject` of the kind its outline has, with fill, outline, angle, and text |
 | Older ellipse or polygon | `ShapeBoardObject`, an oval with the ellipse's radii or the kind the polygon's corners have, without text |
 | Rectangle, in either form | `ShapeBoardObject`, `ShapeKind.Rectangle`, with square corners |
-| Sticky note | `ShapeBoardObject`, rounded rectangle in the note's color, with the note's text |
-| Note grid | A white rounded rectangle for the panel, a label for the title, and one note per cell |
+| Sticky note | `ShapeBoardObject`, rectangle in the note's color, with the note's text |
+| Note grid | A white rectangle for the panel, a label for the title, and one note per cell |
 | Text box | `FreeTextBoardObject`, wrapped into the lines the box showed |
 | Connector | `ConnectorBoardObject`, straight, with its ends bound to shapes they sit on |
 | Link card | Markdown `TextBoardObject` titled *Link* |
@@ -163,10 +163,19 @@ An earlier version measured the distance from each point to the nearest edge of 
 outline. That made small handwriting too thin, because the outline of a small loop
 overlaps itself.
 
-**Highlighter width.** A highlighter here has one width per stroke, a tip twice as wide
-as tall, and a fixed opacity. Its thickness is half the upper quartile of the vertical
-edges in the outline, so the height of a horizontal highlight matches the body of the
-original stroke.
+**Highlighter width.** A highlighter here has one width per stroke, a tip 4t wide and 2t
+tall for a thickness t, and a fixed opacity. Microsoft's tip is measured from the
+outline. Its width is what the tip adds to the centerline's width. Its height is the
+mean of two measures that err in opposite directions: the upper quartile of the vertical
+edges, which come mostly from the lightly pressed ends, and what the tip adds to the
+centerline's height, which comes from the one point that reaches furthest. A band
+across a run at any angle is as wide as the tip reaches across it, so t is the value
+that makes the two bands agree best over the stroke's length, by least squares: half
+the height for a horizontal stroke, a quarter of the width for a vertical one, and a
+compromise for a scribble. Directions are taken over runs at least one tip long,
+because a hand-drawn line is made of tiny steps and some of them are steep. Until 1.7.3
+the thickness was half the quartile alone, which drew vertical highlights four times
+too wide.
 
 **Connectors** are bound at an end that lies within a few pixels of the edge of an
 upright shape, as a fraction of its box. A turned shape is not bound, because its
@@ -182,11 +191,13 @@ parses in about 160 ms.
 - **Pressure is approximated.** The export keeps the outline, not the pressure. The
   recovered widths match the original closely at 150% zoom, but not exactly.
 - **Highlighter shape.** The tip here is wider than tall, while Microsoft's is taller than
-  wide. A horizontal highlight has the same height and starts and ends a few pixels
-  further out. A vertical highlight comes out four times as wide as the original. A
-  highlight has one width throughout.
+  wide. A horizontal or a vertical highlight comes out about as wide as the original,
+  but a scribble that runs both ways gets one thickness between the two, and some of
+  its runs are wider or narrower than they were. A highlight has one width throughout,
+  and overlapping parts of one stroke do not darken as they do on the page.
 - **Rainbow and Galaxy** are one color each.
-- **Notes and note grids have rounded corners**, because they are rounded rectangles here.
+- **Notes and note grids have square corners**, where Microsoft rounds them slightly.
+  Until 1.7.3 they were rounded rectangles, whose corners are much rounder.
 - **An old highlighter scribble is a picture**, not ink, because its path is not in the
   export. It moves and deletes as a picture, and it keeps the few small gaps the page
   shows where the outline's pieces overlap.
@@ -234,3 +245,11 @@ classification, shape kinds and quarter turns, notes, grids, wrapping and center
 connector binding, links, comments, turned pictures, Galaxy ink, placement, container
 binding, the objects of older versions, and recognizing the ZIP, on three synthetic pages
 built like an export.
+
+For 1.7.3 every sample was compared tile by tile. A scratch tool imported each board
+and drew it through `BoardRasterizer`, in tiles of 1600 × 1000 canvas pixels, and
+headless Edge drew the same rectangles of the page by setting the canvas transform. A
+blurred color difference flagged the tiles that disagree. Across the 18 teaching boards,
+the pixels that differ fell from 1.33% of the ink to 0.41%, and the tiles scoring above
+3% from ten to three, all highlighter scribbles. The test board differs by its
+background and by the notes' corners and text, listed above.
