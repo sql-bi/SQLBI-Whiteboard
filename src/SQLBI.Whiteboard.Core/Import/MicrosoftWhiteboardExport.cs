@@ -27,6 +27,16 @@ public sealed partial class MicrosoftWhiteboardExport
 
     private const string CommentsSuffix = "-comments.json";
     private const string CommentTitle = "Comment";
+    private const string ListTitle = "List";
+
+    /// <summary>
+    /// A vertical list's columns in the web client: the icon, the text, the text
+    /// beside an Assigned to column, that column, and the likes.
+    /// </summary>
+    private const double ListIconWidth = 44;
+    private const double ListTextWidth = 284;
+    private const double ListAssignedTextWidth = 170 + 194;
+    private const double ListLikesWidth = 76;
     private const string CanvasMarker = "id=\"canvasContent\"";
 
     /// <summary>
@@ -161,6 +171,7 @@ public sealed partial class MicrosoftWhiteboardExport
                     break;
                 case "FluidImage":
                 case "AzureImage":
+                case "AzureGif":
                 case "DocumentPage":
                 case "ReactionStickers":
                     if (ReadImage(anchor, tags) is { } image)
@@ -201,6 +212,16 @@ public sealed partial class MicrosoftWhiteboardExport
                     if (ReadConnector(anchor, tags) is { } connector)
                     {
                         items.Add(connector);
+                    }
+
+                    break;
+                case "VerticalList":
+                case "VerticalBulletList":
+                case "VerticalCheckboxList":
+                case "UnknownList":
+                    if (ReadList(anchor, tags) is { } list)
+                    {
+                        items.Add(list);
                     }
 
                     break;
@@ -659,6 +680,90 @@ public sealed partial class MicrosoftWhiteboardExport
             ReadFont(core?.Attribute("style"), fontSize, defaultBold: false),
             Math.Max(1, maximum - (2 * TextBoxPadding)),
             centered);
+    }
+
+    /// <summary>
+    /// A list of text, bullets, or tasks becomes Markdown titled <c>List</c>, with the
+    /// list's own title in bold above one line per item. Tasks show a box that is
+    /// crossed or empty, because Markdown here has no task lists and the ticked box
+    /// is drawn as an emoji beside a plain empty one. Who a task is
+    /// assigned to and its likes are left out. A list is as wide as the web client
+    /// lays it out: an icon column, the text, and the likes.
+    /// </summary>
+    private static MicrosoftWhiteboardTextContainer? ReadList(Anchor anchor, List<HtmlTag> tags)
+    {
+        var children = new List<int>();
+        var titleIndex = -1;
+        for (var index = 0; index < tags.Count; index++)
+        {
+            if (tags[index].Name != "div")
+            {
+                continue;
+            }
+
+            if (tags[index].HasClass("listChild"))
+            {
+                children.Add(index);
+            }
+            else if (tags[index].HasClass("verticalListTitle") && titleIndex < 0)
+            {
+                titleIndex = index;
+            }
+        }
+
+        var lines = new List<string>();
+        var title = titleIndex >= 0
+            ? ReadText(tags, titleIndex, children.Count > 0 ? children[0] : tags.Count)
+            : string.Empty;
+        if (title.Length > 0)
+        {
+            lines.Add($"**{EscapeMarkdown(title).Replace("\n", "**  \n**", StringComparison.Ordinal)}**");
+        }
+
+        var tasks = anchor.Type == "VerticalCheckboxList";
+        var bullets = anchor.Type == "VerticalBulletList";
+        var items = new List<string>();
+        for (var child = 0; child < children.Count; child++)
+        {
+            var end = child + 1 < children.Count ? children[child + 1] : tags.Count;
+            var text = ReadText(tags, children[child], end);
+            if (text.Length == 0)
+            {
+                continue;
+            }
+
+            var body = EscapeMarkdown(text).Replace("\n", "  \n", StringComparison.Ordinal);
+            if (bullets)
+            {
+                items.Add($"- {body}");
+            }
+            else if (tasks)
+            {
+                var ticked = tags.Skip(children[child]).Take(end - children[child]).Any(tag =>
+                    tag.HasClass("checkedListItemIcon") ||
+                    (tag.Attribute("data-icon-name")?.StartsWith("CheckmarkCircle", StringComparison.Ordinal) ?? false));
+                items.Add($"{(ticked ? "☒" : "☐")} {body}");
+            }
+            else
+            {
+                items.Add(body);
+            }
+        }
+
+        if (lines.Count == 0 && items.Count == 0)
+        {
+            return null;
+        }
+
+        // Bullets make a Markdown list; boxes and plain lines break line by line.
+        lines.Add(string.Join(bullets ? "\n" : "  \n", items));
+        var assigned = tags.Any(tag => tag.HasClass("assignedUserDisplayName"));
+        var width = tasks && assigned ? ListIconWidth + ListAssignedTextWidth + ListLikesWidth : ListIconWidth + ListTextWidth + ListLikesWidth;
+        return new MicrosoftWhiteboardTextContainer(
+            anchor.ToCanvas(default),
+            width * anchor.Scale,
+            ListTitle,
+            string.Join("\n\n", lines.Where(line => line.Length > 0)));
     }
 
     /// <summary>

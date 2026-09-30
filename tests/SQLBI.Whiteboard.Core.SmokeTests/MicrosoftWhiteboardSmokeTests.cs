@@ -138,6 +138,7 @@ internal static class MicrosoftWhiteboardSmokeTests
         RunArchive();
         RunObjects();
         RunOlderObjects();
+        RunLists();
     }
 
     /// <summary>
@@ -389,6 +390,68 @@ internal static class MicrosoftWhiteboardSmokeTests
             .Single(text => text.FontFamily == "Segoe UI");
         Assert(label.Text == "Formula Engine Twenty",
             "The text keeps the one line it had in Aptos, although Segoe UI measures wider here.");
+    }
+
+    private const string OneByOneGif = "R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7";
+
+    /// <summary>
+    /// Lists and a GIF as the web client draws them: a title, a column heading, and
+    /// one list child per item with its icon and its text.
+    /// </summary>
+    private static readonly string ListsPage = $$"""
+        <html><body><div id="canvasContent" class="contentOrigin">
+        <div class="anchor align topLeft" data-whiteboard-type="VerticalBulletList" style="left: 0px; top: 1000px; transform: matrix(2, 0, 0, 2, 0, 0);">
+          <div class="canvasChild"><div class="legacyListContainer" data-scale="1">
+            <div class="verticalListTitle" style="width: 404px;"><div class="textBoxCore"><div data-block="true"><span data-text="true">Groceries</span></div></div></div>
+            <div class="listColumnHeading"><span>Tasks</span><span>Likes</span></div>
+            <div class="verticalChildItem"><div class="listChild" data-index="0"><div class="listItemContainer"><div class="listItemIconContainer"><i data-icon-name="RadioBullet"></i></div>
+              <div class="listItemTextContainer"><div class="textBoxCore"><div data-block="true"><span data-text="true">Milk *fresh*</span></div></div></div></div></div></div>
+            <div class="verticalChildItem"><div class="listChild" data-index="1"><div class="listItemContainer"><div class="listItemIconContainer"><i data-icon-name="RadioBullet"></i></div>
+              <div class="listItemTextContainer"><div class="textBoxCore"><div data-block="true"><span data-text="true">Bread</span></div></div></div></div></div></div>
+          </div></div>
+        </div>
+        <div class="anchor align topLeft" data-whiteboard-type="VerticalCheckboxList" style="left: 1000px; top: 1000px;">
+          <div class="canvasChild"><div class="legacyListContainer">
+            <div class="verticalListTitle"><div class="textBoxCore"><div data-block="true"><span data-text="true">Release</span></div></div></div>
+            <div class="listColumnHeading"><span>Tasks</span><span>Assigned to</span><span>Likes</span></div>
+            <div class="verticalChildItem"><div class="listChild"><div class="listItemContainer"><div class="listItemIconContainer"><i class="checkedListItemIcon"></i></div>
+              <div class="listItemTextContainer"><div class="textBoxCore"><div data-block="true"><span data-text="true">Ship it</span></div></div></div>
+              <div class="assignedUserDisplayName">Ana</div></div></div></div>
+            <div class="verticalChildItem"><div class="listChild"><div class="listItemContainer"><div class="listItemIconContainer"><i class="uncheckedListItemIcon"></i></div>
+              <div class="listItemTextContainer"><div class="textBoxCore"><div data-block="true"><span data-text="true">Test it</span></div></div></div></div></div></div>
+          </div></div>
+        </div>
+        <div class="anchor align topLeft" data-whiteboard-type="VerticalList" style="left: 2000px; top: 1000px;">
+          <div class="canvasChild"><div class="legacyListContainer">
+            <div class="verticalListTitle"><div class="textBoxCore"><div data-block="true"><br data-text="true"></div></div></div>
+            <div class="verticalChildItem"><div class="listChild"><div class="listItemTextContainer"><div class="textBoxCore"><div data-block="true"><span data-text="true">one</span></div></div></div></div></div>
+            <div class="verticalChildItem"><div class="listChild"><div class="listItemTextContainer"><div class="textBoxCore"><div data-block="true"><span data-text="true">two</span></div></div></div></div></div>
+          </div></div>
+        </div>
+        <div class="anchor align center" data-whiteboard-type="AzureGif" style="left: 3000px; top: 1000px;">
+          <div class="content imageComponent" style="height: 40px; width: 60px;"><img src="data:image/*;base64,{{OneByOneGif}}"></div>
+        </div>
+        </div></body></html>
+        """;
+
+    private static void RunLists()
+    {
+        var board = MicrosoftWhiteboardExport.Parse(ListsPage, "Lists");
+        Assert(board.Skipped.Count == 0 && board.Items.Count == 4,
+            "Bulleted, task, and plain lists, and a GIF, are all read.");
+
+        Assert(board.Items[0] is MicrosoftWhiteboardTextContainer { Title: "List", Width: 808 } groceries &&
+               groceries.TopLeft == new PointD(0, 1000) &&
+               groceries.Markdown == "**Groceries**\n\n- Milk \\*fresh\\*\n- Bread",
+            "A bulleted list is a Markdown list under its title in bold, as wide as the web client lays it out.");
+        Assert(board.Items[1] is MicrosoftWhiteboardTextContainer { Width: 484 } release &&
+               release.Markdown == "**Release**\n\n☒ Ship it  \n☐ Test it",
+            "A task shows a crossed or empty box, the column heading and who it is assigned to are left out, and the Assigned to column widens the list.");
+        Assert(board.Items[2] is MicrosoftWhiteboardTextContainer { Width: 404, Markdown: "one  \ntwo" },
+            "A plain list without a title is its lines.");
+        Assert(board.Items[3] is MicrosoftWhiteboardImage { ContentType: "image/gif" } gif &&
+               gif.Bounds == new RectD(2970, 980, 60, 40),
+            "A GIF is a picture like any other.");
     }
 
     private static void RunArchive()

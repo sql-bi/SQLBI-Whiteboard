@@ -1,7 +1,7 @@
 # Microsoft Whiteboard import
 
-**Implemented in 1.7.0**, with the objects of older versions of the app in 1.7.1 and
-1.7.2. This document records what a Microsoft Whiteboard export contains, how the
+**Implemented in 1.7.0**, with the objects of older versions of the app in 1.7.1,
+1.7.2, and 1.7.3. This document records what a Microsoft Whiteboard export contains, how the
 importer maps it onto a board, and what it cannot carry over. Microsoft retires its
 standalone Whiteboard apps on 16 October 2026 (see [retirement](retirement/README.md)),
 and the export is the only way to take a board out of it. The format is undocumented.
@@ -54,6 +54,7 @@ no model of the board beyond what it draws.
 | `InkGroup` | An SVG with a view box whose origin sits at the anchor, class `PenStroke`, `Highlighter`, or `Mixed`. One `g.inkStroke` per stroke with `transform="matrix(0.0078125, …)"`: 1/128 of a pixel. Inside it, a filled `path` outline and a `polyline.inkHitTestOverlay` centerline. |
 | `FluidImage` | `div.imageComponent` with the size, and an `img` with a base64 data URI labelled `text/plain` whatever the picture is. |
 | `AzureImage` | A picture on a board made with an older version of the app, written as a `FluidImage` is, with the data URI labelled `image/*`. |
+| `AzureGif` | An animated GIF, written as an `AzureImage` is. Not seen in a sample; the web client converts it with the same function as `AzureImage`. |
 | `DocumentPage` | A page of an inserted PDF, written as a `FluidImage` is. |
 | `ReactionStickers` | A sticker, written as a 64 × 64 `FluidImage` with an SVG data URI. |
 | `Shape` | An SVG whose `g` has `fill`, `stroke`, and `stroke-width` (in `pt`), and whose `path` draws the outline around the middle of the box. The shape's text sits in `div.textBoxContainer`. |
@@ -61,6 +62,7 @@ no model of the board beyond what it draws.
 | `LegacyPolygon` | A shape from an older version of the app: an SVG `polygon` whose points start at the anchor, styled as a `LegacyEllipse` is. Every sample is a rectangle. |
 | `Note` | A sticky note: `div.textBoxBackground` with a color class such as `softBlueGradient`, a 40-pixel author bar, and `div.stickyNote` with the text area's size and font size. |
 | `GridList` | A note grid: a title editor, then `div.listChild` notes in a CSS grid of `repeat(n, auto)` columns. |
+| `VerticalList`, `VerticalBulletList`, `VerticalCheckboxList`, `UnknownList` | A list of text, bullets, or tasks, in `div.legacyListContainer`: a title editor in `div.verticalListTitle`, a `div.listColumnHeading` with the column names, then one `div.listChild` per item with its icon, its text editor, who a task is assigned to (`div.assignedUserDisplayName`), and its likes. A done task's icon is `CheckmarkCircle` with the class `checkedListItemIcon`, an open one `StatusCircle` with `uncheckedListItemIcon`. The list is 44 + 284 + 76 pixels wide, or 44 + 364 + 76 when tasks have an Assigned to column. An `UnknownList` draws no items. Not seen in a sample; read from the web client's `ListContainerComponent`. |
 | `PlainText` | A text box: `div.textbox.plainText` with `max-width` and `font-size`, inside a wrapper whose `justify-content` centers the text in a wider box when the text is centered. |
 | `Connector` | An SVG with the route as a path from the anchor, and the head as a small path moved to one end with `translate`. |
 | `Hyperlink` | A preview card with the page's picture, an `a` with the link and its title, and the description. |
@@ -124,6 +126,7 @@ Windows client offers, from `paleYellowGradient` (#FEE15A) to `grayGradient` (#C
 | Text box | `FreeTextBoardObject`, wrapped into the lines the box showed |
 | Connector | `ConnectorBoardObject`, straight, with its ends bound to shapes they sit on |
 | Link card | Markdown `TextBoardObject` titled *Link* |
+| List | Markdown `TextBoardObject` titled *List*: the list's title in bold, then a Markdown list of bullets, or one line per item with ☒ for a done task and ☐ for an open one |
 | Comment thread | Markdown `TextBoardObject` titled *Comment*, in a column to the right of the board |
 | Anchor order | Z-order |
 | Anything else | Counted and reported, not imported |
@@ -225,8 +228,17 @@ parses in about 160 ms.
 - PowerPoint pages, which the Windows client cannot insert, videos, and Loop components
 - SVG pictures, which the Windows client refuses to insert
 - Groups, which the Windows client does not offer
+- GIFs and lists, which are read from the web client's code, not from a sample
 
-Each would be reported by type if it arrives as an unknown object. Sticky notes cannot be
+The web client's code names every type an export can hold. Its `data-whiteboard-type`
+values, as of version 26.10910.101 in September 2026, are the types above and these,
+which the importer reports and leaves out: `Table` (an ink-to-table grid from the
+Windows 10 app), `LegacyTemplate`, `LegacySticker`, `LoopObject`,
+`HostedFluidObject`, `GroupFluidObject`, `AppIframeHost`, `WorkItem`, `Frame`, and
+`CustomElement`. The export replaces a Loop component and an app frame with a
+placeholder picture.
+
+Each is reported by type after the import. Sticky notes cannot be
 rotated in the Windows client, with the mouse, the pen, or touch.
 
 ## Verification
