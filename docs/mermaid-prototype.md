@@ -1,7 +1,8 @@
 # Mermaid prototype
 
 This branch tests local diagram rendering inside existing Markdown containers. It does
-not change the board schema, container commands, input routing, or language selection.
+adds optional snapshot metadata to text containers. It does not change container commands,
+input routing, or language selection.
 The supported syntax and user workflow are in [markdown.md](markdown.md#mermaid-prototype).
 
 ## Rendering
@@ -23,7 +24,7 @@ A timeout disables subsequent requests until the application restarts.
 The JavaScript adapter resolves SVG styles and positions text runs using browser metrics.
 It removes empty rectangles and flattens nested `tspan` elements because SharpVectors
 does not reproduce those Mermaid constructs correctly. It also removes links, stylesheets,
-scripts, and event attributes. `SvgImageCodec` converts that normalized SVG to a frozen
+scripts, and event attributes. `MermaidSvg` validates the normalized SVG and `SvgImageCodec` converts it to a frozen
 WPF drawing off the UI thread. Ordinary SVG import is unchanged.
 The resulting drawing is bounded to Mermaid's declared SVG viewport, because invisible
 geometry in the converted drawing can otherwise inflate its reported natural size.
@@ -42,6 +43,37 @@ deleted container or overwrite a newer edit. Existing commands still own movemen
 scaling, reflow, and edits. During a Mermaid source edit, only an explicit width change
 scales linked ink; changing the text does not squeeze annotations into a pending placeholder.
 Source edits and reflow can move content under annotations.
+
+## Saving and output
+
+`TextBoardObject.MermaidSnapshots` is an immutable array of exact diagram source/SVG pairs.
+`scene.json` writes it as optional `mermaidSnapshots` metadata on the text object. Existing
+archive version rules are unchanged; older readers ignore the field. The original Markdown
+remains authoritative. Snapshots contain successful results only, at most 16 per container,
+with 12,000 source characters and 2,000,000 SVG characters per diagram. Loading drops invalid
+metadata and duplicate sources. Snapshots for removed or changed diagrams are omitted on save.
+
+`MermaidDocument.RestoreAsync` decodes matching snapshots off the UI thread before the loaded
+board is displayed. It does not create a browser. Each SVG passes a bounded XML reader with
+DTD and processing instructions prohibited, an element allowlist, and checks rejecting active
+attributes, styles, links, and nonlocal resource references. The normal SVG decoder also blocks
+external resources. Corrupt snapshots are ignored and normal source rendering supplies the
+fallback. Saved SVG is never passed to WebView2. Unknown or edited sources show an error and
+their source if the renderer is unavailable; valid unchanged snapshots remain visible.
+
+Save, autosave, exit recovery, and the export dialog use `MermaidDocument.CaptureAsync`.
+It snapshots the model before yielding, awaits its diagram preparations, fits natural heights,
+and copies successful output into that private snapshot. Preview rendering and export area
+partitioning happen afterward. No completion callback can modify that captured source, nor
+does preparing it add history entries or transform linked annotations. Save completion checks
+the current model before marking it saved. Concurrent save requests share one operation;
+session writes are serialized so a pending autosave cannot overwrite the final exit state.
+Cancelling a capture wait does not cancel a rendering task shared with the canvas.
+
+Failures settle as drawable error/source placeholders, so a missing runtime or invalid syntax
+does not block saving or exporting indefinitely. Browser startup and render timeouts still
+apply. Exported Markdown remains a picture, including editable PowerPoint and vector PDF,
+and PowerPoint notes retain the Markdown and Mermaid source.
 
 ## Bundled dependency
 
@@ -63,7 +95,10 @@ Mermaid CLI dependency on the user's machine. The browser profile is under
 The normal WPF smoke suite uses a fake diagram renderer and requires no browser runtime.
 It covers fence detection, nested blocks, natural-size/shrink-only layout, cached reflow,
 async height fitting, undo/redo, linked ink, ordinary code fences, errors, and document
-limits. Multiple-diagram results are checked for atomic layout publication.
+limits. Multiple-diagram results are checked for atomic layout publication. Archive tests
+cover optional metadata, bounds, and old boards. WPF tests cover pending-output waits,
+save/reopen without a renderer, pixel-identical previews, stale edits, invalid snapshots,
+safe SVG rejection, cancellation, and both picture and editable/vector export modes.
 
 Run the opt-in integration checks on Windows with WebView2 installed:
 
@@ -76,7 +111,8 @@ dotnet run --project tests/SQLBI.Whiteboard.SmokeTests -c Release --no-build
 
 The integration checks render all three diagram families and styled multiline Unicode
 labels; inspect the WPF glyphs and SVG normalization; check cache reuse and syntax-error
-recovery; and dispose during rendering and startup. The optional preview path produces
+recovery; reopen all four diagrams from saved snapshots with a disposed renderer and compare
+preview pixels; and dispose during rendering and startup. The optional preview path produces
 a mixed Markdown PNG and normalized SVG files for the three diagram families.
 
 Manual checks before expanding the feature:
@@ -88,12 +124,14 @@ Manual checks before expanding the feature:
    Check pen, highlighter, calligraphy, rear eraser, mouse, touch, pan, and zoom.
 4. Annotate a diagram, move and scale its container, and undo/delete it. Reflow changes
    where content lies under annotations, as it does for other Markdown.
-5. Save and reopen to regenerate diagrams. Wait for completion before testing exports.
+5. Save immediately after committing a diagram, reopen, and export a deck/PDF. Repeat with
+   the runtime unavailable: saved diagrams should remain visible, and editing a diagram
+   should show a runtime explanation without hiding unchanged diagrams.
 6. Close Whiteboard while a diagram is rendering and while the renderer is starting.
 
 ## Deferred integration
 
-Persisted SVG snapshots, export completion barriers, and runtime
-installer/distribution validation follow user testing. Save/load currently persists only
-the Markdown source; previews and exports can capture a pending placeholder. Additional
-Mermaid families, custom themes, and wider syntax compatibility are outside this prototype.
+Runtime installer/distribution validation remains outstanding. Additional Mermaid families,
+custom themes, and wider syntax compatibility are outside this prototype. Editing or reflowing
+Markdown can move content under annotations; ink remains linked to its container rather than
+to individual diagram nodes or text runs.

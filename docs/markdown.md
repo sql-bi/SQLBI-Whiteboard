@@ -80,7 +80,7 @@ if your Snippet format order selects another language. Edit with **F2** and comm
 with **Ctrl+Enter**. A copied diagram picture alone does not carry editable Mermaid source.
 
 Rendering uses the bundled Mermaid engine through one hidden WebView2 controller, created
-on the first diagram. It requires the Microsoft Edge WebView2 Runtime. No diagram source
+on the first new or changed diagram. Generating diagrams requires the Microsoft Edge WebView2 Runtime. No diagram source
 is sent to a server. Generated SVG becomes a frozen WPF drawing, shared by unchanged
 diagram sources and replayed during drawing, pan, and zoom. No browser control is placed
 on the canvas. See [mermaid-prototype.md](mermaid-prototype.md) for implementation details.
@@ -93,10 +93,17 @@ step or stretching existing ink. Wait for the diagrams to appear before annotati
 the content below a pending diagram moves when its height is known. Syntax errors,
 unsupported diagram types, or an unavailable runtime show an explanation and source.
 
-The board saves the Markdown source and regenerates diagrams on opening. Persisted
-diagram snapshots, an installer runtime prerequisite, and export
-coordination are not part of this prototype. Wait for diagrams to appear before exporting;
-an export or board preview made while they are pending contains placeholders.
+The board saves the original Markdown source and successful SVG diagram snapshots.
+Reopening uses those snapshots without starting WebView2. They retain the saved diagram
+layout, including when the runtime is unavailable. Editing a diagram regenerates only
+the sources that have changed; unchanged diagrams remain visible if regeneration fails.
+Missing or invalid snapshots are regenerated from the source when the runtime is available.
+
+Save, session recovery copies, export previews, PowerPoint, and PDF wait for pending
+diagrams and use their final container heights. Failed diagrams retain an explanation
+and their source in the output. A save captures the board at the time of the request;
+edits made during the wait remain unsaved. Older releases ignore the optional snapshot
+metadata and can drop it when saving. Runtime installation is not added by this prototype.
 
 The prototype accepts up to 16 distinct diagrams per Markdown container, 12,000 characters
 per diagram, and 200 flowchart edges. Embedded configuration, HTML labels, links,

@@ -1,6 +1,7 @@
 using System.Text.RegularExpressions;
 using System.Windows.Media;
 using Markdig.Syntax;
+using SQLBI.Whiteboard.Core.Model;
 
 namespace SQLBI.Whiteboard;
 
@@ -16,8 +17,8 @@ internal interface IMermaidRenderer
 
 internal static class MermaidSource
 {
-    public const int MaximumCharacters = 12_000;
-    public const int MaximumDiagrams = 16;
+    public const int MaximumCharacters = MermaidSnapshot.MaximumSourceLength;
+    public const int MaximumDiagrams = MermaidSnapshot.MaximumCount;
 
     public static bool IsDiagram(FencedCodeBlock fence) =>
         string.Equals(fence.Info?.Trim(), "mermaid", StringComparison.OrdinalIgnoreCase);

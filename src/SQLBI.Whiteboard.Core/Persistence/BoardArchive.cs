@@ -1,3 +1,4 @@
+using System.Collections.Immutable;
 using System.IO.Compression;
 using System.Text.Json;
 using SQLBI.Whiteboard.Core.Geometry;
@@ -205,7 +206,8 @@ public static class BoardArchive
             TextTitle: text.Title,
             TextContent: text.Text,
             TextVisualScale: text.VisualScale,
-            TextLanguageId: TextLanguageIds.Normalize(text.LanguageId)),
+            TextLanguageId: TextLanguageIds.Normalize(text.LanguageId),
+            MermaidSnapshots: text.MermaidSnapshots.IsDefaultOrEmpty ? null : text.MermaidSnapshots.ToArray()),
         LiveViewBoardObject liveView => new ObjectDto(
             "liveView",
             liveView.Id,
@@ -327,7 +329,14 @@ public static class BoardArchive
                 string.IsNullOrWhiteSpace(dto.TextTitle) ? "Text" : dto.TextTitle,
                 dto.TextContent,
                 NormalizeTextVisualScale(dto.TextVisualScale),
-                TextLanguageIds.Normalize(dto.TextLanguageId)),
+                TextLanguageIds.Normalize(dto.TextLanguageId))
+            {
+                MermaidSnapshots = (dto.MermaidSnapshots ?? [])
+                    .Take(MermaidSnapshot.MaximumCount)
+                    .Where(snapshot => snapshot is not null && snapshot.IsWithinLimits())
+                    .DistinctBy(snapshot => snapshot.Source, StringComparer.Ordinal)
+                    .ToImmutableArray(),
+            },
         "liveView" when dto.LiveViewSource is not null =>
             new LiveViewBoardObject(
                 dto.Id,
@@ -534,7 +543,8 @@ public static class BoardArchive
         double? EndY = null,
         ConnectorAnchorDto? StartAnchor = null,
         ConnectorAnchorDto? EndAnchor = null,
-        bool? AutoRoute = null);
+        bool? AutoRoute = null,
+        MermaidSnapshot[]? MermaidSnapshots = null);
 
     private sealed record ConnectorAnchorDto(Guid ObjectId, double U, double V);
 

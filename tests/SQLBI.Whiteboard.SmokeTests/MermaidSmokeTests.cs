@@ -9,6 +9,7 @@ using System.Xml.Linq;
 using SQLBI.Whiteboard.Core.Commands;
 using SQLBI.Whiteboard.Core.Geometry;
 using SQLBI.Whiteboard.Core.Model;
+using SQLBI.Whiteboard.Core.Persistence;
 
 namespace SQLBI.Whiteboard.SmokeTests;
 
@@ -87,6 +88,7 @@ internal static class MermaidSmokeTests
         await many.PrepareDiagramsAsync(bounded);
         Assert(bounded.Count == MermaidSource.MaximumDiagrams, "A document must not queue unlimited diagrams.");
         await CheckSizing();
+        await MermaidPersistenceSmokeTests.RunAsync();
     }
 
     private static async Task CheckSizing()
@@ -235,10 +237,27 @@ internal static class MermaidSmokeTests
         var styled = await renderer.RenderAsync(Styled);
         Assert(styled.Image is not null, "Multiline styled Unicode labels must render: " + styled.Error);
         CheckLabels(styled, ["Revenue", "€", "Cost", "margin", "Café", "日本語"]);
-        var content = MarkdownContent.Parse("# Mermaid prototype\n\n" + Fence(Flow) + "\n\n" +
+        string markdown = "# Mermaid prototype\n\n" + Fence(Flow) + "\n\n" +
             "| Input | Output |\n|---|---|\n| Mermaid source | Cached WPF drawing |\n\n" +
-            Fence(Sequence) + "\n\n" + Fence(Er) + "\n\n" + Fence(Styled));
+            Fence(Sequence) + "\n\n" + Fence(Er) + "\n\n" + Fence(Styled);
+        var content = MarkdownContent.Parse(markdown);
         await content.PrepareDiagramsAsync(renderer);
+        var board = new BoardDocument();
+        board.AddObject(new TextBoardObject(Guid.NewGuid(), 0, new RectD(0, 0, 890, 100),
+            "Markdown", markdown, 1, TextLanguageIds.Markdown));
+        var prepared = await MermaidDocument.CaptureAsync(board, renderer);
+        byte[] beforePreview = BoardPreviewRenderer.Render(prepared)!;
+        using var archive = new MemoryStream();
+        await BoardArchive.SaveAsync(prepared, archive, previewPng: beforePreview);
+        archive.Position = 0;
+        var loaded = await BoardArchive.LoadAsync(archive);
+        await MermaidDocument.RestoreAsync(loaded);
+        using var closedRenderer = new MermaidRenderer(() => throw new InvalidOperationException("No browser may start"));
+        closedRenderer.Dispose();
+        var offline = await MermaidDocument.CaptureAsync(loaded, closedRenderer);
+        Assert(offline.Objects.OfType<TextBoardObject>().Single().MermaidSnapshots.Length == 4 &&
+            beforePreview.SequenceEqual(BoardPreviewRenderer.Render(offline)!) && closedRenderer.RenderCount == 0,
+            "Real flow, sequence, ER, and styled diagrams must reopen pixel-identically with no live renderer.");
         if (previewPath is not null)
         {
             var layout = content.Layout(850);
