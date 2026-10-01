@@ -12,10 +12,45 @@ internal sealed class MarkdownContent
         .UsePipeTables().UseEmphasisExtras().Build();
     private static readonly ConditionalWeakTable<string, MarkdownContent> Cache = new();
     private readonly Dictionary<double, MarkdownTextLayout> _layouts = [];
+    private readonly Dictionary<string, MermaidDiagram> _diagrams = new(StringComparer.Ordinal);
+    private Task? _preparation;
 
-    private MarkdownContent(string source) => Document = Markdown.Parse(source, Pipeline);
+    private MarkdownContent(string source)
+    {
+        Document = Markdown.Parse(source, Pipeline);
+        DiagramSources = Document.Descendants().OfType<FencedCodeBlock>()
+            .Where(MermaidSource.IsDiagram).Select(block => block.Lines.ToString()).Distinct().ToArray();
+    }
 
     public MarkdownDocument Document { get; }
+    public IReadOnlyList<string> DiagramSources { get; }
+    public bool PreparationStarted => _preparation is not null;
+
+    public Task PrepareDiagramsAsync(IMermaidRenderer renderer) => _preparation ??= PrepareCoreAsync(renderer);
+
+    private async Task PrepareCoreAsync(IMermaidRenderer renderer)
+    {
+        for (int index = 0; index < DiagramSources.Count; index++)
+        {
+            string source = DiagramSources[index];
+            MermaidDiagram result;
+            try
+            {
+                result = index < MermaidSource.MaximumDiagrams
+                    ? await renderer.RenderAsync(source)
+                    : MermaidDiagram.Failure("This prototype renders up to 16 diagrams per Markdown container.");
+            }
+            catch (Exception exception) when (exception is not OutOfMemoryException)
+            {
+                result = MermaidDiagram.Failure("The diagram renderer is unavailable.");
+            }
+            lock (_layouts)
+            {
+                _diagrams[source] = result;
+                _layouts.Clear();
+            }
+        }
+    }
 
     public static MarkdownContent Parse(string source) => Cache.GetValue(source, text => new(text));
 
@@ -41,7 +76,7 @@ internal sealed class MarkdownContent
         {
             if (!_layouts.TryGetValue(width, out var layout))
             {
-                layout = new MarkdownTextLayout(Document, width);
+                layout = new MarkdownTextLayout(Document, width, _diagrams);
                 if (_layouts.Count == 4) _layouts.Clear();
                 _layouts.Add(width, layout);
             }

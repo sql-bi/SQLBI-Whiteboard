@@ -1,0 +1,2 @@
+# Preserve the upstream bundle bytes so its documented SHA-256 stays verifiable.
+src/SQLBI.Whiteboard/Mermaid/Web/mermaid.min.js binary

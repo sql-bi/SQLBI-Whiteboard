@@ -68,8 +68,37 @@ table/text objects. PowerPoint notes retain the source. The image fallback is ca
 - Raw HTML is displayed as literal text, except simple line breaks in table cells.
 - HTML clipboard conversion preserves semantic markup, not arbitrary CSS, fonts, or colors.
   Merged/nested HTML tables are not reproduced as merged/nested tables.
-- Mathematical notation, Mermaid diagrams, task-checkbox widgets, and other Markdown
+- Mathematical notation, task-checkbox widgets, and other Markdown
   extensions beyond the supported subset are not rendered specially.
+
+## Mermaid prototype
+
+Fenced `mermaid` blocks render flowcharts (`flowchart`/`graph`), sequence diagrams,
+and entity-relationship diagrams. Paste their Markdown source, or drop
+[the sample file](samples/mermaid-prototype.md) onto the board. Choose **Markdown**
+if your Snippet format order selects another language. Edit with **F2** and commit
+with **Ctrl+Enter**. A copied diagram picture alone does not carry editable Mermaid source.
+
+Rendering uses the bundled Mermaid engine through one hidden WebView2 controller, created
+on the first diagram. It requires the Microsoft Edge WebView2 Runtime. No diagram source
+is sent to a server. Generated SVG becomes a frozen WPF drawing, shared by unchanged
+diagram sources and replayed during drawing, pan, and zoom. No browser control is placed
+on the canvas. See [mermaid-prototype.md](mermaid-prototype.md) for implementation details.
+
+Each diagram currently occupies a fixed preview area proportional to the text width;
+wide diagrams can leave blank space. The area stays the same while rendering completes,
+so annotations and following text do not move asynchronously. Syntax errors, unsupported
+diagram types, or an unavailable runtime show an explanation and source in that area.
+
+The board saves the Markdown source and regenerates diagrams on opening. Persisted
+diagram snapshots, natural-height layout, an installer runtime prerequisite, and export
+coordination are not part of this prototype. Wait for diagrams to appear before exporting;
+an export or board preview made while they are pending contains placeholders.
+
+The prototype accepts up to 16 distinct diagrams per Markdown container, 12,000 characters
+per diagram, and 200 flowchart edges. Embedded configuration, HTML labels, links,
+remote images, and external fonts are not enabled. Complex layouts and other diagram
+families require further validation.
 
 ## Validation
 

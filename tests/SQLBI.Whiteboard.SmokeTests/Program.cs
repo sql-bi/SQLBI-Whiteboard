@@ -579,6 +579,9 @@ Assert(
 
 SQLBI.Whiteboard.SmokeTests.PromptSmokeTests.Run(Environment.GetEnvironmentVariable("SQLBI_WHITEBOARD_PROMPT_PREVIEW"));
 SQLBI.Whiteboard.SmokeTests.MarkdownSmokeTests.Run(Environment.GetEnvironmentVariable("SQLBI_WHITEBOARD_MARKDOWN_PREVIEW"));
+SQLBI.Whiteboard.SmokeTests.MermaidSmokeTests.Run(
+    Environment.GetEnvironmentVariable("SQLBI_WHITEBOARD_MERMAID_BROWSER") == "1",
+    Environment.GetEnvironmentVariable("SQLBI_WHITEBOARD_MERMAID_PREVIEW"));
 SQLBI.Whiteboard.SmokeTests.GridSmokeTests.Run(Environment.GetEnvironmentVariable("SQLBI_WHITEBOARD_GRID_PREVIEW"));
 SQLBI.Whiteboard.SmokeTests.LabelSmokeTests.Run();
 SQLBI.Whiteboard.SmokeTests.DesignExportSmokeTests.Run();

@@ -72,6 +72,7 @@ public partial class MainWindow : Window
     private bool _applicationIsActive;
 
     private BoardDocument _document = new();
+    private MermaidRenderer? _mermaidRenderer;
     private string? _currentBoardPath;
 
     // The history save point tracks every change that arrives as a command, undo
@@ -591,6 +592,7 @@ public partial class MainWindow : Window
     private void Document_Changed(object? sender, EventArgs e)
     {
         _autosaveDirty = true;
+        PrepareMermaidDiagrams();
         var liveViewIds = _document.Objects.OfType<LiveViewBoardObject>()
             .Select(item => item.Id)
             .ToHashSet();
@@ -618,6 +620,26 @@ public partial class MainWindow : Window
     {
         SessionBar.SetEditEnabled(_history.CanUndo, _history.CanRedo);
         UpdateWindowTitle();
+    }
+
+    private void PrepareMermaidDiagrams()
+    {
+        if (_closeConfirmed) return;
+        foreach (var text in _document.Objects.OfType<TextBoardObject>()
+                     .Where(text => text.LanguageId == TextLanguageIds.Markdown))
+        {
+            var content = MarkdownContent.Parse(text.Text);
+            if (content.DiagramSources.Count == 0 || content.PreparationStarted) continue;
+            _mermaidRenderer ??= new MermaidRenderer(() => new WindowInteropHelper(this).Handle);
+            RefreshMermaidWhenReady(content, _document);
+        }
+    }
+
+    private async void RefreshMermaidWhenReady(MarkdownContent content, BoardDocument document)
+    {
+        await content.PrepareDiagramsAsync(_mermaidRenderer!);
+        if (!_closeConfirmed && ReferenceEquals(document, _document))
+            SceneSurface.InvalidateVisual();
     }
 
     // Only touch reaches here now. Pen ink is collected from the pen's own
@@ -9818,6 +9840,7 @@ public partial class MainWindow : Window
         }
 
         _autosaveTimer.Stop();
+        _mermaidRenderer?.Dispose();
         _autoFullScreen.Dispose();
         InputManager.Current.PreProcessInput -= AutoFullScreen_PreProcessInput;
         StateChanged -= AutoFullScreen_StateChanged;
