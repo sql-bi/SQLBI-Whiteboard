@@ -352,6 +352,14 @@ on `winget install SQLBI.Whiteboard` would defeat that.
 rather than copied. `installer/winget/` holds the seed manifests for the first submission
 and stays as the reviewable record of what was sent.
 
+From 1.7.5 the workflow runs `wingetcreate update --out` and `wingetcreate submit` as two
+steps rather than `update --submit`, because `update` copies the previous manifest and has
+no option to add a dependency. Between them, `scripts/winget-dependencies.ps1` adds
+`Microsoft.EdgeWebView2Runtime` to the installer manifest (decision 34). The script leaves
+a manifest that already declares it alone, and fails on a dependency block it did not
+write. To try it without submitting, run `wingetcreate update` with `--out` and no token,
+then the script on that folder, then `winget validate --manifest` on the version folder.
+
 It runs beside the release rather than inside it, for the same reason as the Store
 submission (decision 13), because a submission is a pull request against someone else's repository, reviewed
 by people, and it can sit for days. Nothing about the download being available depends on

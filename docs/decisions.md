@@ -1004,6 +1004,43 @@ application to annotate a demo needs none of them, and every one of them is in t
 
 ---
 
+## 34. Mermaid diagrams are drawn by a bundled Mermaid in WebView2
+
+**Implemented.**
+
+Mermaid is a JavaScript library that needs a browser DOM to lay out a diagram, so drawing
+one needs a browser engine. Whiteboard bundles `mermaid.min.js` unmodified and runs it in a
+hidden WebView2 controller, which uses the Microsoft Edge WebView2 Runtime already on the
+machine. No CDN, Node.js runtime, or Mermaid CLI is involved, and the controller blocks
+network requests, so a diagram's source does not leave the PC.
+
+- **The installer does not carry the runtime, and the minimum Windows version did not
+  move.** Windows 11 includes the runtime, and Microsoft delivered it to most Windows 10
+  machines through Windows Update, but no Windows 10 version guarantees it, and a clean install
+  or an LTSC edition can lack it. Raising the minimum would therefore not have closed the gap.
+  Before starting the browser, `MermaidRenderer` asks the WebView2 loader for an installed
+  runtime. Without one, every new or changed diagram shows its source with a message naming
+  the runtime and pointing to the FAQ, which links to Microsoft's download. Saved diagrams
+  still show from their snapshots. The installers are plain MSIs, and running the WebView2
+  bootstrapper from one would mean a custom action that downloads and starts another
+  installer, or a Burn bundle in front of the four products of decision 6. Neither was
+  worth it for the few machines affected.
+- **winget installs the runtime where it is missing.** Each submission declares
+  `Microsoft.EdgeWebView2Runtime` as a package dependency, which winget skips when the
+  runtime is already installed. The workflow adds it to every submission rather than once
+  by hand, as [release-management.md](release-management.md#winget) describes.
+- **The WebView2 binaries are not in the signing step.** `Microsoft.Web.WebView2.*.dll` and
+  `WebView2Loader.dll` arrive from NuGet already signed by Microsoft, and the installer
+  harvests them with the rest of the publish folder. The Mermaid bundle is a script, not an
+  assembly. Its version, source, and SHA-256 are recorded in [mermaid.md](mermaid.md), and
+  `.gitattributes` marks it binary so the recorded hash stays verifiable.
+- **A board saves each diagram as SVG beside its source.** Reopening a board decodes the
+  saved SVG without starting a browser, and the diagram looks the same where the runtime is
+  missing. The field is optional, so the archive version did not move, and releases before
+  1.7.5 ignore it.
+
+---
+
 ## Open questions
 
 - arm64 is not built; add it if Surface devices matter for a pen application.

@@ -190,10 +190,12 @@ internal static class MermaidPersistenceSmokeTests
                 using var package = DocumentFormat.OpenXml.Packaging.PresentationDocument.Open(pptx, false);
                 Assert(!new DocumentFormat.OpenXml.Validation.OpenXmlValidator().Validate(package).Any(), "A Mermaid deck must be schema-valid.");
                 using var zip = ZipFile.OpenRead(pptx);
-                Assert(zip.Entries.Where(entry => entry.FullName.StartsWith("ppt/media/", StringComparison.Ordinal))
-                    .Any(entry => { using var input = entry.Open(); using var bytes = new MemoryStream(); input.CopyTo(bytes);
-                        return expected is null ? BluePixels(bytes.ToArray(), themed) > 1000 : SamePixels(expected, bytes.ToArray()); }),
-                    $"PowerPoint pictures and editable-slide fallbacks must contain the saved diagram ({sourceTag}, editable={editable}).");
+                var media = zip.Entries.Where(entry => entry.FullName.StartsWith("ppt/media/", StringComparison.Ordinal))
+                    .Select(entry => { using var input = entry.Open(); using var bytes = new MemoryStream(); input.CopyTo(bytes); return bytes.ToArray(); })
+                    .ToList();
+                bool found = media.Any(picture => expected is null ? BluePixels(picture, themed) > 1000 : SamePixels(expected, picture));
+                Assert(found, $"PowerPoint pictures and editable-slide fallbacks must contain the saved diagram ({sourceTag}, editable={editable})." +
+                    (expected is null ? "" : KeepMismatch(expected, media, sourceTag, editable)));
                 using var notes = new StreamReader(zip.GetEntry("ppt/notesSlides/notesSlide1.xml")!.Open());
                 Assert(notes.ReadToEnd().Contains(sourceTag, StringComparison.Ordinal), "Mermaid source must stay in PowerPoint notes.");
             }
@@ -214,6 +216,45 @@ internal static class MermaidPersistenceSmokeTests
                 File.Delete(Path.Combine(folder, name));
             Directory.Delete(folder);
         }
+    }
+
+    // A Sankey editable deck once failed the exact comparison and passed on every one of
+    // about 100 repeats, so a failure keeps the pictures and says where they differ.
+    private static string KeepMismatch(byte[] expected, List<byte[]> media, string sourceTag, bool editable)
+    {
+        string folder = Directory.CreateTempSubdirectory($"Whiteboard-Mermaid-mismatch-{sourceTag}-{editable}-").FullName;
+        File.WriteAllBytes(Path.Combine(folder, "expected.png"), expected);
+        var differences = new List<string>();
+        for (int index = 0; index < media.Count; index++)
+        {
+            File.WriteAllBytes(Path.Combine(folder, $"media{index}.png"), media[index]);
+            differences.Add($"media{index}: {PixelDifference(expected, media[index])}");
+        }
+        return $" Pictures kept in {folder}. {string.Join("; ", differences)}";
+    }
+
+    private static string PixelDifference(byte[] expected, byte[] actual)
+    {
+        var left = new FormatConvertedBitmap(WpfImageCodec.Decode(expected), PixelFormats.Bgra32, null, 0);
+        var right = new FormatConvertedBitmap(WpfImageCodec.Decode(actual), PixelFormats.Bgra32, null, 0);
+        if (left.PixelWidth != right.PixelWidth || left.PixelHeight != right.PixelHeight)
+            return $"{right.PixelWidth}x{right.PixelHeight}, expected {left.PixelWidth}x{left.PixelHeight}";
+        int stride = left.PixelWidth * 4;
+        var a = new byte[stride * left.PixelHeight];
+        var b = new byte[a.Length];
+        left.CopyPixels(a, stride, 0);
+        right.CopyPixels(b, stride, 0);
+        int count = 0, largest = 0, top = int.MaxValue, bottom = -1;
+        for (int i = 0; i < a.Length; i++)
+        {
+            int difference = Math.Abs(a[i] - b[i]);
+            if (difference == 0) continue;
+            count++;
+            largest = Math.Max(largest, difference);
+            top = Math.Min(top, i / stride);
+            bottom = Math.Max(bottom, i / stride);
+        }
+        return $"{count} channel values differ, by up to {largest}, in rows {top}-{bottom}";
     }
 
     internal static bool SamePixels(byte[] expected, byte[] actual)

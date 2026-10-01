@@ -157,11 +157,27 @@ jobs:
           # $urls, not @urls: the @ prefix is splatting, which applies to cmdlets. A plain
           # array passed to a native command already expands to one argument per element.
           $urls = $env:URLS -split ' '
+          $manifests = Join-Path $env:RUNNER_TEMP 'winget-manifests'
+
+          # update writes the manifests locally instead of submitting them, because it
+          # cannot add a dependency, and scripts/winget-dependencies.ps1 adds the WebView2
+          # Runtime that Mermaid diagrams need (decision 34) before they are submitted.
           & $exe update SQLBI.Whiteboard `
               --version $env:VERSION `
               --urls $urls `
-              --submit `
+              --out $manifests `
               --token $env:WINGET_TOKEN
           if ($LASTEXITCODE -ne 0) {
-              throw "wingetcreate exited with $LASTEXITCODE. If the fork could not be synced, sync it on GitHub and run this workflow again; docs/release-management.md has the cause."
+              throw "wingetcreate update exited with $LASTEXITCODE."
+          }
+
+          ./scripts/winget-dependencies.ps1 -ManifestDirectory $manifests
+          $folder = Get-ChildItem -LiteralPath $manifests -Recurse -File -Filter 'SQLBI.Whiteboard.installer.yaml' |
+              Select-Object -First 1 -ExpandProperty DirectoryName
+
+          & $exe submit $folder `
+              --prtitle "New version: SQLBI.Whiteboard version $env:VERSION" `
+              --token $env:WINGET_TOKEN
+          if ($LASTEXITCODE -ne 0) {
+              throw "wingetcreate submit exited with $LASTEXITCODE. If the fork could not be synced, sync it on GitHub and run this workflow again; docs/release-management.md has the cause."
           }

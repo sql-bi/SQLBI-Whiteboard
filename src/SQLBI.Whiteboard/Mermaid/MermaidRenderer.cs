@@ -10,6 +10,9 @@ internal sealed class MermaidRenderer(Func<IntPtr> parentWindow, string? profile
     : IMermaidRenderer, IDisposable
 {
     private const string Origin = "https://mermaid.whiteboard.invalid/";
+    internal const string MissingRuntime = "Mermaid diagrams need the Microsoft Edge WebView2 Runtime, " +
+        "which is not installed on this PC. Install it and restart Whiteboard. " +
+        "The FAQ at whiteboard.sqlbi.com links to the download.";
     private readonly Dictionary<string, Task<MermaidDiagram>> _cache = new(StringComparer.Ordinal);
     private readonly SemaphoreSlim _queue = new(1);
     private readonly CancellationTokenSource _lifetime = new();
@@ -45,6 +48,11 @@ internal sealed class MermaidRenderer(Func<IntPtr> parentWindow, string? profile
             await _queue.WaitAsync(_lifetime.Token);
             entered = true;
             if (_unavailable is not null) return MermaidDiagram.Failure(_unavailable);
+            if (_controller is null && !RuntimeInstalled())
+            {
+                _unavailable = MissingRuntime;
+                return MermaidDiagram.Failure(_unavailable);
+            }
             await EnsureBrowserAsync();
             _lifetime.Token.ThrowIfCancellationRequested();
             _requestId = Guid.NewGuid().ToString("N");
@@ -77,12 +85,21 @@ internal sealed class MermaidRenderer(Func<IntPtr> parentWindow, string? profile
         }
     }
 
+    // Windows 11 includes the runtime, and most Windows 10 machines received it from Windows
+    // Update, but a clean Windows 10 or LTSC install can lack it. Checking first gives that
+    // case its own explanation instead of the generic startup failure.
+    private static bool RuntimeInstalled()
+    {
+        try { return !string.IsNullOrEmpty(CoreWebView2Environment.GetAvailableBrowserVersionString()); }
+        catch (WebView2RuntimeNotFoundException) { return false; }
+    }
+
     private async Task EnsureBrowserAsync()
     {
         if (_controller is not null) return;
         var profile = profileDirectory ?? Path.Combine(
             Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-            "SQLBI", "Whiteboard", "MermaidPrototype");
+            "SQLBI", "Whiteboard", "Mermaid");
         _environment = await CoreWebView2Environment.CreateAsync(userDataFolder: profile)
             .WaitAsync(TimeSpan.FromSeconds(20), _lifetime.Token);
         _lifetime.Token.ThrowIfCancellationRequested();

@@ -17,6 +17,15 @@ broke. The heading is parsed by `scripts/release-notes.ps1`, so keep its shape; 
 under it is ordinary Markdown, and the renderer handles paragraphs, lists, links, `code`
 and **bold**.
 
+## 1.7.5 - 1 October 2026
+
+### Mermaid diagrams in Markdown
+A `mermaid` code block in a Markdown container is drawn as a diagram: flowcharts, sequence and
+state diagrams, mind maps, charts, timelines, and the other Mermaid 12 diagram types. The board
+saves each diagram with its source, so it reopens and exports as it was. New or changed diagrams
+need the Microsoft Edge WebView2 Runtime, which Windows 11 includes; without it, a diagram shows
+its source and says what is missing.
+
 ## 1.7.4 - 30 September 2026
 
 ### Templates from Microsoft Whiteboard

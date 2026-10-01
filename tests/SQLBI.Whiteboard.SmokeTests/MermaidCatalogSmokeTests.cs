@@ -87,7 +87,7 @@ internal static class MermaidCatalogSmokeTests
                 // Cover gradients, rotated labels, and measured HTML labels in
                 // both picture and editable/vector export paths.
                 if (name is "Sankey" or "XY chart" or "Event modeling")
-                    await MermaidPersistenceSmokeTests.CheckExports(offline, source.Split('\n')[0], exactPictures: true);
+                    await MermaidPersistenceSmokeTests.CheckExports(offline, source.ReplaceLineEndings("\n").Split('\n')[0], exactPictures: true);
                 Console.WriteLine($"Mermaid catalogue {name}: passed ({diagram.Image!.Width:0} x {diagram.Image.Height:0})");
             }
             catch (Exception exception) { failures.Add(name + ": " + exception.Message); Console.WriteLine(failures[^1]); }

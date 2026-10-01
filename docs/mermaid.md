@@ -1,9 +1,9 @@
-# Mermaid prototype
+# Mermaid diagrams
 
-This branch tests local diagram rendering inside existing Markdown containers. It
-adds optional snapshot metadata to text containers. It does not change container commands,
-input routing, or language selection.
-The supported syntax and user workflow are in [markdown.md](markdown.md#mermaid-prototype).
+Mermaid diagrams render locally inside existing Markdown containers. The feature adds
+optional snapshot metadata to text containers. It does not change container commands,
+input routing, or language selection. The supported syntax and user workflow are in
+[markdown.md](markdown.md#mermaid-diagrams).
 
 ## Rendering
 
@@ -19,7 +19,11 @@ The controller blocks other resource requests, navigation, new windows, download
 permissions; host objects are disabled. CSP blocks network connections and external
 content. Mermaid runs in strict mode, with configuration directives rejected by the host.
 Startup stages have 20-second timeouts and individual render requests have 12 seconds.
-A timeout disables subsequent requests until the application restarts.
+A timeout disables subsequent requests until the application restarts. Before the first
+startup, `CoreWebView2Environment.GetAvailableBrowserVersionString` checks for an installed
+runtime. When it reports none, no browser profile is created, and every request fails with
+`MermaidRenderer.MissingRuntime`, which names the runtime and points to the FAQ. The result
+persists until the application restarts, as it does after a timeout.
 
 The JavaScript adapter resolves SVG styles and positions text runs using browser metrics.
 It removes empty rectangles and flattens nested `tspan` elements because SharpVectors
@@ -31,7 +35,7 @@ avoid duplicate labels. No `foreignObject` reaches the decoder or saved snapshot
 The adapter also removes links, stylesheets,
 scripts, and event attributes. `MermaidSvg` validates the normalized SVG and `SvgImageCodec` converts it to a frozen
 WPF drawing off the UI thread. Ordinary SVG import is unchanged.
-The adapter centers SVG-only mind-map labels on their nodes: Mermaid 12 can leave them
+The adapter centers SVG-only mind-map labels on their nodes, because Mermaid 12 can leave them
 left-anchored in a centered shape, notably a circle. This adjustment uses the browser's
 label bounds before text flattening; it does not modify the bundled engine.
 The resulting drawing is bounded to Mermaid's declared SVG viewport, because invisible
@@ -99,15 +103,18 @@ and PowerPoint notes retain the Markdown and Mermaid source.
 - SHA-256: `28FCA7AE6EBC7ED7BB63BDE63136A74BFEF14F296A57E403657EEB8B32836073`.
 - The package's MIT license is kept beside it as `MERMAID-LICENSE.txt`.
 - WebView2 SDK: **1.0.4258.31**, referenced by NuGet. The machine must have the
-  WebView2 Runtime; runtime installation is not added by this prototype.
+  WebView2 Runtime, which Windows 11 includes. The installer does not install it
+  (decision 34 in [decisions.md](decisions.md)).
 
 Build and publish copy the local web resources. There is no CDN, Node.js runtime, or
 Mermaid CLI dependency on the user's machine. The browser profile is under
-`%LOCALAPPDATA%/SQLBI/Whiteboard/MermaidPrototype`.
+`%LOCALAPPDATA%/SQLBI/Whiteboard/Mermaid`.
 
 ## Validation
 
 The normal WPF smoke suite uses a fake diagram renderer and requires no browser runtime.
+It also points `WEBVIEW2_BROWSER_EXECUTABLE_FOLDER` at an empty folder to check the
+missing-runtime message without starting a browser.
 It covers fence detection, nested blocks, natural-size/shrink-only layout, cached reflow,
 async height fitting, undo/redo, linked ink, ordinary code fences, errors, and document
 limits. Multiple-diagram results are checked for atomic layout publication. Archive tests
@@ -140,7 +147,7 @@ picture/vector PDF output. The latter three compare PowerPoint pictures with the
 drawings exactly. The optional preview path produces a mixed Markdown PNG, per-catalogue
 PNG previews, and normalized SVG files for inspection.
 
-Manual checks before expanding the feature:
+Manual checks before a release that changes the feature or the Mermaid bundle:
 
 1. Drop the Mermaid sample files from `docs/samples/` onto the board and compare the diagrams.
 2. Edit a label with **F2**, commit with **Ctrl+Enter**, then undo and redo. Try malformed
@@ -154,10 +161,11 @@ Manual checks before expanding the feature:
    should show a runtime explanation without hiding unchanged diagrams.
 6. Close Whiteboard while a diagram is rendering and while the renderer is starting.
 
-## Deferred integration
+## Limitations
 
-Runtime installer/distribution validation remains outstanding. Third-party diagram plugins,
-custom themes, external icons/fonts, and exhaustive syntax compatibility are outside this prototype.
+The installer neither installs nor checks for the WebView2 Runtime; the application
+checks when it first needs a browser. Third-party diagram
+plugins, custom themes, external icons/fonts, and exhaustive syntax compatibility are out of scope.
 Beta families follow the bundled Mermaid version; updating that bundle requires revalidation.
 Editing or reflowing Markdown can move content under annotations; ink remains linked to its container rather than
 to individual diagram nodes or text runs.

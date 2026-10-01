@@ -93,7 +93,7 @@ internal sealed class MarkdownContent
             {
                 result = index < MermaidSource.MaximumDiagrams
                     ? await renderer.RenderAsync(source)
-                    : MermaidDiagram.Failure("This prototype renders up to 16 diagrams per Markdown container.");
+                    : MermaidDiagram.Failure("Whiteboard draws up to 16 diagrams per Markdown container.");
             }
             catch (Exception exception) when (exception is not OutOfMemoryException)
             {

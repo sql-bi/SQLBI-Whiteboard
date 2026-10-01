@@ -56,8 +56,9 @@
     <h2>Why did you create it?</h2>
     <p>Because, why not?</p>
 
-    <h2>Windows 11 or Windows 10?</h2>
+    <h2 id="windows-10">Windows 11 or Windows 10?</h2>
     <p>Built for Windows 11. It runs on Windows 10 version 2004 or later, 64-bit. That is the same floor as Windows Graphics Capture, which LiveView uses.</p>
+    <p>Mermaid diagrams also need the Microsoft Edge WebView2 Runtime, which Windows 11 includes and most Windows 10 PCs already have. If a diagram says it is missing, <a href="https://developer.microsoft.com/microsoft-edge/webview2/consumer/">install it from Microsoft</a> and restart Whiteboard.</p>
 
     <h2 id="winget">Can I install it with winget?</h2>
     <p>Yes. <code>winget install SQLBI.Whiteboard</code> installs the released version, and <code>winget upgrade SQLBI.Whiteboard</code> updates it. Add <code class="nowrap">--scope machine</code> for every user of the PC, or <code class="nowrap">--scope user</code> for your account alone, without elevation.</p>

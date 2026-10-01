@@ -24,9 +24,9 @@ internal static class MermaidSource
 
     public static string? Validate(string source)
     {
-        if (source.Length > MaximumCharacters) return "This prototype accepts up to 12,000 characters per diagram.";
+        if (source.Length > MaximumCharacters) return "Whiteboard accepts up to 12,000 characters per diagram.";
         if (source.Contains("%%{", StringComparison.Ordinal) || source.TrimStart().StartsWith("---", StringComparison.Ordinal))
-            return "Diagram configuration directives are not supported in this prototype.";
+            return "Diagram configuration directives are not supported.";
         if (string.IsNullOrWhiteSpace(source)) return "Enter Mermaid diagram source inside this code block.";
         // The bundled engine owns syntax detection, including aliases and beta types.
         return null;
