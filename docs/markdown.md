@@ -73,9 +73,8 @@ table/text objects. PowerPoint notes retain the source. The image fallback is ca
 
 ## Mermaid prototype
 
-Fenced `mermaid` blocks render flowcharts (`flowchart`/`graph`), sequence diagrams
-(`sequenceDiagram`), entity-relationship diagrams (`erDiagram`), mind maps (`mindmap`),
-and state diagrams (`stateDiagram-v2`, also `stateDiagram`). Paste their Markdown source, or drop
+Fenced `mermaid` blocks render the 32 diagram families built into Mermaid 12.0.0.
+Paste their Markdown source, or drop
 [the sample file](samples/mermaid-prototype.md) onto the board. Choose **Markdown**
 if your Snippet format order selects another language. Edit with **F2** and commit
 with **Ctrl+Enter**. A copied diagram picture alone does not carry editable Mermaid source.
@@ -83,6 +82,21 @@ with **Ctrl+Enter**. A copied diagram picture alone does not carry editable Merm
 Mind maps support indented branches, node shapes, and multiline styled labels. State
 diagrams support transitions, start/end markers, nested states, notes, choices,
 forks/joins, and concurrent regions. Try [the mind-map and state samples](samples/mermaid-mindmaps-states.md).
+
+The full catalogue is listed below. Aliases, layouts, and notations within a family
+are not counted as separate families; `info` is a library diagnostic, not a diagram family.
+
+| Group | Families | Samples |
+| --- | --- | --- |
+| Original diagrams | Flowchart, sequence, entity relationship, mind map, state | [Basic diagrams](samples/mermaid-prototype.md), [mind maps and states](samples/mermaid-mindmaps-states.md) |
+| Charts | Pie, XY, quadrant, radar, Sankey, treemap, Venn, Ishikawa | [Chart samples](samples/mermaid-catalogue-charts.md) |
+| Processes | Timeline, Gantt, user journey, Kanban, swimlanes, AgentFlow, event modeling, Cynefin, Wardley | [Process samples](samples/mermaid-catalogue-processes.md) |
+| Structures | Class, block, architecture, C4, use case, requirement, Git graph, packet, tree view, railroad | [Structure samples](samples/mermaid-catalogue-structures.md) |
+
+The samples show the exact keywords, including `-beta` where Mermaid requires it.
+C4 includes context, container, component, dynamic, and deployment diagrams. Railroad
+includes its native notation, EBNF, ABNF, and PEG. Mermaid owns syntax detection; Whiteboard
+does not keep a second list of allowed diagram types. Third-party plugins are not bundled.
 
 Rendering uses the bundled Mermaid engine through one hidden WebView2 controller, created
 on the first new or changed diagram. Generating diagrams requires the Microsoft Edge WebView2 Runtime. No diagram source
@@ -111,9 +125,12 @@ edits made during the wait remain unsaved. Older releases ignore the optional sn
 metadata and can drop it when saving. Runtime installation is not added by this prototype.
 
 The prototype accepts up to 16 distinct diagrams per Markdown container, 12,000 characters
-per diagram, and 200 flowchart edges. Embedded configuration, HTML labels, links,
-remote images, external fonts, and icon-font packs are not enabled. Complex layouts and other diagram
-families require further validation.
+per diagram, and 200 flowchart edges. Embedded configuration, interactive links,
+remote images, external fonts, and icon-font packs are not enabled. Built-in architecture
+icons work locally. HTML labels generated internally by Mermaid are converted to passive
+SVG text, preserving line wrapping and basic font styles; no HTML is stored or executed
+when reopening a board. Experimental families retain Mermaid's beta status. The catalogue
+has representative coverage, not a guarantee for every combination of syntax or styling.
 
 ## Validation
 

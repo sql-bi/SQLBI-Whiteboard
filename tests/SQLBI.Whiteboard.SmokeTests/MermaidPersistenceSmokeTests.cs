@@ -164,7 +164,7 @@ internal static class MermaidPersistenceSmokeTests
             "Cancelling an output wait must not cancel the shared canvas rendering.");
     }
 
-    public static async Task CheckExports(BoardDocument prepared, string sourceTag = "flowchart", bool themed = false)
+    public static async Task CheckExports(BoardDocument prepared, string sourceTag = "flowchart", bool themed = false, bool exactPictures = false)
     {
         string folder = Path.Combine(Path.GetTempPath(), "Whiteboard-Mermaid-" + Guid.NewGuid().ToString("N"));
         Directory.CreateDirectory(folder);
@@ -174,15 +174,26 @@ internal static class MermaidPersistenceSmokeTests
             {
                 var settings = new ExportSettings { Format = ExportFormat.PowerPoint, IncludeNotes = true,
                     SlideContent = editable ? ExportSlideContent.Editable : ExportSlideContent.Picture };
+                var areas = BoardExporter.Areas(prepared, settings, null);
+                byte[]? expected = null;
+                if (exactPictures)
+                {
+                    var area = areas.Single();
+                    var (width, height) = BoardRasterizer.FitPixelSize(area.Bounds, BoardExporter.PageBoxWidth, BoardExporter.PageBoxHeight);
+                    expected = editable
+                        ? EditableSlide.Build(prepared, area, width, height, null).OfType<SlideImageElement>().Single().Data
+                        : WpfImageCodec.EncodePng(BoardRasterizer.Render(prepared, area.Bounds, width, height));
+                }
                 string pptx = Path.Combine(folder, editable ? "editable.pptx" : "picture.pptx");
-                await BoardExporter.ExportAsync(prepared, settings, BoardExporter.Areas(prepared, settings, null), pptx,
+                await BoardExporter.ExportAsync(prepared, settings, areas, pptx,
                     "Mermaid", null, null, new Progress<ExportProgress>(), CancellationToken.None);
                 using var package = DocumentFormat.OpenXml.Packaging.PresentationDocument.Open(pptx, false);
                 Assert(!new DocumentFormat.OpenXml.Validation.OpenXmlValidator().Validate(package).Any(), "A Mermaid deck must be schema-valid.");
                 using var zip = ZipFile.OpenRead(pptx);
                 Assert(zip.Entries.Where(entry => entry.FullName.StartsWith("ppt/media/", StringComparison.Ordinal))
-                    .Any(entry => { using var input = entry.Open(); using var bytes = new MemoryStream(); input.CopyTo(bytes); return BluePixels(bytes.ToArray(), themed) > 1000; }),
-                    "PowerPoint pictures and editable-slide fallbacks must contain the saved diagram.");
+                    .Any(entry => { using var input = entry.Open(); using var bytes = new MemoryStream(); input.CopyTo(bytes);
+                        return expected is null ? BluePixels(bytes.ToArray(), themed) > 1000 : SamePixels(expected, bytes.ToArray()); }),
+                    $"PowerPoint pictures and editable-slide fallbacks must contain the saved diagram ({sourceTag}, editable={editable}).");
                 using var notes = new StreamReader(zip.GetEntry("ppt/notesSlides/notesSlide1.xml")!.Open());
                 Assert(notes.ReadToEnd().Contains(sourceTag, StringComparison.Ordinal), "Mermaid source must stay in PowerPoint notes.");
             }
@@ -203,6 +214,19 @@ internal static class MermaidPersistenceSmokeTests
                 File.Delete(Path.Combine(folder, name));
             Directory.Delete(folder);
         }
+    }
+
+    internal static bool SamePixels(byte[] expected, byte[] actual)
+    {
+        var left = new FormatConvertedBitmap(WpfImageCodec.Decode(expected), PixelFormats.Bgra32, null, 0);
+        var right = new FormatConvertedBitmap(WpfImageCodec.Decode(actual), PixelFormats.Bgra32, null, 0);
+        if (left.PixelWidth != right.PixelWidth || left.PixelHeight != right.PixelHeight) return false;
+        int stride = left.PixelWidth * 4;
+        var a = new byte[stride * left.PixelHeight];
+        var b = new byte[a.Length];
+        left.CopyPixels(a, stride, 0);
+        right.CopyPixels(b, stride, 0);
+        return a.AsSpan().SequenceEqual(b);
     }
 
     private static async Task<BoardDocument> RoundTrip(BoardDocument document, byte[] preview)

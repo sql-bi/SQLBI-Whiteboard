@@ -85,7 +85,7 @@ internal static class MermaidSmokeTests
         });
         thread.SetApartmentState(ApartmentState.STA);
         thread.Start();
-        if (!thread.Join(TimeSpan.FromMinutes(2))) throw new TimeoutException("Mermaid smoke tests timed out.");
+        if (!thread.Join(TimeSpan.FromMinutes(browser ? 4 : 2))) throw new TimeoutException("Mermaid smoke tests timed out.");
         if (failure is not null) throw new InvalidOperationException("Mermaid smoke tests failed.", failure);
     }
 
@@ -93,14 +93,15 @@ internal static class MermaidSmokeTests
     {
         Assert(MermaidSource.Validate(Flow) is null && MermaidSource.Validate(Sequence) is null &&
             MermaidSource.Validate(Er) is null && MermaidSource.Validate(Mindmap) is null &&
-            MermaidSource.Validate(State) is null, "The prototype must accept its five diagram families.");
+            MermaidSource.Validate(State) is null, "The original diagram families must still pass validation.");
         Assert(MermaidSource.Validate(State.Replace("stateDiagram-v2", "stateDiagram", StringComparison.Ordinal)) is null &&
             MermaidSource.Validate("%% Comment\r\n" + Mindmap.ReplaceLineEndings("\r\n")) is null,
             "State aliases, leading comments, and Windows line endings must be accepted.");
-        foreach (string prefix in new[] { "mindmap-bogus", "stateDiagram-v3", "stateDiagram-v2-extra", "mindmapper" })
-            Assert(MermaidSource.Validate(prefix + "\n A --> B") is not null, "Unsupported type suffixes must not pass validation.");
         Assert(MermaidSource.Validate("%% Comment\n" + Flow) is null, "A leading comment must be allowed.");
-        Assert(MermaidSource.Validate("pie\n\"A\": 10") is not null, "Unsupported types need an explicit message.");
+        Assert(MermaidSource.Validate("pie\n\"A\": 10") is null && MermaidSource.Validate("futureDiagram\n A --> B") is null,
+            "Diagram detection belongs to Mermaid, not a second type allowlist in Whiteboard.");
+        Assert(MermaidSource.Validate(" \r\n") is not null, "Empty diagrams need an explanation.");
+        MermaidCatalogSmokeTests.CheckSources();
         Assert(MermaidSource.Validate("%%{init: {'securityLevel':'loose'}}%%\n" + Flow) is not null &&
             MermaidSource.Validate("---\nconfig: {}\n---\n" + Flow) is not null,
             "Pasted configuration must not override the local security settings.");
@@ -303,8 +304,9 @@ internal static class MermaidSmokeTests
         for (int i = 0; i < sources.Length; i++)
             Assert(ReferenceEquals(results[i], await renderer.RenderAsync(sources[i].Source)) && renderer.RenderCount == count,
                 "An unchanged diagram must reuse its cached frozen image.");
-        foreach (string invalid in new[] { "flowchart LR\n A[", "mindmap\n root\nother", "stateDiagram-v2\n state Missing {" })
-            Assert((await renderer.RenderAsync(invalid)).Error is not null, "Invalid Mermaid must report an error.");
+        foreach (string invalid in new[] { "flowchart LR\n A[", "mindmap\n root\nother", "stateDiagram-v2\n state Missing {",
+            "unknownDiagram\n A --> B", "xychart-beta\n bar [not-numeric]" })
+            Assert((await renderer.RenderAsync(invalid)).Error is not null, "Invalid Mermaid must report an error: " + invalid);
         Assert((await renderer.RenderAsync("flowchart LR\n A --> B")).Image is not null,
             "A syntax error must not prevent later diagrams from rendering.");
         var styled = await renderer.RenderAsync(Styled);
@@ -357,6 +359,7 @@ internal static class MermaidSmokeTests
             using var stream = File.Create(previewPath);
             encoder.Save(stream);
         }
+        await MermaidCatalogSmokeTests.RunAsync(renderer, previewPath);
         var pending = renderer.RenderAsync("sequenceDiagram\n A->>B: Closing");
         renderer.Dispose();
         await pending;
@@ -368,7 +371,7 @@ internal static class MermaidSmokeTests
         Assert((await startup).Error is not null, "Closing during browser startup must cancel safely.");
     }
 
-    private static void CheckLabels(MermaidDiagram diagram, string[] labels)
+    internal static void CheckLabels(MermaidDiagram diagram, string[] labels)
     {
         var svg = XDocument.Parse(diagram.Svg!);
         Assert(Math.Abs(diagram.Image!.Width - (double)svg.Root!.Attribute("width")!) < 0.001 &&
@@ -377,7 +380,8 @@ internal static class MermaidSmokeTests
         var viewport = new Rect(0, 0, diagram.Image.Width, diagram.Image.Height);
         viewport.Inflate(1, 1);
         foreach (var bounds in GlyphBounds(diagram.Image.Drawing, Matrix.Identity))
-            Assert(viewport.Contains(bounds), "Bounding the SVG viewport must not clip a diagram label: " + bounds);
+            // Whitespace-only glyph runs have no painted bounds.
+            Assert(bounds.IsEmpty || viewport.Contains(bounds), "Bounding the SVG viewport must not clip a diagram label: " + bounds);
         var text = svg.Descendants().Where(element => element.Name.LocalName == "text").ToArray();
         Assert(text.Length > 0 && text.All(element => (string?)element.Attribute("text-anchor") == "start"),
             "Flattened labels must retain their measured left-edge position after CSS is removed.");

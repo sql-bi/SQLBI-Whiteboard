@@ -253,7 +253,7 @@ Prompt detection uses clipboard format `SQLBI.PromptAssistant.Metadata.v1` conta
 
 Choose **Markdown** from the title-bar chip for a formatted answer or a note: headings, emphasis, lists, tables, quotations, and code blocks keep their layout. Paste recognizes Markdown through Snippet format order, and converts structured clipboard HTML when it carries formatting the plain text has lost. **F2** edits the Markdown source and **Ctrl+Enter** renders it again; **F6** does nothing on it, the corner handle scales the rendered visual, and the right edge reflows it. Markdown exports as a picture to preserve its layout, with its source retained in PowerPoint notes; see [docs/markdown.md](docs/markdown.md) for clipboard behavior, supported structures, and limitations.
 
-The [Mermaid prototype](docs/markdown.md#mermaid-prototype) renders fenced flowcharts, sequence diagrams, entity relationships, mind maps, and state diagrams inside Markdown. Saved diagrams reopen without WebView2; creating or changing a diagram requires the runtime. Saves and exports wait for pending diagrams.
+The [Mermaid prototype](docs/markdown.md#mermaid-prototype) renders the bundled library's 32 diagram families inside Markdown, including flowcharts, charts, timelines, and architecture diagrams. Saved diagrams reopen without WebView2; creating or changing a diagram requires the runtime. Saves and exports wait for pending diagrams.
 
 Image files, and `.txt`, `.dax`, `.sql`, and `.kql` files, can be dropped directly from File Explorer. Their initial center is the board position at which they were dropped. DAX, SQL, and KQL files open in the matching language mode. Other dropped text files use Snippet format order.
 

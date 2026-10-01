@@ -14,7 +14,59 @@ mermaid.initialize({
   er: { useMaxWidth: false },
   mindmap: { useMaxWidth: false },
   state: { useMaxWidth: false },
+  journey: { useMaxWidth: false },
 });
+
+// Some built-in renderers (notably event modeling) always use HTML labels.
+// Keep the browser's line wrapping and inline styles, but retain only measured
+// text, never HTML, links, or interactive content in the saved drawing.
+function flattenHtmlLabels(root) {
+  // Journey includes an SVG fallback after its HTML label. Chromium uses the
+  // first branch; keep only that branch so the fallback is not drawn twice.
+  for (const choice of [...root.querySelectorAll("switch")]) {
+    if (choice.firstElementChild?.localName === "foreignObject")
+      choice.replaceWith(choice.firstElementChild);
+  }
+  for (const foreign of [...root.querySelectorAll("foreignObject")]) {
+    const group = document.createElementNS(root.namespaceURI, "g");
+    foreign.before(group);
+    const inverse = group.getScreenCTM().inverse();
+    const walker = document.createTreeWalker(foreign, NodeFilter.SHOW_TEXT);
+    for (let node = walker.nextNode(); node; node = walker.nextNode()) {
+      const style = getComputedStyle(node.parentElement);
+      if (style.visibility === "hidden" || style.display === "none") continue;
+      let run = null;
+      let previous = null;
+      for (let index = 0; index < node.length;) {
+        const character = String.fromCodePoint(node.nodeValue.codePointAt(index));
+        const range = document.createRange();
+        range.setStart(node, index);
+        index += character.length;
+        range.setEnd(node, index);
+        const rect = range.getBoundingClientRect();
+        if (!rect.width || !rect.height) continue;
+        if (!run || Math.abs(rect.top - previous.top) > 1 || Math.abs(rect.left - previous.right) > 1) {
+          run = document.createElementNS(root.namespaceURI, "text");
+          for (const name of ["font-family", "font-size", "font-weight", "font-style"])
+            run.style.setProperty(name, style.getPropertyValue(name), "important");
+          run.style.setProperty("fill", style.color, "important");
+          run.style.setProperty("text-anchor", "start", "important");
+          run.style.setProperty("dominant-baseline", "alphabetic", "important");
+          run.setAttributeNS("http://www.w3.org/XML/1998/namespace", "xml:space", "preserve");
+          run.textContent = character;
+          group.appendChild(run);
+          // SVG and HTML character extents use the same font box in Chromium.
+          const extent = run.getExtentOfChar(0);
+          const point = new DOMPoint(rect.left, rect.top).matrixTransform(inverse);
+          run.setAttribute("x", point.x - extent.x);
+          run.setAttribute("y", point.y - extent.y);
+        } else run.textContent += character;
+        previous = rect;
+      }
+    }
+    foreign.replaceWith(group);
+  }
+}
 
 chrome.webview.addEventListener("message", async event => {
   const { id, source } = event.data;
@@ -23,13 +75,13 @@ chrome.webview.addEventListener("message", async event => {
     const { svg } = await mermaid.render("m" + id, source, target);
     target.innerHTML = svg;
     const root = target.querySelector("svg");
-    if (!root || root.querySelector("foreignObject"))
-      throw new Error("This diagram requires HTML labels.");
+    if (!root) throw new Error("Missing diagram.");
+    flattenHtmlLabels(root);
     const properties = [
       "fill", "fill-opacity", "stroke", "stroke-width", "stroke-opacity",
       "stroke-dasharray", "stroke-linecap", "stroke-linejoin", "opacity",
       "font-family", "font-size", "font-weight", "font-style", "text-anchor",
-      "dominant-baseline", "visibility"
+      "dominant-baseline", "visibility", "display"
     ];
     // Mermaid emits nested tspans and empty background rectangles. Flatten text
     // runs at the positions measured by the browser because SharpVectors does
@@ -45,8 +97,10 @@ chrome.webview.addEventListener("message", async event => {
       if (transform && box.width > 0) transform.matrix.e = -box.x - box.width / 2;
     });
     for (const text of [...root.querySelectorAll("text")]) {
+      if (!text.getNumberOfChars()) { text.remove(); continue; }
       const group = document.createElementNS(root.namespaceURI, "g");
       if (text.hasAttribute("transform")) group.setAttribute("transform", text.getAttribute("transform"));
+      text.before(group);
       const walker = document.createTreeWalker(text, NodeFilter.SHOW_TEXT);
       let offset = 0;
       for (let node = walker.nextNode(); node; node = walker.nextNode()) {
@@ -62,9 +116,17 @@ chrome.webview.addEventListener("message", async event => {
         run.setAttribute("y", position.y);
         run.setAttribute("text-anchor", "start");
         run.setAttribute("dominant-baseline", "alphabetic");
+        run.style.setProperty("text-anchor", "start", "important");
+        run.style.setProperty("dominant-baseline", "alphabetic", "important");
         run.setAttributeNS("http://www.w3.org/XML/1998/namespace", "xml:space", "preserve");
         run.textContent = value.trim();
         group.appendChild(run);
+        // getStartPositionOfChar does not account for hanging/middle baselines.
+        // Compare character boxes while both layouts still exist in the DOM;
+        // otherwise rotated chart-axis labels shift outside the viewport.
+        const original = text.getExtentOfChar(offset + first);
+        const flattened = run.getExtentOfChar(0);
+        run.setAttribute("y", position.y + original.y - flattened.y);
         offset += value.length;
       }
       text.replaceWith(group);
@@ -80,8 +142,15 @@ chrome.webview.addEventListener("message", async event => {
     // is still in the DOM. Flattened runs already have their left-edge position.
     root.querySelectorAll("text").forEach(text => text.setAttribute("text-anchor", "start"));
     root.querySelectorAll("style, script, a").forEach(element => {
-      if (element.tagName.toLowerCase() === "a") element.replaceWith(...element.childNodes);
-      else element.remove();
+      if (element.tagName.toLowerCase() === "a") {
+        // Class diagrams position linked nodes on the anchor itself. Discard
+        // the interaction, but preserve its transform and resolved appearance.
+        const group = document.createElementNS(root.namespaceURI, "g");
+        for (const name of ["id", "transform", "clip-path", ...properties])
+          if (element.hasAttribute(name)) group.setAttribute(name, element.getAttribute(name));
+        group.append(...element.childNodes);
+        element.replaceWith(group);
+      } else element.remove();
     });
     root.querySelectorAll("*").forEach(element => {
       for (const attribute of [...element.attributes]) {
@@ -95,6 +164,18 @@ chrome.webview.addEventListener("message", async event => {
       throw new Error("Invalid diagram bounds.");
     root.setAttribute("width", box.width);
     root.setAttribute("height", box.height);
+    // Some renderers draw connector stubs outside their declared viewBox.
+    // Clip before decoding so those stubs cannot change DrawingImage's origin.
+    const clipId = "viewport-" + id;
+    const clip = document.createElementNS(root.namespaceURI, "clipPath");
+    clip.id = clipId;
+    const rectangle = document.createElementNS(root.namespaceURI, "rect");
+    for (const name of ["x", "y", "width", "height"]) rectangle.setAttribute(name, box[name]);
+    clip.appendChild(rectangle);
+    const content = document.createElementNS(root.namespaceURI, "g");
+    content.setAttribute("clip-path", "url(#" + clipId + ")");
+    content.append(...root.childNodes);
+    root.append(clip, content);
     chrome.webview.postMessage({ id, svg: new XMLSerializer().serializeToString(root) });
   } catch {
     chrome.webview.postMessage({ id, error: "Cannot render diagram" });

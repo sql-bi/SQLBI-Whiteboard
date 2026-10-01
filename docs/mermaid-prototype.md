@@ -23,7 +23,12 @@ A timeout disables subsequent requests until the application restarts.
 
 The JavaScript adapter resolves SVG styles and positions text runs using browser metrics.
 It removes empty rectangles and flattens nested `tspan` elements because SharpVectors
-does not reproduce those Mermaid constructs correctly. It also removes links, stylesheets,
+does not reproduce those Mermaid constructs correctly. Character extents preserve baseline
+placement for rotated chart-axis labels; non-rendered text is skipped. Mermaid's internal
+HTML labels (journey and event modeling) are measured one visual line and styled text run
+at a time, then replaced with SVG text. Journey's alternative SVG branch is discarded to
+avoid duplicate labels. No `foreignObject` reaches the decoder or saved snapshot.
+The adapter also removes links, stylesheets,
 scripts, and event attributes. `MermaidSvg` validates the normalized SVG and `SvgImageCodec` converts it to a frozen
 WPF drawing off the UI thread. Ordinary SVG import is unchanged.
 The adapter centers SVG-only mind-map labels on their nodes: Mermaid 12 can leave them
@@ -31,6 +36,13 @@ left-anchored in a centered shape, notably a circle. This adjustment uses the br
 label bounds before text flattening; it does not modify the bundled engine.
 The resulting drawing is bounded to Mermaid's declared SVG viewport, because invisible
 geometry in the converted drawing can otherwise inflate its reported natural size.
+An explicit SVG viewport clip also prevents outside connector stubs (tree view) from
+shifting visible labels during decoding. Ordinary SVG imports and older snapshots are unchanged.
+
+The host validates source length and rejects configuration overrides, but lets Mermaid
+detect diagram types. All 32 built-in families are enabled without a separate keyword
+allowlist. The bundle supplies their renderers, including C4 and railroad variants.
+Enabling a family does not require a new container, layout, persistence, or input path.
 
 Diagram scale is `min(1, availableWidth / naturalWidth)`, with 10 board units of padding
 on each side. Diagrams are centered horizontally and use their scaled natural height
@@ -112,20 +124,25 @@ $env:SQLBI_WHITEBOARD_MERMAID_PREVIEW = "$env:TEMP\whiteboard-mermaid.png"
 dotnet run --project tests/SQLBI.Whiteboard.SmokeTests -c Release --no-build
 ```
 
-The integration checks render all five diagram families and styled multiline Unicode
+The integration checks render all 32 diagram families and styled multiline Unicode
 labels; inspect the WPF glyphs and SVG normalization; check cache reuse and syntax-error
 recovery; reopen the diagrams from saved snapshots with a disposed renderer and compare
-preview pixels; and dispose during rendering and startup. Mind-map coverage includes
+preview pixels; and dispose during rendering and startup. The 27 additional families use
+the three `mermaid-catalogue-*.md` files as shared test fixtures; railroad has three extra
+notation cases. Every fixture checks viewport/label bounds, passive SVG, cache reuse, and
+pixel-identical archive restoration with a disposed renderer. Additional cases cover all
+C4 variants, ELK flowcharts, multiline HTML label emphasis, and links. Mind-map coverage includes
 nested branches, square/rounded/circle/bang/cloud/hexagon shapes, styled multiline labels,
 and root-label containment. State coverage includes the legacy keyword, nested states,
-notes, choices, forks/joins, concurrent regions, direction, and classes. Both new families
-also pass through picture/editable PowerPoint and picture/vector PDF output. The optional
-preview path produces a mixed Markdown PNG and normalized SVG files for the test diagrams.
+notes, choices, forks/joins, concurrent regions, direction, and classes. Mind maps, states,
+Sankey, XY charts, and event modeling pass through picture/editable PowerPoint and
+picture/vector PDF output. The latter three compare PowerPoint pictures with the prepared
+drawings exactly. The optional preview path produces a mixed Markdown PNG, per-catalogue
+PNG previews, and normalized SVG files for inspection.
 
 Manual checks before expanding the feature:
 
-1. Drop `docs/samples/mermaid-prototype.md` and `docs/samples/mermaid-mindmaps-states.md`
-   onto the board and compare the diagrams.
+1. Drop the Mermaid sample files from `docs/samples/` onto the board and compare the diagrams.
 2. Edit a label with **F2**, commit with **Ctrl+Enter**, then undo and redo. Try malformed
    syntax and correct it. Try a larger diagram from an actual workshop.
 3. Draw with the Cintiq while a new diagram is rendering, then after it completes.
@@ -139,7 +156,8 @@ Manual checks before expanding the feature:
 
 ## Deferred integration
 
-Runtime installer/distribution validation remains outstanding. Additional Mermaid families,
-custom themes, and wider syntax compatibility are outside this prototype. Editing or reflowing
-Markdown can move content under annotations; ink remains linked to its container rather than
+Runtime installer/distribution validation remains outstanding. Third-party diagram plugins,
+custom themes, external icons/fonts, and exhaustive syntax compatibility are outside this prototype.
+Beta families follow the bundled Mermaid version; updating that bundle requires revalidation.
+Editing or reflowing Markdown can move content under annotations; ink remains linked to its container rather than
 to individual diagram nodes or text runs.

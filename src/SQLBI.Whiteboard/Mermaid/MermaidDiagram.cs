@@ -1,4 +1,3 @@
-using System.Text.RegularExpressions;
 using System.Windows.Media;
 using Markdig.Syntax;
 using SQLBI.Whiteboard.Core.Model;
@@ -28,9 +27,8 @@ internal static class MermaidSource
         if (source.Length > MaximumCharacters) return "This prototype accepts up to 12,000 characters per diagram.";
         if (source.Contains("%%{", StringComparison.Ordinal) || source.TrimStart().StartsWith("---", StringComparison.Ordinal))
             return "Diagram configuration directives are not supported in this prototype.";
-        if (!Regex.IsMatch(source, @"\A(?:\s|%%[^\r\n]*(?:\r?\n|$))*(?:flowchart|graph|sequenceDiagram|erDiagram|mindmap|stateDiagram(?:-v2)?)(?:\s|;|$)",
-                RegexOptions.CultureInvariant | RegexOptions.NonBacktracking))
-            return "Supported diagrams: flowcharts, sequence diagrams, ER diagrams, mind maps, and state diagrams.";
+        if (string.IsNullOrWhiteSpace(source)) return "Enter Mermaid diagram source inside this code block.";
+        // The bundled engine owns syntax detection, including aliases and beta types.
         return null;
     }
 }
