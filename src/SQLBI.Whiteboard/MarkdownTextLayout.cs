@@ -20,8 +20,12 @@ internal sealed class MarkdownTextLayout
     private static readonly Brush AlternateRow = Brush(0xFFF8FAFC);
     private static readonly Pen Rule = new(Brush(0xFFCBD5E1), 1);
 
-    public MarkdownTextLayout(MarkdownDocument document, double width)
+    private readonly IReadOnlyDictionary<string, MermaidDiagram> _diagrams;
+
+    public MarkdownTextLayout(MarkdownDocument document, double width,
+        IReadOnlyDictionary<string, MermaidDiagram>? diagrams = null)
     {
+        _diagrams = diagrams ?? new Dictionary<string, MermaidDiagram>();
         (Drawing, Height) = Blocks(document, width);
         Drawing.Freeze();
     }
@@ -29,7 +33,7 @@ internal sealed class MarkdownTextLayout
     public DrawingGroup Drawing { get; }
     public double Height { get; }
 
-    private static (DrawingGroup Drawing, double Height) Blocks(ContainerBlock blocks, double width)
+    private (DrawingGroup Drawing, double Height) Blocks(ContainerBlock blocks, double width)
     {
         var drawing = new DrawingGroup();
         double y = 0;
@@ -47,7 +51,7 @@ internal sealed class MarkdownTextLayout
         return (drawing, Math.Max(FontSize * 1.25, y));
     }
 
-    private static (DrawingGroup Drawing, double Height) Block(Block block, double width)
+    private (DrawingGroup Drawing, double Height) Block(Block block, double width)
     {
         var drawing = new DrawingGroup();
         double height = 0;
@@ -89,6 +93,9 @@ internal sealed class MarkdownTextLayout
                     context.DrawRectangle(CodeBackground, null, new Rect(0, 0, width, height));
                     context.DrawRectangle(Muted, null, new Rect(0, 0, Math.Min(3, width), height));
                     DrawAt(context, quoted.Drawing, Math.Min(16, width / 2), 4);
+                    break;
+                case FencedCodeBlock diagram when MermaidSource.IsDiagram(diagram):
+                    height = DrawDiagram(context, diagram.Lines.ToString(), width);
                     break;
                 case CodeBlock code:
                     string source = code.Lines.ToString();
@@ -135,6 +142,36 @@ internal sealed class MarkdownTextLayout
         }
 
         return (drawing, height);
+    }
+
+    private double DrawDiagram(DrawingContext context, string source, double width)
+    {
+        _diagrams.TryGetValue(source, out var diagram);
+        var image = diagram?.Image;
+        bool rendered = image is { Width: > 0, Height: > 0 };
+        // SVG units are unscaled board units. Fit wide diagrams without enlarging
+        // smaller ones; the normal container/camera transforms apply afterward.
+        double factor = rendered ? Math.Min(1, Math.Max(1, width - 20) / image!.Width) : 1;
+        double height = rendered ? image!.Height * factor + 20 : 160;
+        context.DrawRectangle(Brushes.White, Rule, new Rect(0, 0, width, height));
+        context.PushClip(new RectangleGeometry(new Rect(0, 0, width, height)));
+        if (rendered)
+        {
+            double w = image!.Width * factor;
+            double h = image.Height * factor;
+            context.DrawImage(image, new Rect((width - w) / 2, 10, w, h));
+        }
+        else
+        {
+            var notice = PlainText(diagram?.Error ?? "Rendering Mermaid diagram…", 14);
+            notice.MaxTextWidth = Math.Max(1, width - 20);
+            context.DrawText(notice, new Point(10, 10));
+            var code = PlainText(source, 12, monospace: true);
+            code.MaxTextWidth = Math.Max(1, width - 20);
+            context.DrawText(code, new Point(10, notice.Height + 20));
+        }
+        context.Pop();
+        return height;
     }
 
     private static double DrawTable(DrawingContext context, Table table, double width)

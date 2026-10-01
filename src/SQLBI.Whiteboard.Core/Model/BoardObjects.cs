@@ -1,3 +1,4 @@
+using System.Collections.Immutable;
 using SQLBI.Whiteboard.Core.Geometry;
 using SQLBI.Whiteboard.Core.Settings;
 
@@ -479,6 +480,10 @@ public record TextBoardObject(
     double VisualScale = 1,
     string LanguageId = TextLanguageIds.Plain) : BoardObject(Id, ZIndex, Bounds), IBoardContainer
 {
+    // Derived output travels with copies and undo records, but is reused only
+    // when its source matches a diagram in the current Markdown.
+    public ImmutableArray<MermaidSnapshot> MermaidSnapshots { get; init; } = [];
+
     /// <summary>
     /// The text scales with the box, as it does when the corner handle is
     /// dragged: a container that changed size without its text changing with it

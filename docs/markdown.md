@@ -68,8 +68,70 @@ table/text objects. PowerPoint notes retain the source. The image fallback is ca
 - Raw HTML is displayed as literal text, except simple line breaks in table cells.
 - HTML clipboard conversion preserves semantic markup, not arbitrary CSS, fonts, or colors.
   Merged/nested HTML tables are not reproduced as merged/nested tables.
-- Mathematical notation, Mermaid diagrams, task-checkbox widgets, and other Markdown
+- Mathematical notation, task-checkbox widgets, and other Markdown
   extensions beyond the supported subset are not rendered specially.
+
+## Mermaid diagrams
+
+Fenced `mermaid` blocks render the 32 diagram families built into Mermaid 12.0.0.
+Paste their Markdown source, or drop
+[the sample file](samples/mermaid-diagrams.md) onto the board. Choose **Markdown**
+if your Snippet format order selects another language. Edit with **F2** and commit
+with **Ctrl+Enter**. A copied diagram picture carries no editable Mermaid source.
+
+Mind maps support indented branches, node shapes, and multiline styled labels. State
+diagrams support transitions, start/end markers, nested states, notes, choices,
+forks/joins, and concurrent regions. Try [the mind-map and state samples](samples/mermaid-mindmaps-states.md).
+
+The full catalogue is listed below. Aliases, layouts, and notations within a family
+are not counted as separate families, and `info`, a library diagnostic, is not counted.
+
+| Group | Families | Samples |
+| --- | --- | --- |
+| Diagrams | Flowchart, sequence, entity relationship, mind map, state | [Basic diagrams](samples/mermaid-diagrams.md), [mind maps and states](samples/mermaid-mindmaps-states.md) |
+| Charts | Pie, XY, quadrant, radar, Sankey, treemap, Venn, Ishikawa | [Chart samples](samples/mermaid-catalogue-charts.md) |
+| Processes | Timeline, Gantt, user journey, Kanban, swimlanes, AgentFlow, event modeling, Cynefin, Wardley | [Process samples](samples/mermaid-catalogue-processes.md) |
+| Structures | Class, block, architecture, C4, use case, requirement, Git graph, packet, tree view, railroad | [Structure samples](samples/mermaid-catalogue-structures.md) |
+
+The samples show the exact keywords, including `-beta` where Mermaid requires it.
+C4 includes context, container, component, dynamic, and deployment diagrams. Railroad
+includes its native notation, EBNF, ABNF, and PEG. Mermaid detects the diagram type, and
+Whiteboard keeps no list of allowed types of its own. Third-party plugins are not bundled.
+
+Rendering uses the bundled Mermaid engine through one hidden WebView2 controller, created
+on the first new or changed diagram. Generating diagrams requires the Microsoft Edge
+WebView2 Runtime, which Windows 11 includes; the installer does not install it. No diagram
+source is sent to a server. Generated SVG becomes a frozen WPF drawing, shared by unchanged
+diagram sources and replayed during drawing, pan, and zoom. No browser control is placed
+on the canvas. See [mermaid.md](mermaid.md) for implementation details.
+
+Diagrams use their natural size at 100%, shrinking proportionally only when they exceed
+the available width. Smaller diagrams are centered, and height fits the rendered content.
+Canvas zoom and corner resizing still scale the whole container; reflow recalculates
+the width limit. After rendering, the container's height updates without an extra undo
+step or stretching existing ink. Wait for the diagrams to appear before annotating, since
+the content below a pending diagram moves when its height is known. Syntax errors,
+unsupported diagram types, or an unavailable runtime show an explanation and source.
+
+The board saves the original Markdown source and successful SVG diagram snapshots.
+Reopening uses those snapshots without starting WebView2. They retain the saved diagram
+layout, including when the runtime is unavailable. Editing a diagram regenerates only
+the sources that have changed, and unchanged diagrams remain visible if regeneration fails.
+Missing or invalid snapshots are regenerated from the source when the runtime is available.
+
+Save, session recovery copies, export previews, PowerPoint, and PDF wait for pending
+diagrams and use their final container heights. Failed diagrams retain an explanation
+and their source in the output. A save captures the board at the time of the request,
+so edits made during the wait remain unsaved. Releases before 1.7.5 ignore the optional
+snapshot metadata and can drop it when saving.
+
+A Markdown container accepts up to 16 distinct diagrams, 12,000 characters per diagram,
+and 200 flowchart edges. Embedded configuration, interactive links, remote images,
+external fonts, and icon-font packs are not enabled. Built-in architecture icons work
+locally. HTML labels generated internally by Mermaid are converted to passive SVG text,
+preserving line wrapping and basic font styles, so no HTML is stored or executed when
+reopening a board. Experimental families retain Mermaid's beta status. Tests cover
+representative syntax and styling for each family, not every combination.
 
 ## Validation
 

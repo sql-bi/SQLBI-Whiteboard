@@ -807,6 +807,7 @@ Assert(
 
 const string promptSource = "Keep this text.\r\n- An instruction with Unicode café 世界.\r\n  - An indented instruction.\n\n- ";
 const string markdownSource = "# Résumé 😀\r\n\r\n| Rule | Count |\n| --- | ---: |\n| **All** years | 42 |\n\n- Keep the source.";
+await SQLBI.Whiteboard.Core.SmokeTests.MermaidArchiveSmokeTests.RunAsync();
 var markdownObject = new TextBoardObject(Guid.NewGuid(), 0, new RectD(20, 30, 640, 360),
     "Markdown", markdownSource, 1.5, TextLanguageIds.Markdown);
 var markdownDocument = new BoardDocument();

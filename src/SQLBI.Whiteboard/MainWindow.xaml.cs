@@ -72,6 +72,10 @@ public partial class MainWindow : Window
     private bool _applicationIsActive;
 
     private BoardDocument _document = new();
+    private MermaidRenderer? _mermaidRenderer;
+    private Task? _saveBoardTask;
+    private bool _exportPreparing;
+    private readonly SemaphoreSlim _sessionWriteQueue = new(1, 1);
     private string? _currentBoardPath;
 
     // The history save point tracks every change that arrives as a command, undo
@@ -502,6 +506,8 @@ public partial class MainWindow : Window
                 81920,
                 useAsync: true);
             var loaded = await BoardArchive.LoadAsync(stream);
+            await MermaidDocument.RestoreAsync(loaded);
+            if (_closeConfirmed) return false;
             ReplaceDocument(loaded);
             _currentBoardPath = fileStillThere ? state.BoardPath : null;
             ResetBoardView();
@@ -530,7 +536,7 @@ public partial class MainWindow : Window
     // nothing here is allowed to write to it without being asked.
     private async void AutosaveTimer_Tick(object? sender, EventArgs e)
     {
-        if (_autosaveRunning || !_autosaveDirty || !IsModified)
+        if (_autosaveRunning || !_autosaveDirty || !IsModified || _closeRequest.IsPending || _closeConfirmed)
         {
             return;
         }
@@ -591,6 +597,8 @@ public partial class MainWindow : Window
     private void Document_Changed(object? sender, EventArgs e)
     {
         _autosaveDirty = true;
+        if (MermaidContainerLayout.Refresh(_document, _textEditBefore?.Id)) return;
+        PrepareMermaidDiagrams();
         var liveViewIds = _document.Objects.OfType<LiveViewBoardObject>()
             .Select(item => item.Id)
             .ToHashSet();
@@ -618,6 +626,31 @@ public partial class MainWindow : Window
     {
         SessionBar.SetEditEnabled(_history.CanUndo, _history.CanRedo);
         UpdateWindowTitle();
+    }
+
+    private void PrepareMermaidDiagrams()
+    {
+        if (_closeConfirmed) return;
+        foreach (var text in _document.Objects.OfType<TextBoardObject>()
+                     .Where(text => text.LanguageId == TextLanguageIds.Markdown).ToArray())
+        {
+            var content = MarkdownContent.Parse(text.Text);
+            if (content.DiagramSources.Count == 0 || content.PreparationStarted || content.DiagramsReady) continue;
+            RefreshMermaidWhenReady(text, content, _document);
+        }
+    }
+
+    private IMermaidRenderer DiagramRenderer =>
+        _mermaidRenderer ??= new MermaidRenderer(() => new WindowInteropHelper(this).Handle);
+
+    private async void RefreshMermaidWhenReady(TextBoardObject text, MarkdownContent content, BoardDocument document)
+    {
+        await content.PrepareDiagramsAsync(DiagramRenderer, text.MermaidSnapshots);
+        if (!_closeConfirmed && ReferenceEquals(document, _document))
+        {
+            if (!MermaidContainerLayout.Refresh(document, _textEditBefore?.Id))
+                SceneSurface.InvalidateVisual();
+        }
     }
 
     // Only touch reaches here now. Pen ink is collected from the pen's own
@@ -4866,6 +4899,7 @@ public partial class MainWindow : Window
             return;
         }
 
+        before = MermaidContainerLayout.Fit(before);
         InkStrokeObject[] linkedBefore = _textEditLinkedBefore;
         RectD afterBounds = _textEditBounds;
         if (_textEditLanguageId == TextLanguageIds.Markdown)
@@ -4882,10 +4916,11 @@ public partial class MainWindow : Window
             Text = TextEditor.Text,
             LanguageId = _textEditLanguageId,
         };
-        InkStrokeObject[] linkedAfter = before.Bounds == afterBounds
+        RectD inkBounds = MermaidContainerLayout.InkBoundsAfterEdit(before, after);
+        InkStrokeObject[] linkedAfter = before.Bounds == inkBounds
             ? linkedBefore
             : linkedBefore
-                .Select(stroke => stroke.TransformWithContainer(before.Bounds, afterBounds))
+                .Select(stroke => stroke.TransformWithContainer(before.Bounds, inkBounds))
                 .ToArray();
 
         EndTextEditVisual(before.Id);
@@ -4921,6 +4956,7 @@ public partial class MainWindow : Window
         _textColorizer.Update([], new FontFamily("Segoe UI"));
         TextEditorBorder.Visibility = Visibility.Collapsed;
         SceneSurface.HiddenObjectId = null;
+        MermaidContainerLayout.Refresh(_document);
         SelectOnly(selectedObjectId);
         SceneSurface.InvalidateVisual();
         UpdateLiveViewActionOverlay();
@@ -7313,8 +7349,9 @@ public partial class MainWindow : Window
         SceneSurface.InvalidateVisual();
     }
 
-    private void ShowExportDialog()
+    private async void ShowExportDialog()
     {
+        if (_exportPreparing || _closeRequest.IsPending || _closeConfirmed) return;
         CommitTextEdit();
         if (_document.ContentBounds is null)
         {
@@ -7327,14 +7364,27 @@ public partial class MainWindow : Window
             return;
         }
 
-        RefreshLiveViewSnapshots();
-        ShowOwnedDialog(new ExportWindow(
-            _document,
-            _settings.Export,
-            GetLiveViewImageSource,
-            ResolveExportTitle,
-            _currentBoardPath,
-            PersistSettings));
+        _exportPreparing = true;
+        var document = _document;
+        var boardPath = _currentBoardPath;
+        try
+        {
+            RefreshLiveViewSnapshots();
+            var prepared = await MermaidDocument.CaptureAsync(document, DiagramRenderer);
+            if (_closeConfirmed || _closeRequest.IsPending || !ReferenceEquals(document, _document)) return;
+            ShowOwnedDialog(new ExportWindow(
+                prepared,
+                _settings.Export,
+                GetLiveViewImageSource,
+                ResolveExportTitle,
+                boardPath,
+                PersistSettings));
+        }
+        catch (Exception exception)
+        {
+            if (!_closeConfirmed) ShowError("Could not prepare export", exception);
+        }
+        finally { _exportPreparing = false; }
     }
 
     // The same title the container shows on screen: a DAX or SQL container is
@@ -8512,7 +8562,10 @@ public partial class MainWindow : Window
         return string.IsNullOrWhiteSpace(sanitized) ? "liveview" : sanitized;
     }
 
-    private async Task SaveBoardAsync(bool saveAs = false)
+    private Task SaveBoardAsync(bool saveAs = false) => _saveBoardTask is { IsCompleted: false }
+        ? _saveBoardTask : _saveBoardTask = SaveBoardCoreAsync(saveAs);
+
+    private async Task SaveBoardCoreAsync(bool saveAs)
     {
         CommitTextEdit();
         var filePath = _currentBoardPath;
@@ -8539,7 +8592,10 @@ public partial class MainWindow : Window
         try
         {
             RefreshLiveViewSnapshots();
-            var preview = BoardPreviewRenderer.Render(_document, GetLiveViewImageSource);
+            var document = _document;
+            var prepared = await MermaidDocument.CaptureAsync(document, DiagramRenderer);
+            if (_closeConfirmed) return;
+            var preview = BoardPreviewRenderer.Render(prepared, GetLiveViewImageSource);
             await using var stream = new FileStream(
                 filePath,
                 FileMode.Create,
@@ -8548,15 +8604,19 @@ public partial class MainWindow : Window
                 81920,
                 useAsync: true);
             await BoardArchive.SaveAsync(
-                _document,
+                prepared,
                 stream,
                 previewPng: preview is null ? default : preview);
-            _currentBoardPath = filePath;
-            MarkSaved();
+            if (!_closeConfirmed && ReferenceEquals(document, _document))
+            {
+                _currentBoardPath = filePath;
+                if (MermaidDocument.Matches(document, prepared)) MarkSaved();
+                else MarkDirtyOutsideHistory();
+            }
         }
         catch (Exception exception)
         {
-            ShowError("Could not save board", exception);
+            if (!_closeConfirmed) ShowError("Could not save board", exception);
         }
     }
 
@@ -8709,6 +8769,8 @@ public partial class MainWindow : Window
                 81920,
                 useAsync: true);
             var loaded = await BoardArchive.LoadAsync(stream);
+            await MermaidDocument.RestoreAsync(loaded);
+            if (_closeConfirmed) return;
             ReplaceDocument(loaded);
             _currentBoardPath = filePath;
             ResetBoardView();
@@ -9818,6 +9880,7 @@ public partial class MainWindow : Window
         }
 
         _autosaveTimer.Stop();
+        _mermaidRenderer?.Dispose();
         _autoFullScreen.Dispose();
         InputManager.Current.PreProcessInput -= AutoFullScreen_PreProcessInput;
         StateChanged -= AutoFullScreen_StateChanged;
@@ -9891,8 +9954,10 @@ public partial class MainWindow : Window
             return;
         }
 
+        await _sessionWriteQueue.WaitAsync();
         try
         {
+            if (_closeConfirmed) return;
             if (!keepBoard && _currentBoardPath is null)
             {
                 // An untitled board nobody has drawn on. Restoring it would be
@@ -9912,7 +9977,8 @@ public partial class MainWindow : Window
             };
 
             // Snapshotting here and writing on a worker keeps the zip off the pen's thread.
-            BoardDocument? snapshot = keepBoard ? _document.Snapshot() : null;
+            BoardDocument? snapshot = keepBoard
+                ? await MermaidDocument.CaptureAsync(_document, DiagramRenderer) : null;
             await Task.Run(() => _session.WriteAsync(snapshot, state));
         }
         catch (Exception exception)
@@ -9921,6 +9987,7 @@ public partial class MainWindow : Window
             // a copy for a crash, and the file the person asked for is already written.
             Debug.WriteLine($"[Session] Could not write the session: {exception.Message}");
         }
+        finally { _sessionWriteQueue.Release(); }
     }
 
     private void Window_PreviewStylusInRange(object sender, StylusEventArgs e)

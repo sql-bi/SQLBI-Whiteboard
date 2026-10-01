@@ -13,5 +13,6 @@
   </PropertyGroup>
   <ItemGroup>
     <ProjectReference Include="..\..\src\SQLBI.Whiteboard\SQLBI.Whiteboard.csproj" />
+    <None Include="..\..\docs\samples\mermaid-catalogue-*.md" Link="MermaidCatalogue\%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 </Project>

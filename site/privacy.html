@@ -54,6 +54,7 @@
       <li>The User-Agent carries the product version. Nothing else is sent.</li>
     </ul>
     <p>Boards are local <code>.wboard</code> files. Preferences live under <code>%APPDATA%\SQLBI\Whiteboard</code> (or <code>Whiteboard Dev</code> for the pre-release channel).</p>
+    <p>Mermaid diagrams are drawn on this machine by the copy of Mermaid installed with the application, in the Microsoft Edge WebView2 Runtime. The renderer cannot load anything from the network, and it keeps its browser data under <code>%LOCALAPPDATA%\SQLBI\Whiteboard\Mermaid</code>.</p>
     <p>LiveView uses Windows Graphics Capture on this machine. The capture permission cannot be saved with the file. After you reload a board, the last frame is shown from the file; <span class="ui">Reconnect</span> asks Windows again.</p>
 
     <h2>This website</h2>
