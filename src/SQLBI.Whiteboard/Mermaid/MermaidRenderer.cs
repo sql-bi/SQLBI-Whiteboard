@@ -6,7 +6,8 @@ using Microsoft.Web.WebView2.Core;
 namespace SQLBI.Whiteboard;
 
 /// <summary>One off-canvas browser renders locally; the board retains only frozen drawings.</summary>
-internal sealed class MermaidRenderer(Func<IntPtr> parentWindow, string? profileDirectory = null)
+internal sealed class MermaidRenderer(
+    Func<IntPtr> parentWindow, string? profileDirectory = null, Func<bool>? runtimeInstalled = null)
     : IMermaidRenderer, IDisposable
 {
     private const string Origin = "https://mermaid.whiteboard.invalid/";
@@ -48,7 +49,7 @@ internal sealed class MermaidRenderer(Func<IntPtr> parentWindow, string? profile
             await _queue.WaitAsync(_lifetime.Token);
             entered = true;
             if (_unavailable is not null) return MermaidDiagram.Failure(_unavailable);
-            if (_controller is null && !RuntimeInstalled())
+            if (_controller is null && !(runtimeInstalled ?? RuntimeInstalled)())
             {
                 _unavailable = MissingRuntime;
                 return MermaidDiagram.Failure(_unavailable);

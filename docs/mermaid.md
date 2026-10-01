@@ -113,7 +113,7 @@ Mermaid CLI dependency on the user's machine. The browser profile is under
 ## Validation
 
 The normal WPF smoke suite uses a fake diagram renderer and requires no browser runtime.
-It also points `WEBVIEW2_BROWSER_EXECUTABLE_FOLDER` at an empty folder to check the
+It also gives the renderer a runtime check that reports no runtime, to check the
 missing-runtime message without starting a browser.
 It covers fence detection, nested blocks, natural-size/shrink-only layout, cached reflow,
 async height fitting, undo/redo, linked ink, ordinary code fences, errors, and document

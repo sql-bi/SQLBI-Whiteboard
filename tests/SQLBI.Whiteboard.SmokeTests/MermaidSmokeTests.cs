@@ -458,29 +458,16 @@ internal static class MermaidSmokeTests
 
     private static async Task CheckMissingRuntime()
     {
-        // The loader honours this override, so an empty folder stands in for a machine
-        // without the runtime and no browser is started.
-        const string Override = "WEBVIEW2_BROWSER_EXECUTABLE_FOLDER";
-        string? previous = Environment.GetEnvironmentVariable(Override);
-        string empty = Directory.CreateTempSubdirectory("whiteboard-no-webview2-").FullName;
-        Environment.SetEnvironmentVariable(Override, empty);
-        try
-        {
-            using var renderer = new MermaidRenderer(
-                () => throw new InvalidOperationException("No window is needed without a runtime."), empty);
-            var first = await renderer.RenderAsync(Flow);
-            var second = await renderer.RenderAsync(Sequence);
-            Assert(first.Image is null && first.Error == MermaidRenderer.MissingRuntime &&
-                second.Error == MermaidRenderer.MissingRuntime,
-                "A missing WebView2 Runtime must be reported as such for every diagram.");
-            Assert(Directory.GetFileSystemEntries(empty).Length == 0,
-                "A missing WebView2 Runtime must not create a browser profile.");
-        }
-        finally
-        {
-            Environment.SetEnvironmentVariable(Override, previous);
-            Directory.Delete(empty, recursive: true);
-        }
+        string profile = Path.Combine(Path.GetTempPath(), "whiteboard-no-webview2-" + Guid.NewGuid().ToString("N"));
+        using var renderer = new MermaidRenderer(
+            () => throw new InvalidOperationException("No window is needed without a runtime."),
+            profile, runtimeInstalled: () => false);
+        var first = await renderer.RenderAsync(Flow);
+        var second = await renderer.RenderAsync(Sequence);
+        Assert(first.Image is null && first.Error == MermaidRenderer.MissingRuntime &&
+            second.Error == MermaidRenderer.MissingRuntime,
+            $"A missing WebView2 Runtime must be reported as such for every diagram, not as '{first.Error}'.");
+        Assert(!Directory.Exists(profile), "A missing WebView2 Runtime must not create a browser profile.");
     }
 
     private static void Assert(bool condition, string message)
