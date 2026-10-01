@@ -164,7 +164,7 @@ internal static class MermaidPersistenceSmokeTests
             "Cancelling an output wait must not cancel the shared canvas rendering.");
     }
 
-    private static async Task CheckExports(BoardDocument prepared)
+    public static async Task CheckExports(BoardDocument prepared, string sourceTag = "flowchart", bool themed = false)
     {
         string folder = Path.Combine(Path.GetTempPath(), "Whiteboard-Mermaid-" + Guid.NewGuid().ToString("N"));
         Directory.CreateDirectory(folder);
@@ -181,10 +181,10 @@ internal static class MermaidPersistenceSmokeTests
                 Assert(!new DocumentFormat.OpenXml.Validation.OpenXmlValidator().Validate(package).Any(), "A Mermaid deck must be schema-valid.");
                 using var zip = ZipFile.OpenRead(pptx);
                 Assert(zip.Entries.Where(entry => entry.FullName.StartsWith("ppt/media/", StringComparison.Ordinal))
-                    .Any(entry => { using var input = entry.Open(); using var bytes = new MemoryStream(); input.CopyTo(bytes); return BluePixels(bytes.ToArray()) > 1000; }),
+                    .Any(entry => { using var input = entry.Open(); using var bytes = new MemoryStream(); input.CopyTo(bytes); return BluePixels(bytes.ToArray(), themed) > 1000; }),
                     "PowerPoint pictures and editable-slide fallbacks must contain the saved diagram.");
                 using var notes = new StreamReader(zip.GetEntry("ppt/notesSlides/notesSlide1.xml")!.Open());
-                Assert(notes.ReadToEnd().Contains("flowchart", StringComparison.Ordinal), "Mermaid source must stay in PowerPoint notes.");
+                Assert(notes.ReadToEnd().Contains(sourceTag, StringComparison.Ordinal), "Mermaid source must stay in PowerPoint notes.");
             }
             foreach (bool vector in new[] { false, true })
             {
@@ -220,14 +220,16 @@ internal static class MermaidPersistenceSmokeTests
     private static TextBoardObject Text(string source) => new(Guid.NewGuid(), 0, new RectD(20, 30, 800, 100),
         "Markdown", Fence(source), 1, TextLanguageIds.Markdown);
 
-    private static int BluePixels(byte[] png)
+    private static int BluePixels(byte[] png, bool themed = false)
     {
         var bitmap = new FormatConvertedBitmap(WpfImageCodec.Decode(png), PixelFormats.Bgra32, null, 0);
         var pixels = new byte[bitmap.PixelWidth * bitmap.PixelHeight * 4];
         bitmap.CopyPixels(pixels, bitmap.PixelWidth * 4, 0);
         int blue = 0;
         for (int i = 0; i < pixels.Length; i += 4)
-            if (pixels[i] > 200 && pixels[i + 1] < 50 && pixels[i + 2] < 50) blue++;
+            if (pixels[i] > 200 && (themed
+                ? pixels[i] > pixels[i + 1] + 8 && pixels[i] > pixels[i + 2] + 8
+                : pixels[i + 1] < 50 && pixels[i + 2] < 50)) blue++;
         return blue;
     }
 

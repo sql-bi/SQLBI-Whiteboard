@@ -12,6 +12,8 @@ mermaid.initialize({
   flowchart: { htmlLabels: false, useMaxWidth: false },
   sequence: { useMaxWidth: false },
   er: { useMaxWidth: false },
+  mindmap: { useMaxWidth: false },
+  state: { useMaxWidth: false },
 });
 
 chrome.webview.addEventListener("message", async event => {
@@ -34,6 +36,13 @@ chrome.webview.addEventListener("message", async event => {
     // not reproduce that nested text layout, and treats some empty rects as 100x100.
     root.querySelectorAll("rect").forEach(rect => {
       if (rect.width.baseVal.value <= 0 || rect.height.baseVal.value <= 0) rect.remove();
+    });
+    // Mermaid 12's SVG-only mind-map labels can be left-anchored even when
+    // their node shape expects a centered label (notably circles).
+    root.querySelectorAll(".mindmap-node > .label").forEach(label => {
+      const box = label.getBBox();
+      const transform = label.transform.baseVal.consolidate();
+      if (transform && box.width > 0) transform.matrix.e = -box.x - box.width / 2;
     });
     for (const text of [...root.querySelectorAll("text")]) {
       const group = document.createElementNS(root.namespaceURI, "g");

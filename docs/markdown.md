@@ -73,11 +73,16 @@ table/text objects. PowerPoint notes retain the source. The image fallback is ca
 
 ## Mermaid prototype
 
-Fenced `mermaid` blocks render flowcharts (`flowchart`/`graph`), sequence diagrams,
-and entity-relationship diagrams. Paste their Markdown source, or drop
+Fenced `mermaid` blocks render flowcharts (`flowchart`/`graph`), sequence diagrams
+(`sequenceDiagram`), entity-relationship diagrams (`erDiagram`), mind maps (`mindmap`),
+and state diagrams (`stateDiagram-v2`, also `stateDiagram`). Paste their Markdown source, or drop
 [the sample file](samples/mermaid-prototype.md) onto the board. Choose **Markdown**
 if your Snippet format order selects another language. Edit with **F2** and commit
 with **Ctrl+Enter**. A copied diagram picture alone does not carry editable Mermaid source.
+
+Mind maps support indented branches, node shapes, and multiline styled labels. State
+diagrams support transitions, start/end markers, nested states, notes, choices,
+forks/joins, and concurrent regions. Try [the mind-map and state samples](samples/mermaid-mindmaps-states.md).
 
 Rendering uses the bundled Mermaid engine through one hidden WebView2 controller, created
 on the first new or changed diagram. Generating diagrams requires the Microsoft Edge WebView2 Runtime. No diagram source
@@ -107,7 +112,7 @@ metadata and can drop it when saving. Runtime installation is not added by this 
 
 The prototype accepts up to 16 distinct diagrams per Markdown container, 12,000 characters
 per diagram, and 200 flowchart edges. Embedded configuration, HTML labels, links,
-remote images, and external fonts are not enabled. Complex layouts and other diagram
+remote images, external fonts, and icon-font packs are not enabled. Complex layouts and other diagram
 families require further validation.
 
 ## Validation

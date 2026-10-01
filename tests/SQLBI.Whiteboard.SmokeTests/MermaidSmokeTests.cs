@@ -19,6 +19,50 @@ internal static class MermaidSmokeTests
     private const string Sequence = "sequenceDiagram\n participant U as User\n participant W as Whiteboard\n U->>W: Paste Markdown\n W-->>U: Draw diagram";
     private const string Er = "erDiagram\n CUSTOMER ||--o{ ORDER : places\n CUSTOMER {\n int id PK\n string name\n }\n ORDER {\n int id PK\n int customerId FK\n }";
     private const string Styled = "flowchart TD\n A[\"`**Revenue** in €\nCost and margin`\"] --> B[\"Café 日本語\"]";
+    private const string Mindmap = "mindmap\n  root((DAX learning))\n    Context\n      Row context\n      Filter context\n    Measures\n      Revenue\n      Margin\n    Practice\n      Café 日本語";
+    private const string State = "stateDiagram-v2\n  [*] --> Ready\n  Ready --> Working: Start\n  state Working {\n    [*] --> Reading\n    Reading --> Drawing: Commit\n    Drawing --> [*]\n  }\n  Working --> Ready: Continue\n  Ready --> [*]: Close\n  note right of Ready\n    Waiting for input\n  end note";
+    private const string MindmapShapes = """
+        mindmap
+          root((Shapes))
+            square[Square]
+            rounded(Rounded)
+            circle((Circle))
+            bang))Bang((
+            cloud)Cloud(
+            hexagon{{Hexagon}}
+            styled["`**Bold** and *italic*
+        Second line`"]
+        """;
+    private const string StateBranches = """
+        stateDiagram-v2
+          direction LR
+          state decision <<choice>>
+          state split <<fork>>
+          state joined <<join>>
+          [*] --> decision
+          decision --> split: Ready
+          decision --> Finished: Skip
+          split --> Validate
+          split --> Preview
+          Validate --> joined
+          Preview --> joined
+          joined --> Finished
+          Finished --> [*]
+          classDef completed fill:#ffeecc,stroke:#aa6600
+          class Finished completed
+        """;
+    private const string StateConcurrent = """
+        stateDiagram-v2
+          state Active {
+            [*] --> Draft
+            Draft --> Committed
+            --
+            [*] --> Waiting
+            Waiting --> Notified
+          }
+          [*] --> Active
+          Active --> [*]
+        """;
     private static string Fence(string source) => "```mermaid\n" + source + "\n```";
 
     public static void Run(bool browser, string? previewPath)
@@ -48,7 +92,13 @@ internal static class MermaidSmokeTests
     private static async Task Check()
     {
         Assert(MermaidSource.Validate(Flow) is null && MermaidSource.Validate(Sequence) is null &&
-            MermaidSource.Validate(Er) is null, "The prototype must accept its three diagram families.");
+            MermaidSource.Validate(Er) is null && MermaidSource.Validate(Mindmap) is null &&
+            MermaidSource.Validate(State) is null, "The prototype must accept its five diagram families.");
+        Assert(MermaidSource.Validate(State.Replace("stateDiagram-v2", "stateDiagram", StringComparison.Ordinal)) is null &&
+            MermaidSource.Validate("%% Comment\r\n" + Mindmap.ReplaceLineEndings("\r\n")) is null,
+            "State aliases, leading comments, and Windows line endings must be accepted.");
+        foreach (string prefix in new[] { "mindmap-bogus", "stateDiagram-v3", "stateDiagram-v2-extra", "mindmapper" })
+            Assert(MermaidSource.Validate(prefix + "\n A --> B") is not null, "Unsupported type suffixes must not pass validation.");
         Assert(MermaidSource.Validate("%% Comment\n" + Flow) is null, "A leading comment must be allowed.");
         Assert(MermaidSource.Validate("pie\n\"A\": 10") is not null, "Unsupported types need an explicit message.");
         Assert(MermaidSource.Validate("%%{init: {'securityLevel':'loose'}}%%\n" + Flow) is not null &&
@@ -58,6 +108,12 @@ internal static class MermaidSmokeTests
             "Oversized diagrams must be rejected before reaching the browser.");
         Assert(MarkdownContent.Parse("```MERMAID\n" + Flow + "\n```").DiagramSources.Count == 1,
             "The Mermaid fence tag must be case insensitive.");
+        var additional = MarkdownContent.Parse(Fence(Mindmap) + "\n\n" + Fence(State) + "\n\n" + Fence(Mindmap));
+        var additionalRenderer = new FakeRenderer();
+        await additional.PrepareDiagramsAsync(additionalRenderer);
+        Assert(additionalRenderer.Count == 2 && additional.DiagramSources.Count == 2 &&
+            Images(additional.Layout(600).Drawing).Count() == 3,
+            "Mind maps and state diagrams must share the normal Markdown layout and source cache.");
 
         string source = "# Mixed Markdown\n\n" + Fence(Flow) + "\n\n| A | B |\n|---|---|\n| One | Two |\n\n" + Fence(Flow);
         var content = MarkdownContent.Parse(source);
@@ -212,26 +268,43 @@ internal static class MermaidSmokeTests
         using var renderer = new MermaidRenderer(() => host.Handle,
             Path.Combine(Path.GetTempPath(), "SQLBI.Whiteboard.MermaidTests"));
         var results = new List<MermaidDiagram>();
-        foreach (string source in new[] { Flow, Sequence, Er })
+        var sources = new (string Source, string[] Labels)[]
+        {
+            (Flow, ["Question", "Needs", "data?", "Query", "model", "Answer"]),
+            (Sequence, ["User", "Whiteboard", "Paste Markdown", "Draw diagram"]),
+            (Er, ["CUSTOMER", "ORDER", "places", "customerId"]),
+            (Mindmap, ["DAX", "learning", "Context", "Row", "Filter", "Measures", "Revenue", "Margin", "Practice", "Café", "日本語"]),
+            (State, ["Ready", "Working", "Reading", "Drawing", "Commit", "Continue", "Waiting", "input"]),
+            (MindmapShapes, ["Shapes", "Square", "Rounded", "Circle", "Bang", "Cloud", "Hexagon", "Bold", "italic", "Second", "line"]),
+            (StateBranches, ["Ready", "Skip", "Validate", "Preview", "Finished"]),
+            (StateConcurrent, ["Active", "Draft", "Committed", "Waiting", "Notified"]),
+            ("stateDiagram\n  [*] --> Ready\n  Ready --> [*]", ["Ready"]),
+        };
+        foreach (var (source, labels) in sources)
         {
             var clock = Stopwatch.StartNew();
             var result = await renderer.RenderAsync(source);
             Assert(result.Image is { IsFrozen: true, Width: > 0, Height: > 0 },
                 $"Browser rendering failed for {source.Split('\n')[0]}: {result.Error}");
             results.Add(result);
-            CheckLabels(result, source == Flow ? ["Question", "Needs", "data?", "Query", "model", "Answer"] :
-                source == Sequence ? ["User", "Whiteboard", "Paste Markdown", "Draw diagram"] :
-                ["CUSTOMER", "ORDER", "places", "customerId"]);
+            CheckLabels(result, labels);
             if (previewPath is not null)
                 File.WriteAllText(Path.ChangeExtension(previewPath, $"{results.Count}.svg"), result.Svg);
+            if (source is Mindmap or MindmapShapes)
+                CheckMindmapLabels(result, source == Mindmap ? ["DAX", "learning"] : ["Shapes"]);
+            if (source == StateBranches)
+                Assert(PaintedBounds(result.Image!.Drawing, Matrix.Identity).Any(item =>
+                    item.Drawing is GeometryDrawing { Brush: SolidColorBrush brush } && brush.Color == Color.FromRgb(255, 238, 204)),
+                    "State class colors must survive SVG normalization.");
             Console.WriteLine($"Mermaid {source.Split('\n')[0]}: {clock.ElapsedMilliseconds} ms, " +
                 $"{result.Image!.Width:0} x {result.Image.Height:0}");
         }
         int count = renderer.RenderCount;
-        Assert(ReferenceEquals(results[0], await renderer.RenderAsync(Flow)) && renderer.RenderCount == count,
-            "An unchanged diagram must reuse its cached frozen image.");
-        var invalid = await renderer.RenderAsync("flowchart LR\n A[");
-        Assert(invalid.Error is not null, "Invalid Mermaid must report an error.");
+        for (int i = 0; i < sources.Length; i++)
+            Assert(ReferenceEquals(results[i], await renderer.RenderAsync(sources[i].Source)) && renderer.RenderCount == count,
+                "An unchanged diagram must reuse its cached frozen image.");
+        foreach (string invalid in new[] { "flowchart LR\n A[", "mindmap\n root\nother", "stateDiagram-v2\n state Missing {" })
+            Assert((await renderer.RenderAsync(invalid)).Error is not null, "Invalid Mermaid must report an error.");
         Assert((await renderer.RenderAsync("flowchart LR\n A --> B")).Image is not null,
             "A syntax error must not prevent later diagrams from rendering.");
         var styled = await renderer.RenderAsync(Styled);
@@ -239,7 +312,7 @@ internal static class MermaidSmokeTests
         CheckLabels(styled, ["Revenue", "€", "Cost", "margin", "Café", "日本語"]);
         string markdown = "# Mermaid prototype\n\n" + Fence(Flow) + "\n\n" +
             "| Input | Output |\n|---|---|\n| Mermaid source | Cached WPF drawing |\n\n" +
-            Fence(Sequence) + "\n\n" + Fence(Er) + "\n\n" + Fence(Styled);
+            string.Join("\n\n", sources.Skip(1).Select(item => Fence(item.Source))) + "\n\n" + Fence(Styled);
         var content = MarkdownContent.Parse(markdown);
         await content.PrepareDiagramsAsync(renderer);
         var board = new BoardDocument();
@@ -255,9 +328,17 @@ internal static class MermaidSmokeTests
         using var closedRenderer = new MermaidRenderer(() => throw new InvalidOperationException("No browser may start"));
         closedRenderer.Dispose();
         var offline = await MermaidDocument.CaptureAsync(loaded, closedRenderer);
-        Assert(offline.Objects.OfType<TextBoardObject>().Single().MermaidSnapshots.Length == 4 &&
+        Assert(offline.Objects.OfType<TextBoardObject>().Single().MermaidSnapshots.Length == sources.Length + 1 &&
             beforePreview.SequenceEqual(BoardPreviewRenderer.Render(offline)!) && closedRenderer.RenderCount == 0,
-            "Real flow, sequence, ER, and styled diagrams must reopen pixel-identically with no live renderer.");
+            "All five diagram families and styled labels must reopen pixel-identically with no live renderer.");
+        foreach (string source in new[] { Mindmap, State })
+        {
+            var export = new BoardDocument();
+            export.AddObject(new TextBoardObject(Guid.NewGuid(), 0, new RectD(0, 0, 890, 100),
+                "Markdown", Fence(source), 1, TextLanguageIds.Markdown));
+            var saved = await MermaidDocument.CaptureAsync(export, renderer);
+            await MermaidPersistenceSmokeTests.CheckExports(saved, source.Split('\n')[0], themed: true);
+        }
         if (previewPath is not null)
         {
             var layout = content.Layout(850);
@@ -308,6 +389,31 @@ internal static class MermaidSmokeTests
         string glyphText = string.Concat(GlyphText(diagram.Image!.Drawing));
         foreach (string label in labels)
             Assert(glyphText.Contains(label, StringComparison.Ordinal), "Missing WPF diagram label: " + label);
+    }
+
+    private static void CheckMindmapLabels(MermaidDiagram diagram, string[] rootLabels)
+    {
+        var shapes = PaintedBounds(diagram.Image!.Drawing, Matrix.Identity).ToArray();
+        var root = shapes.Single(item => item.Drawing is GeometryDrawing { Brush: SolidColorBrush brush } &&
+            brush.Color == Color.FromRgb(0, 0, 236)).Bounds;
+        var whiteLabels = shapes.Where(item => item.Drawing is GlyphRunDrawing
+            { ForegroundBrush: SolidColorBrush brush, GlyphRun.Characters: { } characters } &&
+            brush.Color == System.Windows.Media.Colors.White && rootLabels.Contains(new string(characters.ToArray()))).ToArray();
+        Assert(whiteLabels.Length == rootLabels.Length && whiteLabels.All(item => root.Contains(item.Bounds)),
+            $"The white mind-map root label must stay inside its blue circle {root}, not start at its center: " +
+            string.Join("; ", whiteLabels.Select(item => item.Bounds)));
+    }
+
+    private static IEnumerable<(Drawing Drawing, Rect Bounds)> PaintedBounds(Drawing drawing, Matrix parent)
+    {
+        if (drawing is DrawingGroup group)
+        {
+            var transform = group.Transform?.Value ?? Matrix.Identity;
+            transform.Append(parent);
+            foreach (var child in group.Children)
+                foreach (var item in PaintedBounds(child, transform)) yield return item;
+        }
+        else yield return (drawing, new MatrixTransform(parent).TransformBounds(drawing.Bounds));
     }
 
     private static IEnumerable<string> GlyphText(Drawing drawing)

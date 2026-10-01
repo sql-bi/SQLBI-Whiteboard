@@ -1,6 +1,6 @@
 # Mermaid prototype
 
-This branch tests local diagram rendering inside existing Markdown containers. It does
+This branch tests local diagram rendering inside existing Markdown containers. It
 adds optional snapshot metadata to text containers. It does not change container commands,
 input routing, or language selection.
 The supported syntax and user workflow are in [markdown.md](markdown.md#mermaid-prototype).
@@ -26,6 +26,9 @@ It removes empty rectangles and flattens nested `tspan` elements because SharpVe
 does not reproduce those Mermaid constructs correctly. It also removes links, stylesheets,
 scripts, and event attributes. `MermaidSvg` validates the normalized SVG and `SvgImageCodec` converts it to a frozen
 WPF drawing off the UI thread. Ordinary SVG import is unchanged.
+The adapter centers SVG-only mind-map labels on their nodes: Mermaid 12 can leave them
+left-anchored in a centered shape, notably a circle. This adjustment uses the browser's
+label bounds before text flattening; it does not modify the bundled engine.
 The resulting drawing is bounded to Mermaid's declared SVG viewport, because invisible
 geometry in the converted drawing can otherwise inflate its reported natural size.
 
@@ -109,15 +112,20 @@ $env:SQLBI_WHITEBOARD_MERMAID_PREVIEW = "$env:TEMP\whiteboard-mermaid.png"
 dotnet run --project tests/SQLBI.Whiteboard.SmokeTests -c Release --no-build
 ```
 
-The integration checks render all three diagram families and styled multiline Unicode
+The integration checks render all five diagram families and styled multiline Unicode
 labels; inspect the WPF glyphs and SVG normalization; check cache reuse and syntax-error
-recovery; reopen all four diagrams from saved snapshots with a disposed renderer and compare
-preview pixels; and dispose during rendering and startup. The optional preview path produces
-a mixed Markdown PNG and normalized SVG files for the three diagram families.
+recovery; reopen the diagrams from saved snapshots with a disposed renderer and compare
+preview pixels; and dispose during rendering and startup. Mind-map coverage includes
+nested branches, square/rounded/circle/bang/cloud/hexagon shapes, styled multiline labels,
+and root-label containment. State coverage includes the legacy keyword, nested states,
+notes, choices, forks/joins, concurrent regions, direction, and classes. Both new families
+also pass through picture/editable PowerPoint and picture/vector PDF output. The optional
+preview path produces a mixed Markdown PNG and normalized SVG files for the test diagrams.
 
 Manual checks before expanding the feature:
 
-1. Drop `docs/samples/mermaid-prototype.md` onto the board and compare the diagrams.
+1. Drop `docs/samples/mermaid-prototype.md` and `docs/samples/mermaid-mindmaps-states.md`
+   onto the board and compare the diagrams.
 2. Edit a label with **F2**, commit with **Ctrl+Enter**, then undo and redo. Try malformed
    syntax and correct it. Try a larger diagram from an actual workshop.
 3. Draw with the Cintiq while a new diagram is rendering, then after it completes.

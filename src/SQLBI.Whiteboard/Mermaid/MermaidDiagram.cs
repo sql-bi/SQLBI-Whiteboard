@@ -28,9 +28,9 @@ internal static class MermaidSource
         if (source.Length > MaximumCharacters) return "This prototype accepts up to 12,000 characters per diagram.";
         if (source.Contains("%%{", StringComparison.Ordinal) || source.TrimStart().StartsWith("---", StringComparison.Ordinal))
             return "Diagram configuration directives are not supported in this prototype.";
-        if (!Regex.IsMatch(source, @"\A(?:\s|%%[^\r\n]*(?:\r?\n|$))*(?:flowchart|graph|sequenceDiagram|erDiagram)\b",
+        if (!Regex.IsMatch(source, @"\A(?:\s|%%[^\r\n]*(?:\r?\n|$))*(?:flowchart|graph|sequenceDiagram|erDiagram|mindmap|stateDiagram(?:-v2)?)(?:\s|;|$)",
                 RegexOptions.CultureInvariant | RegexOptions.NonBacktracking))
-            return "This prototype supports flowcharts, sequence diagrams, and ER diagrams.";
+            return "Supported diagrams: flowcharts, sequence diagrams, ER diagrams, mind maps, and state diagrams.";
         return null;
     }
 }
