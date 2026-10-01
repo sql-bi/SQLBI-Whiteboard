@@ -6,6 +6,9 @@ using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using System.Windows.Threading;
 using System.Xml.Linq;
+using SQLBI.Whiteboard.Core.Commands;
+using SQLBI.Whiteboard.Core.Geometry;
+using SQLBI.Whiteboard.Core.Model;
 
 namespace SQLBI.Whiteboard.SmokeTests;
 
@@ -63,8 +66,8 @@ internal static class MermaidSmokeTests
         await content.PrepareDiagramsAsync(fake);
         var after = content.Layout(600);
         Assert(fake.Count == 1 && content.DiagramSources.Count == 1, "Duplicate source must render once.");
-        Assert(after.Drawing.IsFrozen && after.Height == before.Height && !ReferenceEquals(before, after),
-            "Rendering must refresh a frozen drawing without moving later Markdown or changing container height.");
+        Assert(after.Drawing.IsFrozen && after.Height < before.Height && !ReferenceEquals(before, after),
+            "Rendering must refresh the frozen drawing and compact the layout to its natural height.");
         Assert(ReferenceEquals(after, content.Layout(600)), "An unchanged layout must be reused.");
         for (int i = 0; i < 100; i++) content.Layout(300 + i);
         Assert(fake.Count == 1, "Reflow and zoom must not rerun the diagram engine.");
@@ -83,6 +86,121 @@ internal static class MermaidSmokeTests
         var bounded = new FakeRenderer();
         await many.PrepareDiagramsAsync(bounded);
         Assert(bounded.Count == MermaidSource.MaximumDiagrams, "A document must not queue unlimited diagrams.");
+        await CheckSizing();
+    }
+
+    private static async Task CheckSizing()
+    {
+        var small = MarkdownContent.Parse(Fence("flowchart LR\n Small --> Diagram"));
+        await small.PrepareDiagramsAsync(new FakeRenderer(width: 400, height: 200));
+        var natural = small.Layout(820);
+        Assert(Images(natural.Drawing).Single().Rect == new Rect(210, 10, 400, 200) && natural.Height == 220,
+            "A 400x200 diagram must stay at 100%, be centered, and use only its height plus padding.");
+        var wide = MarkdownContent.Parse(Fence("flowchart LR\n Wide --> Diagram"));
+        var renderer = new FakeRenderer(width: 1000, height: 500);
+        await wide.PrepareDiagramsAsync(renderer);
+        var fitted = wide.Layout(820);
+        Assert(Images(fitted.Drawing).Single().Rect == new Rect(10, 10, 800, 400) && fitted.Height == 420,
+            "A wide diagram must shrink proportionally to the available width.");
+        Assert(wide.Layout(420).Height == 220 && wide.Layout(2020).Height == 520 && renderer.Count == 1,
+            "Reflow must fit the available width, stop at natural size, and reuse the cached diagram.");
+
+        string source = Fence("flowchart TD\n Tall --> Diagram");
+        var content = MarkdownContent.Parse(source);
+        var delayed = new DelayedRenderer();
+        var preparation = content.PrepareDiagramsAsync(delayed);
+        var document = new BoardDocument();
+        var history = new CommandHistory();
+        document.Changed += (_, _) => MermaidContainerLayout.Refresh(document);
+        var original = new TextBoardObject(Guid.NewGuid(), 0, new RectD(20, 30, 820, 214),
+            "Test", source, LanguageId: TextLanguageIds.Markdown);
+        history.Execute(new AddObjectCommand(original), document);
+        Assert(!content.DiagramsReady && MermaidContainerLayout.Fit(original) == original,
+            "Pending diagrams must not normalize a container to an incomplete result.");
+        var ink = InkStrokeObject.Create([new InkPoint(new PointD(40, 80), 0.5f, 1)],
+            PenStyle.Default, 1, containerId: original.Id);
+        document.AddObject(ink);
+        delayed.Complete(await new FakeRenderer(width: 400, height: 900).RenderAsync(""));
+        await preparation;
+        Assert(!MermaidContainerLayout.Refresh(document, original.Id),
+            "Completing a render must not alter a container's active source editor.");
+        Assert(MermaidContainerLayout.Refresh(document), "Completing a diagram must update the container height.");
+        var measured = document.Objects.OfType<TextBoardObject>().Single();
+        Assert(measured.Bounds == new RectD(20, 30, 820, 974) && measured.VisualScale == 1 &&
+            ReferenceEquals(document.LinkedStrokes(original.Id).Single(), ink),
+            "Natural height must grow for tall diagrams without moving, scaling, or stretching ink.");
+        Assert(!MermaidContainerLayout.Refresh(document), "A fitted container must not produce repeated document changes.");
+        history.Undo(document);
+        Assert(!document.Objects.OfType<TextBoardObject>().Any() && !history.CanUndo,
+            "Async fitting must not add an undo step after paste.");
+        history.Redo(document);
+        Assert(document.Objects.OfType<TextBoardObject>().Single() == measured,
+            "Redo must restore the measured size, not the pending placeholder dimensions.");
+
+        var scaledBounds = measured.Bounds.WithSize(measured.Bounds.Width * 2, measured.Bounds.Height * 2);
+        var scaled = (TextBoardObject)measured.WithBounds(scaledBounds);
+        var scaledInk = ink.TransformWithContainer(measured.Bounds, scaledBounds);
+        history.Execute(new ReplaceObjectsCommand([measured, ink], [scaled, scaledInk]), document);
+        Assert(document.Objects.OfType<TextBoardObject>().Single() == scaled &&
+            document.LinkedStrokes(original.Id).Single() == scaledInk,
+            "Explicit corner resizing must still scale the container and its linked ink.");
+        history.Undo(document);
+        Assert(document.Objects.OfType<TextBoardObject>().Single() == measured &&
+            document.LinkedStrokes(original.Id).Single() == ink, "Resize undo must restore both the drawing and ink.");
+        history.Redo(document);
+        Assert(document.Objects.OfType<TextBoardObject>().Single() == scaled, "Resize redo must keep the chosen visual scale.");
+
+        var edited = scaled with { Text = Fence("flowchart LR\n Changed --> Source") };
+        var placeholder = edited with { Bounds = edited.Bounds.WithSize(edited.Bounds.Width, 214) };
+        Assert(MermaidContainerLayout.InkBoundsAfterEdit(scaled, placeholder) == scaled.Bounds &&
+            MermaidContainerLayout.InkBoundsAfterEdit(scaled, edited) == scaled.Bounds,
+            "Editing Mermaid must not squeeze annotations into a placeholder or depend on render-cache timing.");
+        Assert(MermaidContainerLayout.InkBoundsAfterEdit(measured, scaled) == scaled.Bounds,
+            "An explicit width change while editing must still scale linked ink.");
+        var plainBefore = measured with { LanguageId = TextLanguageIds.Plain };
+        var plainAfter = plainBefore with { Bounds = placeholder.Bounds };
+        Assert(MermaidContainerLayout.InkBoundsAfterEdit(plainBefore, plainAfter) == plainAfter.Bounds,
+            "Other text editors must keep their existing linked-ink transform behavior.");
+        history.Execute(new ReplaceObjectCommand(scaled, edited), document);
+        MermaidContainerLayout.Refresh(document);
+        Assert(document.Objects.OfType<TextBoardObject>().Single() == edited,
+            "An older prepared source must not resize a newer pending edit.");
+        history.Undo(document);
+        Assert(document.Objects.OfType<TextBoardObject>().Single() == scaled,
+            "Undoing a source edit must recover its cached natural layout.");
+
+        var multiple = MarkdownContent.Parse(Fence("flowchart LR\n First --> A") + "\n\n" + Fence("flowchart LR\n Second --> B"));
+        var pending = new DelayedRenderer();
+        var initial = multiple.Layout(600);
+        var batch = multiple.PrepareDiagramsAsync(pending);
+        pending.Complete(await new FakeRenderer().RenderAsync(""));
+        await Dispatcher.Yield(DispatcherPriority.Background);
+        Assert(!multiple.DiagramsReady && ReferenceEquals(initial, multiple.Layout(600)),
+            "Multiple diagrams must publish one complete layout instead of repeatedly reflowing following text.");
+        pending.Complete(await new FakeRenderer().RenderAsync(""));
+        await batch;
+        Assert(multiple.DiagramsReady && Images(multiple.Layout(600).Drawing).Count() == 2,
+            "All diagrams must become available together after preparation finishes.");
+    }
+
+    private static IEnumerable<ImageDrawing> Images(Drawing drawing)
+    {
+        if (drawing is ImageDrawing image) yield return image;
+        else if (drawing is DrawingGroup group)
+            foreach (var child in group.Children)
+                foreach (var item in Images(child)) yield return item;
+    }
+
+    private sealed class DelayedRenderer : IMermaidRenderer
+    {
+        private TaskCompletionSource<MermaidDiagram> _pending = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        public Task<MermaidDiagram> RenderAsync(string source) => _pending.Task;
+        public void Complete(MermaidDiagram result)
+        {
+            var pending = _pending;
+            _pending = new(TaskCreationOptions.RunContinuationsAsynchronously);
+            pending.SetResult(result);
+        }
     }
 
     private static async Task CheckBrowser(string? previewPath)
@@ -153,6 +271,13 @@ internal static class MermaidSmokeTests
     private static void CheckLabels(MermaidDiagram diagram, string[] labels)
     {
         var svg = XDocument.Parse(diagram.Svg!);
+        Assert(Math.Abs(diagram.Image!.Width - (double)svg.Root!.Attribute("width")!) < 0.001 &&
+            Math.Abs(diagram.Image.Height - (double)svg.Root.Attribute("height")!) < 0.001,
+            "WPF dimensions must match Mermaid's declared viewport, including invisible geometry outside it.");
+        var viewport = new Rect(0, 0, diagram.Image.Width, diagram.Image.Height);
+        viewport.Inflate(1, 1);
+        foreach (var bounds in GlyphBounds(diagram.Image.Drawing, Matrix.Identity))
+            Assert(viewport.Contains(bounds), "Bounding the SVG viewport must not clip a diagram label: " + bounds);
         var text = svg.Descendants().Where(element => element.Name.LocalName == "text").ToArray();
         Assert(text.Length > 0 && text.All(element => (string?)element.Attribute("text-anchor") == "start"),
             "Flattened labels must retain their measured left-edge position after CSS is removed.");
@@ -175,14 +300,26 @@ internal static class MermaidSmokeTests
                 foreach (string text in GlyphText(child)) yield return text;
     }
 
-    private sealed class FakeRenderer(bool fail = false) : IMermaidRenderer
+    private static IEnumerable<Rect> GlyphBounds(Drawing drawing, Matrix parent)
+    {
+        if (drawing is GlyphRunDrawing glyph) yield return new MatrixTransform(parent).TransformBounds(glyph.Bounds);
+        else if (drawing is DrawingGroup group)
+        {
+            var transform = group.Transform?.Value ?? Matrix.Identity;
+            transform.Append(parent);
+            foreach (var child in group.Children)
+                foreach (var bounds in GlyphBounds(child, transform)) yield return bounds;
+        }
+    }
+
+    private sealed class FakeRenderer(bool fail = false, double width = 300, double height = 100) : IMermaidRenderer
     {
         public int Count { get; private set; }
         public Task<MermaidDiagram> RenderAsync(string source)
         {
             Count++;
             if (fail) return Task.FromResult(MermaidDiagram.Failure("Test error"));
-            var drawing = new GeometryDrawing(Brushes.Blue, null, new RectangleGeometry(new Rect(0, 0, 300, 100)));
+            var drawing = new GeometryDrawing(Brushes.Blue, null, new RectangleGeometry(new Rect(0, 0, width, height)));
             var image = new DrawingImage(drawing);
             image.Freeze();
             return Task.FromResult(new MermaidDiagram(image, null));

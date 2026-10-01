@@ -25,11 +25,23 @@ It removes empty rectangles and flattens nested `tspan` elements because SharpVe
 does not reproduce those Mermaid constructs correctly. It also removes links, stylesheets,
 scripts, and event attributes. `SvgImageCodec` converts that normalized SVG to a frozen
 WPF drawing off the UI thread. Ordinary SVG import is unchanged.
+The resulting drawing is bounded to Mermaid's declared SVG viewport, because invisible
+geometry in the converted drawing can otherwise inflate its reported natural size.
 
-Each diagram has a stable preview area with height `max(160, width * 0.7)` and preserved
-aspect ratio. A completed drawing invalidates the cached Markdown layout and the canvas.
-This prevents asynchronous rendering from changing container geometry or linked ink.
-Natural-height layout needs an explicit decision about text edit history and annotations.
+Diagram scale is `min(1, availableWidth / naturalWidth)`, with 10 board units of padding
+on each side. Diagrams are centered horizontally and use their scaled natural height
+plus padding. Pending and failed diagrams occupy a 160-unit placeholder. A source's
+results are published together, so multiple diagrams cause only one layout update.
+
+`MermaidContainerLayout` derives the container height from the prepared source, current
+width, and visual scale. It refreshes after rendering and after document changes, including
+undo/redo, without adding a history entry or transforming linked ink. Pending sources and
+the active source editor are left alone. Exiting the editor applies any measurement that
+finished during the edit. A late result fits only current content; it cannot restore a
+deleted container or overwrite a newer edit. Existing commands still own movement, corner
+scaling, reflow, and edits. During a Mermaid source edit, only an explicit width change
+scales linked ink; changing the text does not squeeze annotations into a pending placeholder.
+Source edits and reflow can move content under annotations.
 
 ## Bundled dependency
 
@@ -49,8 +61,9 @@ Mermaid CLI dependency on the user's machine. The browser profile is under
 ## Validation
 
 The normal WPF smoke suite uses a fake diagram renderer and requires no browser runtime.
-It covers fence detection, nested blocks, layout invalidation, stable geometry, duplicate
-source reuse, ordinary code fences, errors, and document limits.
+It covers fence detection, nested blocks, natural-size/shrink-only layout, cached reflow,
+async height fitting, undo/redo, linked ink, ordinary code fences, errors, and document
+limits. Multiple-diagram results are checked for atomic layout publication.
 
 Run the opt-in integration checks on Windows with WebView2 installed:
 
@@ -80,7 +93,7 @@ Manual checks before expanding the feature:
 
 ## Deferred integration
 
-Persisted SVG snapshots, natural-height layout, export completion barriers, and runtime
+Persisted SVG snapshots, export completion barriers, and runtime
 installer/distribution validation follow user testing. Save/load currently persists only
 the Markdown source; previews and exports can capture a pending placeholder. Additional
 Mermaid families, custom themes, and wider syntax compatibility are outside this prototype.

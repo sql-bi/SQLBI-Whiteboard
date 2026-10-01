@@ -25,11 +25,13 @@ internal sealed class MarkdownContent
     public MarkdownDocument Document { get; }
     public IReadOnlyList<string> DiagramSources { get; }
     public bool PreparationStarted => _preparation is not null;
+    public bool DiagramsReady { get; private set; }
 
     public Task PrepareDiagramsAsync(IMermaidRenderer renderer) => _preparation ??= PrepareCoreAsync(renderer);
 
     private async Task PrepareCoreAsync(IMermaidRenderer renderer)
     {
+        var results = new Dictionary<string, MermaidDiagram>(StringComparer.Ordinal);
         for (int index = 0; index < DiagramSources.Count; index++)
         {
             string source = DiagramSources[index];
@@ -44,11 +46,15 @@ internal sealed class MarkdownContent
             {
                 result = MermaidDiagram.Failure("The diagram renderer is unavailable.");
             }
-            lock (_layouts)
-            {
-                _diagrams[source] = result;
-                _layouts.Clear();
-            }
+            results[source] = result;
+        }
+        // Publish one layout change per source, so several diagrams do not
+        // repeatedly move the text that follows them as each one finishes.
+        lock (_layouts)
+        {
+            foreach (var (source, result) in results) _diagrams[source] = result;
+            _layouts.Clear();
+            DiagramsReady = true;
         }
     }
 

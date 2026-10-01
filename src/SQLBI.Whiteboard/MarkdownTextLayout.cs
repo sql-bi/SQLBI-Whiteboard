@@ -146,18 +146,20 @@ internal sealed class MarkdownTextLayout
 
     private double DrawDiagram(DrawingContext context, string source, double width)
     {
-        // Prototype slots keep layout and linked ink stable while rendering finishes.
-        // Natural-height layout will need to participate in text edit history.
-        double height = Math.Max(160, width * 0.7);
+        _diagrams.TryGetValue(source, out var diagram);
+        var image = diagram?.Image;
+        bool rendered = image is { Width: > 0, Height: > 0 };
+        // SVG units are unscaled board units. Fit wide diagrams without enlarging
+        // smaller ones; the normal container/camera transforms apply afterward.
+        double factor = rendered ? Math.Min(1, Math.Max(1, width - 20) / image!.Width) : 1;
+        double height = rendered ? image!.Height * factor + 20 : 160;
         context.DrawRectangle(Brushes.White, Rule, new Rect(0, 0, width, height));
         context.PushClip(new RectangleGeometry(new Rect(0, 0, width, height)));
-        _diagrams.TryGetValue(source, out var diagram);
-        if (diagram?.Image is { } image && image.Width > 0 && image.Height > 0)
+        if (rendered)
         {
-            double factor = Math.Min(Math.Max(1, width - 20) / image.Width, (height - 20) / image.Height);
-            double w = image.Width * factor;
+            double w = image!.Width * factor;
             double h = image.Height * factor;
-            context.DrawImage(image, new Rect((width - w) / 2, (height - h) / 2, w, h));
+            context.DrawImage(image, new Rect((width - w) / 2, 10, w, h));
         }
         else
         {

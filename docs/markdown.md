@@ -85,13 +85,16 @@ is sent to a server. Generated SVG becomes a frozen WPF drawing, shared by uncha
 diagram sources and replayed during drawing, pan, and zoom. No browser control is placed
 on the canvas. See [mermaid-prototype.md](mermaid-prototype.md) for implementation details.
 
-Each diagram currently occupies a fixed preview area proportional to the text width;
-wide diagrams can leave blank space. The area stays the same while rendering completes,
-so annotations and following text do not move asynchronously. Syntax errors, unsupported
-diagram types, or an unavailable runtime show an explanation and source in that area.
+Diagrams use their natural size at 100%, shrinking proportionally only when they exceed
+the available width. Smaller diagrams are centered, and height fits the rendered content.
+Canvas zoom and corner resizing still scale the whole container; reflow recalculates
+the width limit. After rendering, the container's height updates without an extra undo
+step or stretching existing ink. Wait for the diagrams to appear before annotating, since
+the content below a pending diagram moves when its height is known. Syntax errors,
+unsupported diagram types, or an unavailable runtime show an explanation and source.
 
 The board saves the Markdown source and regenerates diagrams on opening. Persisted
-diagram snapshots, natural-height layout, an installer runtime prerequisite, and export
+diagram snapshots, an installer runtime prerequisite, and export
 coordination are not part of this prototype. Wait for diagrams to appear before exporting;
 an export or board preview made while they are pending contains placeholders.
 

@@ -592,6 +592,7 @@ public partial class MainWindow : Window
     private void Document_Changed(object? sender, EventArgs e)
     {
         _autosaveDirty = true;
+        if (MermaidContainerLayout.Refresh(_document, _textEditBefore?.Id)) return;
         PrepareMermaidDiagrams();
         var liveViewIds = _document.Objects.OfType<LiveViewBoardObject>()
             .Select(item => item.Id)
@@ -626,7 +627,7 @@ public partial class MainWindow : Window
     {
         if (_closeConfirmed) return;
         foreach (var text in _document.Objects.OfType<TextBoardObject>()
-                     .Where(text => text.LanguageId == TextLanguageIds.Markdown))
+                     .Where(text => text.LanguageId == TextLanguageIds.Markdown).ToArray())
         {
             var content = MarkdownContent.Parse(text.Text);
             if (content.DiagramSources.Count == 0 || content.PreparationStarted) continue;
@@ -639,7 +640,10 @@ public partial class MainWindow : Window
     {
         await content.PrepareDiagramsAsync(_mermaidRenderer!);
         if (!_closeConfirmed && ReferenceEquals(document, _document))
-            SceneSurface.InvalidateVisual();
+        {
+            if (!MermaidContainerLayout.Refresh(document, _textEditBefore?.Id))
+                SceneSurface.InvalidateVisual();
+        }
     }
 
     // Only touch reaches here now. Pen ink is collected from the pen's own
@@ -4888,6 +4892,7 @@ public partial class MainWindow : Window
             return;
         }
 
+        before = MermaidContainerLayout.Fit(before);
         InkStrokeObject[] linkedBefore = _textEditLinkedBefore;
         RectD afterBounds = _textEditBounds;
         if (_textEditLanguageId == TextLanguageIds.Markdown)
@@ -4904,10 +4909,11 @@ public partial class MainWindow : Window
             Text = TextEditor.Text,
             LanguageId = _textEditLanguageId,
         };
-        InkStrokeObject[] linkedAfter = before.Bounds == afterBounds
+        RectD inkBounds = MermaidContainerLayout.InkBoundsAfterEdit(before, after);
+        InkStrokeObject[] linkedAfter = before.Bounds == inkBounds
             ? linkedBefore
             : linkedBefore
-                .Select(stroke => stroke.TransformWithContainer(before.Bounds, afterBounds))
+                .Select(stroke => stroke.TransformWithContainer(before.Bounds, inkBounds))
                 .ToArray();
 
         EndTextEditVisual(before.Id);
@@ -4943,6 +4949,7 @@ public partial class MainWindow : Window
         _textColorizer.Update([], new FontFamily("Segoe UI"));
         TextEditorBorder.Visibility = Visibility.Collapsed;
         SceneSurface.HiddenObjectId = null;
+        MermaidContainerLayout.Refresh(_document);
         SelectOnly(selectedObjectId);
         SceneSurface.InvalidateVisual();
         UpdateLiveViewActionOverlay();

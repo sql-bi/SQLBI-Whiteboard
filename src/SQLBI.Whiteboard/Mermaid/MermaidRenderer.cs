@@ -2,6 +2,9 @@ using System.Diagnostics;
 using System.IO;
 using System.Text;
 using System.Text.Json;
+using System.Windows;
+using System.Windows.Media;
+using System.Xml.Linq;
 using Microsoft.Web.WebView2.Core;
 
 namespace SQLBI.Whiteboard;
@@ -54,7 +57,7 @@ internal sealed class MermaidRenderer(Func<IntPtr> parentWindow, string? profile
             RenderCount++;
             _controller!.CoreWebView2.PostWebMessageAsJson(JsonSerializer.Serialize(new { id = _requestId, source }));
             string svg = await _response.Task.WaitAsync(TimeSpan.FromSeconds(12), _lifetime.Token);
-            var image = await Task.Run(() => SvgImageCodec.Decode(Encoding.UTF8.GetBytes(svg)), _lifetime.Token);
+            var image = await Task.Run(() => DecodeSvg(svg), _lifetime.Token);
             Debug.WriteLine($"[Mermaid] rendered {source.Length} characters in {clock.ElapsedMilliseconds} ms");
             return new(image, null, svg);
         }
@@ -76,6 +79,34 @@ internal sealed class MermaidRenderer(Func<IntPtr> parentWindow, string? profile
             _requestId = null;
             if (entered) _queue.Release();
         }
+    }
+
+    private static DrawingImage DecodeSvg(string svg)
+    {
+        var root = XElement.Parse(svg);
+        double width = (double?)root.Attribute("width") ?? 0;
+        double height = (double?)root.Attribute("height") ?? 0;
+        if (!double.IsFinite(width) || !double.IsFinite(height) || width <= 0 || height <= 0 ||
+            width > 20_000 || height > 20_000)
+            throw new InvalidDataException("Invalid diagram canvas size.");
+
+        var decoded = SvgImageCodec.Decode(Encoding.UTF8.GetBytes(svg));
+        // Invisible SVG geometry can extend the WPF drawing bounds past the
+        // declared viewport. Keep the browser's canvas size for layout and fit.
+        var viewport = new RectangleGeometry(new Rect(0, 0, width, height));
+        var drawing = new DrawingGroup { ClipGeometry = viewport };
+        drawing.Children.Add(new GeometryDrawing(Brushes.Transparent, null, viewport));
+        // DrawingImage normally maps its non-zero drawing origin to the target
+        // rectangle. Preserve that mapping before bounding the declared canvas.
+        var positioned = new DrawingGroup
+        {
+            Transform = new TranslateTransform(-decoded.Drawing.Bounds.X, -decoded.Drawing.Bounds.Y),
+        };
+        positioned.Children.Add(decoded.Drawing);
+        drawing.Children.Add(positioned);
+        var image = new DrawingImage(drawing);
+        image.Freeze();
+        return image;
     }
 
     private async Task EnsureBrowserAsync()
