@@ -12,7 +12,17 @@
     "render:4x5": "node scripts/render.mjs 4x5",
     "render:9x16": "node scripts/render.mjs 9x16",
     "render:poster": "node scripts/render.mjs poster",
-    "render:all": "node scripts/render.mjs all"
+    "render:all": "node scripts/render.mjs all",
+    "stills:film2": "node scripts/stills.mjs film2",
+    "render:film2-16x9": "node scripts/render.mjs film2 16x9",
+    "render:film2-1x1": "node scripts/render.mjs film2 1x1",
+    "render:film2-4x5": "node scripts/render.mjs film2 4x5",
+    "render:film2-short-liveview": "node scripts/render.mjs film2 short-liveview",
+    "render:film2-short-dax": "node scripts/render.mjs film2 short-dax",
+    "render:film2-short-shapes": "node scripts/render.mjs film2 short-shapes",
+    "render:film2-store": "node scripts/render.mjs film2 store",
+    "render:film2-site": "node scripts/render.mjs film2 site",
+    "render:film2-all": "node scripts/render.mjs film2 all"
   },
   "dependencies": {
     "@remotion/bundler": "4.0.529",

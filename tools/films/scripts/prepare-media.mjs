@@ -5,6 +5,7 @@ import {copyFileSync, existsSync, linkSync, mkdirSync, readdirSync, rmSync} from
 import {join} from 'node:path';
 import {pathToFileURL} from 'node:url';
 import {captures} from '../src/film1/captures.ts';
+import {captures as film2Captures} from '../src/film2/captures.ts';
 import {root} from './lib.mjs';
 
 export const prepareMedia = () => {
@@ -26,11 +27,12 @@ export const prepareMedia = () => {
   }
 
   const has = (p) => existsSync(join(pub, p));
-  for (const c of captures) {
+  for (const c of [...captures, ...Object.values(film2Captures)]) {
     console.log(`${c.id} ${c.file}: ${has(`captures/${c.file}`) ? 'present' : 'missing, placeholder shown'}`);
   }
   console.log(`Voice audio/film1-vo.mp3: ${has('audio/film1-vo.mp3') ? 'present' : 'missing, silent track'}`);
   console.log(`Music audio/film1-bed.mp3: ${has('audio/film1-bed.mp3') ? 'present' : 'missing, no music'}`);
+  console.log(`Music audio/film2-bed.mp3: ${has('audio/film2-bed.mp3') ? 'present' : 'missing, silent track'}`);
 };
 
 if (import.meta.url === pathToFileURL(process.argv[1]).href) {
