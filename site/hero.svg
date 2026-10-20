@@ -1,68 +1,174 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 720" width="1200" height="720" role="img"
-     aria-label="SQLBI Whiteboard: a small toolbar, a DAX container, and ink on an unbounded canvas.">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 760" width="1200" height="760" role="img"
+     aria-label="SQLBI Whiteboard in its real window: a captured Power BI matrix with highlighter marks, a DAX measure, and red pen annotations.">
   <title>SQLBI Whiteboard</title>
+  <!-- The page hero: the application window drawn from the Store listing
+       screenshots, the same drawing as the window in hero-launch.svg, without the
+       announcement panel and the date. Drawn at 1400x900, the default window size. -->
   <defs>
-    <radialGradient id="fade" cx="0.42" cy="0.38" r="0.78">
-      <stop offset="0.25" stop-color="#fff"/><stop offset="1" stop-color="#000"/>
-    </radialGradient>
-    <mask id="gridmask"><rect width="1200" height="720" fill="url(#fade)"/></mask>
-    <pattern id="grid" width="34" height="34" patternUnits="userSpaceOnUse">
-      <path d="M34 0H0v34" fill="none" stroke="#15171C" stroke-opacity=".055" stroke-width="1"/>
-    </pattern>
-    <filter id="soft" x="-8%" y="-8%" width="116%" height="116%">
-      <feDropShadow dx="0" dy="10" stdDeviation="18" flood-color="#15171C" flood-opacity=".14"/>
+    <clipPath id="winclip"><rect x="0" y="0" width="1400" height="900" rx="14"/></clipPath>
+    <filter id="winshadow" x="-15%" y="-15%" width="130%" height="130%">
+      <feDropShadow dx="0" dy="10" stdDeviation="16" flood-color="#0A1B33" flood-opacity="0.30"/>
+    </filter>
+    <filter id="panelshadow" x="-25%" y="-25%" width="150%" height="150%">
+      <feDropShadow dx="0" dy="4" stdDeviation="8" flood-color="#0A1B33" flood-opacity="0.18"/>
     </filter>
   </defs>
 
-  <rect width="1200" height="720" fill="#FAFAFB"/>
-  <rect width="1200" height="720" fill="url(#grid)" mask="url(#gridmask)"/>
+  <rect width="1200" height="760" fill="#F7F6F2"/>
 
-  <!-- Board surface: the unbounded canvas, not a window chrome. -->
-  <rect x="72" y="56" width="1056" height="608" rx="22" fill="#FFFFFF" stroke="#E2E4E9" filter="url(#soft)"/>
+  <g transform="translate(40 20) scale(0.8)">
+    <g clip-path="url(#winclip)">
+      <!-- title bar -->
+      <rect x="0" y="0" width="1400" height="56" fill="#2B7CD3"/>
+      <rect x="16" y="14" width="28" height="28" rx="7" fill="#D82121"/>
+      <path d="M23 32c4-6 10-8 14 -3" stroke="#FFFFFF" stroke-width="2.4" fill="none" stroke-linecap="round"/>
+      <text x="58" y="37" font-family="Segoe UI, sans-serif" font-size="24" fill="#FFFFFF">SQLBI Whiteboard</text>
+      <g stroke="#FFFFFF" stroke-width="2.4" fill="none">
+        <path d="M1272 28h20"/>
+        <rect x="1322" y="19" width="18" height="18" rx="2"/>
+        <path d="M1374 19l18 18M1392 19l-18 18"/>
+      </g>
 
-  <!-- DAX container -->
-  <g transform="translate(168 148)">
-    <rect width="520" height="268" rx="14" fill="#FAFAFB" stroke="#E2E4E9"/>
-    <rect width="520" height="44" rx="14" fill="#F2F3F7"/>
-    <rect y="30" width="520" height="14" fill="#F2F3F7"/>
-    <text x="18" y="28" font-family="Segoe UI, sans-serif" font-size="16" font-weight="650" fill="#15171C">Total Sales</text>
-    <text x="428" y="28" font-family="Segoe UI, sans-serif" font-size="13" fill="#5C6371">DAX</text>
-    <g font-family="Cascadia Mono, Consolas, monospace" font-size="22">
-      <text x="28" y="108" fill="#B71D1D">Total Sales</text>
-      <text x="176" y="108" fill="#15171C">:=</text>
-      <text x="28" y="152" fill="#0B6FB8">SUM</text>
-      <text x="80" y="152" fill="#15171C">( Sales[Amount] )</text>
+      <!-- menu bar -->
+      <rect x="0" y="56" width="1400" height="52" fill="#FFFFFF"/>
+      <g font-family="Segoe UI, sans-serif" font-size="24" fill="#1A1A1A">
+        <text x="30" y="91">File</text>
+        <text x="112" y="91">Edit</text>
+        <text x="198" y="91">View</text>
+        <text x="292" y="91">Help</text>
+      </g>
+
+      <!-- captured live view: a Power BI matrix -->
+      <g font-family="Segoe UI, sans-serif" font-size="26" fill="#1A1A1A">
+        <rect x="70" y="278" width="830" height="44" fill="#F2F2F2"/>
+        <rect x="70" y="366" width="830" height="44" fill="#F2F2F2"/>
+        <text x="80" y="168">Year</text>
+        <text x="445" y="168" text-anchor="middle">2024</text>
+        <text x="730" y="168" text-anchor="middle">2025</text>
+        <text x="80" y="212">Brand</text>
+        <g text-anchor="end">
+          <text x="470" y="212">Sales Amount</text>
+          <text x="580" y="212">YOY %</text>
+          <text x="760" y="212">Sales Amount</text>
+          <text x="870" y="212">YOY %</text>
+        </g>
+        <path d="M70 224h830" stroke="#2E75B6" stroke-width="2.5"/>
+        <path d="M310 224v226" stroke="#2E75B6" stroke-width="1.5"/>
+        <text x="80" y="260">A. Datum</text>
+        <text x="80" y="304">Adventure Works</text>
+        <text x="80" y="348">Contoso</text>
+        <text x="80" y="392">Fabrikam</text>
+        <text x="80" y="436">Litware</text>
+        <g text-anchor="end">
+          <text x="470" y="260">57,064.74</text><text x="580" y="260">119.91%</text>
+          <text x="760" y="260">17,100.95</text><text x="870" y="260">-70.03%</text>
+          <text x="470" y="304">363,393.96</text><text x="580" y="304">27.47%</text>
+          <text x="760" y="304">182,123.25</text><text x="870" y="304">-49.88%</text>
+          <text x="470" y="348">210,856.09</text><text x="580" y="348">12.17%</text>
+          <text x="760" y="348">94,398.13</text><text x="870" y="348">-55.23%</text>
+          <text x="470" y="392">172,102.36</text><text x="580" y="392">77.00%</text>
+          <text x="760" y="392">74,722.24</text><text x="870" y="392">-56.58%</text>
+          <text x="470" y="436">19,870.40</text><text x="580" y="436">-51.49%</text>
+          <text x="760" y="436">13,308.30</text><text x="870" y="436">-33.02%</text>
+        </g>
+      </g>
+
+      <!-- highlighter over the captured headers -->
+      <g opacity="0.5">
+        <rect x="320" y="186" width="158" height="32" rx="8" fill="#3ECFBB" transform="rotate(-0.7 399 202)"/>
+        <rect x="610" y="186" width="158" height="32" rx="8" fill="#FFD84D" transform="rotate(0.6 689 202)"/>
+        <rect x="790" y="186" width="88" height="32" rx="8" fill="#6FC1EE" transform="rotate(-0.8 834 202)"/>
+      </g>
+
+      <!-- captured DAX panel, overlapping the matrix -->
+      <g>
+        <rect x="360" y="470" width="860" height="280" rx="4" fill="#FDFDFE" stroke="#C9CCD3" filter="url(#panelshadow)"/>
+        <rect x="360" y="470" width="860" height="46" rx="4" fill="#F4F4F6"/>
+        <path d="M360 516h860" stroke="#DDDFE4" stroke-width="1.5"/>
+        <text x="384" y="502" font-family="Segoe UI, sans-serif" font-size="24" font-weight="600" fill="#1A1A1A">DAX Code of YOY %</text>
+
+        <!-- highlighter inside the code -->
+        <g opacity="0.5">
+          <rect x="388" y="528" width="112" height="30" rx="7" fill="#6FC1EE" transform="rotate(-0.8 444 543)"/>
+          <rect x="508" y="560" width="196" height="30" rx="7" fill="#FFD84D" transform="rotate(0.6 606 575)"/>
+          <rect x="574" y="624" width="206" height="30" rx="7" fill="#3ECFBB" transform="rotate(-0.5 677 639)"/>
+        </g>
+
+        <g font-family="Cascadia Mono, Consolas, monospace" font-size="22" fill="#1A1A1A">
+          <text x="396" y="548" xml:space="preserve"><tspan fill="#B71D1D">YOY %</tspan> =</text>
+          <text x="396" y="580" xml:space="preserve"><tspan fill="#0B6FB8">VAR</tspan> CY = [Sales Amount]</text>
+          <text x="396" y="612" xml:space="preserve"><tspan fill="#0B6FB8">VAR</tspan> PY =</text>
+          <text x="396" y="644" xml:space="preserve">  <tspan fill="#0B6FB8">CALCULATE</tspan> ( [Sales Amount], <tspan fill="#0B6FB8">PREVIOUSYEAR</tspan> ( <tspan fill="#A31515">'Date'[Date]</tspan> ) )</text>
+          <text x="396" y="676" fill="#0B6FB8">RETURN</text>
+          <text x="396" y="708" xml:space="preserve">  <tspan fill="#0B6FB8">DIVIDE</tspan> ( CY - PY, PY )</text>
+        </g>
+      </g>
+
+      <!-- red pen over everything: circle the year, pull it into the measure -->
+      <g fill="none" stroke="#E5442C" stroke-width="5.5" stroke-linecap="round" stroke-linejoin="round" opacity="0.92">
+        <path d="M786 142c-16-14-84-16-118 2-30 16-24 44 16 52 42 8 104 2 116-20 10-19-18-34-52-38"/>
+        <path d="M742 206c-22 58-58 138-64 218-4 52 4 100 14 130"/>
+        <path d="M672 516l20 38 34-20"/>
+        <path d="M800 616c-14 14-22 32-6 44 22 16 118 20 236 12 100-7 172-22 178-40 6-19-60-32-160-34-96-2-198 4-238 16"/>
+      </g>
+
+      <!-- the floating pen palette. Sits closer to the matrix than in the card,
+           so it stays inside the un-bled part of the window. -->
+      <g transform="translate(880 120)">
+        <rect x="0" y="0" width="340" height="264" rx="20" fill="#FBFBFC" stroke="#D5D8DE" stroke-width="1.5" filter="url(#panelshadow)"/>
+        <!-- pen colors -->
+        <g>
+          <circle cx="34" cy="44" r="13" fill="#1F2328"/>
+          <circle cx="74" cy="44" r="13" fill="#E2402F"/>
+          <circle cx="74" cy="44" r="19" fill="none" stroke="#2563EB" stroke-width="3"/>
+          <circle cx="114" cy="44" r="13" fill="#ECB33C"/>
+          <circle cx="154" cy="44" r="13" fill="#5AACE8"/>
+          <circle cx="194" cy="44" r="13" fill="#23A05A"/>
+          <circle cx="234" cy="44" r="13" fill="#E070AC"/>
+        </g>
+        <rect x="258" y="24" width="40" height="40" rx="9" fill="#E4ECFA"/>
+        <g fill="none" stroke="#374151" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M268 54l18-18M268 54l3-8 11 3z"/>
+          <path d="M312 54l18-18M312 54l3-8 11 3z" stroke-width="2" opacity="0.75"/>
+        </g>
+        <!-- pen widths -->
+        <g fill="#E2402F">
+          <rect x="22" y="94" width="36" height="5" rx="2.5"/>
+          <rect x="74" y="92" width="42" height="8" rx="4"/>
+          <rect x="132" y="90" width="48" height="12" rx="6"/>
+          <rect x="204" y="87" width="56" height="18" rx="9"/>
+        </g>
+        <rect x="122" y="78" width="68" height="36" rx="10" fill="none" stroke="#2563EB" stroke-width="3"/>
+        <!-- highlighter colors -->
+        <g>
+          <circle cx="34" cy="152" r="13" fill="#F6C744"/>
+          <circle cx="74" cy="152" r="13" fill="#F077A9"/>
+          <circle cx="114" cy="152" r="13" fill="#56AEEA"/>
+          <circle cx="154" cy="152" r="13" fill="#35C7B4"/>
+          <circle cx="154" cy="152" r="19" fill="none" stroke="#2563EB" stroke-width="3"/>
+        </g>
+        <g fill="none" stroke="#374151" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M232 162l14-14 6 6-14 14zM230 164l-4 6 8-2z"/>
+          <rect x="268" y="142" width="26" height="19" rx="3"/>
+          <path d="M274 166h14"/>
+        </g>
+        <circle cx="322" cy="152" r="11" fill="none" stroke="#374151" stroke-width="2.4"/>
+        <circle cx="322" cy="152" r="4.5" fill="#374151"/>
+        <!-- highlighter widths -->
+        <g fill="#35C7B4">
+          <rect x="22" y="202" width="36" height="5" rx="2.5"/>
+          <rect x="74" y="200" width="42" height="8" rx="4"/>
+          <rect x="132" y="198" width="48" height="12" rx="6"/>
+          <rect x="204" y="195" width="56" height="18" rx="9"/>
+        </g>
+        <rect x="122" y="186" width="68" height="36" rx="10" fill="none" stroke="#2563EB" stroke-width="3"/>
+        <!-- eraser and move -->
+        <g fill="none" stroke="#374151" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M24 250l12-12h12l6 6-12 12h-12zM24 250h30"/>
+          <path d="M86 232v24M74 244h24M86 232l-5 5M86 232l5 5M86 256l-5-5M86 256l5-5M74 244l5-5M74 244l5 5M98 244l-5-5M98 244l-5 5"/>
+        </g>
+      </g>
     </g>
-  </g>
-
-  <!-- A second container, notes -->
-  <g transform="translate(720 188)">
-    <rect width="328" height="188" rx="14" fill="#FAFAFB" stroke="#E2E4E9"/>
-    <rect width="328" height="44" rx="14" fill="#F2F3F7"/>
-    <rect y="30" width="328" height="14" fill="#F2F3F7"/>
-    <text x="18" y="28" font-family="Segoe UI, sans-serif" font-size="16" font-weight="650" fill="#15171C">Filter context</text>
-    <text x="24" y="88" font-family="Segoe UI, sans-serif" font-size="16" fill="#5C6371">The year is already</text>
-    <text x="24" y="114" font-family="Segoe UI, sans-serif" font-size="16" fill="#5C6371">in the filter. Do not</text>
-    <text x="24" y="140" font-family="Segoe UI, sans-serif" font-size="16" fill="#5C6371">wrap this in CALCULATE.</text>
-  </g>
-
-  <!-- Ink that belongs to the DAX container -->
-  <g fill="none" stroke="#F42727" stroke-linecap="round" stroke-linejoin="round">
-    <path d="M214 318c48 6 92-18 126-8" stroke-width="5"/>
-    <path d="M332 304l14 22 22-10" stroke-width="5"/>
-    <path d="M744 322c40 36 88 44 140 18" stroke-width="4.5" opacity=".9"/>
-  </g>
-
-  <!-- Small floating toolbar, bottom center. The real chrome, not a left rail. -->
-  <g transform="translate(430 556)">
-    <rect width="340" height="64" rx="16" fill="#FFFFFF" stroke="#E2E4E9"/>
-    <g fill="none" stroke="#5C6371" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-      <path d="M36 40l16-16 6 6-16 16z"/>
-      <path d="M92 26h20M96 22l12 20"/>
-      <path d="M148 24c10-8 22-4 26 6-8 2-16 8-22 16-8-8-10-16-4-22z"/>
-      <circle cx="214" cy="32" r="10"/>
-      <path d="M214 26v8M210 32h8"/>
-    </g>
-    <circle cx="300" cy="32" r="11" fill="#F42727"/>
+    <rect x="0" y="0" width="1400" height="900" rx="14" fill="none" stroke="#0A0C10" stroke-opacity=".18"/>
   </g>
 </svg>
