@@ -73,9 +73,35 @@ jobs:
     permissions:
       actions: write
     steps:
+      # The request is retried when GitHub answers with a server error. For 1.7.6 it answered
+      # 502, this job failed, and the site went on offering 1.7.5 until it was redeployed by
+      # hand. That 502 had still created a run, with no jobs, which stayed queued and could
+      # not be cancelled. A retry can therefore start a second deployment beside a lost
+      # one. That costs nothing, because the pages concurrency group runs deployments one at
+      # a time and both deploy main for the same tag. Any other error fails at once, because
+      # asking again would get the same answer.
       - name: Ask for a deployment from main
         shell: bash
-        run: gh workflow run publish-site.yml --repo "$GITHUB_REPOSITORY" --ref main --field "tag=$RELEASE_TAG"
+        run: |
+          for attempt in 1 2 3 4 5; do
+            if output=$(gh workflow run publish-site.yml --repo "$GITHUB_REPOSITORY" --ref main --field "tag=$RELEASE_TAG" 2>&1); then
+              echo "$output"
+              exit 0
+            fi
+
+            echo "$output"
+            if ! grep -q 'HTTP 5[0-9][0-9]' <<< "$output"; then
+              exit 1
+            fi
+
+            if [ "$attempt" -lt 5 ]; then
+              echo "::warning::GitHub answered the deployment request with a server error. Asking again in $((attempt * 15)) seconds."
+              sleep $((attempt * 15))
+            fi
+          done
+
+          echo "::error::GitHub answered the deployment request with a server error five times. Run Publish site on main with tag=$RELEASE_TAG by hand."
+          exit 1
         env:
           GH_TOKEN: ${{ github.token }}
           RELEASE_TAG: ${{ github.event.release.tag_name }}
