@@ -16,7 +16,7 @@ How the project is developed and shipped is documented separately:
 - Optional finger drawing (default when no pen is detected): one finger uses the current tool, two fingers still pan and pinch-zoom, and Eraser and Pan appear on the toolbar
 - A notice at startup when Windows reports neither a pen tablet nor a touchscreen, saying which pointing device the session is drawing with and what a pen would add. Dismissable from the notice itself or from Preferences, since the tablet list Windows reports can miss a pen that has never been in range
 - Basic palm rejection: touch navigation is suspended when the pen makes contact
-- Mouse-wheel zoom and middle-button or temporary Space-key panning
+- Mouse-wheel zoom, middle-button or temporary Space-key panning, and H for the Pan tool
 - Whole-stroke erasing
 - PNG, JPEG, BMP, GIF, and SVG import, clipboard bitmap paste, and Explorer drag-and-drop of images, text files, `.wimport` recipes, PowerPoint decks, and Microsoft Whiteboard exports
 - PowerPoint decks imported as one picture per slide through PowerPoint from Microsoft 365: SVG, or PNG for a slide whose fonts are not installed, placed in one row per section, with an optional frame around each slide. **File → Open** creates a new board from the deck; **File → Import** and drag-and-drop add it below the board's content
@@ -201,6 +201,7 @@ Use **Copy settings** after finding a useful combination so the exact values can
 | Middle mouse | Pan |
 | Right mouse | Pan while held on the canvas; return to Pen on release. Right-click the palette to hide or show it |
 | Space | Temporarily switch to Pan |
+| H | Switch to Pan, or back to the previous tool. With one shape selected, types into it instead |
 | Ctrl+Z / Ctrl+Y | Undo / redo |
 | Ctrl+C | Copy the selection. Copying a LiveView copies its last frame as a bitmap |
 | Ctrl+V | Paste prefers an image (including a file on the clipboard) over text. Otherwise create a text container; Markdown and rich clipboard HTML can retain tables, lists, and headings |

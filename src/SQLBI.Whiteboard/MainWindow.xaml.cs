@@ -116,6 +116,7 @@ public partial class MainWindow : Window
     private BoardTool _activeTool = BoardTool.Pen;
     private BoardTool _lastDrawingTool = BoardTool.Pen;
     private BoardTool _toolBeforeSpace = BoardTool.Pen;
+    private BoardTool _toolBeforePan = BoardTool.Pen;
     private BoardTool _toolBeforeBarrel = BoardTool.Pen;
     private bool _barrelToolTemporary;
     private bool _discardInkStroke;
@@ -1683,8 +1684,11 @@ public partial class MainWindow : Window
         // Ctrl gives the mouse its old behavior. Letting the left button draw
         // would otherwise take away moving an image without leaving the Pen,
         // the main use of the mouse, so Ctrl brings it back. With mouse drawing
-        // off, every left gesture is this one.
-        var borrowSelect = !mouseDraws || Keyboard.Modifiers.HasFlag(ModifierKeys.Control);
+        // off, every left gesture is this one, except while Space or H holds
+        // Pan: those are asked for from the keyboard to pan with the mouse.
+        var borrowSelect =
+            (!mouseDraws && EffectiveTool != BoardTool.Pan) ||
+            Keyboard.Modifiers.HasFlag(ModifierKeys.Control);
 
         if (e.ChangedButton is MouseButton.Middle or MouseButton.Right)
         {
@@ -1696,6 +1700,7 @@ public partial class MainWindow : Window
             // quietly leave them holding a pen.
             _mouseToolBorrowed = !mouseDraws;
             Mouse.Capture(InkSurface);
+            RefreshMouseCursor();
             e.Handled = true;
         }
         else if (e.ChangedButton == MouseButton.Left &&
@@ -1755,7 +1760,9 @@ public partial class MainWindow : Window
     private void BeginMouseAction(PointD screen)
     {
         _mouseToolBorrowed = false;
-        if (EffectiveTool != BoardTool.Select)
+
+        // Panning to see more of a selection should not drop it.
+        if (EffectiveTool is not (BoardTool.Select or BoardTool.Pan))
         {
             ClearSelection();
         }
@@ -1769,6 +1776,7 @@ public partial class MainWindow : Window
             case BoardTool.Pan:
                 _lastPanPoint = screen;
                 _mouseAction = PointerAction.Pan;
+                RefreshMouseCursor();
                 break;
             case BoardTool.Select:
                 BeginContainerGesture(screen);
@@ -1877,8 +1885,59 @@ public partial class MainWindow : Window
         }
 
         var screen = ToPointD(e.GetPosition(InkSurface));
+        UpdateMouseCursor(screen, e.GetPosition(RootGrid));
+        switch (_mouseAction)
+        {
+            case PointerAction.Erase:
+                EraseAt(_camera.ScreenToWorld(screen));
+                break;
+            case PointerAction.Pan:
+                PanTo(screen);
+                break;
+            case PointerAction.Container:
+                UpdateContainerGesture(_camera.ScreenToWorld(screen));
+                break;
+            case PointerAction.Laser:
+                UpdateLaser(e.GetPosition(LaserTrail), leaveTrail: true, MouseLaserPressure);
+                break;
+            case PointerAction.Ink:
+                UpdateMouseInk(screen);
+                break;
+            case PointerAction.Shape:
+                UpdateShapeGesture(screen);
+                break;
+            case PointerAction.Connector:
+                UpdateConnectorGesture(screen);
+                break;
+        }
+    }
+
+    // Space, H, and the end of a pan change what the mouse would do without
+    // moving it, and an assigned cursor appears only at the next mouse move.
+    // A pen in range owns the cursor, so it is left alone.
+    private void RefreshMouseCursor()
+    {
+        if (_penInContact ||
+            !InkSurface.IsMouseOver ||
+            Stylus.CurrentStylusDevice is { InRange: true })
+        {
+            return;
+        }
+
+        UpdateMouseCursor(ToPointD(Mouse.GetPosition(InkSurface)), Mouse.GetPosition(RootGrid));
+        Mouse.UpdateCursor();
+    }
+
+    private void UpdateMouseCursor(PointD screen, Point onRoot)
+    {
         var mouseDraws = IsMouseModeEffective;
-        if (EffectiveTool == BoardTool.Laser)
+        if (_mouseAction == PointerAction.Pan)
+        {
+            // Whichever button or key started it, a pan shows the closed hand.
+            HidePointerDot();
+            InkSurface.Cursor = GrabCursors.Closed(VisualTreeHelper.GetDpi(this).PixelsPerDip);
+        }
+        else if (EffectiveTool == BoardTool.Laser)
         {
             HidePointerDot();
 
@@ -1903,12 +1962,17 @@ public partial class MainWindow : Window
             UpdateSelectHover(screen);
             InkSurface.Cursor = SelectCursorAt(screen);
         }
+        else if (EffectiveTool == BoardTool.Pan)
+        {
+            HidePointerDot();
+            InkSurface.Cursor = GrabCursors.Open(VisualTreeHelper.GetDpi(this).PixelsPerDip);
+        }
         else if (mouseDraws && EffectiveTool == BoardTool.Eraser)
         {
             // What a click would erase is a patch of board rather than a point,
             // so the patch is shown in place of the arrow.
             PointerDot.Visibility = Visibility.Collapsed;
-            ShowEraserHint(e.GetPosition(RootGrid));
+            ShowEraserHint(onRoot);
             InkSurface.Cursor = Cursors.None;
         }
         else if (mouseDraws && IsInkTool)
@@ -1916,7 +1980,7 @@ public partial class MainWindow : Window
             // The arrow's hotspot is its tip, so it is not inaccurate - but its
             // body covers the canvas the ink is about to land on.
             HideEraserHint();
-            ShowPointerDot(e.GetPosition(RootGrid));
+            ShowPointerDot(onRoot);
             InkSurface.Cursor = Cursors.None;
         }
         else if (EffectiveTool is BoardTool.Shape or BoardTool.Connector)
@@ -1930,31 +1994,6 @@ public partial class MainWindow : Window
         {
             HidePointerDot();
             InkSurface.Cursor = Cursors.Arrow;
-        }
-
-        switch (_mouseAction)
-        {
-            case PointerAction.Erase:
-                EraseAt(_camera.ScreenToWorld(screen));
-                break;
-            case PointerAction.Pan:
-                PanTo(screen);
-                break;
-            case PointerAction.Container:
-                UpdateContainerGesture(_camera.ScreenToWorld(screen));
-                break;
-            case PointerAction.Laser:
-                UpdateLaser(e.GetPosition(LaserTrail), leaveTrail: true, MouseLaserPressure);
-                break;
-            case PointerAction.Ink:
-                UpdateMouseInk(screen);
-                break;
-            case PointerAction.Shape:
-                UpdateShapeGesture(screen);
-                break;
-            case PointerAction.Connector:
-                UpdateConnectorGesture(screen);
-                break;
         }
     }
 
@@ -1994,6 +2033,7 @@ public partial class MainWindow : Window
     private void InkSurface_LostMouseCapture(object sender, MouseEventArgs e)
     {
         var hadMouseAction = _mouseAction != PointerAction.None;
+        var wasPanning = _mouseAction == PointerAction.Pan;
         if (_mouseAction == PointerAction.Erase)
         {
             CompleteErase();
@@ -2039,12 +2079,17 @@ public partial class MainWindow : Window
         }
 
         _mouseToolBorrowed = false;
+        if (wasPanning)
+        {
+            RefreshMouseCursor();
+        }
     }
 
     private void CompleteMouseAction(PointD screen)
     {
         var borrowed = _mouseToolBorrowed;
-        switch (_mouseAction)
+        var action = _mouseAction;
+        switch (action)
         {
             case PointerAction.Erase:
                 EraseAt(_camera.ScreenToWorld(screen));
@@ -2089,6 +2134,10 @@ public partial class MainWindow : Window
         }
 
         _mouseToolBorrowed = false;
+        if (action == PointerAction.Pan)
+        {
+            RefreshMouseCursor();
+        }
     }
 
     private void InkSurface_PreviewMouseWheel(object sender, MouseWheelEventArgs e)
@@ -4816,20 +4865,22 @@ public partial class MainWindow : Window
     /// </summary>
     private void StartShapeTextTyping(KeyEventArgs e)
     {
-        if (!_features.DesignTools ||
-            _activeTool != BoardTool.Select ||
-            Keyboard.Modifiers.HasFlag(ModifierKeys.Control) ||
-            Keyboard.Modifiers.HasFlag(ModifierKeys.Alt) ||
-            SessionBar.IsCommandRowOpen ||
-            IsControlFocused() ||
-            !IsTypingKey(e.Key) ||
-            SingleSelected<ShapeBoardObject>() is not { } shape)
+        if (ShapeTakingTypedKey(e.Key) is { } shape)
         {
-            return;
+            BeginShapeTextEdit(shape, replaceText: true);
         }
-
-        BeginShapeTextEdit(shape, replaceText: true);
     }
+
+    private ShapeBoardObject? ShapeTakingTypedKey(Key key) =>
+        !_features.DesignTools ||
+        _activeTool != BoardTool.Select ||
+        Keyboard.Modifiers.HasFlag(ModifierKeys.Control) ||
+        Keyboard.Modifiers.HasFlag(ModifierKeys.Alt) ||
+        SessionBar.IsCommandRowOpen ||
+        IsControlFocused() ||
+        !IsTypingKey(key)
+            ? null
+            : SingleSelected<ShapeBoardObject>();
 
     /// <summary>
     /// Whether this key writes a character: the letters, the digits, the number
@@ -5394,7 +5445,30 @@ public partial class MainWindow : Window
     private void PanToolButton_Click(object sender, RoutedEventArgs e)
     {
         LeaveLaserIfActive();
+        if (_activeTool != BoardTool.Pan)
+        {
+            _toolBeforePan = _activeTool;
+        }
+
         SetActiveTool(BoardTool.Pan);
+    }
+
+    // H goes back to the tool Pan was chosen from, so H twice is no change.
+    // The Laser is left first, as the toolbar button leaves it.
+    private void TogglePanTool()
+    {
+        if (_activeTool == BoardTool.Pan)
+        {
+            SetActiveTool(_toolBeforePan);
+        }
+        else
+        {
+            LeaveLaserIfActive();
+            _toolBeforePan = _activeTool;
+            SetActiveTool(BoardTool.Pan);
+        }
+
+        RefreshMouseCursor();
     }
 
     private BoardTool EffectiveTool =>
@@ -9665,6 +9739,22 @@ public partial class MainWindow : Window
             _toolBeforeSpace = _activeTool;
             _spaceTemporaryPan = true;
             SetActiveTool(BoardTool.Pan);
+            RefreshMouseCursor();
+            e.Handled = true;
+        }
+        else if (e.Key == Key.H &&
+                 modifiers == ModifierKeys.None &&
+                 !_spaceTemporaryPan &&
+                 !IsControlFocused() &&
+                 ShapeTakingTypedKey(e.Key) is null)
+        {
+            // A selected shape takes the letter as its text instead, as it
+            // takes every other letter.
+            if (!e.IsRepeat)
+            {
+                TogglePanTool();
+            }
+
             e.Handled = true;
         }
         else
@@ -9785,6 +9875,7 @@ public partial class MainWindow : Window
         {
             _spaceTemporaryPan = false;
             SetActiveTool(_toolBeforeSpace);
+            RefreshMouseCursor();
             e.Handled = true;
         }
     }

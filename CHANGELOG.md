@@ -17,6 +17,13 @@ broke. The heading is parsed by `scripts/release-notes.ps1`, so keep its shape; 
 under it is ordinary Markdown, and the renderer handles paragraphs, lists, links, `code`
 and **bold**.
 
+## 1.7.6 - 20 October 2026
+
+### Panning with a mouse
+H switches to the Pan tool and back. The pointer turns into an open hand while Space or the
+Pan tool is ready to pan, and closes while the board moves. With Mouse drawing off, holding
+Space and dragging with the left button now pans, where it used to move containers.
+
 ## 1.7.5 - 1 October 2026
 
 ### Mermaid diagrams in Markdown
