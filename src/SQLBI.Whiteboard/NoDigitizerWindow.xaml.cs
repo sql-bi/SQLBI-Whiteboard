@@ -15,8 +15,8 @@ public partial class NoDigitizerWindow : Window
     {
         InitializeComponent();
         ModeText.Text = mouseDrawingEnabled
-            ? "Mouse drawing is on, so the left button uses the tool selected on the toolbar. Hold Ctrl and drag to move or resize a container, and Ctrl with a double-click to fit one to the canvas."
-            : "Mouse drawing is turned off, so a mouse pans, zooms, and moves containers, but does not draw. Turn it on under Help > Preferences > Input.";
+            ? "Mouse drawing is on, so the left button uses the tool selected on the toolbar. Hold Ctrl and drag to move or resize a container, and Ctrl with a double-click to fit one to the canvas. To pan, drag with the right or middle button, hold Space and drag, or press H for the Pan tool."
+            : "Mouse drawing is turned off, so a mouse pans, zooms, and moves containers, but does not draw. To pan, drag with the right or middle button, hold Space and drag, or press H for the Pan tool. Turn drawing on under Help > Preferences > Input.";
         LimitsText.Visibility = mouseDrawingEnabled ? Visibility.Visible : Visibility.Collapsed;
     }
 

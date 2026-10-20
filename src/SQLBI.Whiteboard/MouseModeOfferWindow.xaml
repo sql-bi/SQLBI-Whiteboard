@@ -30,7 +30,7 @@
                    FontSize="13"
                    Foreground="#FF374151"
                    TextWrapping="Wrap"
-                   Text="The left button then uses the selected tool, and Ctrl with the left button moves and resizes a container. A mouse reports no pressure, so ink is drawn at an even width. Nothing about the pen changes." />
+                   Text="The left button then uses the selected tool, and Ctrl with the left button moves and resizes a container. To pan, drag with the right or middle button, hold Space and drag, or press H for the Pan tool. A mouse reports no pressure, so ink is drawn at an even width. Nothing about the pen changes." />
         <CheckBox x:Name="DoNotShowAgainBox"
                   Margin="0,20,0,0"
                   FontFamily="Segoe UI"
