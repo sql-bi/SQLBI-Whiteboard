@@ -20,3 +20,10 @@ TestResults/
 # the next release goes out.
 site/stable.json
 site/dev.json
+/tools/films/audio/samples/sample-track0.mp3
+/tools/films/audio/samples/sample-track1.mp3
+/tools/films/audio/samples/vo-alice.mp3
+/tools/films/audio/samples/vo-daniel.mp3
+/tools/films/audio/samples/vo-eric-acronym.mp3
+/tools/films/audio/samples/vo-eric-hyphen.mp3
+/tools/films/audio/samples/vo-eric.mp3
