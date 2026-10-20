@@ -1,20 +1,24 @@
 # Teaser shot script
 
-The teaser on the landing page: one continuous board session, recorded long and cut
-down. The shipped cut runs 42 seconds. The same master serves the home page, the Store
-trailer, and announcements. It is served from the site itself, not embedded — decision 19
-in [../decisions.md](../decisions.md).
+The teaser on the landing page is film 2 of [tools/films](../../tools/films/README.md),
+"One board". The shipped cut runs 50 seconds: one continuous camera move across a single
+board on which seven screen captures sit as windows, ending on the whole board and the end
+card. It names no date and no deadline, so it does not go out of date when the campaign
+ends. The same master serves the home page, the Store trailer, the social renditions,
+and three 12-second portrait shorts. The site serves it itself, not through an embed —
+decision 19 in [../decisions.md](../decisions.md).
 
-Everything the recording needs is in this folder:
+It replaced a 42-second cut of one continuous board session, recorded and edited by hand.
+The staging files for that recording are still in this folder:
 
 | File | Used in |
 | --- | --- |
 | `shot-script.md` | This script |
-| `demo-board.wimport` | Beat 3 — the drop that fills the board |
-| `paste-me.dax` | Beat 2 — copy its contents to the clipboard before recording |
+| `demo-board.wimport` | The drop that filled the board in the 42-second cut |
+| `paste-me.dax` | The measure pasted in the 42-second cut |
 | `assets/star-schema.png`, `assets/sales-trend.png` | Referenced by the recipe |
 | `make-assets.ps1` | Regenerates the two PNGs if they change |
-| `overlays/ctrl-v.png`, `overlays/f6.png` | Keystroke callouts for the edit (beats 2's paste and F6) |
+| `overlays/ctrl-v.png`, `overlays/f6.png` | Keystroke callouts for a hand edit |
 | `make-overlays.ps1` | Regenerates the overlays if they change |
 
 ## Recording setup
@@ -28,85 +32,64 @@ Everything the recording needs is in this folder:
   window region only). Default white board, default toolbar position.
 - Pen: the Cintiq Pro profile already validated in README § "Wacom Cintiq Pro validation".
 
-## Staging, before every take
+The captures of the shipped cut were recorded at 30 fps, `ink-diagram.mp4` at
+3840 × 2160 and the other six at 1920 × 1080, so the master is 1920 × 1080 at 30 fps.
+The film never shows a capture larger than it was recorded. A re-recording at
+2560 × 1440 can be placed on the board at the same size in board units without
+changing anything else.
 
-1. Open **Help → Preferences → Snippet format order** and move **DAX above Plain text**,
-   so the paste in beat 2 lands already highlighted. (Restore afterwards if you prefer
-   plain-first day to day.)
-2. Copy the contents of `paste-me.dax` to the clipboard **as text** (open it in a text
-   editor and Ctrl+A, Ctrl+C — do not copy the file in Explorer, because a copied file is
-   pasted as a file rather than as text).
-3. Open a File Explorer window showing this folder, positioned on a second monitor or
-   off-canvas, ready to drag `demo-board.wimport`.
-4. Start the LiveView target for beat 5: **Power BI Desktop** with a report page visible
-   (any demo model — it only needs to look alive). Second monitor, or behind the app.
-5. New empty board, Pen tool, default zoom.
+## The shot list
 
-## The beats
+Each capture is a window on the board with its caption written below it. The camera is
+the only thing that moves: it rests on a window with a slow push-in, moves to the next
+with one ease-in-out curve and a slight pull back mid-move, and never cuts. The captures
+play faster than recorded where the beat is shorter than the capture; the times and rates
+are in `tools/films/src/film2/cuts.ts`.
 
-Timings are the *edited* target. Record each beat at natural speed; the cuts and
-speed-ups happen in the edit. Total real time per take: 3–5 minutes.
-
-| # | Edited | Action, exactly | Must be visible |
+| Time | Camera | Capture | Caption on the board |
 | --- | --- | --- | --- |
-| 1 | 0–5 s | On the empty board, handwrite **"Contoso — sales review"** and underline it. Vary pressure; this beat stays real-time in the edit, it is the "feel" shot. | Wet ink following the pen with no lag; pressure width variation; the hover dot before contact. |
-| 2 | 5–11 s | Click empty canvas below the title, **Ctrl+V**. The measure appears as a DAX container, highlighted, crammed on long lines. Press **F6**. It reformats in place. | Syntax colors on paste; the visible before/after of F6. |
-| 3 | 11–16 s | Drag **`demo-board.wimport`** from Explorer onto the right half of the board. Five containers materialize: two images, DAX, SQL, notes. | The one-gesture board build. Pause a beat so the layout registers. |
-| 4 | 16–21 s | With the pen, circle the December column on the **Sales by month** chart and draw a short arrow — strokes must stay entirely on that one image. Then left-drag the chart container to a clearer spot. | The ink travels with the container. This is the "aha" beat; move it far enough to be unmistakable. |
-| 5 | 21–26 s | **View → LiveView**, pick the Power BI Desktop window in the system picker, place it. Ink one arrow onto the live feed, then **View → Freeze**. | A real application, live inside the board, annotated. The picker dialog gets jump-cut to ~1 s in the edit. |
-| 6 | 26–30 s | Click empty canvas, then **double-click empty canvas**: the camera fits the whole board. Hold two seconds. | The zoom-to-fit reveal: title ink, formatted DAX, the dropped board, annotated chart, frozen LiveView — one composition. |
+| 0–6 s | Rests on D1 | `ink-diagram.mp4`: the pen draws three boxes and two connectors | SQLBI Whiteboard |
+| 6–13 s | Pans right to D2 | `liveview-powerbi.mp4`: View, LiveView, the Power BI window lands, Freeze, highlighter marks | Capture a running application onto the board and draw on it. |
+| 13–20 s | Pans down to D3 | `dax-f6.mp4`: a one-line measure is pasted, F6 formats it | Paste DAX or SQL. F6 formats it. |
+| 20–27 s | Pans left to D4, past D7 | `shapes-connectors.mp4`: a rectangle, a diamond, a connector; the rectangle moves and the arrow follows | Shapes, sticky notes, and arrows that follow. |
+| 27–34 s | Pans up to D5 | `frames-export.mp4`: Export to PowerPoint and the deck open in PowerPoint | Frames become slides. Export the deck. |
+| 34–41 s | Pans down and left to D6 | `open-pptx-zip.mp4`: a .pptx dropped on the board becomes its slides | Open a PowerPoint deck or a Microsoft Whiteboard export. |
+| 41–47 s | Pulls back until the whole board is in frame | `full-board.mp4` at the centre of the board: a double-click fits the board in its window as the camera pulls back | One board. A file on your PC. |
+| 47–50 s | The board gives way to the end card | | App icon, SQLBI Whiteboard, Free and open source, whiteboard.sqlbi.com |
 
-Notes that keep beats honest:
+The site rendition loops, so its end card fades to paper over the last 500 ms and the
+restart cuts to the white board of the first frame. No rendition has a voice. The site
+files are silent; the social files and the Store trailer carry the music bed.
 
-- Beat 4's strokes link only if they touch **exactly one** container — keep the circle and
-  arrow fully on the chart image, not grazing a neighbor.
-- The tab strip appears on camera in beat 5 (View tab) — that covers the tab-strip
-  requirement without its own beat.
-- Optional touch: one short two-finger pan somewhere between beats 3 and 4 shows touch
-  navigation. Finger drawing is shown in a Store screenshot instead, because 30 s is too
-  short to include it.
-- Optional end card: before the take, handwrite **whiteboard.sqlbi.com** small near the
-  board's edge; beat 6's fit reveals it without an overlay.
-
-## Takes
-
-Rehearse the full sequence twice without recording — the handwriting beats are the only
-part that cannot be fixed in post. Then record **three to five full takes**, letting
-mistakes run (restart the beat on the same board rather than the take; the edit keeps the
-best pass of each beat). Name recordings `take-01.mkv`, `take-02.mkv`, …
-
-## Edit
-
-- Jump cuts only. Every cut lands on the same white board with more content — no
-  transitions needed.
-- Beat 1 stays 1× always. Dialogs (capture picker) and any dead pen travel get cut or
-  sped to 4×. Keep at least one second of stillness after beats 3 and 6.
-- Keystroke callouts: overlay `overlays/ctrl-v.png` on the paste and `overlays/f6.png` on
-  the format in beat 2 — transparent PNGs, drawn large; scale to taste (a keycap about
-  1/10 of the frame height reads well), bottom-right corner, quick fade in and out.
-- No voiceover. Music optional, added at upload; the clip must work silent.
-- Export master: **2560 × 1440, 60 fps, H.264 high bitrate** (or ProRes/DNxHR if the
-  editor offers it), audio track only if music was added.
+The shorts take the LiveView, DAX, and shapes stations: 10 seconds on the station with
+the capture at its own speed, and a 2-second end card.
 
 ## Publish
 
-The site serves the clip itself (decision 19). From the 4K master, encode the two
+`npm run render:film2-site` in `tools/films` renders the master
+(`out/master/film2-16x9-master.mp4`) and runs these three commands, which write the two
 renditions and the poster straight into `site/`; they deploy with the next site publish.
 
 ```bash
-ffmpeg -y -i master.mp4 -vf "scale=2560:-2:flags=lanczos" -c:v libsvtav1 -crf 38 -preset 6 -movflags +faststart -an site/teaser-av1.mp4
+ffmpeg -y -i master.mp4 -vf "scale=1920:-2:flags=lanczos,fade=t=out:st=49.5:d=0.5:color=0xF7F6F2" -c:v libsvtav1 -crf 46 -preset 6 -movflags +faststart -an site/teaser-av1.mp4
 ```
 
 ```bash
-ffmpeg -y -i master.mp4 -vf "scale=1920:-2:flags=lanczos" -c:v libx264 -crf 22 -preset slow -pix_fmt yuv420p -movflags +faststart -an site/teaser-h264.mp4
+ffmpeg -y -i master.mp4 -vf "scale=1920:-2:flags=lanczos,fade=t=out:st=49.5:d=0.5:color=0xF7F6F2" -c:v libx264 -crf 31 -preset veryslow -pix_fmt yuv420p -movflags +faststart -an site/teaser-h264.mp4
 ```
 
 ```bash
-ffmpeg -y -ss 41.0 -i master.mp4 -frames:v 1 -vf "scale=1920:-2:flags=lanczos" -q:v 3 site/teaser-poster.jpg
+ffmpeg -y -ss 46.0 -i master.mp4 -frames:v 1 -vf "scale=1920:-2:flags=lanczos" -q:v 3 site/teaser-poster.jpg
 ```
 
-The `<video>` element in `site/index.html` lists the AV1 source first and H.264 as the
-fallback; if a re-encode changes resolution, frame rate, or codec profile, update its
-`codecs=` strings (read them with `ffprobe -show_entries stream=profile,level`). Keep
-the master outside the repository, and reuse it for the Store trailer per
+The CRFs are higher than those of the 42-second cut (38 and 22) because the camera never
+stops, so every frame differs from the one before. At 46 and 31 each file is about
+3.5 MB, the size of the 42-second cut, and the text of the captures and the captions stays
+readable, at rest and in the pans.
+
+The poster is the whole board at 46 seconds. The `<video>` element in `site/index.html`
+lists the AV1 source first and H.264 as the fallback; if a re-encode changes resolution,
+frame rate, or codec profile, update its `codecs=` strings (read them with
+`ffprobe -show_entries stream=profile,level`). The Store trailer is
+`out/film2-store-1920x1080.mp4` from `npm run render:film2-store`, for
 `installer/msix/STORE-LISTING.md`.

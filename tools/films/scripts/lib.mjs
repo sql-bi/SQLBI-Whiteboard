@@ -27,6 +27,16 @@ export const ffmpeg = (args) => {
   if (r.status !== 0) throw new Error(`ffmpeg failed: ${args.join(' ')}`);
 };
 
+// The mean volume in dB of an audio file after an ffmpeg audio filter, read with
+// volumedetect.
+export const meanVolume = (file, filter) => {
+  const exe = process.env.FFMPEG ?? 'ffmpeg';
+  const r = spawnSync(exe, ['-hide_banner', '-i', file, '-af', `${filter},volumedetect`, '-f', 'null', '-'], {encoding: 'utf8'});
+  const m = /mean_volume: (-?[\d.]+) dB/.exec(r.stderr ?? '');
+  if (!m) throw new Error(`volumedetect found no level in ${file}`);
+  return Number(m[1]);
+};
+
 export const progressLogger = (label) => {
   let last = -1;
   return ({progress}) => {

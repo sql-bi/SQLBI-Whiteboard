@@ -7,6 +7,12 @@ Film 1, "Export before 16 October", is 30 seconds long. It tells people who use 
 Microsoft Whiteboard app with a personal account to export their boards before the app
 retires on 16 October 2026, and shows SQLBI Whiteboard opening the exported ZIP.
 
+Film 2, "One board", is 50 seconds long. One continuous camera move crosses a single
+board on which seven captures sit as windows, each with its caption written below it,
+and ends on the whole board and the end card. It is the teaser on the site and the Store
+trailer, and three 12-second portrait shorts are cut from it. It names no date, so it
+stays true after the campaign.
+
 ## License
 
 Remotion is used under its free license, which applies to companies with up to three
@@ -59,6 +65,40 @@ come from one composition, whose layout in `src/layout.ts` follows the aspect ra
 
 Nothing under `out` is committed.
 
+### Film 2
+
+```powershell
+npm run stills:film2        # a still every 5 seconds of each composition, into out\stills
+npm run render:film2-all    # every rendition, into out, and the site files, into ..\..\site
+```
+
+One script renders each rendition: `render:film2-16x9`, `render:film2-1x1`,
+`render:film2-4x5`, `render:film2-short-liveview`, `render:film2-short-dax`,
+`render:film2-short-shapes`, `render:film2-store`, and `render:film2-site`. Each
+composition is rendered once at its own size into `out\master`, not at twice its size,
+because six of the captures are 1080p and a larger master would only enlarge them.
+
+| File | Size | Where it goes | Safe area |
+| --- | --- | --- | --- |
+| `film2-16x9.mp4` | 1920 × 1080 | YouTube, LinkedIn, X | 96 px on every side |
+| `film2-1x1.mp4` | 1080 × 1080 | LinkedIn feed, X, Instagram feed | 90 px |
+| `film2-4x5.mp4` | 1080 × 1350 | Instagram feed, LinkedIn | 90 px |
+| `film2-short-liveview.mp4` | 1080 × 1920 | Reels, TikTok, Shorts: the LiveView station | y 250 to 1550, x 60 to 930 |
+| `film2-short-dax.mp4` | 1080 × 1920 | Reels, TikTok, Shorts: the DAX and F6 station | y 250 to 1550, x 60 to 930 |
+| `film2-short-shapes.mp4` | 1080 × 1920 | Reels, TikTok, Shorts: the shapes station | y 250 to 1550, x 60 to 930 |
+| `film2-store-1920x1080.mp4` | 1920 × 1080 | The Microsoft Store trailer | 96 px |
+| `site/teaser-av1.mp4`, `site/teaser-h264.mp4` | 1920 × 1080 | The landing page, silent and looping | |
+| `site/teaser-poster.jpg` | 1920 × 1080 | The landing page poster, the whole board at 46 s | |
+
+The files in `out` are H.264 High, yuv420p, 30 fps, with the music bed in AAC at 128 kbps
+and the index at the start of the file. The film is exactly 50 seconds long and each short
+exactly 12, ending on a 2-second end card. The site files carry no audio, and their end
+card fades to paper over the last half second so the loop restarts on the white board;
+the commands are in [docs/teaser/shot-script.md](../../docs/teaser/shot-script.md).
+
+`src/film2/board.ts` lays out the board for each shape, and `src/film2/cuts.ts` holds
+the camera moves and the moment each capture plays, for the film and for each short.
+
 ## Captures
 
 Record with OBS at 2560 × 1440 and 60 fps, with Windows display scaling at 150 % and the
@@ -77,6 +117,23 @@ with its name and what it will show.
 `src/film1/captures.ts` sets, for each capture, where the film starts reading it, how fast
 it plays it, and where the numbered callouts sit. The callout positions are estimates, so
 check them against the real captures in `npm run studio` and correct them there.
+
+Film 2 uses seven more. They were recorded at 30 fps, `ink-diagram.mp4` at 3840 × 2160 and
+the others at 1920 × 1080. Each sits on the board at 1920 × 1080 and the camera never
+zooms past that, so no capture is shown larger than it was recorded.
+
+| # | File | Length | What it shows |
+| --- | --- | --- | --- |
+| D1 | `ink-diagram.mp4` | 8.6 s | The pen draws three boxes and two connectors, with pressure visible |
+| D2 | `liveview-powerbi.mp4` | 9.6 s | View, LiveView, the Power BI window on the board, Freeze, highlighter marks |
+| D3 | `dax-f6.mp4` | 9.2 s | A long one-line measure is pasted; F6 formats it |
+| D4 | `shapes-connectors.mp4` | 10.1 s | Insert: a rectangle, a diamond, and a connector; the rectangle moves and the arrow follows |
+| D5 | `frames-export.mp4` | 11.0 s | A board of slides, Export to PowerPoint, and the deck open in PowerPoint |
+| D6 | `open-pptx-zip.mp4` | 8.5 s | A .pptx dropped on the board becomes its slides |
+| D7 | `full-board.mp4` | 6.4 s | A double-click on empty canvas fits the whole board in the window |
+
+The lengths are those of the video tracks. `src/film2/captures.ts` records what happens
+when in each capture, read from frame sheets.
 
 ## Voice and music
 
@@ -106,3 +163,15 @@ between two phrases, gives the wrong count; then set `src/film1/beats.json` by h
 The music bed, when there is one, is `audio\film1-bed.mp3`. It plays 22 dB below the voice
 and fades out under the end card. Without it the film has no music. The MP3 files are not
 committed.
+
+Film 2 has no voice. Its bed is `audio\film2-bed.mp3`, generated 60 seconds long because
+the generator fades out over its last 10 seconds, so the first 50 hold their level until
+the end card:
+
+```powershell
+node scripts\elevenlabs.mjs music --film film2 --seconds 60 --prompt "Calm, minimal instrumental. Soft felt piano and a warm, slowly evolving pad, unhurried and steady, gently optimistic, with an even level throughout. No drums, no percussion, no vocals. Suitable under a quiet product film with no narration. Ends with a gentle fade."
+```
+
+The render mixes it with ffmpeg at a level that averages −20 dB: from its start under
+the film, fading out over the end card, and from 14 seconds in under each short. Without
+it the files in `out` carry a silent track.
