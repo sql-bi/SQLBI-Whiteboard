@@ -22,6 +22,7 @@ public enum SessionCommand
     Redo,
     Copy,
     Paste,
+    ClearStrokes,
     FullScreen,
     CanvasOnly,
     ToggleGrid,
@@ -50,6 +51,7 @@ public partial class SessionChrome : UserControl
     {
         InitializeComponent();
         SetEditEnabled(canUndo: false, canRedo: false);
+        SetClearStrokesEnabled(hasStrokes: false);
         SetLiveViewCommands(selected: false, hasTarget: false, frozen: false);
         SetZOrderEnabled(canBringToFront: false, canSendToBack: false);
     }
@@ -105,6 +107,16 @@ public partial class SessionChrome : UserControl
 
         UndoButton.IsEnabled = canUndo;
         RedoButton.IsEnabled = canRedo;
+    }
+
+    public void SetClearStrokesEnabled(bool hasStrokes)
+    {
+        if (ClearStrokesButton is null)
+        {
+            return;
+        }
+
+        ClearStrokesButton.IsEnabled = hasStrokes;
     }
 
     /// <summary>
@@ -493,6 +505,7 @@ public partial class SessionChrome : UserControl
             'Y' when EditRow.Visibility == Visibility.Visible => SessionCommand.Redo,
             'C' when EditRow.Visibility == Visibility.Visible => SessionCommand.Copy,
             'V' when EditRow.Visibility == Visibility.Visible => SessionCommand.Paste,
+            'S' when EditRow.Visibility == Visibility.Visible => SessionCommand.ClearStrokes,
             'F' when ViewRow.Visibility == Visibility.Visible => SessionCommand.FullScreen,
             'C' when ViewRow.Visibility == Visibility.Visible => SessionCommand.CanvasOnly,
             'G' when ViewRow.Visibility == Visibility.Visible => SessionCommand.ToggleGrid,

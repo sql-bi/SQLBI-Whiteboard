@@ -617,6 +617,7 @@ public partial class MainWindow : Window
         }
 
         SessionBar.SetFramesChecked(_document.ShowFrames);
+        SessionBar.SetClearStrokesEnabled(_document.Objects.Any(item => item is InkStrokeObject));
         PublishSelection();
         SceneSurface.InvalidateVisual();
         UpdateLiveViewActionOverlay();
@@ -4164,6 +4165,30 @@ public partial class MainWindow : Window
     }
 
     /// <summary>
+    /// Every ink stroke on the board, including those linked to a container, as
+    /// one step, so one undo brings them all back. The rest of the selection
+    /// stays selected.
+    /// </summary>
+    private void ClearStrokes()
+    {
+        if (_textEditBefore is not null ||
+            _labelEditBefore is not null ||
+            _shapeEditBefore is not null)
+        {
+            return;
+        }
+
+        BoardObject[] strokes = _document.Objects.OfType<InkStrokeObject>().ToArray<BoardObject>();
+        if (strokes.Length == 0)
+        {
+            return;
+        }
+
+        _history.Execute(DeleteCommandFor(strokes), _document);
+        SceneSurface.InvalidateVisual();
+    }
+
+    /// <summary>
     /// A copy of the selection, 24 screen pixels down and to the right of it and
     /// above everything on the board, which becomes the selection: pressing the
     /// shortcut again therefore lays the next copy 24 pixels further on. The
@@ -7306,6 +7331,9 @@ public partial class MainWindow : Window
                 break;
             case SessionCommand.Paste:
                 PasteButton_Click(this, new RoutedEventArgs());
+                break;
+            case SessionCommand.ClearStrokes:
+                ClearStrokes();
                 break;
             case SessionCommand.FullScreen:
                 SetChromeMode(

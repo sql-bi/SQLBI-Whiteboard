@@ -222,6 +222,24 @@
                                            Text="Ctrl+V" />
                             </StackPanel>
                         </Button>
+                        <Button x:Name="ClearStrokesButton"
+                                Style="{StaticResource SessionCommandButton}"
+                                ToolTip="Remove every ink stroke from the board"
+                                Tag="ClearStrokes"
+                                Click="Command_Click">
+                            <StackPanel HorizontalAlignment="Center">
+                                <Path Width="18"
+                                      Height="18"
+                                      Stretch="Uniform"
+                                      Fill="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"
+                                      Data="{StaticResource EraserGeometry}" />
+                                <TextBlock Margin="0,4,0,0"
+                                           HorizontalAlignment="Center"
+                                           Text="Clear strokes" />
+                                <TextBlock Style="{StaticResource SessionShortcutHint}"
+                                           Text="S" />
+                            </StackPanel>
+                        </Button>
                     </StackPanel>
                     <StackPanel x:Name="ViewRow"
                                 Orientation="Horizontal"
