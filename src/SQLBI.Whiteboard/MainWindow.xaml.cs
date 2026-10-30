@@ -739,7 +739,7 @@ public partial class MainWindow : Window
             points,
             _penStyle,
             _document.NextZIndex);
-        if (_document.FindSingleTouchedContainer(stroke) is { } container)
+        if (_document.FindTopTouchedContainer(stroke) is { } container)
         {
             stroke = stroke with { ContainerId = container.Id };
         }
