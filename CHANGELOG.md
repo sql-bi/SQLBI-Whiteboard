@@ -17,6 +17,13 @@ broke. The heading is parsed by `scripts/release-notes.ps1`, so keep its shape; 
 under it is ordinary Markdown, and the renderer handles paragraphs, lists, links, `code`
 and **bold**.
 
+## 1.7.7 - 29 October 2026
+
+### Clear strokes
+**Edit → Clear strokes** removes every ink stroke on the board in one step, including strokes
+linked to a container, and leaves images, text, shapes, and frames in place. Undo brings the
+strokes back, so a board can be exported without its ink and then restored.
+
 ## 1.7.6 - 20 October 2026
 
 ### Panning with a mouse

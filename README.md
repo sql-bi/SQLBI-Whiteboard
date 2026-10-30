@@ -219,6 +219,7 @@ Use **Copy settings** after finding a useful combination so the exact values can
 | Ctrl+E | Export the board to PowerPoint or PDF |
 | Delete | Delete the selected container and its linked strokes |
 | Ctrl+A / Ctrl+Shift+A | Select everything an area could take, or the ink strokes only |
+| Edit > Clear strokes | Remove every ink stroke on the board, including strokes linked to containers, as one step that Undo restores. Letter S while the Edit strip is open |
 | Ctrl+D | Duplicate the selection 24 pixels down and to the right, and select the copy |
 | … on the property bar | Delete, Copy, Duplicate, and the four depth commands for whatever is selected |
 | Alt+L | Laser pointer |
