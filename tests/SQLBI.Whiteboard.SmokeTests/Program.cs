@@ -11,6 +11,13 @@ using SQLBI.Whiteboard.Core.Model;
 using SQLBI.Whiteboard.Core.Settings;
 using SQLBI.Whiteboard.Export;
 
+if (args.Contains("--liveview-navigation-only"))
+{
+    SQLBI.Whiteboard.SmokeTests.LiveViewNavigationSmokeTests.Run();
+    Console.WriteLine("LiveView navigation smoke tests passed.");
+    return;
+}
+
 // The languages Whiteboard colors from a syntax definition rather than a parser.
 // What is checked is what a reader sees: which characters carry which color, that
 // a construct that spans lines keeps its color to the end, that an unterminated
@@ -590,6 +597,7 @@ SQLBI.Whiteboard.SmokeTests.PreferencesSmokeTests.Run();
 SQLBI.Whiteboard.SmokeTests.WindowCloseSmokeTests.Run();
 SQLBI.Whiteboard.SmokeTests.AutoFullScreenSmokeTests.Run();
 SQLBI.Whiteboard.SmokeTests.LiveViewFocusSmokeTests.Run();
+SQLBI.Whiteboard.SmokeTests.LiveViewNavigationSmokeTests.Run();
 
 Console.WriteLine("SQLBI.Whiteboard smoke tests passed.");
 

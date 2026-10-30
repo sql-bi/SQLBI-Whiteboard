@@ -31,6 +31,57 @@ namespace SQLBI.Whiteboard;
 
 public partial class MainWindow : Window
 {
+    private LiveViewReturnShortcut? _liveViewReturnShortcut;
+    private Guid? _returnLiveViewId;
+    private bool _liveViewJumpActive;
+
+    private async void JumpLiveViewButton_Click(object sender, RoutedEventArgs e)
+    {
+        if (GetSelectedLiveView() is not { } liveView ||
+            !_liveViewPresenters.TryGetValue(liveView.Id, out var presenter) ||
+            presenter.WindowTarget is not { } target) return;
+        try
+        {
+            CommitTextEdit();
+            _liveViewReturnShortcut ??= new LiveViewReturnShortcut(
+                new WindowInteropHelper(this).Handle, ReturnFromLiveView);
+            _liveViewReturnShortcut.Register();
+            _returnLiveViewId = liveView.Id;
+            await ResumeLiveViewAsync(liveView);
+            _liveViewJumpActive = true;
+            if (!target.Activate())
+            {
+                _liveViewJumpActive = false;
+                _returnLiveViewId = null;
+                throw new InvalidOperationException("The source window could not be activated. It may have closed; reconnect LiveView to choose it again.");
+            }
+        }
+        catch (Exception exception)
+        {
+            _liveViewJumpActive = false;
+            ShowError("Could not go to LiveView window", exception);
+        }
+    }
+
+    private async void ReturnFromLiveView()
+    {
+        try
+        {
+            if (!LiveViewWindowTarget.ActivateWindow(new WindowInteropHelper(this).Handle)) return;
+            if (_returnLiveViewId is Guid id &&
+                _document.Objects.OfType<LiveViewBoardObject>().FirstOrDefault(item => item.Id == id) is { } liveView &&
+                _liveViewPresenters.TryGetValue(id, out var presenter) && presenter.HasTarget)
+            {
+                SelectOnly(id);
+                await ResumeLiveViewAsync(liveView);
+                UpdateLiveViewSuspension();
+                SceneSurface.InvalidateVisual();
+            }
+            InkSurface.Focus();
+        }
+        catch (Exception exception) { ShowError("Could not return to LiveView", exception); }
+    }
+
     private enum BoardTool
     {
         Pen,
@@ -8029,7 +8080,8 @@ public partial class MainWindow : Window
             return;
         }
 
-        GraphicsCaptureItem? item = await PickLiveViewTargetAsync();
+        var selection = await PickLiveViewTargetAsync();
+        GraphicsCaptureItem? item = selection?.Item;
         if (item is null)
         {
             return;
@@ -8051,12 +8103,12 @@ public partial class MainWindow : Window
                     width,
                     height),
                 new LiveViewSourceConfiguration(
-                    LiveViewSourceKind.Unknown,
+                    selection!.Window is null ? LiveViewSourceKind.Unknown : LiveViewSourceKind.Window,
                     DisplayNameOrFallback(item.DisplayName)),
                 IsFrozen: false);
 
             _history.Execute(new AddObjectCommand(liveView), _document);
-            AttachLiveViewPresenter(liveView, item);
+            AttachLiveViewPresenter(liveView, item, selection!.Window);
             SelectOnly(liveView.Id);
             SceneSurface.InvalidateVisual();
             SetActiveTool(BoardTool.Select);
@@ -8070,7 +8122,8 @@ public partial class MainWindow : Window
 
     private async Task ReconnectLiveViewAsync(LiveViewBoardObject liveView)
     {
-        GraphicsCaptureItem? item = await PickLiveViewTargetAsync();
+        var selection = await PickLiveViewTargetAsync();
+        GraphicsCaptureItem? item = selection?.Item;
         if (item is null)
         {
             return;
@@ -8087,6 +8140,7 @@ public partial class MainWindow : Window
                 Bounds = updatedBounds,
                 Source = liveView.Source with
                 {
+                    Kind = selection!.Window is null ? LiveViewSourceKind.Unknown : LiveViewSourceKind.Window,
                     DisplayName = DisplayNameOrFallback(item.DisplayName),
                 },
                 IsFrozen = false,
@@ -8095,7 +8149,7 @@ public partial class MainWindow : Window
                 .Select(stroke => stroke.TransformWithContainer(liveView.Bounds, updatedBounds))
                 .ToArray();
             _document.ReplaceObjects([updated, .. linkedStrokes]);
-            AttachLiveViewPresenter(updated, item);
+            AttachLiveViewPresenter(updated, item, selection!.Window);
             SceneSurface.InvalidateVisual();
             UpdateLiveViewMenuItems();
             UpdateLiveViewActionOverlay();
@@ -8106,7 +8160,9 @@ public partial class MainWindow : Window
         }
     }
 
-    private async Task<GraphicsCaptureItem?> PickLiveViewTargetAsync()
+    private sealed record LiveViewSelection(GraphicsCaptureItem Item, LiveViewWindowTarget? Window);
+
+    private async Task<LiveViewSelection?> PickLiveViewTargetAsync()
     {
         WinRtThreading.EnsureDispatcherQueue();
         GraphicsCapturePicker picker = new();
@@ -8114,7 +8170,13 @@ public partial class MainWindow : Window
         {
             nint windowHandle = new WindowInteropHelper(this).Handle;
             WinRT.Interop.InitializeWithWindow.Initialize(picker, windowHandle);
-            return await picker.PickSingleItemAsync();
+            var item = await picker.PickSingleItemAsync();
+            return item is null ? null : new LiveViewSelection(item, LiveViewWindowTarget.TryMatch(item));
+        }
+        catch (Exception exception)
+        {
+            ShowError("Could not select LiveView source", exception);
+            return null;
         }
         finally
         {
@@ -8124,7 +8186,7 @@ public partial class MainWindow : Window
 
     private void AttachLiveViewPresenter(
         LiveViewBoardObject liveView,
-        GraphicsCaptureItem item)
+        GraphicsCaptureItem item, LiveViewWindowTarget? windowTarget)
     {
         if (_liveViewPresenters.TryGetValue(liveView.Id, out LiveViewPresenter? existing))
         {
@@ -8132,7 +8194,7 @@ public partial class MainWindow : Window
             existing.CaptureCursor = liveView.CaptureCursor;
             existing.SetSuspended(ShouldSuspendLiveViews);
             AttachLiveViewSurface(existing);
-            existing.SetTarget(item);
+            existing.SetTarget(item, windowTarget);
             return;
         }
 
@@ -8147,13 +8209,14 @@ public partial class MainWindow : Window
         _liveViewPresenters.Add(liveView.Id, presenter);
         presenter.SetSuspended(ShouldSuspendLiveViews);
         AttachLiveViewSurface(presenter);
-        presenter.SetTarget(item);
+        presenter.SetTarget(item, windowTarget);
     }
 
     private bool ShouldSuspendLiveViews => _settings.PauseLiveViewsWhenUnfocused && !_applicationIsActive;
 
     private void Application_Activated(object? sender, EventArgs e)
     {
+        _liveViewJumpActive = false;
         _applicationIsActive = true;
         UpdateLiveViewSuspension();
     }
@@ -8175,7 +8238,8 @@ public partial class MainWindow : Window
         {
             try
             {
-                presenter.SetSuspended(ShouldSuspendLiveViews);
+                presenter.SetSuspended(ShouldSuspendLiveViews &&
+                    !(_liveViewJumpActive && presenter.ObjectId == _returnLiveViewId));
             }
             catch (Exception exception)
             {
@@ -8301,7 +8365,7 @@ public partial class MainWindow : Window
         PointD bottomRight = _camera.WorldToScreen(
             new PointD(liveView.Bounds.Right, liveView.Bounds.Bottom));
 
-        const double overlayWidth = 104;
+        const double overlayWidth = 152;
         const double overlayHeight = 48;
         const double inset = 8;
         Canvas.SetLeft(
@@ -8314,6 +8378,10 @@ public partial class MainWindow : Window
         bool isRunning = IsLiveViewRunning(liveView.Id);
         PauseLiveViewButton.IsEnabled = isRunning;
         PlayLiveViewButton.IsEnabled = !isRunning;
+        JumpLiveViewButton.IsEnabled = overlayPresenter.WindowTarget is { IsAvailable: true };
+        JumpLiveViewButton.ToolTip = JumpLiveViewButton.IsEnabled
+            ? "Go to source window. Ctrl+Alt+J returns to Whiteboard and resumes LiveView."
+            : "The source window could not be identified uniquely. LiveView capture is still available.";
         LiveViewActionsBorder.Visibility = Visibility.Visible;
         UpdateLanguageChipOverlay();
         UpdateZOrderCommands();
@@ -9998,6 +10066,7 @@ public partial class MainWindow : Window
             return;
         }
 
+        _liveViewReturnShortcut?.Dispose();
         _autosaveTimer.Stop();
         _mermaidRenderer?.Dispose();
         _autoFullScreen.Dispose();

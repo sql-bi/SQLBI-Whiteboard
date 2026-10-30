@@ -237,7 +237,7 @@ Use **Copy settings** after finding a useful combination so the exact values can
 | Help > Preferences | Searchable settings: mode, startup monitor, full screen at startup or when idle, no-pen warning, finger drawing, mouse drawing, pen button, snippet format order, area selection, background grid, laser trail, toolbar position and layout, Insert and Lasso on the toolbar, the Insert palette, after inserting an object, always show the Eraser, update checks. Each setting is one line; its chevron opens the reasoning behind it. Search marks what it matched, and marks the chevron when the match is in the text behind it |
 | View > Bring to front / Bring forward / Send backward / Send to back | Reorder the selection (and its linked strokes) as one block. Letters B, W, K, and S while the View strip is open, and the same four behind the property bar's … |
 | Help > About | Version, channel, license, the product site, and a download link when a newer release is known |
-| View > LiveView | Capture, freeze, disconnect, or reconnect a window or display |
+| View > LiveView | Capture, freeze, disconnect, or reconnect a window or display. **Go to source window** is available when the captured window can be identified uniquely; **Ctrl+Alt+J** returns to Whiteboard and resumes its feed, across virtual desktops |
 | F11 | Fill the current monitor and hide title and tabs. Escape leaves it when a text container is not being edited. **Preferences → Startup → Go full screen when idle** does the same after 20 seconds without input in Whiteboard, even while another app has focus |
 | Ctrl+F11 | Hide title and tabs but keep this window’s size and place |
 

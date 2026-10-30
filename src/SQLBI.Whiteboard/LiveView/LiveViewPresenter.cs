@@ -64,6 +64,8 @@ internal sealed class LiveViewPresenter : IDisposable
 
     public bool HasTarget => _capture.HasTarget;
 
+    public LiveViewWindowTarget? WindowTarget { get; private set; }
+
     public bool IsFrozen => _capture.IsFrozen;
 
     public int DesiredFrameRate
@@ -78,10 +80,12 @@ internal sealed class LiveViewPresenter : IDisposable
         set => _capture.CaptureCursor = value;
     }
 
-    public void SetTarget(GraphicsCaptureItem item)
+    public void SetTarget(GraphicsCaptureItem item, LiveViewWindowTarget? windowTarget = null)
     {
         _failureReported = false;
+        WindowTarget = null;
         _capture.SetTarget(item);
+        WindowTarget = windowTarget;
     }
 
     public void Freeze() => _capture.Freeze();
@@ -90,7 +94,11 @@ internal sealed class LiveViewPresenter : IDisposable
 
     public void SetSuspended(bool suspended) => _capture.SetSuspended(suspended);
 
-    public void ClearTarget() => _capture.ClearTarget();
+    public void ClearTarget()
+    {
+        WindowTarget = null;
+        _capture.ClearTarget();
+    }
 
     public byte[]? CaptureSnapshotPng()
     {
@@ -205,7 +213,11 @@ internal sealed class LiveViewPresenter : IDisposable
 
     private void Capture_TargetClosed()
     {
-        _ = _dispatcher.BeginInvoke(() => TargetClosed?.Invoke(ObjectId));
+        _ = _dispatcher.BeginInvoke(() =>
+        {
+            WindowTarget = null;
+            TargetClosed?.Invoke(ObjectId);
+        });
     }
 
     private void Capture_CaptureFailed(Exception exception)
