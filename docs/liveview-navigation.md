@@ -39,11 +39,21 @@ Graphics Capture; activation does not guarantee that a new frame has already arr
 
 ## Validation
 
-Automated smoke tests create an offscreen window without activating it, create a
-capture item for its HWND, check process identity and closed-window rejection, and
-verify hotkey collision handling and release. They also check unique, duplicate,
-size-mismatched, and closed candidates while preserving the selected capture item.
-They do not change virtual desktops.
+The default smoke suite checks matching with supplied capture descriptions, including
+unique matches, duplicates, size mismatches, title changes, and inaccessible candidates.
+It also checks native window identity, closed-window rejection, and hotkey registration
+conflicts and cleanup. These checks do not require Windows Graphics Capture.
+
+Real capture tests require an interactive Windows desktop and are explicitly enabled:
+
+```powershell
+dotnet run --project tests/SQLBI.Whiteboard.SmokeTests/SQLBI.Whiteboard.SmokeTests.csproj -c Release -- --liveview-navigation-capture
+```
+
+They create offscreen windows without activating them, verify capture and matching,
+and check that failure leaves the selected capture item usable. GitHub's hosted runner
+rejected capture-item creation with E_INVALIDARG, so this integration check is not part
+of the default CI suite. Neither suite changes virtual desktops.
 
 Interactive checks still required on Windows 11:
 

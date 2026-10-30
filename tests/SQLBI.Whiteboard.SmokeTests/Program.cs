@@ -11,9 +11,9 @@ using SQLBI.Whiteboard.Core.Model;
 using SQLBI.Whiteboard.Core.Settings;
 using SQLBI.Whiteboard.Export;
 
-if (args.Contains("--liveview-navigation-only"))
+if (args.Contains("--liveview-navigation-only") || args.Contains("--liveview-navigation-capture"))
 {
-    SQLBI.Whiteboard.SmokeTests.LiveViewNavigationSmokeTests.Run();
+    SQLBI.Whiteboard.SmokeTests.LiveViewNavigationSmokeTests.Run(args.Contains("--liveview-navigation-capture"));
     Console.WriteLine("LiveView navigation smoke tests passed.");
     return;
 }

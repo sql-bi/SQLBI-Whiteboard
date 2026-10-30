@@ -79,21 +79,17 @@ internal sealed record LiveViewWindowTarget(nint Handle, uint ProcessId, string 
     internal static LiveViewWindowTarget? FindUniqueMatch(
         GraphicsCaptureItem selected, IEnumerable<LiveViewWindowTarget> candidates)
     {
-        if (string.IsNullOrWhiteSpace(selected.DisplayName)) return null;
-        LiveViewWindowTarget? match = null;
-        foreach (var candidate in candidates)
+        var description = new LiveViewCaptureDescription(selected.DisplayName, selected.Size.Width, selected.Size.Height);
+        var match = LiveViewWindowMatcher.Match(description, candidates, candidate =>
         {
-            if (!string.Equals(candidate.Title, selected.DisplayName, StringComparison.Ordinal)) continue;
             // Query capture dimensions instead of window bounds, which include different borders.
             var item = candidate.CreateCaptureItem();
             try
             {
-                if (!SameDescription(selected, item)) continue;
-                if (match is not null) return null;
-                match = candidate;
+                return new LiveViewCaptureDescription(item.DisplayName, item.Size.Width, item.Size.Height);
             }
             finally { WinRtThreading.Release(item); }
-        }
+        });
         return match is { IsAvailable: true } ? match : null;
     }
 
