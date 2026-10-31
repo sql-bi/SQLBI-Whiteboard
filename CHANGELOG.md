@@ -17,6 +17,18 @@ broke. The heading is parsed by `scripts/release-notes.ps1`, so keep its shape; 
 under it is ordinary Markdown, and the renderer handles paragraphs, lists, links, `code`
 and **bold**.
 
+## 1.7.8 - 31 October 2026
+
+### Go to a LiveView's source window
+A LiveView of a window has a **Go to source window** button that brings that window forward,
+on whichever virtual desktop it is. Ctrl+Alt+Shift+W does the same from Whiteboard, and from
+any other application returns to Whiteboard and resumes the LiveView.
+**Preferences → Live View → Source window shortcut** offers Ctrl+Alt+. or Ctrl+Alt+J instead.
+
+### Ink across overlapping containers
+A stroke that touches more than one container now moves with the frontmost one. It used to
+stay on the canvas, linked to none of them.
+
 ## 1.7.7 - 29 October 2026
 
 ### Clear strokes
