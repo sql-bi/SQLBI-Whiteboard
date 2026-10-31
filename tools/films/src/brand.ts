@@ -1,4 +1,4 @@
-import {Easing} from 'remotion';
+import {Easing, interpolate} from 'remotion';
 
 // The campaign colors, as used by site/hero-launch-card.svg and the app icon.
 export const color = {
@@ -24,3 +24,7 @@ export const fontFamily = '"Segoe UI Variable Display", "Segoe UI", sans-serif';
 
 // Every transition eases in and out, with no overshoot.
 export const ease = Easing.bezier(0.45, 0, 0.55, 1);
+
+// Eased progress from 0 to 1 over [start, start + length], in seconds.
+export const progress = (t: number, start: number, length: number) =>
+  interpolate(t, [start, start + length], [0, 1], {easing: ease, extrapolateLeft: 'clamp', extrapolateRight: 'clamp'});
