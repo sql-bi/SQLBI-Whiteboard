@@ -1,7 +1,8 @@
 # LiveView window navigation
 
 Implemented locally: the third on-container button activates the source window.
-Ctrl+Alt+J returns to the existing Whiteboard window and resumes the selected feed.
+One system-wide shortcut, Ctrl+Alt+Shift+W by default, does the same from Whiteboard
+and returns to the existing Whiteboard window from anywhere else, resuming the feed.
 
 ## Window identity and desktops
 
@@ -27,9 +28,30 @@ selects the virtual desktop containing that existing window. Neither source nor
 Whiteboard is moved to another desktop. This follows the window's current desktop;
 if the user moves it during the visit, the return follows its new location.
 
-The return shortcut is registered on the first jump and released when Whiteboard
-closes. A registration conflict is reported before leaving the board. Ctrl+Alt+J
-avoids the Windows-key combinations reserved by the operating system.
+## Shortcut
+
+`RegisterHotKey` delivers the shortcut to Whiteboard whichever window is in front,
+so one key serves both directions. When Whiteboard's main window is active, it goes
+to the selected LiveView's source, then the last one visited, then the only LiveView
+with a source window. When another application is active, it returns to Whiteboard
+and resumes the LiveView last visited. It does nothing while a Whiteboard dialog or
+a label or shape text edit is active.
+
+A registered hotkey takes the keys from every other application, including shortcuts
+an application handles in its own window, which `RegisterHotKey` cannot detect. The
+shortcut is therefore registered only while at least one LiveView has an available
+source window, or a visit is under way, and released otherwise. A visit keeps it
+registered when the source closes, so the return still works. A registration conflict
+is silent when a LiveView connects, reported by **Go to source window** before leaving
+the board, and reported when the shortcut is changed in Preferences.
+
+**Preferences → Live View → Source window shortcut** offers a fixed list:
+Ctrl+Alt+Shift+W, Ctrl+Alt+., and Ctrl+Alt+J. A list, rather than recording any
+combination, avoids having to reject Whiteboard's own shortcuts, Windows-key
+combinations reserved by the operating system, and Ctrl+Alt combinations that type a
+character with AltGr on the current keyboard layout. Ctrl+Alt+Shift+W is the default
+because three modifiers keep it out of AltGr typing and out of most applications'
+shortcut tables. Ctrl+Alt+J, for example, is used by Visual Studio.
 
 Jumping resumes a frozen source. During the visit, that feed is exempt from
 **Pause when Whiteboard loses focus**, so edits can be captured before returning
@@ -57,14 +79,19 @@ of the default CI suite. Neither suite changes virtual desktops.
 
 Interactive checks still required on Windows 11:
 
-1. Capture a window with the Windows picker, jump, edit its contents, and return with Ctrl+Alt+J.
+1. Capture a window with the Windows picker, jump with the shortcut, edit its contents,
+   and return with the same shortcut. Repeat with the button for the first jump.
 2. Repeat with the source and Whiteboard on different virtual desktops. Confirm both
    jumps follow the appropriate desktop and the edit appears in the feed.
 3. Repeat with a minimized source, a frozen LiveView, and background capture pausing on.
 4. Close the source during the visit. The shortcut must still return to Whiteboard.
 5. Choose a display through the system picker. Freeze and Resume must still work;
    the jump button must stay disabled. Repeat with two windows whose titles and dimensions match.
-6. Close Whiteboard and confirm another instance can register Ctrl+Alt+J.
+6. Change the shortcut in Preferences with a LiveView connected. The new keys must work
+   at once, the old ones must reach other applications again, and the button tooltip
+   must name the new keys.
+7. Disconnect every LiveView, then close Whiteboard, and confirm another instance or
+   application can register the shortcut each time.
 
 References: [foreground activation and virtual desktops](https://devblogs.microsoft.com/oldnewthing/20171002-00/?p=97116),
 [capture by HWND](https://learn.microsoft.com/en-us/windows/win32/api/windows.graphics.capture.interop/nf-windows-graphics-capture-interop-igraphicscaptureiteminterop-createforwindow),

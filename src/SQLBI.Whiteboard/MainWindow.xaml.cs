@@ -31,21 +31,88 @@ namespace SQLBI.Whiteboard;
 
 public partial class MainWindow : Window
 {
-    private LiveViewReturnShortcut? _liveViewReturnShortcut;
+    private LiveViewHotkey? _liveViewHotkey;
+    private LiveViewShortcut _liveViewShortcut;
     private Guid? _returnLiveViewId;
     private bool _liveViewJumpActive;
 
     private async void JumpLiveViewButton_Click(object sender, RoutedEventArgs e)
     {
-        if (GetSelectedLiveView() is not { } liveView ||
-            !_liveViewPresenters.TryGetValue(liveView.Id, out var presenter) ||
-            presenter.WindowTarget is not { } target) return;
+        if (GetSelectedLiveView() is { } liveView &&
+            _liveViewPresenters.TryGetValue(liveView.Id, out var presenter) &&
+            presenter.WindowTarget is { } target)
+        {
+            await GoToLiveViewSourceAsync(liveView, target);
+        }
+    }
+
+    private void LiveViewHotkey_Pressed()
+    {
+        if (!_applicationIsActive)
+        {
+            ReturnFromLiveView();
+        }
+        else if (IsActive && _labelEditBefore is null && _shapeEditBefore is null &&
+            FindLiveViewSource() is { } source)
+        {
+            _ = GoToLiveViewSourceAsync(source.LiveView, source.Target);
+        }
+    }
+
+    private (LiveViewBoardObject LiveView, LiveViewWindowTarget Target)? FindLiveViewSource()
+    {
+        List<(LiveViewBoardObject LiveView, LiveViewWindowTarget Target)> sources = [];
+        foreach (var liveView in _document.Objects.OfType<LiveViewBoardObject>())
+        {
+            if (_liveViewPresenters.TryGetValue(liveView.Id, out var presenter) &&
+                presenter.WindowTarget is { IsAvailable: true } target)
+            {
+                sources.Add((liveView, target));
+            }
+        }
+
+        // The selected LiveView, then the one last visited, then the only one with a source window.
+        Guid?[] preferred = [GetSelectedLiveView()?.Id, _returnLiveViewId];
+        foreach (var id in preferred)
+        {
+            int index = sources.FindIndex(source => source.LiveView.Id == id);
+            if (index >= 0) return sources[index];
+        }
+        return sources.Count == 1 ? sources[0] : null;
+    }
+
+    private void RegisterLiveViewHotkey()
+    {
+        _liveViewHotkey ??= new LiveViewHotkey(new WindowInteropHelper(this).Handle, LiveViewHotkey_Pressed);
+        _liveViewHotkey.Register(_settings.LiveViewShortcut);
+    }
+
+    // Held only while there is a source window to go to or a visit to return from,
+    // because a registered hotkey takes the keys from every other application.
+    private void UpdateLiveViewHotkey(bool reportConflict = false)
+    {
+        if (_closeConfirmed) return;
+        bool needed = _liveViewJumpActive ||
+            _liveViewPresenters.Values.Any(presenter => presenter.WindowTarget is { IsAvailable: true });
+        try
+        {
+            if (needed) RegisterLiveViewHotkey();
+            else _liveViewHotkey?.Unregister();
+        }
+        catch (Win32Exception exception)
+        {
+            // Otherwise the jump button reports the conflict when it is used.
+            if (reportConflict) ShowError("Could not register the LiveView shortcut", exception);
+            else Debug.WriteLine($"[LiveView] {exception.Message}");
+        }
+    }
+
+    private async Task GoToLiveViewSourceAsync(LiveViewBoardObject liveView, LiveViewWindowTarget target)
+    {
         try
         {
             CommitTextEdit();
-            _liveViewReturnShortcut ??= new LiveViewReturnShortcut(
-                new WindowInteropHelper(this).Handle, ReturnFromLiveView);
-            _liveViewReturnShortcut.Register();
+            RegisterLiveViewHotkey();
             _returnLiveViewId = liveView.Id;
             await ResumeLiveViewAsync(liveView);
             _liveViewJumpActive = true;
@@ -409,6 +476,7 @@ public partial class MainWindow : Window
         Application.Current.Activated += Application_Activated;
         Application.Current.Deactivated += Application_Deactivated;
         _connectorKind = _settings.Connector.Kind;
+        _liveViewShortcut = _settings.LiveViewShortcut;
         LoadInkFromSettings();
         ApplyLaserSettings();
         ApplyToolbarPlacement();
@@ -7172,6 +7240,11 @@ public partial class MainWindow : Window
     {
         _autoFullScreen.Enabled = _settings.EnableAutoFullScreen;
         UpdateLiveViewSuspension();
+        // Report a conflict only for keys just chosen, not on every other preference change.
+        bool shortcutChanged = _liveViewShortcut != _settings.LiveViewShortcut;
+        _liveViewShortcut = _settings.LiveViewShortcut;
+        UpdateLiveViewHotkey(reportConflict: shortcutChanged);
+        UpdateLiveViewActionOverlay();
         ApplyToolbarPlacement();
         ApplyCalligraphyAccess();
         ApplyLaserSettings();
@@ -7693,6 +7766,7 @@ public partial class MainWindow : Window
                 liveView with { IsFrozen = true },
                 presenter);
             presenter.ClearTarget();
+            UpdateLiveViewHotkey();
             DetachLiveViewSurface(presenter);
             _document.ReplaceObject(updated);
             UpdateLiveViewMenuItems();
@@ -8195,6 +8269,7 @@ public partial class MainWindow : Window
             existing.SetSuspended(ShouldSuspendLiveViews);
             AttachLiveViewSurface(existing);
             existing.SetTarget(item, windowTarget);
+            UpdateLiveViewHotkey();
             return;
         }
 
@@ -8210,6 +8285,7 @@ public partial class MainWindow : Window
         presenter.SetSuspended(ShouldSuspendLiveViews);
         AttachLiveViewSurface(presenter);
         presenter.SetTarget(item, windowTarget);
+        UpdateLiveViewHotkey();
     }
 
     private bool ShouldSuspendLiveViews => _settings.PauseLiveViewsWhenUnfocused && !_applicationIsActive;
@@ -8219,6 +8295,7 @@ public partial class MainWindow : Window
         _liveViewJumpActive = false;
         _applicationIsActive = true;
         UpdateLiveViewSuspension();
+        UpdateLiveViewHotkey();
     }
 
     private void Application_Deactivated(object? sender, EventArgs e)
@@ -8269,6 +8346,7 @@ public partial class MainWindow : Window
                 presenter);
             _document.ReplaceObject(updated);
             DetachLiveViewSurface(presenter);
+            UpdateLiveViewHotkey();
             UpdateLiveViewMenuItems();
         }
         catch (Exception exception)
@@ -8380,7 +8458,7 @@ public partial class MainWindow : Window
         PlayLiveViewButton.IsEnabled = !isRunning;
         JumpLiveViewButton.IsEnabled = overlayPresenter.WindowTarget is { IsAvailable: true };
         JumpLiveViewButton.ToolTip = JumpLiveViewButton.IsEnabled
-            ? "Go to source window. Ctrl+Alt+J returns to Whiteboard and resumes LiveView."
+            ? $"Go to source window. {LiveViewHotkey.Label(_settings.LiveViewShortcut)} switches between it and Whiteboard."
             : "The source window could not be identified uniquely. LiveView capture is still available.";
         LiveViewActionsBorder.Visibility = Visibility.Visible;
         UpdateLanguageChipOverlay();
@@ -8696,6 +8774,7 @@ public partial class MainWindow : Window
         presenter.CaptureFailed -= LiveViewPresenter_CaptureFailed;
         DetachLiveViewSurface(presenter);
         presenter.Dispose();
+        UpdateLiveViewHotkey();
     }
 
     private void AttachLiveViewSurface(LiveViewPresenter presenter)
@@ -10066,7 +10145,7 @@ public partial class MainWindow : Window
             return;
         }
 
-        _liveViewReturnShortcut?.Dispose();
+        _liveViewHotkey?.Dispose();
         _autosaveTimer.Stop();
         _mermaidRenderer?.Dispose();
         _autoFullScreen.Dispose();

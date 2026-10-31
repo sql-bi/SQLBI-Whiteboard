@@ -127,7 +127,7 @@
                                 ClickMode="Release"
                                 ToolTipService.ShowOnDisabled="True"
                                 Style="{StaticResource LiveViewOverlayButton}"
-                                ToolTip="Go to source window. Ctrl+Alt+J returns to Whiteboard and resumes LiveView."
+                                ToolTip="Go to source window"
                                 AutomationProperties.Name="Go to LiveView source window"
                                 Click="JumpLiveViewButton_Click">
                             <Path Width="20" Height="20" Stretch="Uniform"

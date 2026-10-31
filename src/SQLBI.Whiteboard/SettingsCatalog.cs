@@ -138,6 +138,7 @@ internal static class SettingsCatalog
         public const string ImportHorizontalSpacing = "import.horizontalSpacing";
         public const string ImportVerticalSpacing = "import.verticalSpacing";
         public const string PauseLiveViewsWhenUnfocused = "liveView.pauseWhenUnfocused";
+        public const string LiveViewShortcut = "liveView.shortcut";
         public const string LaserHoldSeconds = "laser.holdSeconds";
         public const string LaserFadeSeconds = "laser.fadeSeconds";
         public const string LaserHoldMode = "laser.holdMode";
@@ -478,6 +479,22 @@ internal static class SettingsCatalog
             Description = "Stops capture while another application is in the foreground and keeps the last frame visible. LiveViews you paused manually stay paused. Whiteboard dialogs do not count as switching applications.",
             Keywords = ["liveview", "live view", "capture", "pause", "resume", "focus", "background", "GPU"],
             Editor = SettingEditorKind.BooleanCheckbox,
+        },
+        new()
+        {
+            Id = Ids.LiveViewShortcut,
+            Category = LiveView,
+            Title = "Source window shortcut",
+            Summary = "Switch between Whiteboard and a LiveView's window",
+            Description = "In Whiteboard, goes to the source window of the selected LiveView, or of the last one visited. From any other application or virtual desktop, returns to Whiteboard and resumes that LiveView. Another application that uses the same keys does not receive them while a LiveView shows a window.",
+            Keywords = ["liveview", "live view", "shortcut", "hotkey", "keyboard", "keys", "switch", "source", "window", "return", "virtual desktop", "ctrl", "alt"],
+            Editor = SettingEditorKind.EnumChoice,
+            Choices =
+            [
+                new() { Id = nameof(Core.Settings.LiveViewShortcut.ControlAltShiftW), Title = "Ctrl+Alt+Shift+W" },
+                new() { Id = nameof(Core.Settings.LiveViewShortcut.ControlAltPeriod), Title = "Ctrl+Alt+." },
+                new() { Id = nameof(Core.Settings.LiveViewShortcut.ControlAltJ), Title = "Ctrl+Alt+J" },
+            ],
         },
         new()
         {

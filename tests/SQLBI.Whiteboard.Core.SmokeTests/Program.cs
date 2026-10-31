@@ -30,6 +30,17 @@ foreach (var enabled in new[] { true, false })
         "The LiveView focus preference must round-trip in both states.");
 }
 
+Assert(new AppSettings().LiveViewShortcut == LiveViewShortcut.ControlAltShiftW &&
+    AppSettingsSerializer.Parse("{\"version\":19}").LiveViewShortcut == LiveViewShortcut.ControlAltShiftW &&
+    AppSettingsSerializer.Parse("{\"liveViewShortcut\":7}").LiveViewShortcut == LiveViewShortcut.ControlAltShiftW,
+    "The LiveView shortcut must default to Ctrl+Alt+Shift+W, including for an unrecognized value.");
+foreach (var shortcut in Enum.GetValues<LiveViewShortcut>())
+{
+    var saved = AppSettingsSerializer.Format(new AppSettings { LiveViewShortcut = shortcut });
+    Assert(AppSettingsSerializer.Parse(saved).LiveViewShortcut == shortcut,
+        "Every LiveView shortcut preset must round-trip.");
+}
+
 var camera = new Camera2D();
 camera.Resize(1000, 800);
 var anchor = new PointD(720, 310);

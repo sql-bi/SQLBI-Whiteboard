@@ -1,5 +1,6 @@
 using System.ComponentModel;
 using System.Windows.Interop;
+using SQLBI.Whiteboard.Core.Settings;
 using SQLBI.Whiteboard.LiveView;
 
 namespace SQLBI.Whiteboard.SmokeTests;
@@ -71,18 +72,29 @@ internal static class LiveViewNavigationSmokeTests
                 }
 
                 using var otherWindow = new HwndSource(new HwndSourceParameters("LiveView shortcut test"));
-                using var shortcut = new LiveViewReturnShortcut(window.Handle, () => { });
-                using var otherShortcut = new LiveViewReturnShortcut(otherWindow.Handle, () => { });
-                // Use Ctrl+Alt+Shift+F24 so the running application can keep Ctrl+Alt+J.
-                shortcut.Register(0x4007, 0x87);
-                shortcut.Register(0x4007, 0x87);
+                using var shortcut = new LiveViewHotkey(window.Handle, () => { });
+                using var otherShortcut = new LiveViewHotkey(otherWindow.Handle, () => { });
+                // Use Ctrl+Alt+Shift+F23 and F24 so a running Whiteboard keeps its presets.
+                shortcut.Register(0x7, 0x87, "Ctrl+Alt+Shift+F24");
+                shortcut.Register(0x7, 0x87, "Ctrl+Alt+Shift+F24");
+                Assert(shortcut.IsRegistered, "Registering the same keys twice must keep them.");
                 bool conflict = false;
-                try { otherShortcut.Register(0x4007, 0x87); }
+                try { otherShortcut.Register(0x7, 0x87, "Ctrl+Alt+Shift+F24"); }
                 catch (Win32Exception) { conflict = true; }
-                Assert(conflict, "A shortcut owned by another window must report a conflict.");
+                Assert(conflict && !otherShortcut.IsRegistered, "A shortcut owned by another window must report a conflict.");
+                shortcut.Register(0x7, 0x86, "Ctrl+Alt+Shift+F23");
+                otherShortcut.Register(0x7, 0x87, "Ctrl+Alt+Shift+F24");
+                Assert(otherShortcut.IsRegistered, "Changing the shortcut must release the previous keys.");
+                shortcut.Unregister();
+                Assert(!shortcut.IsRegistered, "Releasing the shortcut must report it as released.");
+                otherShortcut.Register(0x7, 0x86, "Ctrl+Alt+Shift+F23");
                 shortcut.Dispose();
-                otherShortcut.Register(0x4007, 0x87);
                 otherShortcut.Dispose();
+                foreach (var preset in Enum.GetValues<LiveViewShortcut>())
+                {
+                    Assert(LiveViewHotkey.Label(preset).StartsWith("Ctrl+Alt+", StringComparison.Ordinal),
+                        $"{preset} must name its keys.");
+                }
                 window.Dispose();
                 Assert(!target.IsAvailable, "Closing the selected window must invalidate the jump target.");
             }
