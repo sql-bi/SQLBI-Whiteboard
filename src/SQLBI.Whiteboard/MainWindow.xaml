@@ -84,7 +84,7 @@
                     ClipToBounds="True"
                     IsHitTestVisible="True">
                 <Border x:Name="LiveViewActionsBorder"
-                        Width="104"
+                        Width="152"
                         Height="48"
                         Padding="4"
                         Visibility="Collapsed"
@@ -94,6 +94,8 @@
                         CornerRadius="9">
                     <Grid>
                         <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="4" />
                             <ColumnDefinition Width="*" />
                             <ColumnDefinition Width="4" />
                             <ColumnDefinition Width="*" />
@@ -119,6 +121,18 @@
                                   Stretch="Uniform"
                                   Fill="{StaticResource LiveViewResumeBrush}"
                                   Data="{StaticResource PlayGeometry}" />
+                        </Button>
+                        <Button x:Name="JumpLiveViewButton"
+                                Grid.Column="4"
+                                ClickMode="Release"
+                                ToolTipService.ShowOnDisabled="True"
+                                Style="{StaticResource LiveViewOverlayButton}"
+                                ToolTip="Go to source window"
+                                AutomationProperties.Name="Go to LiveView source window"
+                                Click="JumpLiveViewButton_Click">
+                            <Path Width="20" Height="20" Stretch="Uniform"
+                                  Stroke="{StaticResource ToolbarIconBrush}" StrokeThickness="2"
+                                  Data="M 12,2 L 20,2 L 20,10 M 20,2 L 9,13 M 9,4 L 3,4 L 3,20 L 18,20 L 18,14" />
                         </Button>
                     </Grid>
                 </Border>

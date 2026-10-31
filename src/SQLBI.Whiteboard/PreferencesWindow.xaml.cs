@@ -1149,6 +1149,7 @@ public partial class PreferencesWindow : Window
             SettingsCatalog.Ids.PenButton => _settings.PenButtons.Barrel.ToString(),
             SettingsCatalog.Ids.Grid => _settings.Grid.ToString(),
             SettingsCatalog.Ids.AfterInsert => _settings.AfterInsert.ToString(),
+            SettingsCatalog.Ids.LiveViewShortcut => _settings.LiveViewShortcut.ToString(),
 
             // A boolean offered as two pictures answers with the id of the
             // picture in force, so one read serves every drawn choice.
@@ -1321,6 +1322,10 @@ public partial class PreferencesWindow : Window
             case SettingsCatalog.Ids.AfterInsert
                 when Enum.TryParse<AfterInsert>(id, out var afterInsert):
                 _settings.AfterInsert = afterInsert;
+                break;
+            case SettingsCatalog.Ids.LiveViewShortcut
+                when Enum.TryParse<LiveViewShortcut>(id, out var liveViewShortcut):
+                _settings.LiveViewShortcut = liveViewShortcut;
                 break;
             case SettingsCatalog.Ids.Grid
                 when Enum.TryParse<GridStyle>(id, out var grid):

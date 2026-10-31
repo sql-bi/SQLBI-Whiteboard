@@ -478,6 +478,7 @@ internal sealed class LiveViewCaptureSession : IDisposable
     private void ApplyMinimumUpdateInterval(GraphicsCaptureSession? session)
     {
         if (session is not null &&
+            OperatingSystem.IsWindowsVersionAtLeast(10, 0, 26100) &&
             ApiInformation.IsPropertyPresent(
                 "Windows.Graphics.Capture.GraphicsCaptureSession",
                 nameof(GraphicsCaptureSession.MinUpdateInterval)))

@@ -19,7 +19,7 @@ the machine).
 The board is one unbounded plane. A `.wboard` is a flat list of objects in world
 coordinates — ink strokes, images, text containers, and LiveViews — each with a bounding
 rectangle and a z-index that is also its creation order, plus the assets the images refer
-to. A stroke that touches exactly one container is linked to it and moves with it. Nothing
+to. A newly drawn stroke links to the frontmost container it touches and moves with it. Nothing
 in the file says where a page begins or ends. The first two exports have to decide it, and
 the third does not need it.
 

@@ -195,11 +195,11 @@
 
     <section class="story">
       <h3>Keep ink on the slide you are discussing</h3>
-      <p>A finished stroke that touches only one container (an image, a text block, or a LiveView) travels with that container when you move or resize it. A stroke that crosses two containers stays on the canvas. Delete the container and its linked ink goes with it. Undo treats the whole operation as one step.</p>
+      <p>A finished stroke travels with the frontmost container it touches when you move or resize that container. Containers underneath do not take the stroke. Delete the container and its linked ink goes with it. Undo treats the whole operation as one step.</p>
 
       <figure class="fig">
         <div class="figbox">
-          <svg viewBox="0 0 700 290" role="img" aria-label="A stroke drawn inside one container moves with it, while a stroke crossing two containers stays behind on the canvas.">
+          <svg viewBox="0 0 700 290" role="img" aria-label="A stroke drawn inside the chart moves with it. A stroke crossing both containers links to the notes container, which is in front.">
             <title>Ink linked to a container</title>
             <defs>
               <radialGradient id="f1fade" cx="0.42" cy="0.4" r="0.8"><stop offset="0.25" stop-color="#fff"/><stop offset="1" stop-color="#000"/></radialGradient>
@@ -245,7 +245,7 @@
         </div>
         <figcaption>
           <p><span class="swatch" style="background:var(--brand)"></span><b>1</b> sits wholly inside the chart container, so it travels with it. The dashed outline is where the container was.</p>
-          <p><span class="swatch" style="background:var(--fig-muted)"></span><b>2</b> crosses into the notes container, so it stays on the canvas.</p>
+          <p><span class="swatch" style="background:var(--fig-muted)"></span><b>2</b> touches both containers and links to the notes container, which is in front.</p>
         </figcaption>
       </figure>
     </section>
@@ -969,7 +969,7 @@
     <p><span class="ui">Select</span> comes back once one object is drawn, and <kbd>Escape</kbd> returns to <span class="ui">Select</span> at any time. <span class="ui">Preferences → Toolbar</span> keeps it for the next one instead, adds <span class="ui">Insert</span> to the floating palette, or pins the Insert row into a second palette you can drag anywhere. Shapes, connectors, and labels are saved in the board, undone with everything else, and exported to a deck or a PDF as objects you can select and change — in PowerPoint the straight arrows are still attached to their shapes.</p>
 
     <h3 id="liveview">LiveView</h3>
-    <p><span class="ui">View → LiveView</span> captures a window or a display. The container behaves like an image: move, resize, frame, delete, undo.</p>
+    <p><span class="ui">View → LiveView</span> captures a window or a display. When the captured window can be identified uniquely, <span class="ui">Go to source window</span> opens it, and <kbd>Ctrl</kbd><span class="plus">+</span><kbd>Alt</kbd><span class="plus">+</span><kbd>Shift</kbd><span class="plus">+</span><kbd>W</kbd> switches between it and Whiteboard, resuming the feed each time you return. Each jump follows the window to its virtual desktop, and <span class="ui">Preferences → Live View</span> offers two other keys. The container behaves like an image: move, resize, frame, delete, undo.</p>
     <p>Turn on <span class="ui">Preferences → Live View → Pause when Whiteboard loses focus</span> to stop capture while you use another application and keep the last frame visible. Returning to Whiteboard resumes the views that were playing, leaving manually paused views paused. Whiteboard's own dialogs do not interrupt capture.</p>
 
     <figure class="fig">

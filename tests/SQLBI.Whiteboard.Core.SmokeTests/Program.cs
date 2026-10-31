@@ -30,6 +30,17 @@ foreach (var enabled in new[] { true, false })
         "The LiveView focus preference must round-trip in both states.");
 }
 
+Assert(new AppSettings().LiveViewShortcut == LiveViewShortcut.ControlAltShiftW &&
+    AppSettingsSerializer.Parse("{\"version\":19}").LiveViewShortcut == LiveViewShortcut.ControlAltShiftW &&
+    AppSettingsSerializer.Parse("{\"liveViewShortcut\":7}").LiveViewShortcut == LiveViewShortcut.ControlAltShiftW,
+    "The LiveView shortcut must default to Ctrl+Alt+Shift+W, including for an unrecognized value.");
+foreach (var shortcut in Enum.GetValues<LiveViewShortcut>())
+{
+    var saved = AppSettingsSerializer.Format(new AppSettings { LiveViewShortcut = shortcut });
+    Assert(AppSettingsSerializer.Parse(saved).LiveViewShortcut == shortcut,
+        "Every LiveView shortcut preset must round-trip.");
+}
+
 var camera = new Camera2D();
 camera.Resize(1000, 800);
 var anchor = new PointD(720, 310);
@@ -507,7 +518,7 @@ var singleContainerStroke = InkStrokeObject.Create(
     new PenStyle(0xFF000000, 4),
     containerDocument.NextZIndex);
 Assert(
-    containerDocument.FindSingleTouchedContainer(singleContainerStroke)?.Id == firstContainer.Id,
+    containerDocument.FindTopTouchedContainer(singleContainerStroke)?.Id == firstContainer.Id,
     "A stroke touching exactly one container should link to it.");
 var ambiguousStroke = InkStrokeObject.Create(
     [
@@ -517,8 +528,34 @@ var ambiguousStroke = InkStrokeObject.Create(
     new PenStyle(0xFF000000, 4),
     containerDocument.NextZIndex);
 Assert(
-    containerDocument.FindSingleTouchedContainer(ambiguousStroke) is null,
-    "A stroke touching multiple containers must remain unlinked.");
+    containerDocument.FindTopTouchedContainer(ambiguousStroke)?.Id == secondContainer.Id,
+    "A stroke touching multiple containers must link to the frontmost one.");
+
+var overlapStroke = InkStrokeObject.Create(
+    [new InkPoint(new PointD(275, 150), 0.5f, 1)],
+    PenStyle.Default,
+    containerDocument.NextZIndex);
+Assert(
+    containerDocument.FindTopTouchedContainer(overlapStroke)?.Id == secondContainer.Id,
+    "Ink in an overlap must link to the top container.");
+var reorderedContainers = new BoardDocument();
+reorderedContainers.AddObject(firstContainer with { ZIndex = secondContainer.ZIndex + 1 });
+reorderedContainers.AddObject(secondContainer);
+Assert(
+    reorderedContainers.FindTopTouchedContainer(overlapStroke)?.Id == firstContainer.Id,
+    "Ink linking must follow depth order rather than insertion order.");
+var outsideStroke = InkStrokeObject.Create(
+    [new InkPoint(new PointD(0, 0), 0.5f, 1)],
+    PenStyle.Default,
+    containerDocument.NextZIndex);
+Assert(containerDocument.FindTopTouchedContainer(outsideStroke) is null,
+    "Ink outside every container must remain independent.");
+var crossingOverlapStroke = InkStrokeObject.Create(
+    [new InkPoint(new PointD(0, 150), 0.5f, 1), new InkPoint(new PointD(480, 150), 0.5f, 2)],
+    PenStyle.Default,
+    containerDocument.NextZIndex);
+Assert(containerDocument.FindTopTouchedContainer(crossingOverlapStroke)?.Id == secondContainer.Id,
+    "Segments crossing containers must link even when neither endpoint is inside.");
 
 var liveViewContainer = new LiveViewBoardObject(
     Guid.NewGuid(),
@@ -534,7 +571,7 @@ var liveViewStroke = InkStrokeObject.Create(
     PenStyle.Default,
     containerDocument.NextZIndex);
 Assert(
-    containerDocument.FindSingleTouchedContainer(liveViewStroke)?.Id == liveViewContainer.Id,
+    containerDocument.FindTopTouchedContainer(liveViewStroke)?.Id == liveViewContainer.Id,
     "A stroke touching one LiveView should link to it like any other container.");
 var textContainer = new TextBoardObject(
     Guid.NewGuid(),
@@ -815,7 +852,7 @@ markdownDocument.AddObject(markdownObject);
 var markdownInk = InkStrokeObject.Create([new InkPoint(new PointD(100, 120), 0.6f, 1)],
     PenStyle.Default, 1, containerId: markdownObject.Id);
 markdownDocument.AddObject(markdownInk);
-Assert(markdownDocument.FindSingleTouchedContainer(markdownInk)?.Id == markdownObject.Id &&
+Assert(markdownDocument.FindTopTouchedContainer(markdownInk)?.Id == markdownObject.Id &&
     markdownDocument.HitTestTopContainer(new PointD(100, 120))?.Id == markdownObject.Id,
     "Markdown remains an ordinary ink-linkable text container.");
 await using var markdownArchive = new MemoryStream();
@@ -2938,7 +2975,7 @@ Assert(
         PenStyle.Default,
         shapeBoard.NextZIndex);
     Assert(
-        shapeBoard.FindSingleTouchedContainer(shapeStroke)?.Id == linkedShape.Id,
+        shapeBoard.FindTopTouchedContainer(shapeStroke)?.Id == linkedShape.Id,
         "A stroke that touches only a shape links to it, as it does to any other container.");
 
     // Only a board that needs version 7 asks for it.
@@ -3581,7 +3618,7 @@ Assert(
         PenStyle.Default,
         labelBoard.NextZIndex);
     Assert(
-        labelBoard.FindSingleTouchedContainer(overLabel)?.Id == upright.Id,
+        labelBoard.FindTopTouchedContainer(overLabel)?.Id == upright.Id,
         "A stroke drawn across a label alone links to the label.");
     labelBoard.AddObject(overLabel with { ContainerId = upright.Id });
     Assert(

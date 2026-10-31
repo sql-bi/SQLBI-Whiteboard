@@ -160,6 +160,18 @@ public enum AfterInsert
     ReturnToSelect = 1,
 }
 
+/// <summary>
+/// The system-wide key that switches between Whiteboard and the source window
+/// of a LiveView. A fixed list, because a free choice would also have to keep
+/// out Whiteboard's own shortcuts and characters typed with AltGr.
+/// </summary>
+public enum LiveViewShortcut
+{
+    ControlAltShiftW = 0,
+    ControlAltPeriod = 1,
+    ControlAltJ = 2,
+}
+
 public sealed class AppSettings
 {
     public int Version { get; set; } = AppSettingsSerializer.CurrentVersion;
@@ -297,6 +309,8 @@ public sealed class AppSettings
     public PowerPointImportSettings PowerPointImport { get; set; } = new();
 
     public bool PauseLiveViewsWhenUnfocused { get; set; }
+
+    public LiveViewShortcut LiveViewShortcut { get; set; } = LiveViewShortcut.ControlAltShiftW;
 
     /// <summary>
     /// Whether to say at startup that Windows reports nothing to draw with. The
@@ -460,6 +474,11 @@ public static class AppSettingsSerializer
         if (!Enum.IsDefined(settings.AfterInsert))
         {
             settings.AfterInsert = AfterInsert.ReturnToSelect;
+        }
+
+        if (!Enum.IsDefined(settings.LiveViewShortcut))
+        {
+            settings.LiveViewShortcut = LiveViewShortcut.ControlAltShiftW;
         }
 
         settings.InsertPaletteX = NormalizeFraction(settings.InsertPaletteX);

@@ -152,8 +152,8 @@ Windows client offers, from `paleYellowGradient` (#FEE15A) to `grayGradient` (#C
 
 Coordinates stay in canvas pixels, one to one with board units, so a 4-pixel Microsoft pen
 is as wide as the 4-unit pen here. A new board puts the export's top-left corner at the
-origin. A stroke that touches exactly one imported container travels with it, which is the
-rule for a stroke drawn by hand.
+origin. A stroke that touches exactly one imported container travels with it. This import rule differs from the
+rule for newly drawn strokes, which link to the frontmost container they touch.
 
 **Shape kinds** are read from the outline, because the shape's name on the page is
 written in the language of whoever made the board. Curves with straight sides are a tube

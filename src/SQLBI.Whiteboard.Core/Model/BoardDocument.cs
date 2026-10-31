@@ -291,26 +291,10 @@ public sealed class BoardDocument
 
     public IEnumerable<FrameBoardObject> Frames => _objects.OfType<FrameBoardObject>();
 
-    public BoardObject? FindSingleTouchedContainer(InkStrokeObject stroke)
-    {
-        BoardObject? match = null;
-        foreach (var item in _objects.Where(item => item is IBoardContainer))
-        {
-            if (!stroke.Touches(item.Bounds))
-            {
-                continue;
-            }
-
-            if (match is not null)
-            {
-                return null;
-            }
-
-            match = item;
-        }
-
-        return match;
-    }
+    public BoardObject? FindTopTouchedContainer(InkStrokeObject stroke) =>
+        _objects.Where(item => item is IBoardContainer)
+            .OrderByDescending(item => item.ZIndex)
+            .FirstOrDefault(item => stroke.Touches(item.Bounds));
 
     /// <summary>
     /// The connectors with an end bound to this object. A gesture that moves it
