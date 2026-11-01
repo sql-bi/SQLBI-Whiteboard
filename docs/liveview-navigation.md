@@ -1,6 +1,6 @@
 # LiveView window navigation
 
-Implemented locally: the third on-container button activates the source window.
+Implemented in 1.7.8: the third on-container button activates the source window.
 One system-wide shortcut, Ctrl+Alt+Shift+W by default, does the same from Whiteboard
 and returns to the existing Whiteboard window from anywhere else, resuming the feed.
 
@@ -77,20 +77,26 @@ and check that failure leaves the selected capture item usable. GitHub's hosted 
 rejected capture-item creation with E_INVALIDARG, so this integration check is not part
 of the default CI suite. Neither suite changes virtual desktops.
 
+Confirmed interactively on Windows 11:
+
+- Marco confirmed the two-way shortcut on 31 October 2026: the same keys go to the
+  source window from Whiteboard and return to Whiteboard from the source.
+- Alberto confirmed the cross-desktop round trip before the shortcut became two-way,
+  going with the button and returning with the shortcut.
+
 Interactive checks still required on Windows 11:
 
-1. Capture a window with the Windows picker, jump with the shortcut, edit its contents,
-   and return with the same shortcut. Repeat with the button for the first jump.
-2. Repeat with the source and Whiteboard on different virtual desktops. Confirm both
-   jumps follow the appropriate desktop and the edit appears in the feed.
-3. Repeat with a minimized source, a frozen LiveView, and background capture pausing on.
-4. Close the source during the visit. The shortcut must still return to Whiteboard.
-5. Choose a display through the system picker. Freeze and Resume must still work;
+1. Go to the source with the shortcut while the source and Whiteboard are on different
+   virtual desktops. Confirm the jump follows the source's desktop and an edit made
+   there appears in the feed after returning.
+2. Repeat with a minimized source, a frozen LiveView, and background capture pausing on.
+3. Close the source during the visit. The shortcut must still return to Whiteboard.
+4. Choose a display through the system picker. Freeze and Resume must still work;
    the jump button must stay disabled. Repeat with two windows whose titles and dimensions match.
-6. Change the shortcut in Preferences with a LiveView connected. The new keys must work
+5. Change the shortcut in Preferences with a LiveView connected. The new keys must work
    at once, the old ones must reach other applications again, and the button tooltip
    must name the new keys.
-7. Disconnect every LiveView, then close Whiteboard, and confirm another instance or
+6. Disconnect every LiveView, then close Whiteboard, and confirm another instance or
    application can register the shortcut each time.
 
 References: [foreground activation and virtual desktops](https://devblogs.microsoft.com/oldnewthing/20171002-00/?p=97116),
