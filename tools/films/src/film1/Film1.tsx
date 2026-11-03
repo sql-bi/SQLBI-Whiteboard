@@ -1,9 +1,10 @@
 import React from 'react';
 import {AbsoluteFill, Audio, interpolate, useCurrentFrame, useVideoConfig} from 'remotion';
-import {color, ease, fontFamily, navyGradient} from '../brand';
-import {AppIcon, SqlbiWindow, SqlbiWordmark, ZipFile} from '../components/Artwork';
+import {color, fontFamily, navyGradient, progress} from '../brand';
+import {SqlbiWindow, ZipFile} from '../components/Artwork';
 import {Calendar} from '../components/Calendar';
 import {CaptureView} from '../components/CaptureView';
+import {EndCard} from '../components/EndCard';
 import {WindowFrame} from '../components/WindowFrame';
 import {layoutFor, shapes, type Layout, type Rect} from '../layout';
 import {mediaFile} from '../media';
@@ -41,10 +42,6 @@ const keepTogether = (text: string) =>
 const RETIREMENT_QUOTE = '“a retirement experience instead of opening”';
 
 const BED_GAIN = Math.pow(10, -22 / 20);
-
-// Eased progress from 0 to 1 over [start, start + length], in seconds.
-const progress = (t: number, start: number, length: number) =>
-  interpolate(t, [start, start + length], [0, 1], {easing: ease, extrapolateLeft: 'clamp', extrapolateRight: 'clamp'});
 
 const lerp = (a: number, b: number, p: number) => a + (b - a) * p;
 const lerpRect = (a: Rect, b: Rect, p: number): Rect => ({
@@ -98,7 +95,7 @@ export const Film1: React.FC<{shapeId: string}> = ({shapeId}) => {
         <SqlbiScene L={L} t={t} />
       </AbsoluteFill>
 
-      {t >= end.start ? <EndCard L={L} t={t - end.start} /> : null}
+      {t >= end.start ? <Film1EndCard L={L} t={t - end.start} /> : null}
     </AbsoluteFill>
   );
 };
@@ -301,92 +298,22 @@ const SqlbiScene: React.FC<{L: Layout; t: number}> = ({L, t}) => {
 };
 
 // The end card, on paper. `t` is seconds since the card began.
-const EndCard: React.FC<{L: Layout; t: number}> = ({L, t}) => {
-  const k = L.landscape ? 1 : shapesScale(L);
-  const s = L.safe;
-  const item = (delay: number): React.CSSProperties => {
-    const p = progress(t, 0.25 + delay, 0.4);
-    return {opacity: p, transform: `translateY(${(1 - p) * 18 * k}px)`};
-  };
-  const underline = progress(t, 0.8, 0.5);
-  const nameSize = 112 * k;
-  const underlineW = nameSize * 7.4;
-
-  return (
-    <div
-      style={{
-        position: 'absolute',
-        left: s.x,
-        top: s.y,
-        width: s.w,
-        height: s.h,
-        display: 'flex',
-        flexDirection: 'column',
-        alignItems: 'center',
-        justifyContent: 'center',
-        textAlign: 'center',
-        color: color.navy,
-      }}
-    >
-      <div style={item(0)}>
-        <AppIcon size={196 * k} />
-      </div>
-      <div style={{...item(0.1), marginTop: 30 * k, position: 'relative'}}>
-        <div style={{fontWeight: 700, fontSize: nameSize, lineHeight: 1.1, letterSpacing: '-0.02em', whiteSpace: 'nowrap'}}>
-          SQLBI Whiteboard
-        </div>
-        <svg
-          width={underlineW}
-          height={(underlineW * 26) / 360}
-          viewBox="0 0 360 26"
-          style={{position: 'absolute', left: '50%', marginLeft: -underlineW / 2, top: nameSize * 1.08, overflow: 'visible'}}
-        >
-          <path
-            d="M6 14c88-7 178-9 252-6 32 1 62 4 90 8"
-            stroke={color.pen}
-            strokeWidth="3.6"
-            fill="none"
-            strokeLinecap="round"
-            pathLength={1}
-            strokeDasharray="1 1"
-            strokeDashoffset={1 - underline}
-            opacity={underline > 0 ? 0.92 : 0}
-          />
-        </svg>
-      </div>
-      <div style={{...item(0.2), marginTop: 44 * k, fontWeight: 600, fontSize: 60 * k, lineHeight: 1.2}}>Free and open source</div>
-      <div style={{...item(0.3), marginTop: 30 * k, fontWeight: 600, fontSize: 56 * k, lineHeight: 1.22, color: color.navy}}>
-        {L.narrow ? (
-          <>
-            whiteboard.sqlbi.com/
-            <br />
-            export-microsoft-whiteboard.html
-          </>
-        ) : (
-          'whiteboard.sqlbi.com/export-microsoft-whiteboard.html'
-        )}
-      </div>
-      <div
-        style={{
-          ...item(0.4),
-          marginTop: 34 * k,
-          padding: `${14 * k}px ${30 * k}px`,
-          borderRadius: 14 * k,
-          background: navyGradient,
-          color: color.paper,
-          fontWeight: 600,
-          fontSize: 48 * k,
-          lineHeight: 1.2,
-          whiteSpace: 'nowrap',
-        }}
-      >
-        winget install SQLBI.Whiteboard
-      </div>
-      <div style={{...item(0.5), marginTop: 46 * k}}>
-        <SqlbiWordmark height={52 * k} />
-      </div>
-    </div>
-  );
-};
-
-const shapesScale = (L: Layout) => (L.width === L.height ? 0.7 : 0.78);
+const Film1EndCard: React.FC<{L: Layout; t: number}> = ({L, t}) => (
+  <EndCard
+    L={L}
+    t={t}
+    address={
+      L.narrow ? (
+        <>
+          whiteboard.sqlbi.com/
+          <br />
+          export-microsoft-whiteboard.html
+        </>
+      ) : (
+        'whiteboard.sqlbi.com/export-microsoft-whiteboard.html'
+      )
+    }
+    command="winget install SQLBI.Whiteboard"
+    wordmark
+  />
+);
