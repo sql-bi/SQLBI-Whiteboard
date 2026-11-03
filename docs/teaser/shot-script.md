@@ -51,7 +51,7 @@ are in `tools/films/src/film2/cuts.ts`.
 | 0–6 s | Rests on D1 | `ink-diagram.mp4`: the pen draws three boxes and two connectors | SQLBI Whiteboard |
 | 6–13 s | Pans right to D2 | `liveview-powerbi.mp4`: View, LiveView, the Power BI window lands, Freeze, highlighter marks | Capture a running application onto the board and draw on it. |
 | 13–20 s | Pans down to D3 | `dax-f6.mp4`: a one-line measure is pasted, F6 formats it | Paste DAX or SQL. F6 formats it. |
-| 20–27 s | Pans left to D4, past D7 | `shapes-connectors.mp4`: a rectangle, a diamond, a connector; the rectangle moves and the arrow follows | Shapes, text, and arrows that follow. |
+| 20–27 s | Pans left to D4, past D7 | `shapes-connectors.mp4`: a rectangle, a diamond, a connector; the rectangle moves and the arrow follows | Shapes and arrows that follow. |
 | 27–34 s | Pans up to D5 | `frames-export.mp4`: Export to PowerPoint and the deck open in PowerPoint | Export the board as a PowerPoint deck. |
 | 34–41 s | Pans down and left to D6 | `open-pptx-zip.mp4`: a .pptx dropped on the board becomes its slides | Open a PowerPoint deck. |
 | 41–47 s | Pulls back until the whole board is in frame | `full-board.mp4` at the centre of the board: a double-click fits the board in its window as the camera pulls back | One board. A file on your PC. |

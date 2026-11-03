@@ -41,7 +41,7 @@ export const captions: Record<StationId, string> = {
   D1: 'SQLBI Whiteboard',
   D2: 'Capture a running application onto the board and draw on it.',
   D3: 'Paste DAX or SQL. F6 formats it.',
-  D4: 'Shapes, text, and arrows that follow.',
+  D4: 'Shapes and arrows that follow.',
   D5: 'Export the board as a PowerPoint deck.',
   D6: 'Open a PowerPoint deck.',
   D7: '',
@@ -75,7 +75,7 @@ const film: Cut = {
     // The Power BI window lands at 9.4 s and the marks go on from 10.4 s.
     D2: {start: 6, from: 0.3, rate: 1.4},
     // The paste reads at 15 s and F6 at 16.7 s.
-    D3: {start: 13, from: 0.4, rate: 1.3},
+    D3: {start: 13, from: 0.8, rate: 1.2},
     // The shapes go in from 21.3 s; the arrow follows the moved shape at 25 s.
     D4: {start: 20, from: 0.3, rate: 1.3},
     // The Export dialog at 28.9 s, PowerPoint from 32.3 s.
@@ -104,6 +104,6 @@ const short = (id: CutId, at: StationId, play: Play): Cut => ({
 export const cuts: Record<CutId, Cut> = {
   film,
   liveview: short('liveview', 'D2', {start: 0.3, from: 0.3, rate: 1}),
-  dax: short('dax', 'D3', {start: 0.6, from: 0.4, rate: 1}),
+  dax: short('dax', 'D3', {start: 0.6, from: 0.8, rate: 1}),
   shapes: short('shapes', 'D4', {start: 0.2, from: 0.3, rate: 1}),
 };

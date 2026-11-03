@@ -28,8 +28,8 @@ export const captures: Record<StationId, Capture> = {
   // View at 0.5 s, the window picker from 2 s, the Power BI window on the board at 5 s,
   // the highlighter marks from 6.5 s.
   D2: capture('D2', 'liveview-powerbi.mp4', 9.566, 'View, LiveView, the Power BI window, Freeze, and highlighter marks.'),
-  // The measure is on the board on one line at 3 s; F6 at 5.3 s; formatted by 6.5 s.
-  D3: capture('D3', 'dax-f6.mp4', 9.233, 'A long one-line measure is pasted; F6 formats it.'),
+  // The measure is pasted on one line at 2 s; F6 at 3.5 s; formatted and settled by 6 s.
+  D3: capture('D3', 'dax-f6.mp4', 11.466, 'A long one-line measure is pasted; F6 formats it.'),
   // Insert at 0.8 s, a rectangle at 1.6 s, a diamond at 4.4 s, the connector at 6 s, the
   // rectangle moved from 6.6 to 7.6 s with the arrow following.
   D4: capture('D4', 'shapes-connectors.mp4', 10.1, 'Insert: shapes and a connector; a shape moves and the arrow follows.'),
