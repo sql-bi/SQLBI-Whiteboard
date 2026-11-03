@@ -42,8 +42,8 @@ export const captions: Record<StationId, string> = {
   D2: 'Capture a running application onto the board and draw on it.',
   D3: 'Paste DAX or SQL. F6 formats it.',
   D4: 'Shapes, text, and arrows that follow.',
-  D5: 'Frames become slides. Export the deck.',
-  D6: 'Open a PowerPoint deck or a Microsoft Whiteboard export.',
+  D5: 'Export the board as a PowerPoint deck.',
+  D6: 'Open a PowerPoint deck.',
   D7: '',
 };
 
